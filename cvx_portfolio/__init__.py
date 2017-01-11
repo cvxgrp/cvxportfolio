@@ -17,7 +17,7 @@ limitations under the License.
 __version__ = "0.0.1"
 from .simulator import MarketSimulator
 from .result import SimulationResult
-from .policy import *
+from .policies import *
 from .constraints import *
 from .utils import *
 from .costs import TcostModel, HcostModel

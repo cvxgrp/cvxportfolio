@@ -25,7 +25,8 @@ from .returns import BaseAlphaModel
 from .constraints import BaseConstraint
 
 
-__all__ = ['Hold', 'PeriodicRebalance', 'AdaptiveRebalance']
+__all__ = ['Hold', 'PeriodicRebalance', 'AdaptiveRebalance',
+            'SinglePeriodOpt', 'MultiPeriodOpt']
 
 
 class BasePolicy():

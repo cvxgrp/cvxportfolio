@@ -22,6 +22,9 @@ import pandas as pd
 
 from .costs import BaseCost
 
+__all__ = ['FullSigma', 'EmpSigma', 'SqrtSigma', 'WorstCaseRisk',
+            'RobustFactorModelSigma', 'RobustSigma',  'FactorModelSigma']  ## TODO fix redundancies here
+
 
 def locator(obj, t):
     """Picks last element before t."""
