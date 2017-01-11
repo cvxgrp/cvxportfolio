@@ -82,7 +82,7 @@ class LeverageLimit(BaseConstraint):
     def __init__(self, limit):
         self.limit = limit
 
-    def estimate(self, t, w_plus, w_bench, z, v):
+    def weight_expr(self, t, w_plus, w_bench, z, v):
         """Returns a list of holding constraints.
 
         Args:

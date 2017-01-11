@@ -33,14 +33,16 @@ def locator(obj, t):
 
 class BaseRiskModel(BaseCost):
 
+    # def __init__(self, **kwargs):
+    #     self.gamma_half_life = kwargs.pop('gamma_half_life', np.inf)
+    #     self.gamma = kwargs.pop('gamma')
+
     def __init__(self, **kwargs):
-        self.gamma_half_life = kwargs.pop('gamma_half_life', np.inf)
-        self.gamma = kwargs.pop('gamma')
+        pass  #stub
 
     def weight_expr(self, t, w_plus, w_bench, z, value):
-
-        expression = self._estimate(t, w_plus, w_bench, z, value)
-        return self.gamma * expression
+        self.expression = self._estimate(t, w_plus, w_bench, z, value)
+        return self.gamma * self.expression
 
     @abstractmethod
     def _estimate(self, t, w_plus, w_bench, z, value):
@@ -59,6 +61,12 @@ class BaseRiskModel(BaseCost):
 
     def result_data_type(self, portfolio):
         return pd.Series, {}
+
+    def optimization_log(self,t):
+        if self.expression.value:
+            return self.expression.value
+        else:
+            return np.NaN
 
 
 class FullSigma(BaseRiskModel):
@@ -83,6 +91,7 @@ class FullSigma(BaseRiskModel):
 
 
 class EmpSigma(BaseRiskModel):
+    """Empirical Sigma matrix, built looking at *lookback* past returns."""
     def __init__(self, returns, lookback, **kwargs):
         """returns is dataframe, lookback is int"""
         self.returns = returns
@@ -92,8 +101,8 @@ class EmpSigma(BaseRiskModel):
 
     def _estimate(self, t, wplus, wbench, z, value):
         idx = self.returns.index.get_loc(t)
-        R = self.returns.iloc[idx-1-self.lookback:idx-1]
-        # TODO make sure pandas + cvxpy works
+        R = self.returns.iloc[max(idx-1-self.lookback,0):idx-1]  # TODO make sure pandas + cvxpy works
+        assert (R.shape[0] > 0)
         self.expression = cvx.sum_squares(R.values*(wplus - wbench))/self.lookback
         return self.expression
 

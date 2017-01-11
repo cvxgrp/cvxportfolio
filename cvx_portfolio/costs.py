@@ -17,14 +17,24 @@ limitations under the License.
 import cvxpy as cvx
 import pandas as pd
 import numpy as np
+import copy
 from .expression import Expression
 
 __all__ = ['HcostModel', 'TcostModel']
 
 
 class BaseCost(Expression):
-    # TODO add the gamma multiplier here
-    pass
+    gamma = 1.  # it is changed by gamma * BaseCost()
+
+    def __mul__(self,other):
+        """Read the gamma parameter as a multiplication."""
+        newobj=copy.copy(self)
+        newobj.gamma *= other
+        return newobj
+
+    def __rmul__(self,other):
+        """Read the gamma parameter as a multiplication."""
+        return self.__mul__(other)
 
 
 class HcostModel(BaseCost):

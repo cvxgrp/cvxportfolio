@@ -18,6 +18,7 @@ import logging
 
 import cvxpy as cvx
 import pandas as pd
+import numpy as np
 
 from cvx_portfolio.costs import BaseCost
 from cvx_portfolio.returns import BaseAlphaModel
@@ -45,16 +46,15 @@ class SinglePeriodOpt(BasePolicy):
 
     def get_trades(self, portfolio, t):
 
-        value = portfolio.v
-        w = portfolio.w
+        value = sum(portfolio)
+        w = portfolio/value
         z = cvx.Variable(w.size)  # TODO pass index
         wplus = w.values + z
-        wbench = portfolio.benchmark.values
+        wbench = np.zeros(len(w)) # TODO FIX THIS ##portfolio.benchmark.values
 
         alpha_term = self.alpha_model.weight_expr(t, wplus)
         assert(alpha_term.is_concave())
 
-        # TODO fix the [:-1]
         costs = [cost.weight_expr(t, wplus, wbench, z, value) for cost in self.costs]
         for el in costs:
             assert (el.is_convex())
@@ -68,7 +68,16 @@ class SinglePeriodOpt(BasePolicy):
             [cvx.sum_entries(z) == 0] + constraints)
         try:
             prob.solve(solver=self.solver, verbose=False)
-            return pd.Series(index=portfolio.h.index, data=(z.value.A1 * value))  # TODO will have index
+
+            if prob.status == 'unbounded':
+                logging.error('The problem is unbounded. Defaulting to no trades')
+                return self._nulltrade(portfolio)
+
+            if prob.status == 'infeasible':
+                logging.error('The problem is infeasible. Defaulting to no trades')
+                return self._nulltrade(portfolio)
+
+            return pd.Series(index=portfolio.index, data=(z.value.A1 * value))  # TODO will have index
         except cvx.SolverError:
-            logging.ERROR('The solver %s failed. Defaulting to no trades' % self.solver)
+            logging.error('The solver %s failed. Defaulting to no trades' % self.solver)
             return self._nulltrade(portfolio)
