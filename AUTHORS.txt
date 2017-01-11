@@ -1,0 +1,4 @@
+AUTHORS
+Enzo Busseti and Steven Diamond wrote most of the code. Stephen Boyd directed the
+project. Blackrock Inc. provided support via technical, financial, and (additional)
+human resources.
