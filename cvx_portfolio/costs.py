@@ -50,7 +50,7 @@ class HcostModel(BaseCost):
         self.dividends = dividends
         self.cash_key = cash_key
 
-    def weight_expr(self, t, w_plus, w_bench, z, value):
+    def weight_expr(self, t, w_plus, z, value):
         ## TODO make expression a vector not a scalar (like tcost)
         """Estimate holding costs.
 
@@ -70,9 +70,9 @@ class HcostModel(BaseCost):
 
         return self.expression
 
-    def value_expr(self, t, h_plus, w_bench, u):
+    def value_expr(self, t, h_plus, u):
         # TODO this might not be a great idea
-        expression = self.weight_expr(t, w_plus=h_plus, w_bench=None, z=None, value=None)
+        expression = self.weight_expr(t, w_plus=h_plus, z=None, value=None)
         return expression.value
 
     def optimization_log(self,t):
@@ -94,14 +94,14 @@ class TcostModel(BaseCost):
     """
     def __init__(self, volume, sigma, spread, nonlin_coeff, power=1.5, coeff=1, cash_key='cash'):
         self.coeff = coeff
-        self.volume = volume
-        self.sigma = sigma
-        self.spread = spread
+        self.volume = volume[volume.columns.difference([cash_key])]
+        self.sigma = sigma[sigma.columns.difference([cash_key])]
+        self.spread = spread[spread.columns.difference([cash_key])]
         self.nonlin_coeff = nonlin_coeff
         self.power = power
         self.cash_key = cash_key
 
-    def weight_expr(self, t, w_plus, w_bench, z, value):
+    def weight_expr(self, t, w_plus, z, value):
         """Estimate tcosts given trades.
 
         Args:
@@ -127,7 +127,7 @@ class TcostModel(BaseCost):
 
         return self.coeff * cvx.sum_entries(self.expression)  # TODO factor out the coeff
 
-    def value_expr(self, t, h_plus, w_bench, u):
+    def value_expr(self, t, h_plus, u):
         # TODO figure out why calling weight_expr is buggy
         abs_u = np.abs(u[:-1])
         tcosts = self.spread.loc[t]*abs_u + self.nonlin_coeff.loc[t] * \
@@ -144,13 +144,13 @@ class TcostModel(BaseCost):
         ## TODO find another way
         return self.tmp_tcosts
 
-    def weight_expr_ahead(self, t, tau, w_plus, w_bench, z, value):
+    def weight_expr_ahead(self, t, tau, w_plus, z, value):
         """Returns the estimate at time t of tcost at time tau.
         """
-        return self.weight_expr(t, None, None, z, value)
+        return self.weight_expr(t, None, z, value)
 
-    def est_period(self, t, tau_start, tau_end, w_plus, w_bench, z, value):
+    def est_period(self, t, tau_start, tau_end, w_plus, z, value):
         """Returns the estimate at time t of tcost over given period.
         """
         K = (tau_end - tau_start).days
-        return self.weight_expr(t, None, None, z / K, value) * K
+        return self.weight_expr(t, None, z / K, value) * K

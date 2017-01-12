@@ -66,7 +66,7 @@ class MarketSimulator():
         # don't trade if volume is null
         u.loc[self.market_volumes.loc[t]==0] = 0.
         hplus = h + u
-        costs = [cost.value_expr(t, h_plus=hplus, w_bench=None, u=u) for cost in self.costs]
+        costs = [cost.value_expr(t, h_plus=hplus, u=u) for cost in self.costs]
         for cost in costs:
             assert(not pd.isnull(cost))
             assert(not np.isinf(cost))

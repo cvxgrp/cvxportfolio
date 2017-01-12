@@ -25,34 +25,39 @@ __all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'MaxTrade']
 class BaseConstraint(object):
     __metaclass__ = ABCMeta
 
-    @abstractmethod
-    def estimate(self, t, w_plus, w_bench, z, v):
+    def __init__(self, **kwargs):
+        self.w_bench = kwargs.pop('w_bench', 0.)
+
+    def weight_expr(self, t, w_plus, z, v):
         """Returns a list of trade constraints.
 
         Args:
           t: time
           w_plus: post-trade weights
-          w_bench: benchmark weights
           z: trade weights
           v: portfolio value
         """
+        return self._weight_expr(t, w_plus-self.w_bench, z, v)
+
+    @abstractmethod
+    def _weight_expr(self, t, w_plus, z, v):
         pass
 
 
 class MaxTrade(BaseConstraint):
     """A limit on maximum trading size.
     """
-    def __init__(self, ADVs, max_fraction=0.05):
+    def __init__(self, ADVs, max_fraction=0.05, **kwargs):
         self.ADVs = ADVs
         self.max_fraction = max_fraction
+        super(MaxTrade, self).__init__(**kwargs)
 
-    def estimate(self, t, w_plus, w_bench, z, v):
+    def _weight_expr(self, t, w_plus, z, v):
         """Returns a list of trade constraints.
 
         Args:
           t: time
           w_plus: post-trade weights
-          w_bench: benchmark weights
           z: trade weights
           v: portfolio value
         """
@@ -62,8 +67,10 @@ class MaxTrade(BaseConstraint):
 class LongOnly(BaseConstraint):
     """A long only constraint.
     """
+    def __init__(self, **kwargs):
+        super(LongOnly, self).__init__(**kwargs)
 
-    def estimate(self, t, w_plus, w_bench, z, v):
+    def _weight_expr(self, t, w_plus, z, v):
         """Returns a list of holding constraints.
 
         Args:
@@ -79,10 +86,11 @@ class LeverageLimit(BaseConstraint):
     Attributes:
       limit: A series or number giving the leverage limit.
     """
-    def __init__(self, limit):
+    def __init__(self, limit, **kwargs):
         self.limit = limit
+        super(LeverageLimit, self).__init__(**kwargs)
 
-    def weight_expr(self, t, w_plus, w_bench, z, v):
+    def _weight_expr(self, t, w_plus, z, v):
         """Returns a list of holding constraints.
 
         Args:
@@ -100,7 +108,10 @@ class LongCash(BaseConstraint):
     """Requires that cash be non-negative.
     """
 
-    def estimate(self, t, w_plus, w_bench, z, v):
+    def __init__(self, **kwargs):
+        super(LongCash, self).__init__(**kwargs)
+
+    def _weight_expr(self, t, w_plus, z, v):
         """Returns a list of holding constraints.
 
         Args:

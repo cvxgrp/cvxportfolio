@@ -23,19 +23,19 @@ class Expression(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def weight_expr(self, t, w_plus, w_bench, z, value):
+    def weight_expr(self, t, w_plus, z, value):
         """Returns the estimate of cost at time t."""
         pass
 
-    def weight_expr_ahead(self, t, tau, w_plus, w_bench, z, value):
+    def weight_expr_ahead(self, t, tau, w_plus, z, value):
         """Returns the estimate at time t of cost at time tau.
         """
-        return self.weight_expr(t, w_plus, w_bench, z, value)
+        return self.weight_expr(t, w_plus, z, value)
 
     @abstractmethod
-    def value_expr(self, t, h_plus, w_bench, u):
+    def value_expr(self, t, h_plus, u):
         """Returns the expression at time t, using value representation.
 
         This should be overridden if the term is used in the simulator.
         """
-        return sum(h_plus)*self.weight_expr(t, h_plus/sum(h_plus), w_bench, u/sum(u), sum(h_plus))
+        return sum(h_plus)*self.weight_expr(t, h_plus/sum(h_plus), u/sum(u), sum(h_plus))

@@ -18,6 +18,9 @@ so we can forget about it in the rest of the code
 - **returns**. we don't need it there
 - **costs** neither!
 
+## Tests
+- remove functionalities we don't test (e.g. a lot of results)
+
 ## Kelly
 - it's a secondary objective
 - make a separate module that implements

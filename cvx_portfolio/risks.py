@@ -36,22 +36,20 @@ def locator(obj, t):
 
 class BaseRiskModel(BaseCost):
 
-    # def __init__(self, **kwargs):
-    #     self.gamma_half_life = kwargs.pop('gamma_half_life', np.inf)
-    #     self.gamma = kwargs.pop('gamma')
-
     def __init__(self, **kwargs):
-        pass  #stub
+        self.w_bench = kwargs.pop('w_bench', 0.)
+        #self.gamma_half_life = kwargs.pop('gamma_half_life', np.inf)
+        #self.gamma = kwargs.pop('gamma')
 
-    def weight_expr(self, t, w_plus, w_bench, z, value):
-        self.expression = self._estimate(t, w_plus, w_bench, z, value)
+    def weight_expr(self, t, w_plus, z, value):
+        self.expression = self._estimate(t, w_plus - self.w_bench, z, value)
         return self.gamma * self.expression
 
     @abstractmethod
-    def _estimate(self, t, w_plus, w_bench, z, value):
+    def _estimate(self, t, w_plus, z, value):
         pass
 
-    def weight_expr_ahead(self, t, tau, w_plus, w_bench, z, value):
+    def weight_expr_ahead(self, t, tau, w_plus, z, value):
         """Estimate risk model at time tau in the future, while t is present."""
         if self.gamma_half_life == np.inf:
             gamma_multiplier = 1.
@@ -60,7 +58,7 @@ class BaseRiskModel(BaseCost):
             gamma_init = decay_factor**((tau - t).days)  # TODO not dependent on days
             gamma_multiplier = gamma_init*(1 - decay_factor)/(1 - decay_factor)
 
-        return gamma_multiplier * self.weight_expr(t, w_plus, w_bench, z, value)
+        return gamma_multiplier * self.weight_expr(t, w_plus, z, value)
 
     def result_data_type(self, portfolio):
         return pd.Series, {}
@@ -82,11 +80,11 @@ class FullSigma(BaseRiskModel):
             assert (not pd.isnull(Sigma).any())
         super(FullSigma, self).__init__(**kwargs)
 
-    def _estimate(self, t, wplus, wbench, z, value):
+    def _estimate(self, t, wplus, z, value):
         try:
-            self.expression = cvx.quad_form(wplus - wbench, locator(self.Sigma, t))
+            self.expression = cvx.quad_form(wplus, locator(self.Sigma, t))
         except TypeError:
-            self.expression = cvx.quad_form(wplus - wbench, locator(self.Sigma.values, t))
+            self.expression = cvx.quad_form(wplus, locator(self.Sigma.values, t))
         return self.expression
 
     def post_optimization_log(self, t):
@@ -102,11 +100,11 @@ class EmpSigma(BaseRiskModel):
         assert(not np.any(pd.isnull(returns)))
         super(EmpSigma, self).__init__(**kwargs)
 
-    def _estimate(self, t, wplus, wbench, z, value):
+    def _estimate(self, t, wplus, z, value):
         idx = self.returns.index.get_loc(t)
         R = self.returns.iloc[max(idx-1-self.lookback,0):idx-1]  # TODO make sure pandas + cvxpy works
         assert (R.shape[0] > 0)
-        self.expression = cvx.sum_squares(R.values*(wplus - wbench))/self.lookback
+        self.expression = cvx.sum_squares(R.values*wplus)/self.lookback
         return self.expression
 
     def post_optimization_log(self, t):
@@ -123,9 +121,9 @@ class SqrtSigma(BaseRiskModel):
         assert(not np.any(pd.isnull(sigma_sqrt)))
         super(SqrtSigma, self).__init__(**kwargs)
 
-    def _estimate(self, t, wplus, wbench, z, value):
+    def _estimate(self, t, wplus, z, value):
         # TODO make sure pandas + cvxpy works
-        self.expression = cvx.sum_squares(self.sigma_sqrt.values @ (wplus - wbench))
+        self.expression = cvx.sum_squares(self.sigma_sqrt.values @ wplus)
         return self.expression
 
     def post_optimization_log(self, t):
@@ -146,10 +144,10 @@ class FactorModelSigma(BaseRiskModel):
         assert(not idiosync.isnull().values.any())
         super(FactorModelSigma, self).__init__(**kwargs)
 
-    def _estimate(self, t, wplus, wbench, z, value):
+    def _estimate(self, t, wplus, z, value):
         self.expression = cvx.sum_squares(cvx.mul_elemwise(np.sqrt(locator(self.idiosync, t).values),
-                                             wplus - wbench)) + \
-                             cvx.quad_form(locator(self.exposures, t).values @ (wplus - wbench),
+                                             wplus)) + \
+                             cvx.quad_form(locator(self.exposures, t).values @ wplus,
                                                  locator(self.factor_Sigma, t).values)
         return self.expression
 
@@ -167,9 +165,9 @@ class RobustSigma(BaseRiskModel):
         self.epsilon = epsilon  # pd.Series or scalar
         super(RobustSigma, self).__init__(**kwargs)
 
-    def _estimate(self, t, wplus, wbench, z, value):
-        self.expression = cvx.quad_form(wplus - wbench, locator(self.Sigma, t)) + \
-                             locator(self.epsilon, t) * (cvx.abs(wplus - wbench).T * np.diag(locator(self.Sigma, t)))**2
+    def _estimate(self, t, wplus, z, value):
+        self.expression = cvx.quad_form(wplus, locator(self.Sigma, t)) + \
+                             locator(self.epsilon, t) * (cvx.abs(wplus).T * np.diag(locator(self.Sigma, t)))**2
 
         return self.expression
 
@@ -193,12 +191,12 @@ class RobustFactorModelSigma(BaseRiskModel):
         self.epsilon = epsilon
         super(RobustFactorModelSigma, self).__init__(**kwargs)
 
-    def _estimate(self, t, wplus, wbench, z, value):
+    def _estimate(self, t, wplus, z, value):
         F = locator(self.exposures, t)
-        f = ((wplus - wbench).T * F.T).T
+        f = (wplus.T * F.T).T
         Sigma_F = locator(self.factor_Sigma, t)
         D = locator(self.idiosync, t)
-        self.expression = cvx.sum_squares(cvx.mul_elemwise(np.sqrt(D), wplus - wbench)) + \
+        self.expression = cvx.sum_squares(cvx.mul_elemwise(np.sqrt(D), wplus)) + \
                                cvx.quad_form(f, Sigma_F) + \
                                self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F)))**2
 
@@ -216,8 +214,8 @@ class WorstCaseRisk(BaseRiskModel):
         self.riskmodels = riskmodels
         super(WorstCaseRisk, self).__init__(**kwargs)
 
-    def _estimate(self, t, wplus, wbench, z, value):
-        self.risks = [risk.weight_expr(t, wplus, wbench) for risk in self.riskmodels]
+    def _estimate(self, t, wplus, z, value):
+        self.risks = [risk.weight_expr(t, wplus, z, value) for risk in self.riskmodels]
         return cvx.max_elemwise(*self.risks)
 
     def post_optimization_log(self, t):
