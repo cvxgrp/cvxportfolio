@@ -97,7 +97,7 @@ class TcostModel(BaseCost):
         self.volume = volume[volume.columns.difference([cash_key])]
         self.sigma = sigma[sigma.columns.difference([cash_key])]
         self.spread = spread[spread.columns.difference([cash_key])]
-        self.nonlin_coeff = nonlin_coeff
+        self.nonlin_coeff = nonlin_coeff[nonlin_coeff.columns.difference([cash_key])]
         self.power = power
         self.cash_key = cash_key
 
@@ -122,6 +122,10 @@ class TcostModel(BaseCost):
         z_abs = cvx.abs(z)
         tmp = self.nonlin_coeff.loc[t] * self.sigma.loc[t] * \
             (value / self.volume.loc[t])**(self.power - 1)
+
+        assert (z.size[0] == tmp.size)
+        assert (z.size[0] == self.spread.loc[t].size)
+
         self.expression = cvx.mul_elemwise(self.spread.loc[t].values, z_abs) + \
             cvx.mul_elemwise(tmp.values, (z_abs)**self.power)
 
