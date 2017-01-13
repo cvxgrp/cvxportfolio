@@ -50,56 +50,56 @@ class SimulationResult():
             PPY:
         """
 
-        # constants
         self.PPY = PPY
         self.initial_val = sum(initial_portfolio)
         self.initial_portfolio = copy.copy(initial_portfolio)
         self.cash_key = cash_key
-
-        # data
-        self._data = pd.Panel(items=['u','h_next'],
-                              major_axis=simulation_times,
-                              minor_axis=initial_portfolio.index)
-
-        # simulator
+        self._data = {}
         self.simulator = simulator
-        self.simulation_time = pd.Series(index=simulation_times)
-        for cost in self.simulator.costs:
-            self._data['simulation.'+cost.__class__.__name__] = np.nan
-
-        # policy
         self.policy = policy
         self.pol_name = policy.name
-        self.policy_time = pd.Series(index=simulation_times)
-        for cost in self.policy.costs:
-            self._data['policy.'+cost.__class__.__name__] = np.nan
+
+
+    def log_data(self, name, t, entry):
+        if name in self._data:
+            self._data[name].loc[t] = entry
+        else:
+            self._data[name] = \
+        (pd.Series if np.isscalar(entry) else pd.DataFrame)(index=[t],data=[entry])
+
 
     @property
     def u(self):
-        return self._data.u
+        return self._data['u']
+
 
     @property
     def h_next(self):
-        return self._data.h_next
+        return self._data['h_next']
+
+
+    def __getattr__(self, attr):
+        if attr in self._data:
+            return self._data[attr]
+        raise AttributeError("%r object has no attribute %r" %
+                         (self.__class__, attr))
+
 
     def log_policy(self, t, exec_time):
-        self.policy_time.loc[t] = exec_time
+        self.log_data("policy_time", t, exec_time)
         for cost in self.policy.costs:
-            self._data['policy.'+cost.__class__.__name__].loc[t] = \
-                cost.optimization_log(t)
+            self.log_data("policy_"+cost.__class__.__name__,
+                          t, cost.optimization_log(t))
 
-    def log_simulation(self, t, u, next_h, exec_time):
-        self.simulation_time.loc[t] = exec_time
-        self._data['u'].loc[t] = u
-        self._data['h_next'].loc[t] = next_h
+
+    def log_simulation(self, t, u, h_next, exec_time):
+        self.log_data("simulation_time", t, exec_time)
+        self.log_data("u", t, u)
+        self.log_data("h_next", t, h_next)
         for cost in self.simulator.costs:
-            self._data['simulation.'+cost.__class__.__name__].loc[t] = \
-                cost.simulation_log(t)
+            self.log_data("simulator_"+cost.__class__.__name__,
+                          t, cost.simulation_log(t))
 
-    @property
-    def market_returns(self):
-        # TODO log them?
-        raise NotImplemented
 
     @property
     def h(self):
@@ -132,64 +132,64 @@ class SimulationResult():
         """Portfolio leverage"""
         return np.abs(self.w).sum(1)
 
-    def _summary_dataframes(self):
-        result = {}
-        result['Basics'] = pd.DataFrame(index=['Date', 'Value', 'Cash'], #, 'Cash (%)', 'Leverage'],
-                               columns=['Start', 'End', 'Delta'],
-                               data=[[self.h_next.index[0], self.h_next.index[-1],
-                                      len(self.h_next.index)],
-                                     [self.value[0], self.value[-1], self.value[-1] - self.value[0]],
-                                         [self.h_next.iloc[0][self.cash_key],
-                                          self.h_next.iloc[-1][self.cash_key],
-                                          self.h_next.iloc[-1][self.cash_key] -
-                                          self.h_next.iloc[0][self.cash_key]],
-                                    ])
+    # def _summary_dataframes(self):
+    #     result = {}
+    #     result['Basics'] = pd.DataFrame(index=['Date', 'Value', 'Cash'], #, 'Cash (%)', 'Leverage'],
+    #                            columns=['Start', 'End', 'Delta'],
+    #                            data=[[self.h_next.index[0], self.h_next.index[-1],
+    #                                   len(self.h_next.index)],
+    #                                  [self.value[0], self.value[-1], self.value[-1] - self.value[0]],
+    #                                      [self.h_next.iloc[0][self.cash_key],
+    #                                       self.h_next.iloc[-1][self.cash_key],
+    #                                       self.h_next.iloc[-1][self.cash_key] -
+    #                                       self.h_next.iloc[0][self.cash_key]],
+    #                                 ])
+        #
+        # result['Performance'] = pd.DataFrame(index=['Ret. (Ann. %)',
+        #                                             'Vol. (Ann. %)',
+        #                                             'Sharpe',
+        #                                             'IR',
+        #                                             'Turnover (Ann. %)',
+        #                                             'Max Drawdown (%)',
+        #                                             'P&L ($)',
+        #                                             'TCosts ($)',
+        #                                             'HCosts ($)'],
+        #                                      columns=[self.pol_name],
+        #                                      data=np.array([self.annual_return,
+        #                                              self.realized_volatility,
+        #                                              self.sharpe_ratio,
+        #                                              self.information_ratio,
+        #                                              self.turnover.mean()*100*self.PPY,
+        #                                              self.max_drawdown,
+        #                                              self.profit,
+        #                                              sum(self.opt_TcostModel),
+        #                                              sum(self.opt_HcostModel)]).T)
+        # return result
 
-        result['Performance'] = pd.DataFrame(index=['Ret. (Ann. %)',
-                                                    'Vol. (Ann. %)',
-                                                    'Sharpe',
-                                                    'IR',
-                                                    'Turnover (Ann. %)',
-                                                    'Max Drawdown (%)',
-                                                    'P&L ($)',
-                                                    'TCosts ($)',
-                                                    'HCosts ($)'],
-                                             columns=[self.pol_name],
-                                             data=np.array([self.annual_return,
-                                                     self.realized_volatility,
-                                                     self.sharpe_ratio,
-                                                     self.information_ratio,
-                                                     self.turnover.mean()*100*self.PPY,
-                                                     self.max_drawdown,
-                                                     self.profit,
-                                                     sum(self.opt_TcostModel),
-                                                     sum(self.opt_HcostModel)]).T)
-        return result
+    # @property
+    # def tcosts(self):
+    #     return self.opt_TcostModel.sum(axis=1)  # TODO this is tmp hack
 
-    @property
-    def tcosts(self):
-        return self.opt_TcostModel.sum(axis=1)  # TODO this is tmp hack
+    # def summary(self):
+    #     """Pretty print summary."""
+    #     # TODO this doesn't work when outside ipython
+    #     try:
+    #         from IPython.core import display as ICD
+    #         ICD.display(self._summary_dataframes())
+    #     except ImportError:
+    #         print(self.__repr__())
+    #
+    # def summary_line(self):
+    #     return self._summary_dataframes()['Performance']
 
-    def summary(self):
-        """Pretty print summary."""
-        # TODO this doesn't work when outside ipython
-        try:
-            from IPython.core import display as ICD
-            ICD.display(self._summary_dataframes())
-        except ImportError:
-            print(self.__repr__())
-
-    def summary_line(self):
-        return self._summary_dataframes()['Performance']
-
-    def __repr__(self):
-        """Print basic statistics."""
-        result = ''
-        sum_dict = self._summary_dataframes()
-        for k in sum_dict.keys():
-            result += k + '\n'
-            result += str(sum_dict[k]) + '\n'
-        return result
+    # def __repr__(self):
+    #     """Print basic statistics."""
+    #     result = ''
+    #     sum_dict = self._summary_dataframes()
+    #     for k in sum_dict.keys():
+    #         result += k + '\n'
+    #         result += str(sum_dict[k]) + '\n'
+    #     return result
 
     @property
     def realized_volatility(self):
@@ -203,19 +203,19 @@ class SimulationResult():
     #     else:
     #         return self.weights - self.benchmark
 
-    @property
-    def cash(self):
-        return self.h_next[self.cash_key]
-
-    @property
-    def noncash(self):
-        return self.h_next.drop(self.cash_key, axis=1)
+    # @property
+    # def cash(self):
+    #     return self.h_next[self.cash_key]
+    #
+    # @property
+    # def noncash(self):
+    #     return self.h_next.drop(self.cash_key, axis=1)
 
     @property
     def returns(self):
         """The returns (v_{t+1}-v_t)/v_t
         """
-        val = self.value
+        val = self.v
         return pd.Series(data=val.values[1:]/val.values[:-1] - 1, index=val.index[1:])
 
     @property

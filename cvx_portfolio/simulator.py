@@ -101,7 +101,7 @@ class MarketSimulator():
             h, u = self.propagate(h, u, t)
             end = time.time()
             assert (not h.isnull().values.any())
-            results.log_simulation(t=t, u=u, next_h=h, exec_time=end-start)
+            results.log_simulation(t=t, u=u, h_next=h, exec_time=end-start)
 
         logging.info('Backtest ended, from %s to %s' % (simulation_times[0], simulation_times[-1]))
         return results
