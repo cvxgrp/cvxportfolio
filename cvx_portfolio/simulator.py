@@ -86,7 +86,7 @@ class MarketSimulator():
         results = SimulationResult(initial_portfolio=copy.copy(initial_portfolio),
                                    policy=policy, cash_key=self.cash_key,
                                    simulator=self)
-        h = copy.copy(initial_portfolio)
+        h = initial_portfolio
 
         for t in simulation_times:
             logging.info('Getting trades at time %s' % t)

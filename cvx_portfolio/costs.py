@@ -24,7 +24,11 @@ __all__ = ['HcostModel', 'TcostModel']
 
 
 class BaseCost(Expression):
-    gamma = 1.  # it is changed by gamma * BaseCost()
+    def __init__(self):
+        self.gamma = 1.  # it is changed by gamma * BaseCost()
+
+    def weight_expr(self, t, w_plus, z, value):
+        return self.gamma * self._estimate(t, w_plus, z, value)
 
     def __mul__(self,other):
         """Read the gamma parameter as a multiplication."""
@@ -49,8 +53,9 @@ class HcostModel(BaseCost):
         self.borrow_costs = borrow_costs
         self.dividends = dividends
         self.cash_key = cash_key
+        super().__init__()
 
-    def weight_expr(self, t, w_plus, z, value):
+    def _estimate(self, t, w_plus, z, value):
         ## TODO make expression a vector not a scalar (like tcost)
         """Estimate holding costs.
 
@@ -92,16 +97,17 @@ class TcostModel(BaseCost):
       nonlin_coeff: A dataframe of coefficients for the nonlinear cost.
       power: The nonlinear tcost power.
     """
-    def __init__(self, volume, sigma, spread, nonlin_coeff, power=1.5, coeff=1, cash_key='cash'):
-        self.coeff = coeff
+    def __init__(self, volume, sigma, spread, nonlin_coeff, power=1.5, cash_key='cash'):
         self.volume = volume[volume.columns.difference([cash_key])]
         self.sigma = sigma[sigma.columns.difference([cash_key])]
         self.spread = spread[spread.columns.difference([cash_key])]
         self.nonlin_coeff = nonlin_coeff[nonlin_coeff.columns.difference([cash_key])]
         self.power = power
         self.cash_key = cash_key
+        super().__init__()
 
-    def weight_expr(self, t, w_plus, z, value):
+
+    def _estimate(self, t, w_plus, z, value):
         """Estimate tcosts given trades.
 
         Args:
@@ -129,7 +135,7 @@ class TcostModel(BaseCost):
         self.expression = cvx.mul_elemwise(self.spread.loc[t].values, z_abs) + \
             cvx.mul_elemwise(tmp.values, (z_abs)**self.power)
 
-        return self.coeff * cvx.sum_entries(self.expression)  # TODO factor out the coeff
+        return cvx.sum_entries(self.expression)
 
     def value_expr(self, t, h_plus, u):
         # TODO figure out why calling weight_expr is buggy

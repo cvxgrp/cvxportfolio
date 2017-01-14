@@ -29,15 +29,13 @@ __all__ = ['Hold', 'PeriodicRebalance', 'AdaptiveRebalance',
             'SinglePeriodOpt', 'MultiPeriodOpt']
 
 
-class BasePolicy():
+class BasePolicy(object):
     """ Base class for a trading policy. """
     __metaclass__ = ABCMeta
 
-    costs = []
-    constraints = []
-
-    def __init__(self, name=None):
-        self.name = name
+    def __init__(self):
+        self.costs = []
+        self.constraints = []
 
     @abstractmethod
     def get_trades(self, portfolio, t):
@@ -64,7 +62,7 @@ class BaseRebalance(BasePolicy):
 class PeriodicRebalance(BaseRebalance):
     """Track a target portfolio, rebalancing at given times.
     """
-    def __init__(self, target, rebalancing_times, name="PeriodicRebalance"):
+    def __init__(self, target, rebalancing_times, **kwargs):
         """
 
         Args:
@@ -73,7 +71,7 @@ class PeriodicRebalance(BaseRebalance):
         """
         self.target = target
         self.rebalancing_times = rebalancing_times
-        self.name = name
+        super().__init__()
 
     def get_trades(self, portfolio, t):
         if t in self.rebalancing_times:
@@ -88,6 +86,8 @@ class AdaptiveRebalance(BaseRebalance):
     def __init__(self, target, tracking_error):
         self.target = target
         self.tracking_error = tracking_error
+        super().__init__()
+
 
     def get_trades(self, portfolio, t):
         weights=portfolio/sum(portfolio)
@@ -101,10 +101,13 @@ class AdaptiveRebalance(BaseRebalance):
 
 class SinglePeriodOpt(BasePolicy):
 
-    def __init__(self, alpha_model, costs, constraints, solver=None, name="SinglePeriodOpt"):
+    def __init__(self, alpha_model, costs, constraints, solver=None,
+                solver_opts = {}):
 
         self.alpha_model = alpha_model
         assert isinstance(self.alpha_model, BaseAlphaModel)
+
+        super().__init__()
 
         for cost in costs:
             assert isinstance(cost, BaseCost)
@@ -115,7 +118,8 @@ class SinglePeriodOpt(BasePolicy):
             self.constraints.append(constraint)
 
         self.solver = solver
-        self.name = name
+        self.solver_opts = solver_opts
+
 
     def get_trades(self, portfolio, t):
 
@@ -175,13 +179,12 @@ class SinglePeriodOpt(BasePolicy):
 
 class MultiPeriodOpt(SinglePeriodOpt):
 
-    def __init__(self, lookahead_periods, alpha_model, costs, constraints,
-                 terminal_constr=False, solver=None, name="MultiPeriodOpt"):
+    def __init__(self, lookahead_periods, *args, **kwargs):
         # Number of periods to look ahead.
         self.lookahead_periods = lookahead_periods
         # Should there be a constraint that the final portfolio is the bmark?
         #self.terminal_constr = terminal_constr
-        super(MultiPeriodOpt, self).__init__(alpha_model, costs, constraints, solver, name)
+        super().__init__(*args, **kwargs)
 
     def get_trades(self, portfolio, t):
 

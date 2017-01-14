@@ -19,16 +19,16 @@ import pickle
 import copy
 
 import pandas as pd
+import numpy as np
 
-from cvx_portfolio.returns import AlphaSource, MarketReturns
+from ..returns import AlphaSource, MarketReturns
 from .base_test import BaseTest
 from ..costs import TcostModel, HcostModel
-from ..portfolio import Portfolio
-from ..simulator.market import MarketSimulator
-from ..simulator.result import SimulationResult
+from ..simulator import MarketSimulator
+from ..policies import Hold
+from ..result import SimulationResult
 
 DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
-
 
 class TestSimulator(BaseTest):
 
@@ -36,73 +36,72 @@ class TestSimulator(BaseTest):
         with open(DATAFILE, 'rb') as f:
             self.returns, self.sigma, self.volume, self.a, self.b, self.s = \
             pickle.load(f)
-        self.portfolio = Portfolio(pd.Series(index = self.returns.columns, data=1E6))
+        self.volume['cash']=np.NaN
+        self.portfolio = pd.Series(index = self.returns.columns, data=1E6)
         returns_model = MarketReturns(self.returns)
-        self.tcost_term = TcostModel(self.volume, self.sigma, self.a, self.b)
-        self.hcost_term = HcostModel(self.s)
-        self.Simulator = MarketSimulator(returns_model, costs=[self.tcost_term, self.hcost_term])
+        self.tcost_term = TcostModel(self.volume, self.sigma, self.a, self.b, cash_key='cash')
+        self.hcost_term = HcostModel(self.s, cash_key='cash')
+        self.Simulator = MarketSimulator(returns_model,  self.volume, costs=[self.tcost_term, self.hcost_term])
 
     def test_propag(self):
         """Test propagation of portfolio."""
         t = self.returns.index[1]
-        next_portf = copy.copy(self.portfolio)
-        results = SimulationResult(initial_portfolio=next_portf, policy=None,
-                                   simulator=self.Simulator)
-        self.Simulator.propagate(next_portf,
-                                    u=pd.Series(index=self.portfolio.h.index,
-                                                data=1E4), t=t)
-        self.assertAlmostEquals(results.sim_TcostModel.sum().sum(), 157.604, 3)
-        self.assertAlmostEquals(results.sim_HcostModel.sum(), 0., 3)
-        self.assertAlmostEqual(next_portf.v, 28906767.251, 3)
+        h = copy.copy(self.portfolio)
+        results = SimulationResult(initial_portfolio=h, policy=None,
+                                    cash_key='cash',simulator=self.Simulator)
+        u=pd.Series(index=self.portfolio.index, data=1E4)
+        h_next, u = self.Simulator.propagate(h, u=u, t=t)
+        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
+        self.assertAlmostEquals(results.simulator_TcostModel.sum().sum(), 157.604, 3)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 0., 3)
+        self.assertAlmostEqual(sum(h_next), 28906767.251, 3)
 
     def test_propag_list(self):
         """Test propagation of portfolio, list of trades."""
         t = self.returns.index[1]
-        next_portf = copy.copy(self.portfolio)
-        results = SimulationResult(initial_portfolio=next_portf, policy=None,
-                                   simulator=self.Simulator)
-        self.Simulator.propagate(next_portf,
-                                     pd.Series(index=self.portfolio.h.index, data=[1E4]*29),
-                                     t=t)
-        self.assertAlmostEquals(results.sim_TcostModel.sum().sum(), 157.604, 3)
-        self.assertAlmostEquals(results.sim_HcostModel.sum(), 0., 3)
-        self.assertAlmostEqual(next_portf.v, 28906767.251, 3)
+        h = copy.copy(self.portfolio)
+        results = SimulationResult(initial_portfolio=h, policy=None,
+                                    cash_key='cash',simulator=self.Simulator)
+        u = pd.Series(index=self.portfolio.index, data=[1E4]*29)
+        h_next, u = self.Simulator.propagate(h,u, t=t)
+        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
+        self.assertAlmostEquals(results.simulator_TcostModel.sum().sum(), 157.604, 3)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 0., 3)
+        self.assertAlmostEqual(sum(h_next), 28906767.251, 3)
 
     def test_propag_neg(self):
         """Test propagation of portfolio, negative trades."""
         t = self.returns.index[1]
-        next_portf = copy.copy(self.portfolio)
-        results = SimulationResult(initial_portfolio=next_portf, policy=None,
-                                   simulator=self.Simulator)
-        self.Simulator.propagate(next_portf,
-                                     pd.Series(index=self.portfolio.h.index, data=[-1E4]*29),
-                                     t=t)
-        self.assertAlmostEquals(results.sim_TcostModel.sum().sum(), 157.604, 3)
-        self.assertAlmostEquals(results.sim_HcostModel.sum(), 0., 3)
-        self.assertAlmostEqual(next_portf.v, 28908611.931, 3)
+        h = copy.copy(self.portfolio)
+        results = SimulationResult(initial_portfolio=h, policy=None,
+                                    cash_key='cash',simulator=self.Simulator)
+        u = pd.Series(index=self.portfolio.index, data=[-1E4]*29)
+        h_next, u =self.Simulator.propagate(h,u,t=t)
+        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
+        self.assertAlmostEquals(results.simulator_TcostModel.sum().sum(), 157.604, 3)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 0., 3)
+        self.assertAlmostEqual(sum(h_next), 28908611.931, 3)
 
     def test_hcost_pos(self):
         """Test hcost function, positive positions."""
-        self.hcost_term.borrow_costs += 1
+        self.hcost_term.borrow_costs += 0
         t = self.returns.index[1]
-        next_portf = copy.copy(self.portfolio)
-        results = SimulationResult(initial_portfolio=next_portf, policy=None,
-                                   simulator=self.Simulator)
-        self.Simulator.propagate(next_portf,
-                                     u=pd.Series(index=self.portfolio.h.index,
-                                                data=1E4), t=t)
-
-        self.assertAlmostEquals(results.sim_HcostModel.sum(), 0.)
+        h = copy.copy(self.portfolio)
+        results = SimulationResult(initial_portfolio=h, policy=None,
+                                    cash_key='cash',simulator=self.Simulator)
+        u=pd.Series(index=self.portfolio.index, data=1E4)
+        h_next, u = self.Simulator.propagate(h,u, t=t)
+        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 0.)
 
     def test_hcost_neg(self):
         """Test hcost function, negative positions."""
         self.hcost_term.borrow_costs += .0001
         t = self.returns.index[1]
-        next_portf = copy.copy(self.portfolio)
-        results = SimulationResult(initial_portfolio=next_portf, policy=None,
-                                   simulator=self.Simulator)
-        self.Simulator.propagate(next_portf,
-                                     u=pd.Series(index=self.portfolio.h.index,
-                                                data=-2E6), t=t)
-
-        self.assertAlmostEquals(results.sim_HcostModel.sum(), 2800.0)
+        h = copy.copy(self.portfolio)
+        results = SimulationResult(initial_portfolio=h, policy=None,
+                                    cash_key='cash',simulator=self.Simulator)
+        u=pd.Series(index=self.portfolio.index,data=-2E6)
+        h_next, u = self.Simulator.propagate(h,u, t=t)
+        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 2800.0)

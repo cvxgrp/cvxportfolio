@@ -57,7 +57,7 @@ class SimulationResult():
         self._data = {}
         self.simulator = simulator
         self.policy = policy
-        self.pol_name = policy.name
+        #self.pol_name = policy.__class__.__name__
 
 
     def log_data(self, name, t, entry):
