@@ -37,6 +37,8 @@ class BaseConstraint(object):
           z: trade weights
           v: portfolio value
         """
+        if w_plus is None:
+            return self._weight_expr(t,None,z,v)
         return self._weight_expr(t, w_plus-self.w_bench, z, v)
 
     @abstractmethod

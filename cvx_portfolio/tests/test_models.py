@@ -21,10 +21,9 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
-from cvx_portfolio.costs import HcostModel, TcostModel
-from cvx_portfolio.returns import AlphaSource, AlphaStream
-from cvx_portfolio.policy.constraints import (LongOnly, LeverageLimit,
-                                              LongCash, MaxTrade)
+from ..costs import HcostModel, TcostModel
+from ..returns import AlphaSource, AlphaStream
+from ..constraints import (LongOnly, LeverageLimit,LongCash, MaxTrade)
 from .base_test import BaseTest
 
 DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
@@ -36,6 +35,7 @@ class TestModels(BaseTest):
         with open(DATAFILE, 'rb') as f:
             self.returns, self.sigma, self.volume, self.a, self.b, self.s = \
             pickle.load(f)
+        #self.volume['cash']=np.NaN
         self.universe = self.returns.columns
         self.times = self.returns.index
 
@@ -101,35 +101,35 @@ class TestModels(BaseTest):
         z = np.arange(n) - n/2
         z_var = cvx.Variable(n)
         z_var.value = z
-        tcost = model.weight_expr(t, None, None, z_var, value)
+        tcost = model.weight_expr(t, None, z_var, value)
         est_tcost_lin = np.abs(z[:-1]).dot(self.a.loc[t].values)
         self.assertAlmostEqual(tcost.value, est_tcost_lin)
 
         model = TcostModel(self.volume, self.sigma, self.a*0, self.b, power=2)
-        tcost = model.weight_expr(t, None, None, z_var, value)
+        tcost = model.weight_expr(t, None, z_var, value)
         coeff = self.b.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])
         est_tcost_nonlin = np.square(z[:-1]).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
 
         model = TcostModel(self.volume, self.sigma, self.a*0, self.b, power=1.5)
-        tcost = model.weight_expr(t, None, None, z_var, value)
+        tcost = model.weight_expr(t, None, z_var, value)
         coeff = self.b.loc[t] * self.sigma.loc[t] * np.sqrt(value / self.volume.loc[t])
         est_tcost_nonlin = np.power(np.abs(z[:-1]), 1.5).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
 
         model = TcostModel(self.volume, self.sigma, self.a, self.b)
-        tcost = model.weight_expr(t, None, None, z_var, value)
+        tcost = model.weight_expr(t, None, z_var, value)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin + est_tcost_lin)
 
         # with tau
         model = TcostModel(self.volume, self.sigma, self.a, self.b)
         tau = self.times[2]
-        tcost = model.weight_expr_ahead(t, tau, None, None, z_var, value)
+        tcost = model.weight_expr_ahead(t, tau, None, z_var, value)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin + est_tcost_lin)
 
         tau = t + 10*pd.Timedelta('1 days')
-        tcost_tau = model.est_period(t, t, tau, None, None, z_var, value)
-        tcost_t = model.weight_expr(t, None, None, z_var / 10, value) * 10
+        tcost_tau = model.est_period(t, t, tau, None, z_var, value)
+        tcost_t = model.weight_expr(t, None, z_var / 10, value) * 10
         self.assertAlmostEqual(tcost_tau.value, tcost_t.value)
 
     def test_hcost(self):
@@ -141,17 +141,17 @@ class TestModels(BaseTest):
         wplus.value = np.arange(n) - n/2
         t = self.times[1]
         model = HcostModel(self.s, div*0)
-        hcost = model.weight_expr(t, wplus, None, None, None)
+        hcost = model.weight_expr(t, wplus, None, None)
         bcost = wplus[:-1].value.T @ self.s.loc[t].values
         self.assertAlmostEqual(hcost.value, bcost)
 
         model = HcostModel(self.s*0, div)
-        hcost = model.weight_expr(t, wplus, None, None, None)
+        hcost = model.weight_expr(t, wplus, None, None)
         divs = wplus[:-1].value.T @ div.loc[t].values
         self.assertAlmostEqual(-hcost.value, divs)
 
         model = HcostModel(self.s, div)
-        hcost = model.weight_expr(t, wplus, None, None, None)
+        hcost = model.weight_expr(t, wplus, None, None)
         self.assertAlmostEqual(hcost.value, bcost - divs)
 
     def test_hold_constrs(self):
@@ -163,7 +163,7 @@ class TestModels(BaseTest):
 
         # long only
         model = LongOnly()
-        cons = model.estimate(t, wplus, None, None, None)
+        cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n)
         assert cons.value
         wplus.value = -np.ones(n)
@@ -171,7 +171,7 @@ class TestModels(BaseTest):
 
         # long cash
         model = LongCash()
-        cons = model.estimate(t, wplus, None, None, None)
+        cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n)
         assert cons.value
         tmp = np.ones(n)
@@ -181,7 +181,7 @@ class TestModels(BaseTest):
 
         # leverage limit
         model = LeverageLimit(2)
-        cons = model.estimate(t, wplus, None, None, None)
+        cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n)/n
         assert cons.value
         tmp = np.zeros(n)
@@ -190,7 +190,7 @@ class TestModels(BaseTest):
         wplus.value = tmp
         assert not cons.value
         model = LeverageLimit(7)
-        cons = model.estimate(t, wplus, None, None, None)
+        cons = model.weight_expr(t, wplus, None, None)
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
@@ -200,17 +200,17 @@ class TestModels(BaseTest):
         limits = pd.Series(index=self.times, data=2)
         limits.iloc[1] = 7
         model = LeverageLimit(limits)
-        cons = model.estimate(t, wplus, None, None, None)
+        cons = model.weight_expr(t, wplus, None, None)
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
         assert cons.value
-        cons = model.estimate(self.times[2], wplus, None, None, None)
+        cons = model.weight_expr(self.times[2], wplus, None, None)
         assert not cons.value
 
-    def trade_constr(self):
-        """Test trading constraings.
+    def test_trade_constr(self):
+        """Test trading constraints.
         """
         n = len(self.universe)
         z = cvx.Variable(n)
@@ -218,11 +218,11 @@ class TestModels(BaseTest):
 
         # avg daily value limits.
         value = 1e6
-        model = MaxTrade(self.volume/value, max_fraction=.1)
-        cons = model.estimate(t, None, None, z, value)
+        model = MaxTrade(self.volume, max_fraction=.1)
+        cons = model.weight_expr(t, None, z, value)
         tmp = np.zeros(n)
         tmp[:-1] = self.volume.loc[t].values / value * 0.05
         z.value = tmp
         assert cons.value
-        z.value = -100*np.ones(n)
+        z.value = -100*z.value#-100*np.ones(n)
         assert not cons.value
