@@ -21,10 +21,10 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
-from cvx_portfolio import policy, portfolio
-from cvx_portfolio.costs import HcostModel, TcostModel
-from cvx_portfolio.returns import AlphaSource
-from cvx_portfolio.risks import FullSigma
+from ..policies import SinglePeriodOpt, MultiPeriodOpt
+from ..costs import HcostModel, TcostModel
+from ..returns import AlphaSource
+from ..risks import FullSigma
 from .base_test import BaseTest
 
 DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
@@ -48,17 +48,16 @@ class TestOptimizer(BaseTest):
         n = len(self.universe)
         alpha_model = AlphaSource(self.returns)
         emp_Sigma = np.cov(self.returns.as_matrix().T) + np.eye(n)*1e-3
-        risk_model = FullSigma(emp_Sigma, gamma=gamma)
-        tcost_model = TcostModel(self.volume, self.sigma, self.a*0, self.b, power=2)
+        risk_model = FullSigma(emp_Sigma)
+        tcost_model = TcostModel(self.volume, self.sigma,
+                                self.a*0, self.b, power=2)
         hcost_model = HcostModel(self.s*0, self.s)
-        pol = policy.SinglePeriodOpt(alpha_model, [risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS)
-
+        pol = SinglePeriodOpt(alpha_model,
+                            [gamma*risk_model, tcost_model, hcost_model],
+                            [], solver=cvx.ECOS)
         t = self.times[1]
-        bmark = pd.Series(index=self.universe, data=0.)
-        bmark['cash'] = 1.
-        p_0 = portfolio.Portfolio(pd.Series(index=self.universe, data=1E6),
-                                  benchmark=bmark)
-        z = pol.get_trades(p_0, t)
+        p_0 = pd.Series(index=self.universe, data=1E6)
+        z = pol.get_trades(p_0, t)  #TODO this gives an error in nosetests (MKL)
         self.assertAlmostEqual(z.sum(), 0)
         # Compare with CP calculation.
         h = z + p_0.h
@@ -83,17 +82,16 @@ class TestOptimizer(BaseTest):
         n = len(self.universe)
         alpha_model = AlphaSource(self.returns)
         emp_Sigma = np.cov(self.returns.as_matrix().T) + np.eye(n)*1e-3
-        risk_model = FullSigma(emp_Sigma, gamma=gamma, gamma_half_life=np.inf)
-        tcost_model = TcostModel(self.volume, self.sigma, self.a*0, self.b, power=2)
+        risk_model = FullSigma(emp_Sigma,gamma_half_life=np.inf)
+        tcost_model = TcostModel(self.volume, self.sigma,
+                                self.a*0, self.b, power=2)
         hcost_model = HcostModel(self.s*0, self.s)
-        #lookahead_model = LookaheadModel(self.times, [1, 1])
-        pol = policy.MultiPeriodOpt(2, alpha_model, [risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS, terminal_constr=True)
+        pol = MultiPeriodOpt(2, alpha_model,
+                            [gamma*risk_model, tcost_model, hcost_model],
+                            [], solver=cvx.ECOS, terminal_constr=True)
 
         t = self.times[1]
-        bmark = pd.Series(index=self.universe, data=0.)
-        bmark['cash'] = 1.
-        p_0 = portfolio.Portfolio(pd.Series(index=self.universe, data=1E6),
-                                  benchmark=bmark)
+        p_0 =pd.Series(index=self.universe, data=1E6)
         z = pol.get_trades(p_0, t)
         self.assertAlmostEqual(z.sum(), 0)
         # Compare with CP calculation. Terminal constraint.
@@ -111,36 +109,8 @@ class TestOptimizer(BaseTest):
         self.assertAlmostEqual(hstar.sum(), 1)
         self.assertItemsAlmostEqual(h/p_0.v, hstar, places=4)
 
-        # # Terminal constraint with more time.
-        # lookahead_model = LookaheadModel(self.times, [1, 100])
-        # pol = policy.MultiPeriodOpt(lookahead_model, alpha_model, risk_model, tcost_model,
-        #                             hcost_model, gamma, np.inf, [], [], solver=cvx.ECOS)
-        #
-        # t = self.times[1]
-        # bmark = pd.Series(index=self.universe, data=0.)
-        # bmark['cash'] = 1.
-        # p_0 = portfolio.Portfolio(pd.Series(index=self.universe, data=1E6),
-        #                           benchmark=bmark)
-        # z = pol.get_trades(p_0, t)
-        # self.assertAlmostEqual(z.sum(), 0)
-        # # Compare with CP calculation.
-        # h = z + p_0.h
-        # rho = self.b.loc[t]*self.sigma.loc[t]*(p_0.v/self.volume.loc[t])
-        # rho = np.hstack([rho, 0])
-        # A = 2*gamma*emp_Sigma + (2 + 2./100)*np.diag(rho)
-        # s_val = self.s.loc[t]
-        # s_val['cash'] = 0
-        # b = self.returns.loc[t] + 2*rho*(p_0.w + bmark/100) + s_val
-        # h0 = np.linalg.solve(A, b) + bmark
-        # offset = np.linalg.solve(A, np.ones(n))
-        # nu = (1 - h0.sum())/offset.sum()
-        # hstar = h0 + nu*offset
-        # self.assertAlmostEqual(hstar.sum(), 1)
-        # self.assertItemsAlmostEqual(h/p_0.v, hstar, places=2)
 
-        # Two planning periods.
-        # lookahead_model = LookaheadModel(self.times, [1, 1])
-        pol = policy.MultiPeriodOpt(2, alpha_model, [risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS,
+        pol = MultiPeriodOpt(2, alpha_model, [risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS,
                                     terminal_constr=False)
 
         t = self.times[1]
