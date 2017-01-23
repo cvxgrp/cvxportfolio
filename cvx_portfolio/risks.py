@@ -44,7 +44,7 @@ class BaseRiskModel(BaseCost):
 
     def weight_expr(self, t, w_plus, z, value):
         self.expression = self._estimate(t, w_plus - self.w_bench, z, value)
-        return self.gamma * self.expression
+        return self.gamma * self.expression, []
 
     @abstractmethod
     def _estimate(self, t, w_plus, z, value):

@@ -36,7 +36,7 @@ class MarketSimulator():
     def __init__(self, market_returns, market_volumes, costs, cash_key='cash'):
         """Initialize market simulator with market returns object and cost objects."""
         self.market_returns = market_returns
-        self.market_volumes = market_volumes
+        self.market_volumes = market_volumes[market_volumes.columns.difference([cash_key])]
         assert (isinstance(self.market_returns, MarketReturns))
 
         self.costs = costs
@@ -44,11 +44,7 @@ class MarketSimulator():
             assert (isinstance(cost, BaseCost))
 
         self.cash_key = cash_key
-
-    def __repr__(self):
-        ## TODO this
-        # print returns, costs, etc
-        pass
+        
 
     def propagate(self, h, u, t):
         """Propagates the portfolio forward over time period t, given trades u.
@@ -64,7 +60,11 @@ class MarketSimulator():
         """
         assert (u.index.equals(h.index))
         # don't trade if volume is null
-        u.loc[self.market_volumes.loc[t]==0] = 0.
+        null_trades=self.market_volumes.columns[self.market_volumes.loc[t]==0]
+        if len(null_trades):
+            logging.warning('Setting stocks %s on %s to null trades (because market volumes are 0)'%\
+                            (null_trades, t))
+            u.loc[null_trades] = 0.
         hplus = h + u
         costs = [cost.value_expr(t, h_plus=hplus, u=u) for cost in self.costs]
         for cost in costs:

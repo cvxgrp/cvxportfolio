@@ -131,11 +131,18 @@ class SinglePeriodOpt(BasePolicy):
         alpha_term = self.alpha_model.weight_expr(t, wplus)
         assert(alpha_term.is_concave())
 
-        costs = [cost.weight_expr(t, wplus, z, value) for cost in self.costs]
+        costs, constraints = [], []
+        
+        for cost in self.costs:
+            cost_expr, const_expr = cost.weight_expr(t, wplus, z, value)
+            costs.append(cost_expr)
+            constraints += const_expr
+            
+        constraints += [item for item in (con.weight_expr(t, wplus, z, value) for con in self.constraints)]
+            
         for el in costs:
             assert (el.is_convex())
 
-        constraints = [item for item in (con.weight_expr(t, wplus, z, value) for con in self.constraints)]
         for el in constraints:
             assert (el.is_dcp())
 

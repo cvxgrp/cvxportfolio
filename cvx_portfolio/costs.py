@@ -28,7 +28,8 @@ class BaseCost(Expression):
         self.gamma = 1.  # it is changed by gamma * BaseCost()
 
     def weight_expr(self, t, w_plus, z, value):
-        return self.gamma * self._estimate(t, w_plus, z, value)
+        cost, constr = self._estimate(t, w_plus, z, value)
+        return self.gamma * cost, constr
 
     def __mul__(self,other):
         """Read the gamma parameter as a multiplication."""
@@ -73,7 +74,7 @@ class HcostModel(BaseCost):
         if self.dividends is not None:
             self.expression -= self.dividends.loc[t].values*w_plus
 
-        return self.expression
+        return self.expression, []
 
     def value_expr(self, t, h_plus, u):
         # TODO this might not be a great idea
@@ -126,29 +127,45 @@ class TcostModel(BaseCost):
             z = z[:-1]  # TODO fix when cvxpy pandas ready
 
         z_abs = cvx.abs(z)
-        tmp = self.nonlin_coeff.loc[t] * self.sigma.loc[t] * \
-            (value / self.volume.loc[t])**(self.power - 1)
+        tmp = self.nonlin_coeff.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])**(self.power - 1)
 
         assert (z.size[0] == tmp.size)
         assert (z.size[0] == self.spread.loc[t].size)
+        
+        # if volume was 0 don't trade
+        no_trade = tmp.index[tmp.isnull()]
+        constr = []
+        for ticker in no_trade:
+            locator=tmp.index.get_loc(ticker)
+            constr.append(z[locator]==0)
+        tmp.loc[tmp.isnull()] = 0.
 
         self.expression = cvx.mul_elemwise(self.spread.loc[t].values, z_abs) + \
-            cvx.mul_elemwise(tmp.values, (z_abs)**self.power)
+            cvx.mul_elemwise(tmp.values, (z_abs)**self.power)   
 
-        return cvx.sum_entries(self.expression)
+        res= cvx.sum_entries(self.expression)
+        
+        assert (res.is_convex())
+        return res, constr
 
     def value_expr(self, t, h_plus, u):
         # TODO figure out why calling weight_expr is buggy
-        abs_u = np.abs(u[:-1])
+        value=sum(h_plus)
+        u_normalized = u/value
+        abs_u = np.abs(u_normalized[:-1])
+        
         tcosts = self.spread.loc[t]*abs_u + self.nonlin_coeff.loc[t] * \
-                 self.sigma.loc[t] * abs_u**1.5/np.sqrt(self.volume.loc[t])
+                 self.sigma.loc[t] * (abs_u**self.power)/((self.volume.loc[t]/value)**(self.power-1))
 
-        self.tmp_tcosts=tcosts
+        self.tmp_tcosts=tcosts*value
 
-        return tcosts.sum()
+        return self.tmp_tcosts.sum()
 
     def optimization_log(self,t):
-        return self.expression.value.A1
+        try:
+            return self.expression.value.A1
+        except AttributeError:
+            return np.nan
 
     def simulation_log(self,t):
         ## TODO find another way
