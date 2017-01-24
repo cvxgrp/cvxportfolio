@@ -108,13 +108,13 @@ class MarketSimulator():
         logging.info('Backtest ended, from %s to %s' % (simulation_times[0], simulation_times[-1]))
         return results
 
-    def run_multiple_backtest(self, initial_portf, backtest_times, policies,
+    def run_multiple_backtest(self, initial_portf, simulation_times, policies,
                               loglevel=logging.WARNING, parallel=True):
         """Backtest multiple policies.
         """
 
         def _run_backtest(policy):
-            return self.run_backtest(initial_portf, backtest_times,
+            return self.run_backtest(initial_portf, simulation_times,
                                      policy, loglevel=loglevel)
 
         num_workers = min(multiprocess.cpu_count(), len(policies))

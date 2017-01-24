@@ -61,9 +61,6 @@ class BaseRiskModel(BaseCost):
 
         return gamma_multiplier * self.weight_expr(t, w_plus, z, value)
 
-    def result_data_type(self, portfolio):
-        return pd.Series, {}
-
     def optimization_log(self,t):
         if self.expression.value:
             return self.expression.value
@@ -88,9 +85,6 @@ class FullSigma(BaseRiskModel):
             self.expression = cvx.quad_form(wplus, locator(self.Sigma.values, t))
         return self.expression
 
-    def post_optimization_log(self, t):
-        getattr(self.logger, self.destination).loc[t] = self.expression.value
-
 
 class EmpSigma(BaseRiskModel):
     """Empirical Sigma matrix, built looking at *lookback* past returns."""
@@ -108,12 +102,6 @@ class EmpSigma(BaseRiskModel):
         self.expression = cvx.sum_squares(R.values*wplus)/self.lookback
         return self.expression
 
-    def post_optimization_log(self, t):
-        getattr(self.logger, self.destination).loc[t] = self.expression.value
-
-    def result_data_type(self, portfolio):
-        return pd.Series, {}
-
 
 class SqrtSigma(BaseRiskModel):
     def __init__(self, sigma_sqrt, **kwargs):
@@ -126,12 +114,6 @@ class SqrtSigma(BaseRiskModel):
         # TODO make sure pandas + cvxpy works
         self.expression = cvx.sum_squares(self.sigma_sqrt.values @ wplus)
         return self.expression
-
-    def post_optimization_log(self, t):
-        getattr(self.logger, self.destination).loc[t] = self.expression.value
-
-    def result_data_type(self, portfolio):
-        return pd.Series, {}
 
 
 class FactorModelSigma(BaseRiskModel):
@@ -152,12 +134,6 @@ class FactorModelSigma(BaseRiskModel):
                                                  locator(self.factor_Sigma, t).values)
         return self.expression
 
-    def post_optimization_log(self, t):
-        getattr(self.logger, self.destination).loc[t] = self.expression.value
-
-    def result_data_type(self, portfolio):
-        return pd.Series, {}
-
 
 class RobustSigma(BaseRiskModel):
     """Implements covariance forecast error risk."""
@@ -171,12 +147,6 @@ class RobustSigma(BaseRiskModel):
                              locator(self.epsilon, t) * (cvx.abs(wplus).T * np.diag(locator(self.Sigma, t)))**2
 
         return self.expression
-
-    def post_optimization_log(self, t):
-        getattr(self.logger, self.destination).loc[t] = self.expression.value
-
-    def result_data_type(self, portfolio):
-        return pd.Series, {}
 
 
 class RobustFactorModelSigma(BaseRiskModel):
@@ -203,12 +173,6 @@ class RobustFactorModelSigma(BaseRiskModel):
 
         return self.expression
 
-    def post_optimization_log(self, t):
-        getattr(self.logger, self.destination).loc[t] = self.expression.value
-
-    def result_data_type(self, portfolio):
-        return pd.Series, {}
-
 
 class WorstCaseRisk(BaseRiskModel):
     def __init__(self, riskmodels, **kwargs):
@@ -219,9 +183,7 @@ class WorstCaseRisk(BaseRiskModel):
         self.risks = [risk.weight_expr(t, wplus, z, value) for risk in self.riskmodels]
         return cvx.max_elemwise(*self.risks)
 
-    def post_optimization_log(self, t):
+    def optimization_log(self, t):
         """Return data to log in the result object."""
-        getattr(self.logger, self.destination).loc[t] = [risk.value[0, 0] for risk in self.risks]
-
-    def result_data_type(self, portfolio):
-        return pd.DataFrame, {'columns': [model.__class__.__name__ for model in self.riskmodels]}
+        return pd.Series(index=[model.__class__.__name__ for model in self.riskmodels],
+                         data=[risk.value[0, 0] for risk in self.risks])

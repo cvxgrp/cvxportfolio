@@ -123,9 +123,14 @@ class SimulationResult():
 
 
     @property
-    def realized_volatility(self):
-        """The annualized, realized portfolio volatility, in percent."""
-        return 100 * np.sqrt(self.PPY) * np.std(self.returns)
+    def volatility(self):
+        """The annualized, realized portfolio volatility."""
+        return np.sqrt(self.PPY) * np.std(self.returns)
+    
+    @property
+    def mean_return(self):
+        """The annualized mean portfolio return."""
+        return np.sqrt(self.PPY) * np.mean(self.returns)
 
 
     @property
