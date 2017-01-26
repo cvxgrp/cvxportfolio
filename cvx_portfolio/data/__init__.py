@@ -17,3 +17,4 @@ limitations under the License.
 
 from .download import (get_capitalization_weights, get_risk_free, get_stock_daily_data)
 from .generator import (generate_alpha_signal)
+from .factor_model import (factor_model_covariance, series_factor_model_covariance)
