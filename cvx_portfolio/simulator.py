@@ -23,7 +23,8 @@ import numpy as np
 import pandas as pd
 import cvxpy as cvx
 
-from .returns import MarketReturns, AlphaStream
+from .returns import AlphaStream
+
 from .result import SimulationResult
 from .costs import BaseCost
 
@@ -37,14 +38,14 @@ class MarketSimulator():
         """Initialize market simulator with market returns object and cost objects."""
         self.market_returns = market_returns
         self.market_volumes = market_volumes[market_volumes.columns.difference([cash_key])]
-        assert (isinstance(self.market_returns, MarketReturns))
+        #assert (isinstance(self.market_returns, MarketReturns))
 
         self.costs = costs
         for cost in self.costs:
             assert (isinstance(cost, BaseCost))
 
         self.cash_key = cash_key
-        
+
 
     def propagate(self, h, u, t):
         """Propagates the portfolio forward over time period t, given trades u.
@@ -70,23 +71,34 @@ class MarketSimulator():
         for cost in costs:
             assert(not pd.isnull(cost))
             assert(not np.isinf(cost))
+
         u[self.cash_key] = - sum(u[u.index != self.cash_key]) - sum(costs)
         hplus[self.cash_key] = h[self.cash_key] + u[self.cash_key]
-        h_next = self.market_returns.value_expr(t, hplus)
+
+        assert (hplus.index.sort_values().equals(self.market_returns.columns.sort_values()))
+        h_next =  self.market_returns.loc[t] * hplus + hplus
+        #h_next = self.market_returns.value_expr(t, hplus)
+
         assert (not h_next.isnull().values.any())
         assert (not u.isnull().values.any())
         return h_next, u
 
-    def run_backtest(self, initial_portfolio, simulation_times, policy, loglevel=logging.WARNING):
+    def run_backtest(self, initial_portfolio, start_time, end_time,
+                    policy, loglevel=logging.WARNING):
         """Backtest a single policy.
         """
         logging.basicConfig(level=loglevel)
-        logging.info('Backtest started, from %s to %s' % (simulation_times[0], simulation_times[-1]))
 
         results = SimulationResult(initial_portfolio=copy.copy(initial_portfolio),
                                    policy=policy, cash_key=self.cash_key,
                                    simulator=self)
         h = initial_portfolio
+
+        simulation_times = self.market_returns.index[
+                (self.market_returns.index>=start_time)&
+                (self.market_returns.index<=end_time)]
+        logging.info('Backtest started, from %s to %s' % (simulation_times[0],
+                                                            simulation_times[-1]))
 
         for t in simulation_times:
             logging.info('Getting trades at time %s' % t)
@@ -102,19 +114,19 @@ class MarketSimulator():
             end = time.time()
             assert (not h.isnull().values.any())
             results.log_simulation(t=t, u=u, h_next=h,
-                risk_free_return=self.market_returns.alpha_data.loc[t, self.cash_key],
+                risk_free_return=self.market_returns.loc[t, self.cash_key],
                 exec_time=end-start)
 
         logging.info('Backtest ended, from %s to %s' % (simulation_times[0], simulation_times[-1]))
         return results
 
-    def run_multiple_backtest(self, initial_portf, simulation_times, policies,
+    def run_multiple_backtest(self, initial_portf, start_time, end_time, policies,
                               loglevel=logging.WARNING, parallel=True):
         """Backtest multiple policies.
         """
 
         def _run_backtest(policy):
-            return self.run_backtest(initial_portf, simulation_times,
+            return self.run_backtest(initial_portf, start_time, end_time,
                                      policy, loglevel=loglevel)
 
         num_workers = min(multiprocess.cpu_count(), len(policies))

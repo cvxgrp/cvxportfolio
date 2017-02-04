@@ -86,13 +86,13 @@ class AlphaSource(BaseAlphaModel):
         return alpha
 
 
-class MarketReturns(AlphaSource):
-
-    def value_expr(self, t, h_plus, u=None):
-        """Returns values of the portfolio after returns propagation.
-        """
-        assert (h_plus.index.sort_values().equals(self.alpha_data.columns.sort_values()))
-        return self.alpha_data.loc[t] * h_plus + h_plus
+# class MarketReturns(AlphaSource):
+#
+#     def value_expr(self, t, h_plus, u=None):
+#         """Returns values of the portfolio after returns propagation.
+#         """
+#         assert (h_plus.index.sort_values().equals(self.alpha_data.columns.sort_values()))
+#         return self.alpha_data.loc[t] * h_plus + h_plus
 
 
 class AlphaStream(BaseAlphaModel):
