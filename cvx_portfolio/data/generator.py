@@ -60,14 +60,12 @@ def _generate_alpha_signal(real_returns, IC, seed = None, type_noise = 'white', 
 
     (Grinold and Kahn, Chapt. 6)"""
 
+    mu, sigma = np.mean(real_returns), np.std(real_returns)
+
     real_returns = np.array(real_returns).flatten()
 
     if seed is not None:
         np.random.seed(seed)
-
-    target_covariance = np.matrix([[1, IC],
-                                   [IC, 1]])
-    chol_dec = np.linalg.cholesky(target_covariance)
 
     if type_noise == 'white':
         noise = np.random.randn(len(real_returns))
@@ -75,9 +73,8 @@ def _generate_alpha_signal(real_returns, IC, seed = None, type_noise = 'white', 
         noise = generate_ou_process(len(real_returns), **kwargs)
     else:
         raise SyntaxError('Wrong noise type')
-    return_normalized = (real_returns - np.mean(real_returns)) / np.std(real_returns)
-
-    return np.dot(chol_dec, np.vstack((return_normalized, noise)))[1,:].A1
+        
+    return IC*real_returns + (1-IC)*(noise+mu)*sigma
 
 
 def generate_alpha_signal(real_returns, IC, seed=None, type_noise='white', **kwargs):
@@ -110,11 +107,17 @@ def generate_alpha_signal(real_returns, IC, seed=None, type_noise='white', **kwa
 
 if __name__ == "__main__":
     import pandas as pd
-    np.random.seed(0)
-    returns = pd.DataFrame(index=pd.date_range('2015-01-01', '2015-01-30'),
+    np.random.seed(10)
+    index=pd.date_range('2015-01-01', '2017-01-30')
+    returns = pd.DataFrame(index=index,
                            columns=['aaa', 'bbb'],
-                        data=0.01*np.random.randn(30,2))
-    print('returns', returns)
-    alpha_sig = generate_alpha_signal(returns, IC=0.9)
-    print('alpha sig', alpha_sig)
+                        data=0.01*np.random.randn(len(index),2) + 0.001)
+    #print('returns', returns)
+    print('white')
+    alpha_sig = generate_alpha_signal(returns, IC=0.01)
+    #print('alpha sig', alpha_sig)
+    print('corr coeff\n', np.corrcoef(returns.values.flatten(), alpha_sig.values.flatten()))
+    print('OU')
+    alpha_sig = generate_alpha_signal(returns, IC=0.01,type_noise='OU')
+    #print('alpha sig', alpha_sig)
     print('corr coeff\n', np.corrcoef(returns.values.flatten(), alpha_sig.values.flatten()))
