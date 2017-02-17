@@ -18,6 +18,7 @@ limitations under the License.
 import numpy as np
 import pandas as pd
 import copy
+from .policies import MultiPeriodOpt
 
 
 def getFiscalQuarter(dt):
@@ -69,9 +70,11 @@ class SimulationResult():
 
     def log_policy(self, t, exec_time):
         self.log_data("policy_time", t, exec_time)
-        for cost in self.policy.costs:
-            self.log_data("policy_"+cost.__class__.__name__,
-                          t, cost.optimization_log(t))
+        ## TODO mpo policy requires changes in the optimization_log methods
+        if not isinstance(self.policy, MultiPeriodOpt):
+            for cost in self.policy.costs:
+                self.log_data("policy_"+cost.__class__.__name__,
+                              t, cost.optimization_log(t))
 
 
     def log_simulation(self, t, u, h_next, risk_free_return, exec_time):

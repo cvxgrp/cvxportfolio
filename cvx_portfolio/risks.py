@@ -39,8 +39,7 @@ class BaseRiskModel(BaseCost):
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop('w_bench', 0.)
         super().__init__()
-        #self.gamma_half_life = kwargs.pop('gamma_half_life', np.inf)
-        #self.gamma = kwargs.pop('gamma')
+        self.gamma_half_life = kwargs.pop('gamma_half_life', np.inf)
 
     def weight_expr(self, t, w_plus, z, value):
         self.expression = self._estimate(t, w_plus - self.w_bench, z, value)
@@ -59,7 +58,7 @@ class BaseRiskModel(BaseCost):
             gamma_init = decay_factor**((tau - t).days)  # TODO not dependent on days
             gamma_multiplier = gamma_init*(1 - decay_factor)/(1 - decay_factor)
 
-        return gamma_multiplier * self.weight_expr(t, w_plus, z, value)
+        return gamma_multiplier * self.weight_expr(t, w_plus, z, value)[0], []
 
     def optimization_log(self,t):
         if self.expression.value:

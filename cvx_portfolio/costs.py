@@ -31,6 +31,10 @@ class BaseCost(Expression):
         cost, constr = self._estimate(t, w_plus, z, value)
         return self.gamma * cost, constr
 
+    def weight_expr_ahead(self, t, tau, w_plus, z, value):
+        cost, constr = self._estimate_ahead(t, tau, w_plus, z, value)
+        return self.gamma * cost, constr
+
     def __mul__(self,other):
         """Read the gamma parameter as a multiplication."""
         newobj=copy.copy(self)
@@ -75,6 +79,9 @@ class HcostModel(BaseCost):
             self.expression -= self.dividends.loc[t].values*w_plus
 
         return self.expression, []
+
+    def _estimate_ahead(self, t, tau, w_plus, z, value):
+        return self._estimate(t,w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
         # TODO this might not be a great idea
@@ -131,7 +138,7 @@ class TcostModel(BaseCost):
 
         assert (z.size[0] == tmp.size)
         assert (z.size[0] == self.spread.loc[t].size)
-        
+
         # if volume was 0 don't trade
         no_trade = tmp.index[tmp.isnull()]
         constr = []
@@ -141,10 +148,10 @@ class TcostModel(BaseCost):
         tmp.loc[tmp.isnull()] = 0.
 
         self.expression = cvx.mul_elemwise(self.spread.loc[t].values, z_abs) + \
-            cvx.mul_elemwise(tmp.values, (z_abs)**self.power)   
+            cvx.mul_elemwise(tmp.values, (z_abs)**self.power)
 
         res= cvx.sum_entries(self.expression)
-        
+
         assert (res.is_convex())
         return res, constr
 
@@ -153,7 +160,7 @@ class TcostModel(BaseCost):
         value=sum(h_plus)
         u_normalized = u/value
         abs_u = np.abs(u_normalized[:-1])
-        
+
         tcosts = self.spread.loc[t]*abs_u + self.nonlin_coeff.loc[t] * \
                  self.sigma.loc[t] * (abs_u**self.power)/((self.volume.loc[t]/value)**(self.power-1))
 
@@ -171,10 +178,10 @@ class TcostModel(BaseCost):
         ## TODO find another way
         return self.tmp_tcosts
 
-    def weight_expr_ahead(self, t, tau, w_plus, z, value):
+    def _estimate_ahead(self, t, tau, w_plus, z, value):
         """Returns the estimate at time t of tcost at time tau.
         """
-        return self.weight_expr(t, None, z, value)
+        return self._estimate(t,w_plus, z, value)
 
     def est_period(self, t, tau_start, tau_end, w_plus, z, value):
         """Returns the estimate at time t of tcost over given period.

@@ -60,7 +60,7 @@ class AlphaSource(BaseAlphaModel):
             alpha -= self.delta_data.loc[t].values.T*cvx.abs(wplus)
         return alpha
 
-    def weight_expr_ahead(self, t, tau, wplus, z=None, v=None):
+    def weight_expr_ahead(self, t, tau, wplus):
         """Returns the estimate at time t of alpha at time tau.
 
         Args:
@@ -84,15 +84,6 @@ class AlphaSource(BaseAlphaModel):
             decay = decay_init*(1 - decay_factor**K)/(1 - decay_factor)
             alpha *= decay
         return alpha
-
-
-# class MarketReturns(AlphaSource):
-#
-#     def value_expr(self, t, h_plus, u=None):
-#         """Returns values of the portfolio after returns propagation.
-#         """
-#         assert (h_plus.index.sort_values().equals(self.alpha_data.columns.sort_values()))
-#         return self.alpha_data.loc[t] * h_plus + h_plus
 
 
 class AlphaStream(BaseAlphaModel):
@@ -122,7 +113,7 @@ class AlphaStream(BaseAlphaModel):
             alpha += source.weight_expr(t, wplus) * self.weights[idx]
         return alpha
 
-    def weight_expr_ahead(self, t, tau, wplus, z=None, v=None):
+    def weight_expr_ahead(self, t, tau, wplus):
         """Returns the estimate at time t of alpha at time tau.
 
         Args:

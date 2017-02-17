@@ -25,7 +25,7 @@ from .returns import BaseAlphaModel
 from .constraints import BaseConstraint
 
 
-__all__ = ['Hold', 'PeriodicRebalance', 'AdaptiveRebalance',
+__all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
             'SinglePeriodOpt', 'MultiPeriodOpt']
 
 
@@ -52,6 +52,32 @@ class Hold(BasePolicy):
     def get_trades(self, portfolio, t):
         return self._nulltrade(portfolio)
 
+class SellAll(BasePolicy):
+    """Sell all non-cash assets."""
+    def get_trades(self, portfolio, t):
+        trade=-pd.Series(portfolio,copy=True)
+        trade.ix[-1]=0.
+        return trade
+
+class FixedTrade(BasePolicy):
+    """Trade a fixed trade vector.
+    """
+    def __init__(self, tradevec=None, tradeweight=None):
+        """Trade the tradevec vector (dollars) or tradeweight weights."""
+        if tradevec is not None and tradeweight is not None:
+            raise(Exception('only one of tradevec and tradeweight can be passed'))
+        if tradevec is None and tradeweight is None:
+            raise(Exception('one of tradevec and tradeweight must be passed'))
+        self.tradevec = tradevec
+        self.tradeweight = tradeweight
+        assert(self.tradevec is None or sum(self.tradevec)==0.)
+        assert(self.tradeweight is None or sum(self.tradeweight)==0.)
+        super().__init__()
+
+    def get_trades(self, portfolio, t):
+        if self.tradevec is not None:
+            return self.tradevec
+        return sum(portfolio)*self.tradeweight
 
 class BaseRebalance(BasePolicy):
 
@@ -132,14 +158,14 @@ class SinglePeriodOpt(BasePolicy):
         assert(alpha_term.is_concave())
 
         costs, constraints = [], []
-        
+
         for cost in self.costs:
             cost_expr, const_expr = cost.weight_expr(t, wplus, z, value)
             costs.append(cost_expr)
             constraints += const_expr
-            
+
         constraints += [item for item in (con.weight_expr(t, wplus, z, value) for con in self.constraints)]
-            
+
         for el in costs:
             assert (el.is_convex())
 
@@ -186,43 +212,56 @@ class SinglePeriodOpt(BasePolicy):
 
 class MultiPeriodOpt(SinglePeriodOpt):
 
-    def __init__(self, lookahead_periods, *args, **kwargs):
+    def __init__(self, trading_times,
+    terminal_weights, lookahead_periods=None, *args, **kwargs):
+        """
+        trading_times: list, all times at which get_trades will be called
+        lookahead_periods: int or None. if None uses all remaining periods
+        """
         # Number of periods to look ahead.
         self.lookahead_periods = lookahead_periods
+        self.trading_times=trading_times
         # Should there be a constraint that the final portfolio is the bmark?
-        #self.terminal_constr = terminal_constr
+        self.terminal_weights = terminal_weights
         super().__init__(*args, **kwargs)
 
     def get_trades(self, portfolio, t):
 
-        value = portfolio.v
-        # value must be positive.
+        value = sum(portfolio)
         assert (value > 0.)
-        # if value <= 0:
-        #     return self._nulltrade(portfolio)
+        w = cvx.Constant(portfolio.values/value)
 
-        w = portfolio.w.values
         prob_arr = []
         z_vars = []
 
         # planning_periods = self.lookahead_model.get_periods(t)
-        for delta_t in [pd.Timedelta('%d days' % i) for i in range(self.lookahead_periods)]:
+        for tau in \
+self.trading_times[self.trading_times.index(t):self.trading_times.index(t)+self.lookahead_periods]:
+#        delta_t in [pd.Timedelta('%d days' % i) for i in range(self.lookahead_periods)]:
 
-            tau = t + delta_t
-            z = cvx.Variable(portfolio.w.size)
+#            tau = t + delta_t
+            z = cvx.Variable(*w.size)
             wplus = w + z
             obj = self.alpha_model.weight_expr_ahead(t, tau, wplus)
-            obj -= sum([cost.weight_expr_ahead(t, tau, wplus, z, value) for cost in self.costs])
-            constr = [cvx.sum_entries(z) == 0]
-            constr += [con.weight_expr(t, wplus, z, value) for con in self.constraints]  # TODO should be est_ahead
+
+            costs, constr = [], []
+            for cost in self.costs:
+                cost_expr, const_expr = cost.weight_expr_ahead(t, tau, wplus, z, value)
+                costs.append(cost_expr)
+                constr += const_expr
+
+            obj -= sum(costs)
+            constr += [cvx.sum_entries(z) == 0]
+            constr += [con.weight_expr(t, wplus, z, value) for con in self.constraints]
+
             prob = cvx.Problem(cvx.Maximize(obj), constr)
             prob_arr.append(prob)
             z_vars.append(z)
             w = wplus
 
-        # # Terminal constraint.
-        # if self.terminal_constr:
-        #     prob_arr[-1].constraints += [wplus == ]
+        # Terminal constraint.
+        if self.terminal_weights is not None:
+            prob_arr[-1].constraints += [wplus == self.terminal_weights.values]
 
         sum(prob_arr).solve(solver=self.solver)
-        return pd.Series(index=portfolio.h.index, data=(z_vars[0].value.A1 * value))
+        return pd.Series(index=portfolio.index, data=(z_vars[0].value.A1 * value))
