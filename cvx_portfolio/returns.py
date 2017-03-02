@@ -34,12 +34,12 @@ class AlphaSource(BaseAlphaModel):
       half_life: Number of days for alpha auto-correlation to halve.
     """
 
-    def __init__(self, alpha_data, delta_data=None, half_life=None, name=None):
+    def __init__(self, alpha_data, delta_data=None, gamma_decay=None, name=None):
         self.alpha_data = alpha_data
         # TODO input check goes here
         assert (not self.alpha_data.isnull().values.any())
         self.delta_data = delta_data
-        self.half_life = half_life
+        self.gamma_decay = gamma_decay
         self.name = name
 
     def weight_expr(self, t, wplus, z=None, v=None):
@@ -71,18 +71,19 @@ class AlphaSource(BaseAlphaModel):
         Returns:
           An expression for the alpha.
         """
-        if isinstance(tau, tuple):
-            tau_start, tau_end = tau
-        else:
-            tau_start = tau
-            tau_end = tau + pd.Timedelta('1 days')
+        # if isinstance(tau, tuple):
+        #     tau_start, tau_end = tau
+        # else:
+        #     tau_start = tau
+        #     tau_end = tau + pd.Timedelta('1 days')
         alpha = self.weight_expr(t, wplus)
-        if self.half_life is not None:
-            decay_init = 2**(-(tau_start - t).days/self.half_life)
-            K = (tau_end - tau_start).days
-            decay_factor = 2**(-1/self.half_life)
-            decay = decay_init*(1 - decay_factor**K)/(1 - decay_factor)
-            alpha *= decay
+        if tau > t  and self.gamma_decay is not None:
+            alpha *= (tau-t).days**(-self.gamma_decay)
+            # decay_init = 2**(-(tau_start - t).days/self.half_life)
+            # K = (tau_end - tau_start).days ## in all our calls K = 1 because tau is not a tuple
+            # decay_factor = 2**(-1/self.half_life)
+            # decay = decay_init*(1 - decay_factor**K)/(1 - decay_factor)
+            # alpha *= decay
         return alpha
 
 
