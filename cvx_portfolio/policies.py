@@ -88,22 +88,26 @@ class BaseRebalance(BasePolicy):
 class PeriodicRebalance(BaseRebalance):
     """Track a target portfolio, rebalancing at given times.
     """
-    def __init__(self, target, rebalancing_times, **kwargs):
+    def __init__(self, target, period, **kwargs):
         """
-
         Args:
             target: target weights, n+1 vector
-            rebalancing_times: iterable/set of datetime objects, times at which we want to rebalance
+            period: supported options are "day", "week", "month", "quarter", "year".
+                rebalance on the first day of each new period
         """
         self.target = target
-        self.rebalancing_times = rebalancing_times
+        self.period = period
         super().__init__()
 
+    def is_start_period(self, t):
+        result = not getattr(t, self.period) == getattr(self.last_t, self.period) \
+            if hasattr(self, 'last_t') else True
+        self.last_t = t
+        return result
+
     def get_trades(self, portfolio, t):
-        if t in self.rebalancing_times:
-            return self._rebalance(portfolio)
-        else:
-            return self._nulltrade(portfolio)
+        return self._rebalance(portfolio) if self.is_start_period(t) else \
+            self._nulltrade(portfolio)
 
 
 class AdaptiveRebalance(BaseRebalance):
