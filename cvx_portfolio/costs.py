@@ -55,8 +55,8 @@ class HcostModel(BaseCost):
     """
 
     def __init__(self, borrow_costs, dividends=None, cash_key = 'cash'):
-        self.borrow_costs = borrow_costs
-        self.dividends = dividends
+        self.borrow_costs = borrow_costs[borrow_costs.columns.difference([cash_key])]
+        self.dividends = None if not dividends else dividends[dividends.columns.difference([cash_key])]
         self.cash_key = cash_key
         super().__init__()
 
@@ -84,15 +84,16 @@ class HcostModel(BaseCost):
         return self._estimate(t,w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
-        # TODO this might not be a great idea
-        expression = self.weight_expr(t, w_plus=h_plus, z=None, value=None)
-        return expression.value
+        self.last_cost= -self.borrow_costs.loc[t].values.T @ np.minimum(0,h_plus.values[:-1])
+        if self.dividends is not None:
+            self.last_cost -= self.dividends.loc[t].values.T @ h_plus.values[:-1]
+        return self.last_cost
 
     def optimization_log(self,t):
         return self.expression.value
 
     def simulation_log(self,t):
-        return self.expression.value
+        return self.last_cost
 
 
 class TcostModel(BaseCost):
