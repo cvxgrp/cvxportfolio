@@ -1,0 +1,507 @@
+Symbol,Description,Quandlcode,premium_code
+MMM,3M Company,WIKI/MMM,EOD/MMM
+ABT,Abbott Laboratories,WIKI/ABT,EOD/ABT
+ABBV,AbbVie,WIKI/ABBV,EOD/ABBV
+ACN,Accenture plc,WIKI/ACN,EOD/ACN
+ACE,ACE Limited,WIKI/ACE,EOD/ACE
+ATVI,Activision Blizzard,WIKI/ATVI,EOD/ATVI
+ADBE,Adobe Systems Inc,WIKI/ADBE,EOD/ADBE
+ADT,ADT Corp,WIKI/ADT,EOD/ADT
+AAP,Advance Auto Parts,WIKI/AAP,EOD/AAP
+AES,AES Corp,WIKI/AES,EOD/AES
+AET,Aetna Inc,WIKI/AET,EOD/AET
+AFL,AFLAC Inc,WIKI/AFL,EOD/AFL
+AMG,Affiliated Managers Group Inc,WIKI/AMG,EOD/AMG
+A,Agilent Technologies Inc,WIKI/A,EOD/A
+GAS,AGL Resources Inc.,WIKI/GAS,EOD/GAS
+APD,Air Products & Chemicals Inc,WIKI/APD,EOD/APD
+ARG,Airgas Inc,WIKI/ARG,EOD/ARG
+AKAM,Akamai Technologies Inc,WIKI/AKAM,EOD/AKAM
+AA,Alcoa Inc,WIKI/AA,EOD/AA
+AGN,Allergan plc,WIKI/AGN,EOD/AGN
+ALXN,Alexion Pharmaceuticals,WIKI/ALXN,EOD/ALXN
+ALLE,Allegion,WIKI/ALLE,EOD/ALLE
+ADS,Alliance Data Systems,WIKI/ADS,EOD/ADS
+ALL,Allstate Corp,WIKI/ALL,EOD/ALL
+GOOGL,Alphabet Inc Class A,WIKI/GOOGL,EOD/GOOGL
+GOOG,Alphabet Inc Class C,WIKI/GOOG,EOD/GOOG
+ALTR,Altera Corp,WIKI/ALTR,EOD/ALTR
+MO,Altria Group Inc,WIKI/MO,EOD/MO
+AMZN,Amazon.com Inc,WIKI/AMZN,EOD/AMZN
+AEE,Ameren Corp,WIKI/AEE,EOD/AEE
+AAL,American Airlines Group,WIKI/AAL,EOD/AAL
+AEP,American Electric Power,WIKI/AEP,EOD/AEP
+AXP,American Express Co,WIKI/AXP,EOD/AXP
+AIG,American International Group,WIKI/AIG,EOD/AIG
+AMT,American Tower Corp A,WIKI/AMT,EOD/AMT
+AMP,Ameriprise Financial,WIKI/AMP,EOD/AMP
+ABC,AmerisourceBergen Corp,WIKI/ABC,EOD/ABC
+AME,Ametek,WIKI/AME,EOD/AME
+AMGN,Amgen Inc,WIKI/AMGN,EOD/AMGN
+APH,Amphenol Corp A,WIKI/APH,EOD/APH
+APC,Anadarko Petroleum Corp,WIKI/APC,EOD/APC
+ADI,Analog Devices,WIKI/ADI,EOD/ADI
+AON,Aon plc,WIKI/AON,EOD/AON
+APA,Apache Corporation,WIKI/APA,EOD/APA
+AIV,Apartment Investment & Mgmt,WIKI/AIV,EOD/AIV
+AAPL,Apple Inc.,WIKI/AAPL,EOD/AAPL
+AMAT,Applied Materials Inc,WIKI/AMAT,EOD/AMAT
+ADM,Archer-Daniels-Midland Co,WIKI/ADM,EOD/ADM
+AIZ,Assurant Inc,WIKI/AIZ,EOD/AIZ
+T,AT&T Inc,WIKI/T,EOD/T
+ADSK,Autodesk Inc,WIKI/ADSK,EOD/ADSK
+ADP,Automatic Data Processing,WIKI/ADP,EOD/ADP
+AN,AutoNation Inc,WIKI/AN,EOD/AN
+AZO,AutoZone Inc,WIKI/AZO,EOD/AZO
+AVGO,Avago Technologies,WIKI/AVGO,EOD/AVGO
+AVB,AvalonBay Communities,WIKI/AVB,EOD/AVB
+AVY,Avery Dennison Corp,WIKI/AVY,EOD/AVY
+BHI,Baker Hughes Inc,WIKI/BHI,EOD/BHI
+BLL,Ball Corp,WIKI/BLL,EOD/BLL
+BAC,Bank of America Corp,WIKI/BAC,EOD/BAC
+BK,The Bank of New York Mellon Corp.,WIKI/BK,EOD/BK
+BCR,Bard (C.R.) Inc.,WIKI/BCR,EOD/BCR
+BXLT,Baxalta,WIKI/BXLT,EOD/BXLT
+BAX,Baxter International Inc.,WIKI/BAX,EOD/BAX
+BBT,BB&T Corporation,WIKI/BBT,EOD/BBT
+BDX,Becton Dickinson,WIKI/BDX,EOD/BDX
+BBBY,Bed Bath & Beyond,WIKI/BBBY,EOD/BBBY
+BRK-B,Berkshire Hathaway,WIKI/BRK-B,EOD/BRK-B
+BBY,Best Buy Co. Inc.,WIKI/BBY,EOD/BBY
+BIIB,BIOGEN IDEC Inc.,WIKI/BIIB,EOD/BIIB
+BLK,BlackRock,WIKI/BLK,EOD/BLK
+HRB,Block H&R,WIKI/HRB,EOD/HRB
+BA,Boeing Company,WIKI/BA,EOD/BA
+BWA,BorgWarner,WIKI/BWA,EOD/BWA
+BXP,Boston Properties,WIKI/BXP,EOD/BXP
+BSX,Boston Scientific,WIKI/BSX,EOD/BSX
+BMY,Bristol-Myers Squibb,WIKI/BMY,EOD/BMY
+BRCM,Broadcom Corporation,WIKI/BRCM,EOD/BRCM
+BF-B,Brown-Forman Corporation,WIKI/BF-B,EOD/BF-B
+CHRW,C. H. Robinson Worldwide,WIKI/CHRW,EOD/CHRW
+CA,CA,WIKI/CA,EOD/CA
+CVC,Cablevision Systems Corp.,WIKI/CVC,EOD/CVC
+COG,Cabot Oil & Gas,WIKI/COG,EOD/COG
+CAM,Cameron International Corp.,WIKI/CAM,EOD/CAM
+CPB,Campbell Soup,WIKI/CPB,EOD/CPB
+COF,Capital One Financial,WIKI/COF,EOD/COF
+CAH,Cardinal Health Inc.,WIKI/CAH,EOD/CAH
+HSIC,Henry Schein,WIKI/HSIC,EOD/HSIC
+KMX,Carmax Inc,WIKI/KMX,EOD/KMX
+CCL,Carnival Corp.,WIKI/CCL,EOD/CCL
+CAT,Caterpillar Inc.,WIKI/CAT,EOD/CAT
+CBG,CBRE Group,WIKI/CBG,EOD/CBG
+CBS,CBS Corp.,WIKI/CBS,EOD/CBS
+CELG,Celgene Corp.,WIKI/CELG,EOD/CELG
+CNP,CenterPoint Energy,WIKI/CNP,EOD/CNP
+CTL,CenturyLink Inc,WIKI/CTL,EOD/CTL
+CERN,Cerner,WIKI/CERN,EOD/CERN
+CF,CF Industries Holdings Inc,WIKI/CF,EOD/CF
+SCHW,Charles Schwab Corporation,WIKI/SCHW,EOD/SCHW
+CHK,Chesapeake Energy,WIKI/CHK,EOD/CHK
+CVX,Chevron Corp.,WIKI/CVX,EOD/CVX
+CMG,Chipotle Mexican Grill,WIKI/CMG,EOD/CMG
+CB,Chubb Corp.,WIKI/CB,EOD/CB
+CI,CIGNA Corp.,WIKI/CI,EOD/CI
+XEC,Cimarex Energy,WIKI/XEC,EOD/XEC
+CINF,Cincinnati Financial,WIKI/CINF,EOD/CINF
+CTAS,Cintas Corporation,WIKI/CTAS,EOD/CTAS
+CSCO,Cisco Systems,WIKI/CSCO,EOD/CSCO
+C,Citigroup Inc.,WIKI/C,EOD/C
+CTXS,Citrix Systems,WIKI/CTXS,EOD/CTXS
+CLX,The Clorox Company,WIKI/CLX,EOD/CLX
+CME,CME Group Inc.,WIKI/CME,EOD/CME
+CMS,CMS Energy,WIKI/CMS,EOD/CMS
+COH,Coach Inc.,WIKI/COH,EOD/COH
+KO,The Coca Cola Company,WIKI/KO,EOD/KO
+CCE,Coca-Cola Enterprises,WIKI/CCE,EOD/CCE
+CTSH,Cognizant Technology Solutions,WIKI/CTSH,EOD/CTSH
+CL,Colgate-Palmolive,WIKI/CL,EOD/CL
+CPGX,Columbia Pipeline Group Inc,WIKI/CPGX,EOD/CPGX
+CMCSA,Comcast A Corp,WIKI/CMCSA,EOD/CMCSA
+CMCSK,Comcast Special Corp Class A,WIKI/CMCSK,EOD/CMCSK
+CMA,Comerica Inc.,WIKI/CMA,EOD/CMA
+CSC,Computer Sciences Corp.,WIKI/CSC,EOD/CSC
+CAG,ConAgra Foods Inc.,WIKI/CAG,EOD/CAG
+COP,ConocoPhillips,WIKI/COP,EOD/COP
+CNX,CONSOL Energy Inc.,WIKI/CNX,EOD/CNX
+ED,Consolidated Edison,WIKI/ED,EOD/ED
+STZ,Constellation Brands,WIKI/STZ,EOD/STZ
+GLW,Corning Inc.,WIKI/GLW,EOD/GLW
+COST,Costco Co.,WIKI/COST,EOD/COST
+CCI,Crown Castle International Corp.,WIKI/CCI,EOD/CCI
+CSX,CSX Corp.,WIKI/CSX,EOD/CSX
+CMI,Cummins Inc.,WIKI/CMI,EOD/CMI
+CVS,CVS Caremark Corp.,WIKI/CVS,EOD/CVS
+DHI,D. R. Horton,WIKI/DHI,EOD/DHI
+DHR,Danaher Corp.,WIKI/DHR,EOD/DHR
+DRI,Darden Restaurants,WIKI/DRI,EOD/DRI
+DVA,DaVita Inc.,WIKI/DVA,EOD/DVA
+DE,Deere & Co.,WIKI/DE,EOD/DE
+DLPH,Delphi Automotive,WIKI/DLPH,EOD/DLPH
+DAL,Delta Air Lines,WIKI/DAL,EOD/DAL
+XRAY,Dentsply International,WIKI/XRAY,EOD/XRAY
+DVN,Devon Energy Corp.,WIKI/DVN,EOD/DVN
+DO,Diamond Offshore Drilling,WIKI/DO,EOD/DO
+DFS,Discover Financial Services,WIKI/DFS,EOD/DFS
+DISCA,Discovery Communications-A,WIKI/DISCA,EOD/DISCA
+DISCK,Discovery Communications-C,WIKI/DISCK,EOD/DISCK
+DG,Dollar General,WIKI/DG,EOD/DG
+DLTR,Dollar Tree,WIKI/DLTR,EOD/DLTR
+D,Dominion Resources,WIKI/D,EOD/D
+DOV,Dover Corp.,WIKI/DOV,EOD/DOV
+DOW,Dow Chemical,WIKI/DOW,EOD/DOW
+DPS,Dr Pepper Snapple Group,WIKI/DPS,EOD/DPS
+DTE,DTE Energy Co.,WIKI/DTE,EOD/DTE
+DD,Du Pont (E.I.),WIKI/DD,EOD/DD
+DUK,Duke Energy,WIKI/DUK,EOD/DUK
+DNB,Dun & Bradstreet,WIKI/DNB,EOD/DNB
+ETFC,E*Trade,WIKI/ETFC,EOD/ETFC
+EMN,Eastman Chemical,WIKI/EMN,EOD/EMN
+ETN,Eaton Corporation,WIKI/ETN,EOD/ETN
+EBAY,eBay Inc.,WIKI/EBAY,EOD/EBAY
+ECL,Ecolab Inc.,WIKI/ECL,EOD/ECL
+EIX,Edison Int'l,WIKI/EIX,EOD/EIX
+EW,Edwards Lifesciences,WIKI/EW,EOD/EW
+EA,Electronic Arts,WIKI/EA,EOD/EA
+EMC,EMC Corp.,WIKI/EMC,EOD/EMC
+EMR,Emerson Electric Company,WIKI/EMR,EOD/EMR
+ENDP,Endo International,WIKI/ENDP,EOD/ENDP
+ESV,Ensco plc,WIKI/ESV,EOD/ESV
+ETR,Entergy Corp.,WIKI/ETR,EOD/ETR
+EOG,EOG Resources,WIKI/EOG,EOD/EOG
+EQT,EQT Corporation,WIKI/EQT,EOD/EQT
+EFX,Equifax Inc.,WIKI/EFX,EOD/EFX
+EQIX,Equinix,WIKI/EQIX,EOD/EQIX
+EQR,Equity Residential,WIKI/EQR,EOD/EQR
+ESS,Essex Property Trust Inc,WIKI/ESS,EOD/ESS
+EL,Estee Lauder Cos.,WIKI/EL,EOD/EL
+ES,Eversource Energy,WIKI/ES,EOD/ES
+EXC,Exelon Corp.,WIKI/EXC,EOD/EXC
+EXPE,Expedia Inc.,WIKI/EXPE,EOD/EXPE
+EXPD,Expeditors Int'l,WIKI/EXPD,EOD/EXPD
+ESRX,Express Scripts,WIKI/ESRX,EOD/ESRX
+XOM,Exxon Mobil Corp.,WIKI/XOM,EOD/XOM
+FFIV,F5 Networks,WIKI/FFIV,EOD/FFIV
+FB,Facebook,WIKI/FB,EOD/FB
+FAST,Fastenal Co,WIKI/FAST,EOD/FAST
+FDX,FedEx Corporation,WIKI/FDX,EOD/FDX
+FIS,Fidelity National Information Services,WIKI/FIS,EOD/FIS
+FITB,Fifth Third Bancorp,WIKI/FITB,EOD/FITB
+FSLR,First Solar Inc,WIKI/FSLR,EOD/FSLR
+FE,FirstEnergy Corp,WIKI/FE,EOD/FE
+FISV,Fiserv Inc,WIKI/FISV,EOD/FISV
+FLIR,FLIR Systems,WIKI/FLIR,EOD/FLIR
+FLS,Flowserve Corporation,WIKI/FLS,EOD/FLS
+FLR,Fluor Corp.,WIKI/FLR,EOD/FLR
+FMC,FMC Corporation,WIKI/FMC,EOD/FMC
+FTI,FMC Technologies Inc.,WIKI/FTI,EOD/FTI
+F,Ford Motor,WIKI/F,EOD/F
+FOSL,Fossil,WIKI/FOSL,EOD/FOSL
+BEN,Franklin Resources,WIKI/BEN,EOD/BEN
+FCX,Freeport-McMoran Cp & Gld,WIKI/FCX,EOD/FCX
+FTR,Frontier Communications,WIKI/FTR,EOD/FTR
+GME,GameStop Corp.,WIKI/GME,EOD/GME
+GPS,Gap (The),WIKI/GPS,EOD/GPS
+GRMN,Garmin Ltd.,WIKI/GRMN,EOD/GRMN
+GD,General Dynamics,WIKI/GD,EOD/GD
+GE,General Electric,WIKI/GE,EOD/GE
+GGP,General Growth Properties Inc.,WIKI/GGP,EOD/GGP
+GIS,General Mills,WIKI/GIS,EOD/GIS
+GM,General Motors,WIKI/GM,EOD/GM
+GPC,Genuine Parts,WIKI/GPC,EOD/GPC
+GNW,Genworth Financial Inc.,WIKI/GNW,EOD/GNW
+GILD,Gilead Sciences,WIKI/GILD,EOD/GILD
+GS,Goldman Sachs Group,WIKI/GS,EOD/GS
+GT,Goodyear Tire & Rubber,WIKI/GT,EOD/GT
+GWW,Grainger (W.W.) Inc.,WIKI/GWW,EOD/GWW
+HAL,Halliburton Co.,WIKI/HAL,EOD/HAL
+HBI,Hanesbrands Inc,WIKI/HBI,EOD/HBI
+HOG,Harley-Davidson,WIKI/HOG,EOD/HOG
+HAR,Harman Int'l Industries,WIKI/HAR,EOD/HAR
+HRS,Harris Corporation,WIKI/HRS,EOD/HRS
+HIG,Hartford Financial Svc.Gp.,WIKI/HIG,EOD/HIG
+HAS,Hasbro Inc.,WIKI/HAS,EOD/HAS
+HCA,HCA Holdings,WIKI/HCA,EOD/HCA
+HCP,HCP Inc.,WIKI/HCP,EOD/HCP
+HP,Helmerich & Payne,WIKI/HP,EOD/HP
+HES,Hess Corporation,WIKI/HES,EOD/HES
+HPQ,Hewlett-Packard,WIKI/HPQ,EOD/HPQ
+HD,Home Depot,WIKI/HD,EOD/HD
+HON,Honeywell Int'l Inc.,WIKI/HON,EOD/HON
+HRL,Hormel Foods Corp.,WIKI/HRL,EOD/HRL
+HST,Host Hotels & Resorts,WIKI/HST,EOD/HST
+HCBK,Hudson City Bancorp,WIKI/HCBK,EOD/HCBK
+HUM,Humana Inc.,WIKI/HUM,EOD/HUM
+HBAN,Huntington Bancshares,WIKI/HBAN,EOD/HBAN
+ITW,Illinois Tool Works,WIKI/ITW,EOD/ITW
+IR,Ingersoll-Rand PLC,WIKI/IR,EOD/IR
+INTC,Intel Corp.,WIKI/INTC,EOD/INTC
+ICE,Intercontinental Exchange,WIKI/ICE,EOD/ICE
+IBM,International Bus. Machines,WIKI/IBM,EOD/IBM
+IP,International Paper,WIKI/IP,EOD/IP
+IPG,Interpublic Group,WIKI/IPG,EOD/IPG
+IFF,Intl Flavors & Fragrances,WIKI/IFF,EOD/IFF
+INTU,Intuit Inc.,WIKI/INTU,EOD/INTU
+ISRG,Intuitive Surgical Inc.,WIKI/ISRG,EOD/ISRG
+IVZ,Invesco Ltd.,WIKI/IVZ,EOD/IVZ
+IRM,Iron Mountain Incorporated,WIKI/IRM,EOD/IRM
+JEC,Jacobs Engineering Group,WIKI/JEC,EOD/JEC
+JBHT,J. B. Hunt Transport Services,WIKI/JBHT,EOD/JBHT
+JNJ,Johnson & Johnson,WIKI/JNJ,EOD/JNJ
+JCI,Johnson Controls,WIKI/JCI,EOD/JCI
+JPM,JPMorgan Chase & Co.,WIKI/JPM,EOD/JPM
+JNPR,Juniper Networks,WIKI/JNPR,EOD/JNPR
+KSU,Kansas City Southern,WIKI/KSU,EOD/KSU
+K,Kellogg Co.,WIKI/K,EOD/K
+KEY,KeyCorp,WIKI/KEY,EOD/KEY
+GMCR,Keurig Green Mountain,WIKI/GMCR,EOD/GMCR
+KMB,Kimberly-Clark,WIKI/KMB,EOD/KMB
+KIM,Kimco Realty,WIKI/KIM,EOD/KIM
+KMI,Kinder Morgan,WIKI/KMI,EOD/KMI
+KLAC,KLA-Tencor Corp.,WIKI/KLAC,EOD/KLAC
+KSS,Kohl's Corp.,WIKI/KSS,EOD/KSS
+KHC,Kraft Heinz Co,WIKI/KHC,EOD/KHC
+KR,Kroger Co.,WIKI/KR,EOD/KR
+LB,L Brands Inc.,WIKI/LB,EOD/LB
+LLL,L-3 Communications Holdings,WIKI/LLL,EOD/LLL
+LH,Laboratory Corp. of America Holding,WIKI/LH,EOD/LH
+LRCX,Lam Research,WIKI/LRCX,EOD/LRCX
+LM,Legg Mason,WIKI/LM,EOD/LM
+LEG,Leggett & Platt,WIKI/LEG,EOD/LEG
+LEN,Lennar Corp.,WIKI/LEN,EOD/LEN
+LVLT,Level 3 Communications,WIKI/LVLT,EOD/LVLT
+LUK,Leucadia National Corp.,WIKI/LUK,EOD/LUK
+LLY,Lilly (Eli) & Co.,WIKI/LLY,EOD/LLY
+LNC,Lincoln National,WIKI/LNC,EOD/LNC
+LLTC,Linear Technology Corp.,WIKI/LLTC,EOD/LLTC
+LMT,Lockheed Martin Corp.,WIKI/LMT,EOD/LMT
+L,Loews Corp.,WIKI/L,EOD/L
+LOW,Lowe's Cos.,WIKI/LOW,EOD/LOW
+LYB,LyondellBasell,WIKI/LYB,EOD/LYB
+MTB,M&T Bank Corp.,WIKI/MTB,EOD/MTB
+MAC,Macerich,WIKI/MAC,EOD/MAC
+M,Macy's Inc.,WIKI/M,EOD/M
+MNK,Mallinckrodt Plc,WIKI/MNK,EOD/MNK
+MRO,Marathon Oil Corp.,WIKI/MRO,EOD/MRO
+MPC,Marathon Petroleum,WIKI/MPC,EOD/MPC
+MAR,Marriott Int'l.,WIKI/MAR,EOD/MAR
+MMC,Marsh & McLennan,WIKI/MMC,EOD/MMC
+MLM,Martin Marietta Materials,WIKI/MLM,EOD/MLM
+MAS,Masco Corp.,WIKI/MAS,EOD/MAS
+MA,Mastercard Inc.,WIKI/MA,EOD/MA
+MAT,Mattel Inc.,WIKI/MAT,EOD/MAT
+MKC,McCormick & Co.,WIKI/MKC,EOD/MKC
+MCD,McDonald's Corp.,WIKI/MCD,EOD/MCD
+MHFI,McGraw Hill Financial,WIKI/MHFI,EOD/MHFI
+MCK,McKesson Corp.,WIKI/MCK,EOD/MCK
+MJN,Mead Johnson,WIKI/MJN,EOD/MJN
+WRK,Westrock Co,WIKI/WRK,EOD/WRK
+MDT,Medtronic plc,WIKI/MDT,EOD/MDT
+MRK,Merck & Co.,WIKI/MRK,EOD/MRK
+MET,MetLife Inc.,WIKI/MET,EOD/MET
+KORS,Michael Kors Holdings,WIKI/KORS,EOD/KORS
+MCHP,Microchip Technology,WIKI/MCHP,EOD/MCHP
+MU,Micron Technology,WIKI/MU,EOD/MU
+MSFT,Microsoft Corp.,WIKI/MSFT,EOD/MSFT
+MHK,Mohawk Industries,WIKI/MHK,EOD/MHK
+TAP,Molson Coors Brewing Company,WIKI/TAP,EOD/TAP
+MDLZ,Mondelez International,WIKI/MDLZ,EOD/MDLZ
+MON,Monsanto Co.,WIKI/MON,EOD/MON
+MNST,Monster Beverage,WIKI/MNST,EOD/MNST
+MCO,Moody's Corp,WIKI/MCO,EOD/MCO
+MS,Morgan Stanley,WIKI/MS,EOD/MS
+MOS,The Mosaic Company,WIKI/MOS,EOD/MOS
+MSI,Motorola Solutions Inc.,WIKI/MSI,EOD/MSI
+MUR,Murphy Oil,WIKI/MUR,EOD/MUR
+MYL,Mylan N.V.,WIKI/MYL,EOD/MYL
+NDAQ,NASDAQ OMX Group,WIKI/NDAQ,EOD/NDAQ
+NOV,National Oilwell Varco Inc.,WIKI/NOV,EOD/NOV
+NAVI,Navient,WIKI/NAVI,EOD/NAVI
+NTAP,NetApp,WIKI/NTAP,EOD/NTAP
+NFLX,Netflix Inc.,WIKI/NFLX,EOD/NFLX
+NWL,Newell Rubbermaid Co.,WIKI/NWL,EOD/NWL
+NFX,Newfield Exploration Co,WIKI/NFX,EOD/NFX
+NEM,Newmont Mining Corp. (Hldg. Co.),WIKI/NEM,EOD/NEM
+NWSA,News Corp. Class A,WIKI/NWSA,EOD/NWSA
+NWS,News Corp. Class B,WIKI/NWS,EOD/NWS
+NEE,NextEra Energy,WIKI/NEE,EOD/NEE
+NLSN,Nielsen Holdings,WIKI/NLSN,EOD/NLSN
+NKE,Nike,WIKI/NKE,EOD/NKE
+NI,NiSource Inc.,WIKI/NI,EOD/NI
+NBL,Noble Energy Inc,WIKI/NBL,EOD/NBL
+JWN,Nordstrom,WIKI/JWN,EOD/JWN
+NSC,Norfolk Southern Corp.,WIKI/NSC,EOD/NSC
+NTRS,Northern Trust Corp.,WIKI/NTRS,EOD/NTRS
+NOC,Northrop Grumman Corp.,WIKI/NOC,EOD/NOC
+NRG,NRG Energy,WIKI/NRG,EOD/NRG
+NUE,Nucor Corp.,WIKI/NUE,EOD/NUE
+NVDA,Nvidia Corporation,WIKI/NVDA,EOD/NVDA
+ORLY,O'Reilly Automotive,WIKI/ORLY,EOD/ORLY
+OXY,Occidental Petroleum,WIKI/OXY,EOD/OXY
+OMC,Omnicom Group,WIKI/OMC,EOD/OMC
+OKE,ONEOK,WIKI/OKE,EOD/OKE
+ORCL,Oracle Corp.,WIKI/ORCL,EOD/ORCL
+OI,Owens-Illinois Inc,WIKI/OI,EOD/OI
+PCAR,PACCAR Inc.,WIKI/PCAR,EOD/PCAR
+PH,Parker-Hannifin,WIKI/PH,EOD/PH
+PDCO,Patterson Companies,WIKI/PDCO,EOD/PDCO
+PAYX,Paychex Inc.,WIKI/PAYX,EOD/PAYX
+PYPL,PayPal,WIKI/PYPL,EOD/PYPL
+PNR,Pentair Ltd.,WIKI/PNR,EOD/PNR
+PBCT,People's United Financial,WIKI/PBCT,EOD/PBCT
+POM,Pepco Holdings Inc.,WIKI/POM,EOD/POM
+PEP,PepsiCo Inc.,WIKI/PEP,EOD/PEP
+PKI,PerkinElmer,WIKI/PKI,EOD/PKI
+PRGO,Perrigo,WIKI/PRGO,EOD/PRGO
+PFE,Pfizer Inc.,WIKI/PFE,EOD/PFE
+PCG,PG&E Corp.,WIKI/PCG,EOD/PCG
+PM,Philip Morris International,WIKI/PM,EOD/PM
+PSX,Phillips 66,WIKI/PSX,EOD/PSX
+PNW,Pinnacle West Capital,WIKI/PNW,EOD/PNW
+PXD,Pioneer Natural Resources,WIKI/PXD,EOD/PXD
+PBI,Pitney-Bowes,WIKI/PBI,EOD/PBI
+PCL,Plum Creek Timber Co.,WIKI/PCL,EOD/PCL
+PNC,PNC Financial Services,WIKI/PNC,EOD/PNC
+RL,Polo Ralph Lauren Corp.,WIKI/RL,EOD/RL
+PPG,PPG Industries,WIKI/PPG,EOD/PPG
+PPL,PPL Corp.,WIKI/PPL,EOD/PPL
+PX,Praxair Inc.,WIKI/PX,EOD/PX
+PCP,Precision Castparts,WIKI/PCP,EOD/PCP
+PCLN,Priceline.com Inc,WIKI/PCLN,EOD/PCLN
+PFG,Principal Financial Group,WIKI/PFG,EOD/PFG
+PG,Procter & Gamble,WIKI/PG,EOD/PG
+PGR,Progressive Corp.,WIKI/PGR,EOD/PGR
+PLD,Prologis,WIKI/PLD,EOD/PLD
+PRU,Prudential Financial,WIKI/PRU,EOD/PRU
+PEG,Public Serv. Enterprise Inc.,WIKI/PEG,EOD/PEG
+PSA,Public Storage,WIKI/PSA,EOD/PSA
+PHM,Pulte Homes Inc.,WIKI/PHM,EOD/PHM
+PVH,PVH Corp.,WIKI/PVH,EOD/PVH
+QRVO,Qorvo,WIKI/QRVO,EOD/QRVO
+PWR,Quanta Services Inc.,WIKI/PWR,EOD/PWR
+QCOM,QUALCOMM Inc.,WIKI/QCOM,EOD/QCOM
+DGX,Quest Diagnostics,WIKI/DGX,EOD/DGX
+RRC,Range Resources Corp.,WIKI/RRC,EOD/RRC
+RTN,Raytheon Co.,WIKI/RTN,EOD/RTN
+O,Realty Income Corporation,WIKI/O,EOD/O
+RHT,Red Hat Inc.,WIKI/RHT,EOD/RHT
+REGN,Regeneron,WIKI/REGN,EOD/REGN
+RF,Regions Financial Corp.,WIKI/RF,EOD/RF
+RSG,Republic Services Inc,WIKI/RSG,EOD/RSG
+RAI,Reynolds American Inc.,WIKI/RAI,EOD/RAI
+RHI,Robert Half International,WIKI/RHI,EOD/RHI
+ROK,Rockwell Automation Inc.,WIKI/ROK,EOD/ROK
+COL,Rockwell Collins,WIKI/COL,EOD/COL
+ROP,Roper Industries,WIKI/ROP,EOD/ROP
+ROST,Ross Stores,WIKI/ROST,EOD/ROST
+RCL,Royal Caribbean Cruises Ltd,WIKI/RCL,EOD/RCL
+R,Ryder System,WIKI/R,EOD/R
+CRM,Salesforce.com,WIKI/CRM,EOD/CRM
+SNDK,SanDisk Corporation,WIKI/SNDK,EOD/SNDK
+SCG,SCANA Corp,WIKI/SCG,EOD/SCG
+SLB,Schlumberger Ltd.,WIKI/SLB,EOD/SLB
+SNI,Scripps Networks Interactive Inc.,WIKI/SNI,EOD/SNI
+STX,Seagate Technology,WIKI/STX,EOD/STX
+SEE,Sealed Air Corp.(New),WIKI/SEE,EOD/SEE
+SRE,Sempra Energy,WIKI/SRE,EOD/SRE
+SHW,Sherwin-Williams,WIKI/SHW,EOD/SHW
+SIAL,Sigma-Aldrich,WIKI/SIAL,EOD/SIAL
+SIG,Signet Jewelers,WIKI/SIG,EOD/SIG
+SPG,Simon Property Group Inc,WIKI/SPG,EOD/SPG
+SWKS,Skyworks Solutions,WIKI/SWKS,EOD/SWKS
+SLG,SL Green Realty,WIKI/SLG,EOD/SLG
+SJM,Smucker (J.M.),WIKI/SJM,EOD/SJM
+SNA,Snap-On Inc.,WIKI/SNA,EOD/SNA
+SO,Southern Co.,WIKI/SO,EOD/SO
+LUV,Southwest Airlines,WIKI/LUV,EOD/LUV
+SWN,Southwestern Energy,WIKI/SWN,EOD/SWN
+SE,Spectra Energy Corp.,WIKI/SE,EOD/SE
+STJ,St Jude Medical,WIKI/STJ,EOD/STJ
+SWK,Stanley Black & Decker,WIKI/SWK,EOD/SWK
+SPLS,Staples Inc.,WIKI/SPLS,EOD/SPLS
+SBUX,Starbucks Corp.,WIKI/SBUX,EOD/SBUX
+HOT,Starwood Hotels & Resorts,WIKI/HOT,EOD/HOT
+STT,State Street Corp.,WIKI/STT,EOD/STT
+SRCL,Stericycle Inc,WIKI/SRCL,EOD/SRCL
+SYK,Stryker Corp.,WIKI/SYK,EOD/SYK
+STI,SunTrust Banks,WIKI/STI,EOD/STI
+SYMC,Symantec Corp.,WIKI/SYMC,EOD/SYMC
+SYY,Sysco Corp.,WIKI/SYY,EOD/SYY
+TROW,T. Rowe Price Group,WIKI/TROW,EOD/TROW
+TGT,Target Corp.,WIKI/TGT,EOD/TGT
+TEL,TE Connectivity Ltd.,WIKI/TEL,EOD/TEL
+TE,TECO Energy,WIKI/TE,EOD/TE
+TGNA,Tegna,WIKI/TGNA,EOD/TGNA
+THC,Tenet Healthcare Corp.,WIKI/THC,EOD/THC
+TDC,Teradata Corp.,WIKI/TDC,EOD/TDC
+TSO,Tesoro Petroleum Co.,WIKI/TSO,EOD/TSO
+TXN,Texas Instruments,WIKI/TXN,EOD/TXN
+TXT,Textron Inc.,WIKI/TXT,EOD/TXT
+HSY,The Hershey Company,WIKI/HSY,EOD/HSY
+TRV,The Travelers Companies Inc.,WIKI/TRV,EOD/TRV
+TMO,Thermo Fisher Scientific,WIKI/TMO,EOD/TMO
+TIF,Tiffany & Co.,WIKI/TIF,EOD/TIF
+TWX,Time Warner Inc.,WIKI/TWX,EOD/TWX
+TWC,Time Warner Cable Inc.,WIKI/TWC,EOD/TWC
+TJX,TJX Companies Inc.,WIKI/TJX,EOD/TJX
+TMK,Torchmark Corp.,WIKI/TMK,EOD/TMK
+TSS,Total System Services,WIKI/TSS,EOD/TSS
+TSCO,Tractor Supply Company,WIKI/TSCO,EOD/TSCO
+RIG,Transocean,WIKI/RIG,EOD/RIG
+TRIP,TripAdvisor,WIKI/TRIP,EOD/TRIP
+FOXA,Twenty-First Century Fox Class A,WIKI/FOXA,EOD/FOXA
+FOX,Twenty-First Century Fox Class B,WIKI/FOX,EOD/FOX
+TSN,Tyson Foods,WIKI/TSN,EOD/TSN
+TYC,Tyco International,WIKI/TYC,EOD/TYC
+USB,U.S. Bancorp,WIKI/USB,EOD/USB
+UA,Under Armour,WIKI/UA,EOD/UA
+UNP,Union Pacific,WIKI/UNP,EOD/UNP
+UAL,United Continental Holdings,WIKI/UAL,EOD/UAL
+UNH,United Health Group Inc.,WIKI/UNH,EOD/UNH
+UPS,United Parcel Service,WIKI/UPS,EOD/UPS
+URI,United Rentals,WIKI/URI,EOD/URI
+UTX,United Technologies,WIKI/UTX,EOD/UTX
+UHS,Universal Health Services,WIKI/UHS,EOD/UHS
+UNM,Unum Group,WIKI/UNM,EOD/UNM
+URBN,Urban Outfitters,WIKI/URBN,EOD/URBN
+VFC,V.F. Corp.,WIKI/VFC,EOD/VFC
+VLO,Valero Energy,WIKI/VLO,EOD/VLO
+VAR,Varian Medical Systems,WIKI/VAR,EOD/VAR
+VTR,Ventas Inc,WIKI/VTR,EOD/VTR
+VRSN,Verisign Inc.,WIKI/VRSN,EOD/VRSN
+VRSK,Verisk Analytics,WIKI/VRSK,EOD/VRSK
+VZ,Verizon Communications,WIKI/VZ,EOD/VZ
+VRTX,Vertex Pharmaceuticals Inc,WIKI/VRTX,EOD/VRTX
+VIAB,Viacom Inc.,WIKI/VIAB,EOD/VIAB
+V,Visa Inc.,WIKI/V,EOD/V
+VNO,Vornado Realty Trust,WIKI/VNO,EOD/VNO
+VMC,Vulcan Materials,WIKI/VMC,EOD/VMC
+WMT,Wal-Mart Stores,WIKI/WMT,EOD/WMT
+WBA,Walgreens Boots Alliance,WIKI/WBA,EOD/WBA
+DIS,The Walt Disney Company,WIKI/DIS,EOD/DIS
+WM,Waste Management Inc.,WIKI/WM,EOD/WM
+WAT,Waters Corporation,WIKI/WAT,EOD/WAT
+ANTM,Anthem Inc.,WIKI/ANTM,EOD/ANTM
+WFC,Wells Fargo,WIKI/WFC,EOD/WFC
+HCN,Welltower Inc.,WIKI/HCN,EOD/HCN
+WDC,Western Digital,WIKI/WDC,EOD/WDC
+WU,Western Union Co,WIKI/WU,EOD/WU
+WY,Weyerhaeuser Corp.,WIKI/WY,EOD/WY
+WHR,Whirlpool Corp.,WIKI/WHR,EOD/WHR
+WFM,Whole Foods Market,WIKI/WFM,EOD/WFM
+WMB,Williams Cos.,WIKI/WMB,EOD/WMB
+WEC,Wisconsin Energy Corporation,WIKI/WEC,EOD/WEC
+WYN,Wyndham Worldwide,WIKI/WYN,EOD/WYN
+WYNN,Wynn Resorts Ltd,WIKI/WYNN,EOD/WYNN
+XEL,Xcel Energy Inc,WIKI/XEL,EOD/XEL
+XRX,Xerox Corp.,WIKI/XRX,EOD/XRX
+XLNX,Xilinx Inc,WIKI/XLNX,EOD/XLNX
+XL,XL Capital,WIKI/XL,EOD/XL
+XYL,Xylem Inc.,WIKI/XYL,EOD/XYL
+YHOO,Yahoo Inc.,WIKI/YHOO,EOD/YHOO
+YUM,Yum! Brands Inc,WIKI/YUM,EOD/YUM
+ZBH,Zimmer Biomet Holdings,WIKI/ZBH,EOD/ZBH
+ZION,Zions Bancorp,WIKI/ZION,EOD/ZION
+ZTS,Zoetis,WIKI/ZTS,EOD/ZTS
+USDOLLAR,Federal funds effective rate,FRED/DTB3,
