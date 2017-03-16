@@ -26,7 +26,7 @@ from .constraints import BaseConstraint
 
 
 __all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
-            'SinglePeriodOpt', 'MultiPeriodOpt']
+            'SinglePeriodOpt', 'MultiPeriodOpt','ProportionalTrade']
 
 
 class BasePolicy(object):
@@ -51,7 +51,24 @@ class Hold(BasePolicy):
     """
     def get_trades(self, portfolio, t):
         return self._nulltrade(portfolio)
+    
 
+class ProportionalTrade(BasePolicy):
+    """Gets to target in given time steps."""
+    def __init__(self, targetweight, time_steps):
+        self.targetweight=targetweight
+        self.time_steps=time_steps
+        super().__init__()
+        
+    def get_trades(self, portfolio, t):
+        try:
+            missing_time_steps=len(self.time_steps)-next(i for (i,x) in enumerate(self.time_steps) if x==t)
+        except StopIteration:
+            raise Exception("ProportionalTrade can only trade on the given time steps")
+        deviation=self.targetweight-portfolio/sum(portfolio)
+        return sum(portfolio)*deviation/missing_time_steps
+
+    
 class SellAll(BasePolicy):
     """Sell all non-cash assets."""
     def get_trades(self, portfolio, t):
@@ -59,6 +76,7 @@ class SellAll(BasePolicy):
         trade.ix[-1]=0.
         return trade
 
+    
 class FixedTrade(BasePolicy):
     """Trade a fixed trade vector.
     """
