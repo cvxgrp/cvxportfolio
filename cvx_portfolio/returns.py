@@ -18,7 +18,7 @@ limitations under the License.
 import cvxpy as cvx
 import pandas as pd
 from cvx_portfolio.expression import Expression
-__all__ = ['AlphaSource', 'AlphaStream']
+__all__ = ['AlphaSource', 'MPOAlphaSource', 'AlphaStream']
 
 
 class BaseAlphaModel(Expression):
@@ -85,6 +85,29 @@ class AlphaSource(BaseAlphaModel):
             # decay = decay_init*(1 - decay_factor**K)/(1 - decay_factor)
             # alpha *= decay
         return alpha
+    
+class MPOAlphaSource(BaseAlphaModel):
+    """A single alpha estimateion.
+
+    Attributes:
+      alpha_data: A dict of serieses of return estimates.
+    """
+
+    def __init__(self, alpha_data):
+        self.alpha_data = alpha_data
+
+    def weight_expr_ahead(self, t, tau, wplus):
+        """Returns the estimate at time t of alpha at time tau.
+
+        Args:
+          t: time estimate is made.
+          wplus: An expression for holdings.
+          tau: time of alpha being estimated.
+
+        Returns:
+          An expression for the alpha.
+        """
+        return self.alpha_data[(t,tau)].values.T*wplus
 
 
 class AlphaStream(BaseAlphaModel):
