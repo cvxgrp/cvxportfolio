@@ -63,7 +63,7 @@ class MarketSimulator():
         # don't trade if volume is null
         null_trades=self.market_volumes.columns[self.market_volumes.loc[t]==0]
         if len(null_trades):
-            logging.warning('Setting stocks %s on %s to null trades (because market volumes are 0)'%\
+            logging.info('Setting stocks %s on %s to null trades (because market volumes are 0)'%\
                             (null_trades, t))
             u.loc[null_trades] = 0.
         hplus = h + u
@@ -103,7 +103,11 @@ class MarketSimulator():
         for t in simulation_times:
             logging.info('Getting trades at time %s' % t)
             start = time.time()
-            u = policy.get_trades(h, t)
+            try:
+                u = policy.get_trades(h, t)
+            except cvx.SolverError:
+                logging.warning('Solver failed on timestamp %s. Defaulting to no trades.'%t)
+                u = pd.Series(index=h.index, data=0.)
             end = time.time()
             assert (not pd.isnull(u).any())
             results.log_policy(t, end-start)
