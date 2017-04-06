@@ -153,6 +153,7 @@ class SinglePeriodOpt(BasePolicy):
                 solver_opts = {}):
 
         self.alpha_model = alpha_model
+        solver_opts=solver_opts
         assert isinstance(self.alpha_model, BaseAlphaModel)
 
         super().__init__()
@@ -198,7 +199,7 @@ class SinglePeriodOpt(BasePolicy):
             cvx.Maximize(alpha_term - sum(costs)),
             [cvx.sum_entries(z) == 0] + constraints)
         try:
-            prob.solve(solver=self.solver, verbose=False)
+            prob.solve(solver=self.solver, **self.solver_opts)
 
             if prob.status == 'unbounded':
                 logging.error('The problem is unbounded. Defaulting to no trades')
