@@ -20,3 +20,11 @@ If you wish to cite cvx_portfolio, please use:
     url          = {http://stanford.edu/~boyd/papers/cvx_portfolio.html},
 }
 ```
+
+Installation
+------------
+
+To install the package (Linux/Mac) run
+```
+pip install git+git://github.com/cvxgrp/cvx_portfolio
+```
