@@ -1,14 +1,14 @@
-Cvx_portfolio
+CVXPortfolio
 =============
 
-Cvx_portfolio is a toolset for (convex) portfolio optimization and simulation,
-based on our paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
+CVXPortfolio (ConVeX Portfolio Optimization and Simulation)
+is a toolset based on our paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
 It is written in Python 3, its major dependencies are [CVXPY](https://github.com/cvxgrp/cvxpy)
 and [Pandas](https://github.com/pandas-dev/pandas).
 
 See the [examples](examples/) for basic usage.
 
-If you wish to cite cvx_portfolio, please use:
+If you wish to cite CVXPortfolio, please use:
 ```
 @article{BBDKKNS:17
     author       = {S. Boyd and E. Busseti and S. Diamond and R. Kahn and K. Koo and P. Nystrup and J. Speth},
@@ -26,5 +26,5 @@ Installation
 
 To install the package (Linux/Mac) run
 ```
-pip install git+git://github.com/cvxgrp/cvx_portfolio
+pip install git+git://github.com/cvxgrp/cvxportfolio
 ```
