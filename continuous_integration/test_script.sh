@@ -16,4 +16,4 @@ if [[ "$COVERAGE" == "true" ]]; then
 else
     export WITH_COVERAGE=""
 fi
-nosetests $WITH_COVERAGE cvx_portfolio
+nosetests $WITH_COVERAGE cvxportfolio

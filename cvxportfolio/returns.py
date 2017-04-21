@@ -17,7 +17,7 @@ limitations under the License.
 
 import cvxpy as cvx
 import pandas as pd
-from cvx_portfolio.expression import Expression
+from cvxportfolio.expression import Expression
 __all__ = ['AlphaSource', 'MPOAlphaSource', 'AlphaStream']
 
 
