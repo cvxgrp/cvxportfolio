@@ -6,7 +6,7 @@ is a toolset based on our paper [Multi-Period Trading via Convex Optimization](h
 It is written in Python 3, its major dependencies are [CVXPY](https://github.com/cvxgrp/cvxpy)
 and [Pandas](https://github.com/pandas-dev/pandas).
 
-See the [examples](examples/) for basic usage.
+See the [examples](https://github.com/cvxgrp/cvxportfolio/tree/master/examples) for basic usage.
 
 If you wish to cite CVXPortfolio, please use:
 ```
