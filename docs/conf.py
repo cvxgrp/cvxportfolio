@@ -49,8 +49,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'cvxportfolio'
-copyright = '2017, Enzo Busseti, Steven Diamond'
-author = 'Enzo Busseti, Steven Diamond'
+copyright = '2017, Enzo Busseti, Steven Diamond, Stephen Boyd'
+author = 'Enzo Busseti, Steven Diamond, Stephen Boyd'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -91,7 +91,14 @@ html_theme = 'alabaster'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    'github_user': 'cvxgrp',
+    'github_repo': 'cvxportfolio',
+    'github_button': 'true',
+    'travis_button': 'true',
+    'analytics_id': 'UA-57212131-3',
+    'show_powered_by': 'false',
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
