@@ -11,7 +11,7 @@ See the [examples](https://github.com/cvxgrp/cvxportfolio/tree/master/examples) 
 If you wish to cite CVXPortfolio, please use:
 ```
 @article{BBDKKNS:17
-    author       = {S. Boyd and E. Busseti and S. Diamond and R. Kahn and K. Koo and P. Nystrup and J. Speth},
+    author       = {S. Boyd and E. Busseti and S. Diamond and R. Kahn and K. Koh and P. Nystrup and J. Speth},
     title        = {Multi-Period Trading via Convex Optimization},
     journal      = {Foundations and Trends in Optimization},
     year         = {2017},
