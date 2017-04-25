@@ -21,12 +21,9 @@ import copy
 import pandas as pd
 import numpy as np
 
-from ..returns import AlphaSource, MarketReturns
+from cvxportfolio import AlphaSource, TcostModel, HcostModel
 from .base_test import BaseTest
-from ..costs import TcostModel, HcostModel
-from ..simulator import MarketSimulator
-from ..policies import Hold
-from ..result import SimulationResult
+from cvxportfolio import MarketSimulator, Hold, SimulationResult
 
 DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
 
@@ -38,10 +35,9 @@ class TestSimulator(BaseTest):
             pickle.load(f)
         self.volume['cash']=np.NaN
         self.portfolio = pd.Series(index = self.returns.columns, data=1E6)
-        returns_model = MarketReturns(self.returns)
         self.tcost_term = TcostModel(self.volume, self.sigma, self.a, self.b, cash_key='cash')
         self.hcost_term = HcostModel(self.s, cash_key='cash')
-        self.Simulator = MarketSimulator(returns_model,  self.volume, costs=[self.tcost_term, self.hcost_term])
+        self.Simulator = MarketSimulator(self.returns,  self.volume, costs=[self.tcost_term, self.hcost_term])
 
     def test_propag(self):
         """Test propagation of portfolio."""

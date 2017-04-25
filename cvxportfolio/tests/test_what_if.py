@@ -22,11 +22,8 @@ import numpy as np
 import pandas as pd
 import copy
 
-from cvxportfolio import simulator, portfolio
-from cvxportfolio.costs import HcostModel, TcostModel
-from cvxportfolio.policy import SinglePeriodOpt
-from cvxportfolio.returns import AlphaSource, AlphaStream, MarketReturns
-from cvxportfolio.risks import FullSigma
+from cvxportfolio import simulator, HcostModel, TcostModel, SinglePeriodOpt
+from cvxportfolio import AlphaSource, AlphaStream, FullSigma
 from .base_test import BaseTest
 
 DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
@@ -56,12 +53,12 @@ class TestWhatIf(BaseTest):
         pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model, hcost_model], [],
                               solver=cvx.ECOS)
 
-        returns_model = MarketReturns(self.returns)
         tcost = TcostModel(self.volume, self.sigma, self.a, self.b)
         hcost = HcostModel(self.s)
-        market_sim = simulator.MarketSimulator(returns_model, costs=[tcost, hcost])
+        market_sim = simulator.MarketSimulator(self.returns,
+        self.volume, costs=[tcost, hcost])
 
-        p_0 = portfolio.Portfolio(pd.Series(index=self.universe, data=1E6))
+        p_0 =pd.Series(index=self.universe, data=1E6)
         noisy = market_sim.run_backtest(p_0, self.returns.index[1:10], pol)
         # linear fit attribution
         attr = market_sim.attribute(noisy, pol,
@@ -101,12 +98,12 @@ class TestWhatIf(BaseTest):
         pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model, hcost_model], [],
                               solver=cvx.ECOS)
 
-        returns_model = MarketReturns(self.returns)
         tcost = TcostModel(self.volume, self.sigma, self.a, self.b)
         hcost = HcostModel(self.s)
-        market_sim = simulator.MarketSimulator(returns_model, costs=[tcost, hcost])
+        market_sim = simulator.MarketSimulator(self.returns,
+        self.volume, costs=[tcost, hcost])
 
-        p_0 = portfolio.Portfolio(pd.Series(index=self.universe, data=1E6))
+        p_0 = pd.Series(index=self.universe, data=1E6)
         noisy = market_sim.run_backtest(p_0, self.returns.index[1:10], pol)
         # Select tcosts.
 
@@ -150,12 +147,11 @@ class TestWhatIf(BaseTest):
         pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model, hcost_model], [],
                               solver=cvx.ECOS)
 
-        returns_model = MarketReturns(self.returns)
         tcost = TcostModel(self.volume, self.sigma, self.a, self.b)
         hcost = HcostModel(self.s)
-        market_sim = simulator.MarketSimulator(returns_model, costs=[tcost, hcost])
+        market_sim = simulator.MarketSimulator(self.returns, costs=[tcost, hcost])
 
-        p_0 = portfolio.Portfolio(pd.Series(index=self.universe, data=1E6))
+        p_0 = pd.Series(index=self.universe, data=1E6)
         noisy = market_sim.run_backtest(p_0, self.returns.index[1:10], pol)
         # Select tcosts.
 
