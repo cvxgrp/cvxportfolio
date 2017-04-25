@@ -14,7 +14,6 @@ setup(
     zip_safe=False,
     description='ConVeX Portfolio Optimization and Simulation toolset.',
     install_requires=["pandas",
-                      "pytables",
                       "numpy",
                       "matplotlib",
                       "cvxpy"],
