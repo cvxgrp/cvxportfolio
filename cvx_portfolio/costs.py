@@ -106,11 +106,12 @@ class TcostModel(BaseCost):
       nonlin_coeff: A dataframe of coefficients for the nonlinear cost.
       power: The nonlinear tcost power.
     """
-    def __init__(self, volume, sigma, spread, nonlin_coeff, power=1.5, cash_key='cash'):
+    def __init__(self, volume, sigma, spread, nonlin_coeff, power=1.5, nonlin_term=True, cash_key='cash'):
         self.volume = volume[volume.columns.difference([cash_key])]
         self.sigma = sigma[sigma.columns.difference([cash_key])]
         self.spread = spread[spread.columns.difference([cash_key])]
         self.nonlin_coeff = nonlin_coeff[nonlin_coeff.columns.difference([cash_key])]
+        self.nonlin_term=nonlin_term
         self.power = power
         self.cash_key = cash_key
         super().__init__()
@@ -148,13 +149,12 @@ class TcostModel(BaseCost):
             constr.append(z[locator]==0)
         tmp.loc[tmp.isnull()] = 0.
 
-        self.expression = cvx.mul_elemwise(self.spread.loc[t].values, z_abs) + \
-            cvx.mul_elemwise(tmp.values, (z_abs)**self.power)
+        self.expression = z_abs.T*self.spread.loc[t].values
+        if self.nonlin_term:
+            self.expression+=((z_abs)**self.power).T*tmp.values
 
-        res= cvx.sum_entries(self.expression)
-
-        assert (res.is_convex())
-        return res, constr
+        assert (self.expression)
+        return self.expression, constr
 
     def value_expr(self, t, h_plus, u):
         # TODO figure out why calling weight_expr is buggy
