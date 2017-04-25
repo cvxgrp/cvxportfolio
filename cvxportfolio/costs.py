@@ -56,7 +56,7 @@ class HcostModel(BaseCost):
 
     def __init__(self, borrow_costs, dividends=None, cash_key = 'cash'):
         self.borrow_costs = borrow_costs[borrow_costs.columns.difference([cash_key])]
-        self.dividends = None if not dividends else dividends[dividends.columns.difference([cash_key])]
+        self.dividends = None if dividends is None else dividends[dividends.columns.difference([cash_key])]
         self.cash_key = cash_key
         super(HcostModel, self).__init__()
 
@@ -188,4 +188,5 @@ class TcostModel(BaseCost):
         """Returns the estimate at time t of tcost over given period.
         """
         K = (tau_end - tau_start).days
-        return self.weight_expr(t, None, z / K, value) * K
+        tcost, constr= self.weight_expr(t, None, z / K, value)
+        return tcost * K, constr

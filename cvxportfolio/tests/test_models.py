@@ -74,22 +74,15 @@ class TestModels(BaseTest):
 
         # with exp decay
         w = cvx.Variable(len(self.universe))
-        source = AlphaSource(self.returns, half_life=2)
+        source = AlphaSource(self.returns, gamma_decay=2)
         t = self.times[1]
-        td = pd.Timedelta('1 days')
         tau = self.times[3]
         diff = (tau - t).days
         w.value = np.ones(len(self.universe))
         alpha_t = source.weight_expr(t, w)
-        alpha_tau = source.weight_expr_ahead(t, (tau,tau+td), w)
-        decay = 2**(-diff/2)
+        alpha_tau = source.weight_expr_ahead(t, tau, w)
+        decay = diff**(-2)
         self.assertAlmostEqual(alpha_tau.value, decay*alpha_t.value)
-
-        alpha = 0
-        for i in range(3):
-            alpha += source.weight_expr_ahead(t, tau+i*td, w)
-        alpha_range = source.weight_expr_ahead(t, (tau, tau+3*td), w)
-        self.assertAlmostEqual(alpha.value, alpha_range.value)
 
     def test_tcost(self):
         """Test tcost model.
@@ -101,35 +94,36 @@ class TestModels(BaseTest):
         z = np.arange(n) - n/2
         z_var = cvx.Variable(n)
         z_var.value = z
-        tcost = model.weight_expr(t, None, z_var, value)
+        tcost,_ = model.weight_expr(t, None, z_var, value)
         est_tcost_lin = np.abs(z[:-1]).dot(self.a.loc[t].values)
         self.assertAlmostEqual(tcost.value, est_tcost_lin)
 
         model = TcostModel(self.volume, self.sigma, self.a*0, self.b, power=2)
-        tcost = model.weight_expr(t, None, z_var, value)
+        tcost,_ = model.weight_expr(t, None, z_var, value)
         coeff = self.b.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])
         est_tcost_nonlin = np.square(z[:-1]).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
 
         model = TcostModel(self.volume, self.sigma, self.a*0, self.b, power=1.5)
-        tcost = model.weight_expr(t, None, z_var, value)
+        tcost,_ = model.weight_expr(t, None, z_var, value)
         coeff = self.b.loc[t] * self.sigma.loc[t] * np.sqrt(value / self.volume.loc[t])
         est_tcost_nonlin = np.power(np.abs(z[:-1]), 1.5).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
 
         model = TcostModel(self.volume, self.sigma, self.a, self.b)
-        tcost = model.weight_expr(t, None, z_var, value)
+        tcost,_ = model.weight_expr(t, None, z_var, value)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin + est_tcost_lin)
 
         # with tau
         model = TcostModel(self.volume, self.sigma, self.a, self.b)
         tau = self.times[2]
-        tcost = model.weight_expr_ahead(t, tau, None, z_var, value)
+        tcost,_ = model.weight_expr_ahead(t, tau, None, z_var, value)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin + est_tcost_lin)
 
         tau = t + 10*pd.Timedelta('1 days')
-        tcost_tau = model.est_period(t, t, tau, None, z_var, value)
-        tcost_t = model.weight_expr(t, None, z_var / 10, value) * 10
+        tcost_tau, _ = model.est_period(t, t, tau, None, z_var, value)
+        tcost_t,_ = model.weight_expr(t, None, z_var / 10, value)
+        tcost_t *=10
         self.assertAlmostEqual(tcost_tau.value, tcost_t.value)
 
     def test_hcost(self):
@@ -140,18 +134,18 @@ class TestModels(BaseTest):
         wplus = cvx.Variable(n)
         wplus.value = np.arange(n) - n/2
         t = self.times[1]
-        model = HcostModel(self.s, div*0)
-        hcost = model.weight_expr(t, wplus, None, None)
+        model = HcostModel(self.s)
+        hcost,_ = model.weight_expr(t, wplus, None, None)
         bcost = np.dot(wplus[:-1].value.T, self.s.loc[t].values)
         self.assertAlmostEqual(hcost.value, bcost)
 
         model = HcostModel(self.s*0, div)
-        hcost = model.weight_expr(t, wplus, None, None)
+        hcost,_ = model.weight_expr(t, wplus, None, None)
         divs = np.dot(wplus[:-1].value.T, div.loc[t].values)
         self.assertAlmostEqual(-hcost.value, divs)
 
         model = HcostModel(self.s, div)
-        hcost = model.weight_expr(t, wplus, None, None)
+        hcost,_ = model.weight_expr(t, wplus, None, None)
         self.assertAlmostEqual(hcost.value, bcost - divs)
 
     def test_hold_constrs(self):
