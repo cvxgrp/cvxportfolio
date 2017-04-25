@@ -111,7 +111,7 @@ class SqrtSigma(BaseRiskModel):
 
     def _estimate(self, t, wplus, z, value):
         # TODO make sure pandas + cvxpy works
-        self.expression = cvx.sum_squares(np.dot(self.sigma_sqrt.values, wplus))
+        self.expression = cvx.sum_squares(wplus.T*self.sigma_sqrt.values)
         return self.expression
 
 
@@ -129,7 +129,7 @@ class FactorModelSigma(BaseRiskModel):
     def _estimate(self, t, wplus, z, value):
         self.expression = cvx.sum_squares(cvx.mul_elemwise(np.sqrt(locator(self.idiosync, t).values),
                                              wplus)) + \
-                             cvx.quad_form(np.dot(locator(self.exposures, t).values, wplus),
+                             cvx.quad_form(wplus.T*locator(self.exposures, t).values,
                                                  locator(self.factor_Sigma, t).values)
         return self.expression
 
