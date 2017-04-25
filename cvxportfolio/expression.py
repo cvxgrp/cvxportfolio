@@ -32,7 +32,6 @@ class Expression(object):
         """
         return self.weight_expr(t, w_plus, z, value)
 
-    @abstractmethod
     def value_expr(self, t, h_plus, u):
         """Returns the expression at time t, using value representation.
 
