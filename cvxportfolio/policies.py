@@ -51,15 +51,15 @@ class Hold(BasePolicy):
     """
     def get_trades(self, portfolio, t):
         return self._nulltrade(portfolio)
-    
+
 
 class ProportionalTrade(BasePolicy):
     """Gets to target in given time steps."""
     def __init__(self, targetweight, time_steps):
         self.targetweight=targetweight
         self.time_steps=time_steps
-        super().__init__()
-        
+        super(ProportionalTrade, self).__init__()
+
     def get_trades(self, portfolio, t):
         try:
             missing_time_steps=len(self.time_steps)-next(i for (i,x) in enumerate(self.time_steps) if x==t)
@@ -68,7 +68,7 @@ class ProportionalTrade(BasePolicy):
         deviation=self.targetweight-portfolio/sum(portfolio)
         return sum(portfolio)*deviation/missing_time_steps
 
-    
+
 class SellAll(BasePolicy):
     """Sell all non-cash assets."""
     def get_trades(self, portfolio, t):
@@ -76,7 +76,7 @@ class SellAll(BasePolicy):
         trade.ix[-1]=0.
         return trade
 
-    
+
 class FixedTrade(BasePolicy):
     """Trade a fixed trade vector.
     """
@@ -90,7 +90,7 @@ class FixedTrade(BasePolicy):
         self.tradeweight = tradeweight
         assert(self.tradevec is None or sum(self.tradevec)==0.)
         assert(self.tradeweight is None or sum(self.tradeweight)==0.)
-        super().__init__()
+        super(FixedTrade, self).__init__()
 
     def get_trades(self, portfolio, t):
         if self.tradevec is not None:
@@ -115,7 +115,7 @@ class PeriodicRebalance(BaseRebalance):
         """
         self.target = target
         self.period = period
-        super().__init__()
+        super(PeriodicRebalance, self).__init__()
 
     def is_start_period(self, t):
         result = not getattr(t, self.period) == getattr(self.last_t, self.period) \
@@ -134,7 +134,7 @@ class AdaptiveRebalance(BaseRebalance):
     def __init__(self, target, tracking_error):
         self.target = target
         self.tracking_error = tracking_error
-        super().__init__()
+        super(AdaptiveRebalance, self).__init__()
 
 
     def get_trades(self, portfolio, t):
@@ -156,7 +156,7 @@ class SinglePeriodOpt(BasePolicy):
         solver_opts=solver_opts
         assert isinstance(self.alpha_model, BaseAlphaModel)
 
-        super().__init__()
+        super(SinglePeriodOpt, self).__init__()
 
         for cost in costs:
             assert isinstance(cost, BaseCost)
@@ -246,7 +246,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
         self.trading_times=trading_times
         # Should there be a constraint that the final portfolio is the bmark?
         self.terminal_weights = terminal_weights
-        super().__init__(*args, **kwargs)
+        super(MultiPeriodOpt, self).__init__(*args, **kwargs)
 
     def get_trades(self, portfolio, t):
 

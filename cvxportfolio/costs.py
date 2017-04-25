@@ -58,7 +58,7 @@ class HcostModel(BaseCost):
         self.borrow_costs = borrow_costs[borrow_costs.columns.difference([cash_key])]
         self.dividends = None if not dividends else dividends[dividends.columns.difference([cash_key])]
         self.cash_key = cash_key
-        super().__init__()
+        super(HcostModel, self).__init__()
 
     def _estimate(self, t, w_plus, z, value):
         ## TODO make expression a vector not a scalar (like tcost)
@@ -114,7 +114,7 @@ class TcostModel(BaseCost):
         self.nonlin_term=nonlin_term
         self.power = power
         self.cash_key = cash_key
-        super().__init__()
+        super(TcostModel, self).__init__()
 
 
     def _estimate(self, t, w_plus, z, value):

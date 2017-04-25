@@ -38,7 +38,7 @@ class BaseRiskModel(BaseCost):
 
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop('w_bench', 0.)
-        super().__init__()
+        super(BaseRiskModel, self).__init__()
         self.gamma_half_life = kwargs.pop('gamma_half_life', np.inf)
 
     def weight_expr(self, t, w_plus, z, value):
