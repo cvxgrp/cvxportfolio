@@ -1,5 +1,5 @@
 """
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, Blackrock Inc.
+Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -142,12 +142,12 @@ class TestModels(BaseTest):
         t = self.times[1]
         model = HcostModel(self.s, div*0)
         hcost = model.weight_expr(t, wplus, None, None)
-        bcost = wplus[:-1].value.T @ self.s.loc[t].values
+        bcost = np.dot(wplus[:-1].value.T, self.s.loc[t].values)
         self.assertAlmostEqual(hcost.value, bcost)
 
         model = HcostModel(self.s*0, div)
         hcost = model.weight_expr(t, wplus, None, None)
-        divs = wplus[:-1].value.T @ div.loc[t].values
+        divs = np.dot(wplus[:-1].value.T, div.loc[t].values)
         self.assertAlmostEqual(-hcost.value, divs)
 
         model = HcostModel(self.s, div)

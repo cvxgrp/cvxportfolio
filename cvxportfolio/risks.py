@@ -1,5 +1,5 @@
 """
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, Blackrock Inc.
+Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -111,7 +111,7 @@ class SqrtSigma(BaseRiskModel):
 
     def _estimate(self, t, wplus, z, value):
         # TODO make sure pandas + cvxpy works
-        self.expression = cvx.sum_squares(self.sigma_sqrt.values @ wplus)
+        self.expression = cvx.sum_squares(np.dot(self.sigma_sqrt.values, wplus))
         return self.expression
 
 
@@ -129,7 +129,7 @@ class FactorModelSigma(BaseRiskModel):
     def _estimate(self, t, wplus, z, value):
         self.expression = cvx.sum_squares(cvx.mul_elemwise(np.sqrt(locator(self.idiosync, t).values),
                                              wplus)) + \
-                             cvx.quad_form(locator(self.exposures, t).values @ wplus,
+                             cvx.quad_form(np.dot(locator(self.exposures, t).values, wplus),
                                                  locator(self.factor_Sigma, t).values)
         return self.expression
 

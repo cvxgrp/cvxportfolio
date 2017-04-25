@@ -1,5 +1,5 @@
 """
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, Blackrock Inc.
+Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,9 +84,9 @@ class HcostModel(BaseCost):
         return self._estimate(t,w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
-        self.last_cost= -self.borrow_costs.loc[t].values.T @ np.minimum(0,h_plus.values[:-1])
+        self.last_cost= np.dot(-self.borrow_costs.loc[t].values.T, np.minimum(0,h_plus.values[:-1]))
         if self.dividends is not None:
-            self.last_cost -= self.dividends.loc[t].values.T @ h_plus.values[:-1]
+            self.last_cost -= np.dot(self.dividends.loc[t].values.T, h_plus.values[:-1])
         return self.last_cost
 
     def optimization_log(self,t):

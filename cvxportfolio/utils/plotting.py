@@ -1,5 +1,5 @@
 """
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, Blackrock Inc.
+Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,14 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-__version__ = "0.0.1"
-from .simulator import MarketSimulator
-from .result import SimulationResult
-from .policies import *
-from .constraints import *
-from .utils import *
-from .costs import TcostModel, HcostModel
-from .returns import *
-from .risks import (FullSigma, EmpSigma, SqrtSigma,
-                    FactorModelSigma, RobustFactorModelSigma,
-                    RobustSigma, WorstCaseRisk)
+
+import matplotlib.pyplot as plt
+
+def plot_what_if(time, true_results, alt_results):
+    true_results.value.plot(label=true_results.pol_name)
+    for result in alt_results:
+        result.value.plot(label=result.pol_name, linestyle="--")
+    plt.axvline(x=time, linestyle=":")

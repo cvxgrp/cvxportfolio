@@ -1,5 +1,5 @@
 """
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, Blackrock Inc.
+Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@ import numpy as np
 import pandas as pd
 import copy
 
-from cvx_portfolio import simulator, portfolio
-from cvx_portfolio.costs import HcostModel, TcostModel
-from cvx_portfolio.policy import SinglePeriodOpt
-from cvx_portfolio.returns import AlphaSource, AlphaStream, MarketReturns
-from cvx_portfolio.risks import FullSigma
+from cvxportfolio import simulator, portfolio
+from cvxportfolio.costs import HcostModel, TcostModel
+from cvxportfolio.policy import SinglePeriodOpt
+from cvxportfolio.returns import AlphaSource, AlphaStream, MarketReturns
+from cvxportfolio.risks import FullSigma
 from .base_test import BaseTest
 
 DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
