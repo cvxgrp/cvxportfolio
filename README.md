@@ -3,7 +3,7 @@ CVXPortfolio
 
 CVXPortfolio (ConVeX Portfolio Optimization and Simulation)
 is a toolset based on our paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
-It is written in Python 3, its major dependencies are [CVXPY](https://github.com/cvxgrp/cvxpy)
+It is written in Python, its major dependencies are [CVXPY](https://github.com/cvxgrp/cvxpy)
 and [Pandas](https://github.com/pandas-dev/pandas).
 
 See the [examples](https://github.com/cvxgrp/cvxportfolio/tree/master/examples) for basic usage.
