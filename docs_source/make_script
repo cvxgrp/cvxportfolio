@@ -1,0 +1,5 @@
+#!/bin/bash
+make html
+cp ../docs/CNAME html/
+rm -r ../docs
+mv html ../docs
