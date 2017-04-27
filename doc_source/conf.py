@@ -85,13 +85,9 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-import alabaster
-
 table_styling_embed_css = False
+html_theme = 'alabaster'
 
-html_theme_path = [alabaster.get_path(), "../themes"]
-extensions += ['alabaster']
-html_theme = 'cvxpy_alabaster'
 html_sidebars = {
    '**': [
        'about.html', 'navigation.html', 'searchbox.html',
