@@ -24,7 +24,4 @@ If you wish to cite CVXPortfolio, please use:
 Installation
 ------------
 
-To install the package run
-```
-pip install git+git://github.com/cvxgrp/cvxportfolio
-```
+We're actively developing on this repo, feel free to clone it. We'll provide pip packages soon.
