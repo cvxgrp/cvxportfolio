@@ -102,6 +102,7 @@ html_theme_options = {
     'github_user': 'cvxgrp',
     'github_repo': 'cvxportfolio',
     'github_button': 'true',
+    'github_banner': True,
     'travis_button': 'true',
     'analytics_id': 'UA-57212131-3',
     'show_powered_by': 'false',
