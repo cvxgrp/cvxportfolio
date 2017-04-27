@@ -22,7 +22,6 @@ CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond,
    intro/index
 
 .. toctree::
-    :maxdepth: 1
     :hidden:
 
    documentation/index

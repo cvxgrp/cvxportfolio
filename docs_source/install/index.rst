@@ -6,13 +6,13 @@ Install Guide
 
 1. Install `Anaconda`_.
 
-2. Install ``cvxpy`_ with ``conda``. 
+2. Install `cvxpy`_ with ``conda``. 
 
    ::
 
       conda install -c cvxgrp cvxpy
 
-3. Install ``CVXPortfolio`` with ``pip`_. 
+3. Install ``CVXPortfolio`` with `pip`_. 
 
    ::
 
