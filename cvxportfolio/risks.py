@@ -81,7 +81,7 @@ class FullSigma(BaseRiskModel):
         try:
             self.expression = cvx.quad_form(wplus, locator(self.Sigma, t))
         except TypeError:
-            self.expression = cvx.quad_form(wplus, locator(self.Sigma.values, t))
+            self.expression = cvx.quad_form(wplus, locator(self.Sigma, t).values)
         return self.expression
 
 
