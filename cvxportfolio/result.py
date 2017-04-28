@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-
+from __future__ import print_function
 import numpy as np
 import pandas as pd
 import copy
@@ -57,6 +57,21 @@ class SimulationResult():
         self.cash_key = cash_key
         self.simulator = simulator
         self.policy = policy
+
+
+    def summary(self):
+        print(self._summary_string())
+        
+
+    def _summary_string(self):
+        res=''
+        res+='Portfolio return: '+'%.2f%%'%(self.returns.mean()*100*self.PPY)+'\n'
+        res+='Excess return: '+'%.2f%%'%(self.excess_returns.mean()*100*self.PPY)+'\n'
+        res+='Excess risk: '+'%.2f%%'%(self.excess_returns.std()*100*np.sqrt(self.PPY))+'\n'
+        res+='Sharpe ratio: '+'%.2f'%self.sharpe_ratio+'\n'
+        res+='Max. drawdown: '+'%.2f%%'%self.max_drawdown+'\n'
+        res+='Turnover: '+'%.2f%%'%(self.turnover.mean()*100*self.PPY)
+        return res
 
 
     def log_data(self, name, t, entry):

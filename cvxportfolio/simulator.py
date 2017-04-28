@@ -34,11 +34,13 @@ from .costs import BaseCost
 class MarketSimulator():
     logger = None
 
-    def __init__(self, market_returns, market_volumes, costs, cash_key='cash'):
+    def __init__(self, market_returns, costs, market_volumes=None, cash_key='cash'):
         """Initialize market simulator with market returns object and cost objects."""
         self.market_returns = market_returns
-        self.market_volumes = market_volumes[market_volumes.columns.difference([cash_key])]
-        #assert (isinstance(self.market_returns, MarketReturns))
+        if market_volumes is not None:
+            self.market_volumes = market_volumes[market_volumes.columns.difference([cash_key])]
+        else:
+            self.market_volumes = None
 
         self.costs = costs
         for cost in self.costs:
@@ -60,12 +62,15 @@ class MarketSimulator():
             u: trades vector with simulated cash balance
         """
         assert (u.index.equals(h.index))
-        # don't trade if volume is null
-        null_trades=self.market_volumes.columns[self.market_volumes.loc[t]==0]
-        if len(null_trades):
-            logging.info('Setting stocks %s on %s to null trades (because market volumes are 0)'%\
-                            (null_trades, t))
-            u.loc[null_trades] = 0.
+
+        if self.market_volumes is not None:
+            # don't trade if volume is null
+            null_trades=self.market_volumes.columns[self.market_volumes.loc[t]==0]
+            if len(null_trades):
+                logging.info('Setting stocks %s on %s to null trades (because market volumes are 0)'%\
+                                (null_trades, t))
+                u.loc[null_trades] = 0.
+
         hplus = h + u
         costs = [cost.value_expr(t, h_plus=hplus, u=u) for cost in self.costs]
         for cost in costs:
