@@ -1,0 +1,24 @@
+language: python
+virtualenv:
+  system_site_packages: true
+env:
+  global:
+    - LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libgfortran.so.3
+  matrix:
+    - DISTRIB="conda" PYTHON_VERSION="2.7" INSTALL_ATLAS="true"
+      COVERAGE="true" 
+    - DISTRIB="conda" PYTHON_VERSION="3.6" INSTALL_ATLAS="true"
+      COVERAGE="true" 
+sudo: required
+install: source continuous_integration/install.sh
+script:
+  - bash continuous_integration/test_script.sh
+  - flake8 .
+after_success:
+    - if [[ "$COVERAGE" == "true" ]]; then coveralls; fi
+cache: apt
+addons:
+  apt:
+    packages:
+    - gfortran
+    - libgfortran3

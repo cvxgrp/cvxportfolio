@@ -21,7 +21,6 @@ conda update --yes conda
 conda create -n testenv --yes python=$PYTHON_VERSION pip nose pandas
 source activate testenv
 conda install --yes -c cvxgrp cvxpy matplotlib
-pip install pandas-datareader
 pip install flake8
 
 if [[ "$COVERAGE" == "true" ]]; then

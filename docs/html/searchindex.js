@@ -1,1 +1,0 @@
-Search.setIndex({docnames:["index"],envversion:51,filenames:["index.rst"],objects:{},objnames:{},objtypes:{},terms:{boyd:0,busseti:0,design:0,diamond:0,enzo:0,from:0,implement:0,index:0,input:0,librari:0,modul:0,optim:0,page:0,portfolio:0,python:0,search:0,simul:0,stephen:0,steven:0},titles:["Welcome to CVXPortfolio"],titleterms:{cvxportfolio:0,indic:0,tabl:0,welcom:0}})
