@@ -23,7 +23,7 @@ import pandas as pd
 import copy
 
 from cvxportfolio import simulator, HcostModel, TcostModel, SinglePeriodOpt
-from cvxportfolio import AlphaSource, AlphaStream, FullSigma
+from cvxportfolio import AlphaSource, MultipleReturnsForecasts, FullSigma
 from .base_test import BaseTest
 
 DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
@@ -45,7 +45,7 @@ class TestWhatIf(BaseTest):
         # Alpha source
         alpha_sources = [AlphaSource(self.returns, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
-        alpha_model = AlphaStream(alpha_sources, weights)
+        alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         emp_Sigma = np.cov(self.returns.as_matrix().T)
         risk_model = FullSigma(emp_Sigma, gamma=100.)
         tcost_model = TcostModel(self.volume, self.sigma, self.a, self.b)
@@ -77,7 +77,7 @@ class TestWhatIf(BaseTest):
         # Residual always 0.
         alpha_sources = [AlphaSource(self.returns*0, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
-        alpha_model = AlphaStream(alpha_sources, weights)
+        alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         pol = copy.copy(pol)
         pol.alpha_model = alpha_model
         attr = market_sim.attribute(noisy, pol,
@@ -90,7 +90,7 @@ class TestWhatIf(BaseTest):
         # Alpha source
         alpha_sources = [AlphaSource(self.returns, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
-        alpha_model = AlphaStream(alpha_sources, weights)
+        alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         emp_Sigma = np.cov(self.returns.as_matrix().T)
         risk_model = FullSigma(emp_Sigma, gamma=100.)
         tcost_model = TcostModel(self.volume, self.sigma, self.a, self.b)
@@ -126,7 +126,7 @@ class TestWhatIf(BaseTest):
         # Residual always 0.
         alpha_sources = [AlphaSource(self.returns*0, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
-        alpha_model = AlphaStream(alpha_sources, weights)
+        alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         pol = copy.copy(pol)
         pol.alpha_model = alpha_model
         attr = market_sim.attribute(noisy, pol, selector,
@@ -139,7 +139,7 @@ class TestWhatIf(BaseTest):
         # Alpha source
         alpha_sources = [AlphaSource(self.returns, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
-        alpha_model = AlphaStream(alpha_sources, weights)
+        alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         emp_Sigma = np.cov(self.returns.as_matrix().T)
         risk_model = FullSigma(emp_Sigma, gamma=100.)
         tcost_model = TcostModel(self.volume, self.sigma, self.a, self.b)
@@ -175,7 +175,7 @@ class TestWhatIf(BaseTest):
         # Residual always 0.
         alpha_sources = [AlphaSource(self.returns*0, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
-        alpha_model = AlphaStream(alpha_sources, weights)
+        alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         pol = copy.copy(pol)
         pol.alpha_model = alpha_model
         attr = market_sim.attribute(noisy, pol, selector,

@@ -21,7 +21,7 @@ import logging
 import cvxpy as cvx
 
 from .costs import BaseCost
-from .returns import BaseAlphaModel
+from .returns import BaseReturnsModel
 from .constraints import BaseConstraint
 
 
@@ -154,7 +154,7 @@ class SinglePeriodOpt(BasePolicy):
 
         self.alpha_model = alpha_model
         solver_opts=solver_opts
-        assert isinstance(self.alpha_model, BaseAlphaModel)
+        assert isinstance(self.alpha_model, BaseReturnsModel)
 
         super(SinglePeriodOpt, self).__init__()
 

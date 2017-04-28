@@ -18,15 +18,17 @@ limitations under the License.
 import cvxpy as cvx
 import pandas as pd
 from cvxportfolio.expression import Expression
-__all__ = ['AlphaSource', 'MPOAlphaSource', 'AlphaStream']
+from .utils.data_management import *
+
+__all__ = ['ReturnsForecast', 'MPOReturnsForecast', 'MultipleReturnsForecasts']
 
 
-class BaseAlphaModel(Expression):
+class BaseReturnsModel(Expression):
     pass
 
 
-class AlphaSource(BaseAlphaModel):
-    """A single alpha estimateion.
+class ReturnsForecast(BaseReturnsModel):
+    """A single return forecast.
 
     Attributes:
       alpha_data: A dataframe of return estimates.
@@ -34,11 +36,11 @@ class AlphaSource(BaseAlphaModel):
       half_life: Number of days for alpha auto-correlation to halve.
     """
 
-    def __init__(self, alpha_data, delta_data=None, gamma_decay=None, name=None):
-        self.alpha_data = alpha_data
-        # TODO input check goes here
-        assert (not self.alpha_data.isnull().values.any())
-        self.delta_data = delta_data
+    def __init__(self, returns, delta=0., gamma_decay=None, name=None):
+        null_checker(returns)
+        self.returns = returns
+        null_checker(delta)
+        self.delta = delta
         self.gamma_decay = gamma_decay
         self.name = name
 
@@ -53,12 +55,16 @@ class AlphaSource(BaseAlphaModel):
         Returns:
           An expression for the alpha.
         """
-        # idx = self.alpha_data.index.get_loc(t, method='pad')
-        # alpha_vec = self.alpha_data.iloc[idx]
-        alpha = self.alpha_data.loc[t].values.T*wplus
-        if self.delta_data is not None:
-            alpha -= self.delta_data.loc[t].values.T*cvx.abs(wplus)
-        return alpha
+        try:
+            alpha = cvx.mul_elemwise(time_locator(self.returns,t),wplus)
+        except TypeError:
+            alpha = cvx.mul_elemwise(time_locator(self.returns,t).values,wplus)
+        try:
+            alpha -= cvx.mul_elemwise(time_locator(self.delta,t),cvx.abs(wplus))
+        except TypeError:
+            alpha -= cvx.mul_elemwise(time_locator(self.delta,t).values,cvx.abs(wplus))
+
+        return cvx.sum_entries(alpha)
 
     def weight_expr_ahead(self, t, tau, wplus):
         """Returns the estimate at time t of alpha at time tau.
@@ -71,22 +77,13 @@ class AlphaSource(BaseAlphaModel):
         Returns:
           An expression for the alpha.
         """
-        # if isinstance(tau, tuple):
-        #     tau_start, tau_end = tau
-        # else:
-        #     tau_start = tau
-        #     tau_end = tau + pd.Timedelta('1 days')
+
         alpha = self.weight_expr(t, wplus)
         if tau > t  and self.gamma_decay is not None:
             alpha *= (tau-t).days**(-self.gamma_decay)
-            # decay_init = 2**(-(tau_start - t).days/self.half_life)
-            # K = (tau_end - tau_start).days ## in all our calls K = 1 because tau is not a tuple
-            # decay_factor = 2**(-1/self.half_life)
-            # decay = decay_init*(1 - decay_factor**K)/(1 - decay_factor)
-            # alpha *= decay
         return alpha
-    
-class MPOAlphaSource(BaseAlphaModel):
+
+class MPOReturnsForecast(BaseReturnsModel):
     """A single alpha estimateion.
 
     Attributes:
@@ -110,7 +107,7 @@ class MPOAlphaSource(BaseAlphaModel):
         return self.alpha_data[(t,tau)].values.T*wplus
 
 
-class AlphaStream(BaseAlphaModel):
+class MultipleReturnsForecasts(BaseReturnsModel):
     """A weighted combination of alpha sources.
 
     Attributes:

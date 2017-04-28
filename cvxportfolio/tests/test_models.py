@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from ..costs import HcostModel, TcostModel
-from ..returns import AlphaSource, AlphaStream
+from ..returns import ReturnsForecast, MultipleReturnsForecasts
 from ..constraints import (LongOnly, LeverageLimit,LongCash, MaxTrade)
 from .base_test import BaseTest
 
@@ -44,13 +44,13 @@ class TestModels(BaseTest):
         """
         # Alpha source
         w = cvx.Variable(len(self.universe))
-        source = AlphaSource(self.returns)
+        source = ReturnsForecast(self.returns)
         t = self.times[1]
         alpha = source.weight_expr(t, w)
         w.value = np.ones(len(self.universe))
         self.assertAlmostEqual(alpha.value, self.returns.loc[t].sum())
         # with delta
-        source = AlphaSource(self.returns, self.returns/10)
+        source = ReturnsForecast(self.returns, self.returns/10)
         alpha = source.weight_expr(t, w)
         tmp = np.ones(len(self.universe))
         tmp[0] = -1
@@ -60,13 +60,13 @@ class TestModels(BaseTest):
         self.assertAlmostEqual(alpha.value, value)
 
         # alpha stream
-        source1 = AlphaSource(self.returns)
-        source2 = AlphaSource(-self.returns)
-        stream = AlphaStream([source1, source2], [1,1])
+        source1 = ReturnsForecast(self.returns)
+        source2 = ReturnsForecast(-self.returns)
+        stream = MultipleReturnsForecasts([source1, source2], [1,1])
         alpha = stream.weight_expr(t, w)
         self.assertEqual(alpha.value, 0)
 
-        stream = AlphaStream([source1, source2], [-1,1])
+        stream = MultipleReturnsForecasts([source1, source2], [-1,1])
         alpha = stream.weight_expr(t, w)
         value = self.returns.loc[t].sum()
         w.value = np.ones(len(self.universe))
@@ -74,7 +74,7 @@ class TestModels(BaseTest):
 
         # with exp decay
         w = cvx.Variable(len(self.universe))
-        source = AlphaSource(self.returns, gamma_decay=2)
+        source = ReturnsForecast(self.returns, gamma_decay=2)
         t = self.times[1]
         tau = self.times[3]
         diff = (tau - t).days
@@ -128,7 +128,7 @@ class TestModels(BaseTest):
         tcost,_ = model.weight_expr_ahead(t, tau, None, z_var, value)
         value_expr=model.value_expr(t, None, u)
         self.assertAlmostEqual(tcost.value, value_expr/value)
-        
+
 
     def test_tcost(self):
         """Test tcost model.

@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 import cvxpy as cvx
 
-from .returns import AlphaStream
+from .returns import MultipleReturnsForecasts
 
 from .result import SimulationResult
 from .costs import BaseCost
@@ -193,7 +193,7 @@ class MarketSimulator():
                 return result.v - result.initial_portfolio.v
 
         alpha_stream = policy.alpha_model
-        assert isinstance(alpha_stream, AlphaStream)
+        assert isinstance(alpha_stream, MultipleReturnsForecasts)
         times = true_results.h.index
         weights = alpha_stream.weights
         assert np.sum(weights) == 1
@@ -203,7 +203,7 @@ class MarketSimulator():
         perturb_pols = []
         for idx in range(len(alpha_sources)):
             new_pol = copy.copy(policy)
-            new_pol.alpha_model = AlphaStream(alpha_sources,
+            new_pol.alpha_model = MultipleReturnsForecasts(alpha_sources,
                                               Wmat[idx, :])
             perturb_pols.append(new_pol)
         # Simulate
