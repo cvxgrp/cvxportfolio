@@ -106,14 +106,19 @@ class TcostModel(BaseCost):
       nonlin_coeff: A dataframe of coefficients for the nonlinear cost.
       power: The nonlinear tcost power.
     """
-    def __init__(self, volume, sigma, spread, nonlin_coeff, power=1.5, nonlin_term=True, cash_key='cash'):
-        self.volume = volume[volume.columns.difference([cash_key])]
-        self.sigma = sigma[sigma.columns.difference([cash_key])]
+    def __init__(self, spread, nonlin_coeff=None, volume=None, sigma=None,
+                 power=1.5, nonlin_term=True, cash_key='cash'):
         self.spread = spread[spread.columns.difference([cash_key])]
-        self.nonlin_coeff = nonlin_coeff[nonlin_coeff.columns.difference([cash_key])]
         self.nonlin_term=nonlin_term
-        self.power = power
         self.cash_key = cash_key
+        if volume is not None:
+            self.volume = volume[volume.columns.difference([cash_key])]
+        else:
+            self.volume = None
+        if self.nonlin_term:
+            self.sigma = sigma[sigma.columns.difference([cash_key])]
+            self.nonlin_coeff = nonlin_coeff[nonlin_coeff.columns.difference([cash_key])]
+            self.power = power
         super(TcostModel, self).__init__()
 
 
@@ -136,18 +141,19 @@ class TcostModel(BaseCost):
             z = z[:-1]  # TODO fix when cvxpy pandas ready
 
         z_abs = cvx.abs(z)
-        tmp = self.nonlin_coeff.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])**(self.power - 1)
 
-        assert (z.size[0] == tmp.size)
-        assert (z.size[0] == self.spread.loc[t].size)
-
-        # if volume was 0 don't trade
-        no_trade = tmp.index[tmp.isnull()]
         constr = []
-        for ticker in no_trade:
-            locator=tmp.index.get_loc(ticker)
-            constr.append(z[locator]==0)
-        tmp.loc[tmp.isnull()] = 0.
+
+        if self.nonlin_term:
+            tmp = self.nonlin_coeff.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])**(self.power - 1)
+            assert (z.size[0] == tmp.size)
+            # if volume was 0 don't trade
+            no_trade = tmp.index[tmp.isnull()]
+            for ticker in no_trade:
+                locator=tmp.index.get_loc(ticker)
+                constr.append(z[locator]==0)
+            tmp.loc[tmp.isnull()] = 0.
+        assert (z.size[0] == self.spread.loc[t].size)
 
         self.expression = z_abs.T*self.spread.loc[t].values
         if self.nonlin_term:
@@ -162,7 +168,9 @@ class TcostModel(BaseCost):
         u_normalized = u/value
         abs_u = np.abs(u_normalized[:-1])
 
-        tcosts = self.spread.loc[t]*abs_u + self.nonlin_coeff.loc[t] * \
+        tcosts = self.spread.loc[t]*abs_u
+        if self.nonlin_term:
+            tcosts+= self.nonlin_coeff.loc[t] * \
                  self.sigma.loc[t] * (abs_u**self.power)/((self.volume.loc[t]/value)**(self.power-1))
 
         self.tmp_tcosts=tcosts*value
