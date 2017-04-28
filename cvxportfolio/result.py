@@ -61,16 +61,21 @@ class SimulationResult():
 
     def summary(self):
         print(self._summary_string())
-        
+
 
     def _summary_string(self):
         res=''
+        res+='Number of periods: %d'%self.u.shape[0]+'\n'
+        res+='Initial timestamp: %s'%self.h.index[0]+'\n'
+        res+='Final timestamp: %s'%self.h.index[-1]+'\n'
         res+='Portfolio return: '+'%.2f%%'%(self.returns.mean()*100*self.PPY)+'\n'
         res+='Excess return: '+'%.2f%%'%(self.excess_returns.mean()*100*self.PPY)+'\n'
         res+='Excess risk: '+'%.2f%%'%(self.excess_returns.std()*100*np.sqrt(self.PPY))+'\n'
         res+='Sharpe ratio: '+'%.2f'%self.sharpe_ratio+'\n'
         res+='Max. drawdown: '+'%.2f%%'%self.max_drawdown+'\n'
-        res+='Turnover: '+'%.2f%%'%(self.turnover.mean()*100*self.PPY)
+        res+='Turnover: '+'%.2f%%'%(self.turnover.mean()*100*self.PPY)+'\n'
+        res+='Average policy time: %.3f sec'%self.policy_time.mean()+'\n'
+        res+='Average simulator time: %.3f sec'%self.simulation_time.mean()
         return res
 
 

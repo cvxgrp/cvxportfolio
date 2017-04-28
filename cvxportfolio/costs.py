@@ -64,7 +64,6 @@ class HcostModel(BaseCost):
         super(HcostModel, self).__init__()
 
     def _estimate(self, t, w_plus, z, value):
-        ## TODO make expression a vector not a scalar (like tcost)
         """Estimate holding costs.
 
         Args:
@@ -98,11 +97,10 @@ class HcostModel(BaseCost):
         self.last_cost -= h_plus.iloc[:-1] * \
                 time_locator(self.dividends,t)
 
-        self.last_cost = sum(self.last_cost )
-        return self.last_cost
+        return sum(self.last_cost)
 
     def optimization_log(self,t):
-        return self.expression.value
+        return self.expression.value.A1
 
     def simulation_log(self,t):
         return self.last_cost
@@ -159,9 +157,10 @@ class TcostModel(BaseCost):
                         (value / time_locator(self.volume,t))**(self.power - 1)
 
         # no trade conditions
-        if np.isscalar(second_term) and np.isnan(second_term):
-            constr+=[z==0]
-            second_term=0
+        if np.isscalar(second_term):
+            if np.isnan(second_term):
+                constr+=[z==0]
+                second_term=0
         else: # it is a pd series
             no_trade = second_term.index[second_term.isnull()]
             second_term[no_trade]=0
