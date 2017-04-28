@@ -19,6 +19,7 @@ import pandas as pd
 import numpy as np
 import copy
 from .expression import Expression
+from .utils.data_management import *
 
 __all__ = ['HcostModel', 'TcostModel']
 
@@ -54,10 +55,11 @@ class HcostModel(BaseCost):
       dividends: A dataframe of dividends.
     """
 
-    def __init__(self, borrow_costs, dividends=None, cash_key = 'cash'):
-        self.borrow_costs = borrow_costs[borrow_costs.columns.difference([cash_key])]
-        self.dividends = None if dividends is None else dividends[dividends.columns.difference([cash_key])]
-        self.cash_key = cash_key
+    def __init__(self, borrow_costs, dividends=0.):
+        self.borrow_costs = borrow_costs
+        self.dividends = dividends
+        if null_checker(self.borrow_costs) or null_checker(self.dividends):
+            raise Exception('the arguments contain NaNs') ## TODO write decorator for this
         super(HcostModel, self).__init__()
 
     def _estimate(self, t, w_plus, z, value):
@@ -74,9 +76,10 @@ class HcostModel(BaseCost):
             w_plus = w_plus.values
         except AttributeError:
             w_plus = w_plus[:-1]  # TODO fix when cvxpy pandas ready
-        self.expression = self.borrow_costs.loc[t].values.T*cvx.neg(w_plus)
-        if self.dividends is not None:
-            self.expression -= self.dividends.loc[t].values*w_plus
+
+        n=len(w_plus)
+        self.expression = vector_locator(self.borrow_costs,t,n).values.T*cvx.neg(w_plus)
+        self.expression -= vector_locator(self.dividends,t,n).values.T*w_plus
 
         return self.expression, []
 
@@ -84,9 +87,11 @@ class HcostModel(BaseCost):
         return self._estimate(t,w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
-        self.last_cost= np.dot(-self.borrow_costs.loc[t].values.T, np.minimum(0,h_plus.values[:-1]))
-        if self.dividends is not None:
-            self.last_cost -= np.dot(self.dividends.loc[t].values.T, h_plus.values[:-1])
+        n=len(h_plus)-1
+        self.last_cost= np.dot(-vector_locator(self.borrow_costs,t,n).values.T,
+                                np.minimum(0,h_plus.values[:-1]))
+        self.last_cost -= np.dot(vector_locator(self.dividends,t,n).values.T,
+                                h_plus.values[:-1])
         return self.last_cost
 
     def optimization_log(self,t):
@@ -106,9 +111,10 @@ class TcostModel(BaseCost):
       nonlin_coeff: A dataframe of coefficients for the nonlinear cost.
       power: The nonlinear tcost power.
     """
-    def __init__(self, spread, nonlin_coeff=None, volume=None, sigma=None,
-                 power=1.5, nonlin_term=True, cash_key='cash'):
-        self.spread = spread[spread.columns.difference([cash_key])]
+    def __init__(self, spread, nonlin_coeff=0., volume=1., sigma=0.,
+                 power=1.5):
+        self.spread = spread
+        ## up to here...
         self.nonlin_term=nonlin_term
         self.cash_key = cash_key
         if volume is not None:
