@@ -15,7 +15,7 @@ CVXPortfolio provides functionality for implementing trading strategies using th
 The package relies on `Pandas`_ for data handling (e.g., prices, returns, volumes).
 Our simple :ref:`examples <examples>` show how `Quandl`_ can be used to import open source financial data, but any other source can be used instead.
 
-CVXPortfolio is released under a permissive open source :ref:`license <license>`. It includes basic functionality for simulation and simple or complex optimization based trading. Users can easily extend the package with additional trading strategies.
+CVXPortfolio is released under a permissive open source :ref:`license <lic>`. It includes basic functionality for simulation and simple or complex optimization based trading. Users can easily extend the package with additional trading strategies.
 
 CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond, with input from Stephen Boyd and the authors of `the paper <http://stanford.edu/~boyd/papers/cvx_portfolio.html>`_.
 
