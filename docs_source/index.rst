@@ -19,6 +19,8 @@ CVXPortfolio is released under a permissive open source :ref:`license <lic>`. It
 
 CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond, with input from Stephen Boyd and the authors of `the paper <http://stanford.edu/~boyd/papers/cvx_portfolio.html>`_.
 
+CVXPortfolio is not quite ready yet, but if you want to jump into the development branch `feel free <https://github.com/cvxgrp/cvxportfolio>`_.
+
 .. toctree::
    :hidden:
 
