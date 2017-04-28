@@ -7,6 +7,7 @@ Welcome to CVXPortfolio
 ========================================
 
 CVXPortfolio is a Python library for portfolio simulation and optimization.
+It is built on top of the optimization package `CVXPY`_ and the open-source financial data source `Quandl`_.
 
 CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond,
  with input from Stephen Boyd.
@@ -41,3 +42,6 @@ CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond,
 
    license/index
 
+
+.. _Quandl: https://www.quandl.com 
+.. _cvxpy: https://www.cvxpy.org/
