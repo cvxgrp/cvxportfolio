@@ -21,7 +21,7 @@ import copy
 import pandas as pd
 import numpy as np
 
-from cvxportfolio import matrix_locator, vector_locator, null_checker
+from cvxportfolio import time_matrix_locator, time_locator, null_checker
 from .base_test import BaseTest
 
 DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
@@ -37,22 +37,22 @@ class TestUtils(BaseTest):
 
     def test_null_checker(self):
         """Test null check."""
-        self.assertTrue(null_checker(np.nan))
-        self.assertFalse(null_checker(1.))
-        self.assertFalse(null_checker(self.returns))
+        self.assertRaises(ValueError, null_checker, np.nan)
+        self.assertIsNone(null_checker(1.))
+        self.assertIsNone(null_checker(self.returns))
         self.returns.iloc[0,0] = np.NaN
-        self.assertTrue(null_checker(self.returns))
+        self.assertRaises(ValueError, null_checker, self.returns)
 
-    def test_vector_locator(self):
-        """Test vector locator."""
+    def test_time_locator(self):
+        """Test time locator."""
         t=self.returns.index[10]
         n=len(self.returns.columns)
         self.assertTrue(np.allclose(self.returns.loc[t],
-                                vector_locator(self.returns,t,n)))
-        self.assertTrue(np.allclose([23]*n,
-                                vector_locator(23,t,n)))
+                                time_locator(self.returns,t)))
+        self.assertTrue(np.allclose(23,
+                                time_locator(23,t)))
         self.assertTrue(np.allclose(self.returns.loc[t],
-                                vector_locator(self.returns.loc[t],t,n)))
+                                time_locator(self.returns.loc[t],t)))
 
     def test_matrix_locator(self):
         """Test matrix locator."""
@@ -61,6 +61,6 @@ class TestUtils(BaseTest):
                     data=[[1,2,3],[4,5,6],[7,8,9]])
         pn=pd.Panel({'1':df,'2':df*2})
         self.assertTrue(np.allclose(df.values,
-                                    matrix_locator(df, t=12)))
+                                    time_matrix_locator(df, t=12)))
         self.assertTrue(np.allclose(df.values*2,
-                                    matrix_locator(pn, t='2')))
+                                    time_matrix_locator(pn, t='2')))

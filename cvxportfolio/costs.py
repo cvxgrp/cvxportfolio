@@ -55,11 +55,12 @@ class HcostModel(BaseCost):
       dividends: A dataframe of dividends.
     """
 
+
     def __init__(self, borrow_costs, dividends=0.):
+        null_checker(borrow_costs)
         self.borrow_costs = borrow_costs
+        null_checker(dividends)
         self.dividends = dividends
-        if null_checker(self.borrow_costs) or null_checker(self.dividends):
-            raise Exception('the arguments contain NaNs') ## TODO write decorator for this
         super(HcostModel, self).__init__()
 
     def _estimate(self, t, w_plus, z, value):
@@ -77,21 +78,27 @@ class HcostModel(BaseCost):
         except AttributeError:
             w_plus = w_plus[:-1]  # TODO fix when cvxpy pandas ready
 
-        n=len(w_plus)
-        self.expression = vector_locator(self.borrow_costs,t,n).values.T*cvx.neg(w_plus)
-        self.expression -= vector_locator(self.dividends,t,n).values.T*w_plus
+        try:
+            self.expression=cvx.mul_elemwise(time_locator(self.borrow_costs,t),cvx.neg(w_plus))
+        except TypeError:
+            self.expression=cvx.mul_elemwise(time_locator(self.borrow_costs,t).values,cvx.neg(w_plus))
+        try:
+            self.expression-=cvx.mul_elemwise(time_locator(self.dividends,t),w_plus)
+        except TypeError:
+            self.expression-=cvx.mul_elemwise(time_locator(self.dividends,t).values, w_plus)
 
-        return self.expression, []
+        return cvx.sum_entries(self.expression), []
 
     def _estimate_ahead(self, t, tau, w_plus, z, value):
         return self._estimate(t,w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
-        n=len(h_plus)-1
-        self.last_cost= np.dot(-vector_locator(self.borrow_costs,t,n).values.T,
-                                np.minimum(0,h_plus.values[:-1]))
-        self.last_cost -= np.dot(vector_locator(self.dividends,t,n).values.T,
-                                h_plus.values[:-1])
+        self.last_cost = -np.minimum(0,h_plus.iloc[:-1]) * \
+                time_locator(self.borrow_costs,t)
+        self.last_cost -= h_plus.iloc[:-1] * \
+                time_locator(self.dividends,t)
+
+        self.last_cost = sum(self.last_cost )
         return self.last_cost
 
     def optimization_log(self,t):
@@ -107,24 +114,23 @@ class TcostModel(BaseCost):
     Attributes:
       volume: A dataframe of volumes.
       sigma: A dataframe of daily volatities.
-      spread: A dataframe of bid-ask spreads.
+      half_spread: A dataframe of bid-ask spreads divided by 2.
       nonlin_coeff: A dataframe of coefficients for the nonlinear cost.
       power: The nonlinear tcost power.
     """
-    def __init__(self, spread, nonlin_coeff=0., volume=1., sigma=0.,
+
+    def __init__(self, half_spread, nonlin_coeff=0., sigma=0., volume=1.,
                  power=1.5):
-        self.spread = spread
-        ## up to here...
-        self.nonlin_term=nonlin_term
-        self.cash_key = cash_key
-        if volume is not None:
-            self.volume = volume[volume.columns.difference([cash_key])]
-        else:
-            self.volume = None
-        if self.nonlin_term:
-            self.sigma = sigma[sigma.columns.difference([cash_key])]
-            self.nonlin_coeff = nonlin_coeff[nonlin_coeff.columns.difference([cash_key])]
-            self.power = power
+        null_checker(half_spread)
+        self.half_spread = half_spread
+        null_checker(sigma)
+        self.sigma = sigma
+        null_checker(volume)
+        self.volume=volume
+        null_checker(nonlin_coeff)
+        self.nonlin_coeff = nonlin_coeff
+        null_checker(power)
+        self.power = power
         super(TcostModel, self).__init__()
 
 
@@ -146,40 +152,38 @@ class TcostModel(BaseCost):
         except AttributeError:
             z = z[:-1]  # TODO fix when cvxpy pandas ready
 
-        z_abs = cvx.abs(z)
-
         constr = []
 
-        if self.nonlin_term:
-            tmp = self.nonlin_coeff.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])**(self.power - 1)
-            assert (z.size[0] == tmp.size)
-            # if volume was 0 don't trade
-            no_trade = tmp.index[tmp.isnull()]
-            for ticker in no_trade:
-                locator=tmp.index.get_loc(ticker)
-                constr.append(z[locator]==0)
-            tmp.loc[tmp.isnull()] = 0.
-        assert (z.size[0] == self.spread.loc[t].size)
+        second_term = time_locator(self.nonlin_coeff,t) * \
+                        time_locator(self.sigma,t) * \
+                        (value / time_locator(self.volume,t))**(self.power - 1)
 
-        self.expression = z_abs.T*self.spread.loc[t].values
-        if self.nonlin_term:
-            self.expression+=((z_abs)**self.power).T*tmp.values
+        # no trade conditions
+        if np.isscalar(second_term) and np.isnan(second_term):
+            constr+=[z==0]
+            second_term=0
+        else: # it is a pd series
+            no_trade = second_term.index[second_term.isnull()]
+            second_term[no_trade]=0
+            constr += [z[second_term.index.get_loc(tick)]==0 for tick in no_trade]
 
-        assert (self.expression)
-        return self.expression, constr
+        try:
+            self.expression=cvx.mul_elemwise(time_locator(self.half_spread,t),cvx.abs(z))
+        except TypeError:
+            self.expression=cvx.mul_elemwise(time_locator(self.half_spread,t).values,cvx.abs(z))
+        try:
+            self.expression+=cvx.mul_elemwise(second_term,cvx.abs(z)**self.power)
+        except TypeError:
+            self.expression+=cvx.mul_elemwise(second_term.values,cvx.abs(z)**self.power)
+
+        return cvx.sum_entries(self.expression), constr
 
     def value_expr(self, t, h_plus, u):
-        # TODO figure out why calling weight_expr is buggy
-        value=sum(h_plus)
-        u_normalized = u/value
-        abs_u = np.abs(u_normalized[:-1])
 
-        tcosts = self.spread.loc[t]*abs_u
-        if self.nonlin_term:
-            tcosts+= self.nonlin_coeff.loc[t] * \
-                 self.sigma.loc[t] * (abs_u**self.power)/((self.volume.loc[t]/value)**(self.power-1))
-
-        self.tmp_tcosts=tcosts*value
+        u_nc=u.iloc[:-1]
+        self.tmp_tcosts=np.abs(u_nc)*time_locator(self.half_spread,t) + \
+            time_locator(self.nonlin_coeff,t)*time_locator(self.sigma,t)* \
+            np.abs(u_nc)**self.power/(time_locator(self.volume,t)**(self.power - 1))
 
         return self.tmp_tcosts.sum()
 
