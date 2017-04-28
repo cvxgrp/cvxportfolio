@@ -3,4 +3,7 @@
 Documentation
 =============
 
-TODO docs go here.
+.. toctree::
+
+   simulator/index
+   policies/index

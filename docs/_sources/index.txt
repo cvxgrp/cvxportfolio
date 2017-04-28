@@ -6,38 +6,30 @@
 Welcome to CVXPortfolio
 ========================================
 
-CVXPortfolio is a Python library for portfolio simulation and optimization.
+CVXPortfolio is a package for simulating and optimizing multi-period investment based on the framework outlined in the paper `Multi-Period Trading via Convex Optimization <http://stanford.edu/~boyd/papers/cvx_portfolio.html>`_.
 
-CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond,
- with input from Stephen Boyd.
+The simulator is able to simulate the evolution of a portfolio, taking into account asset returns, transaction costs, and holding costs. The package includes simple but reasonable models of transaction cost based on asset bid-ask spread, volume, and volatility.
+
+CVXPortfolio provides functionality for implementing trading strategies using the convex optimization package `CVXPY`_.
+
+The package relies on `Pandas`_ for data handling (e.g., prices, returns, volumes).
+Our simple :ref:`examples <examples>` show how `Quandl`_ can be used to import open source financial data, but any other source can be used instead.
+
+CVXPortfolio is released under a permissive open source :ref:`license <license>`. It includes basic functionality for simulation and simple or complex optimization based trading. Users can easily extend the package with additional trading strategies.
+
+CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond, with input from Stephen Boyd and the authors of `the paper <http://stanford.edu/~boyd/papers/cvx_portfolio.html>`_.
 
 .. toctree::
    :hidden:
 
    install/index
-
-.. toctree::
-   :hidden:
-
    intro/index
-
-.. toctree::
-   :hidden:
-
    documentation/index
-
-.. toctree::
-   :hidden:
-
    examples/index
-
-.. toctree::
-   :hidden:
-
    citing/index
-
-.. toctree::
-   :hidden:
-
    license/index
 
+
+.. _Quandl: https://www.quandl.com 
+.. _CVXPY: https://www.cvxpy.org/
+.. _Pandas: https://pandas.pydata.org

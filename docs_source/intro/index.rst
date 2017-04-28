@@ -1,6 +1,6 @@
 .. _intro:
 
-Introduction
-============
+Hello World
+===========
 
-TODO put the hello world docs here.
+TODO hello world notebook.
