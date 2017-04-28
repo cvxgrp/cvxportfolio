@@ -34,4 +34,4 @@ CVXPortfolio is not quite ready yet, but if you want to jump into the developmen
 
 .. _Quandl: https://www.quandl.com 
 .. _CVXPY: https://www.cvxpy.org/
-.. _Pandas: https://pandas.pydata.org
+.. _Pandas: http://pandas.pydata.org
