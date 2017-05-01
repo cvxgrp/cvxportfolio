@@ -52,8 +52,8 @@ class TestOptimizer(BaseTest):
         tcost_model = TcostModel(0, self.b, self.sigma, self.volume, power=2)
         hcost_model = HcostModel(self.s*0, self.s)
         pol = SinglePeriodOpt(alpha_model,
-                            [gamma*risk_model, tcost_model, hcost_model],
-                            [], solver=cvx.ECOS)
+                              [gamma*risk_model, tcost_model, hcost_model],
+                              [], solver=cvx.ECOS)
         t = self.times[1]
         p_0 = pd.Series(index=self.universe, data=1E6)
         z = pol.get_trades(p_0, t)

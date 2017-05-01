@@ -31,6 +31,7 @@ from .costs import BaseCost
 # TODO update benchmark weights (?)
 # Also could try jitting with numba.
 
+
 class MarketSimulator():
     logger = None
 
@@ -38,7 +39,8 @@ class MarketSimulator():
         """Initialize market simulator with market returns object and cost objects."""
         self.market_returns = market_returns
         if market_volumes is not None:
-            self.market_volumes = market_volumes[market_volumes.columns.difference([cash_key])]
+            self.market_volumes = market_volumes[market_volumes.columns.difference([
+                                                                                   cash_key])]
         else:
             self.market_volumes = None
 
@@ -47,7 +49,6 @@ class MarketSimulator():
             assert (isinstance(cost, BaseCost))
 
         self.cash_key = cash_key
-
 
     def propagate(self, h, u, t):
         """Propagates the portfolio forward over time period t, given trades u.
@@ -65,9 +66,9 @@ class MarketSimulator():
 
         if self.market_volumes is not None:
             # don't trade if volume is null
-            null_trades=self.market_volumes.columns[self.market_volumes.loc[t]==0]
+            null_trades = self.market_volumes.columns[self.market_volumes.loc[t] == 0]
             if len(null_trades):
-                logging.info('Setting stocks %s on %s to null trades (because market volumes are 0)'%\
+                logging.info('Setting stocks %s on %s to null trades (because market volumes are 0)' %
                              (null_trades, t))
                 u.loc[null_trades] = 0.
 
@@ -80,8 +81,9 @@ class MarketSimulator():
         u[self.cash_key] = - sum(u[u.index != self.cash_key]) - sum(costs)
         hplus[self.cash_key] = h[self.cash_key] + u[self.cash_key]
 
-        assert (hplus.index.sort_values().equals(self.market_returns.columns.sort_values()))
-        h_next =  self.market_returns.loc[t] * hplus + hplus
+        assert (hplus.index.sort_values().equals(
+            self.market_returns.columns.sort_values()))
+        h_next = self.market_returns.loc[t] * hplus + hplus
         #h_next = self.market_returns.value_expr(t, hplus)
 
         assert (not h_next.isnull().values.any())
@@ -89,7 +91,7 @@ class MarketSimulator():
         return h_next, u
 
     def run_backtest(self, initial_portfolio, start_time, end_time,
-                    policy, loglevel=logging.WARNING):
+                     policy, loglevel=logging.WARNING):
         """Backtest a single policy.
         """
         logging.basicConfig(level=loglevel)
@@ -100,8 +102,8 @@ class MarketSimulator():
         h = initial_portfolio
 
         simulation_times = self.market_returns.index[
-                (self.market_returns.index>=start_time)&
-                (self.market_returns.index<=end_time)]
+                (self.market_returns.index >= start_time) &
+                (self.market_returns.index <= end_time)]
         logging.info('Backtest started, from %s to %s' % (simulation_times[0],
                                                           simulation_times[-1]))
 
@@ -111,7 +113,8 @@ class MarketSimulator():
             try:
                 u = policy.get_trades(h, t)
             except cvx.SolverError:
-                logging.warning('Solver failed on timestamp %s. Defaulting to no trades.'%t)
+                logging.warning(
+                    'Solver failed on timestamp %s. Defaulting to no trades.' % t)
                 u = pd.Series(index=h.index, data=0.)
             end = time.time()
             assert (not pd.isnull(u).any())
@@ -123,10 +126,12 @@ class MarketSimulator():
             end = time.time()
             assert (not h.isnull().values.any())
             results.log_simulation(t=t, u=u, h_next=h,
-                risk_free_return=self.market_returns.loc[t, self.cash_key],
-                exec_time=end-start)
+                                   risk_free_return=self.market_returns.loc[t,
+                                       self.cash_key],
+                                   exec_time=end-start)
 
-        logging.info('Backtest ended, from %s to %s' % (simulation_times[0], simulation_times[-1]))
+        logging.info('Backtest ended, from %s to %s' %
+                     (simulation_times[0], simulation_times[-1]))
         return results
 
     def run_multiple_backtest(self, initial_portf, start_time, end_time, policies,
@@ -150,11 +155,11 @@ class MarketSimulator():
     def what_if(self, time, results, alt_policies, parallel=True):
         """Run alternative policies starting from given time.
         """
-        ## TODO fix
+        # TODO fix
         initial_portf = copy.copy(results.h.loc[time])
         all_times = results.h.index
         alt_results = self.run_multiple_backtest(initial_portf,
-                                                time,
+                                                 time,
                                                  all_times[-1],
                                                  alt_policies, parallel)
         for idx, alt_result in enumerate(alt_results):
@@ -168,7 +173,8 @@ class MarketSimulator():
         perturb_weights_matrix = \
             np.zeros((len(initial_weights), len(initial_weights)))
         for i in range(len(initial_weights)):
-            perturb_weights_matrix[i, :] = initial_weights / (1 - delta * initial_weights[i])
+            perturb_weights_matrix[i, :] = initial_weights / \
+                (1 - delta * initial_weights[i])
             perturb_weights_matrix[i, i] = (1 - delta) * initial_weights[i]
         return perturb_weights_matrix
 
@@ -205,11 +211,11 @@ class MarketSimulator():
         for idx in range(len(alpha_sources)):
             new_pol = copy.copy(policy)
             new_pol.alpha_model = MultipleReturnsForecasts(alpha_sources,
-                                              Wmat[idx, :])
+                                                           Wmat[idx, :])
             perturb_pols.append(new_pol)
         # Simulate
         p0 = true_results.initial_portfolio
-        alt_results = self.run_multiple_backtest(p0, times[0],times[-1],
+        alt_results = self.run_multiple_backtest(p0, times[0], times[-1],
                                                  perturb_pols, parallel)
         # Attribute.
         true_arr = selector(true_results).values
@@ -234,6 +240,7 @@ class MarketSimulator():
                             index=attr_times,
                             data=Pmat.value.T.A * wmask)
         data['residual'] = true_arr - np.matrix((weights * Pmat).value).A1
-        data['RMS error'] = np.matrix(cvx.norm(Wmat * Pmat - Rmat, 2, axis=0).value).A1
+        data['RMS error'] = np.matrix(
+            cvx.norm(Wmat * Pmat - Rmat, 2, axis=0).value).A1
         data['RMS error'] /= np.sqrt(num_sources)
         return data

@@ -43,7 +43,8 @@ class TestWhatIf(BaseTest):
         """Test attribution.
         """
         # Alpha source
-        alpha_sources = [ReturnsForecast(self.returns, name=i) for i in range(3)]
+        alpha_sources = [ReturnsForecast(
+            self.returns, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         emp_Sigma = np.cov(self.returns.as_matrix().T)
@@ -53,20 +54,21 @@ class TestWhatIf(BaseTest):
         pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model, hcost_model], [],
                               solver=cvx.ECOS)
 
-        tcost = TcostModel(self.a, self.b,self.sigma,self.volume )
+        tcost = TcostModel(self.a, self.b, self.sigma, self.volume)
         hcost = HcostModel(self.s)
         market_sim = simulator.MarketSimulator(self.returns,
-        costs=[tcost, hcost], market_volumes=self.volume)
+                                               costs=[tcost, hcost], market_volumes=self.volume)
 
-        p_0 =pd.Series(index=self.universe, data=1E6)
+        p_0 = pd.Series(index=self.universe, data=1E6)
         noisy = market_sim.run_backtest(p_0, self.returns.index[1],
-        self.returns.index[10], pol)
+                                        self.returns.index[10], pol)
         # linear fit attribution
         attr = market_sim.attribute(noisy, pol,
                                     parallel=False, fit="linear")
         base_line = noisy.v - sum(p_0)
         for i in range(3):
-            self.assertItemsAlmostEqual(attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
+            self.assertItemsAlmostEqual(
+                attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
         self.assertItemsAlmostEqual(attr['RMS error'], np.zeros(len(noisy.v)))
 
         # least-squares fit attribution
@@ -74,9 +76,11 @@ class TestWhatIf(BaseTest):
                                     parallel=False, fit="least-squares")
         base_line = noisy.v - sum(p_0)
         for i in range(3):
-            self.assertItemsAlmostEqual(attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
+            self.assertItemsAlmostEqual(
+                attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
         # Residual always 0.
-        alpha_sources = [ReturnsForecast(self.returns*0, name=i) for i in range(3)]
+        alpha_sources = [ReturnsForecast(
+            self.returns*0, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         pol = copy.copy(pol)
@@ -89,7 +93,8 @@ class TestWhatIf(BaseTest):
         """Test attributing series quantities besides profit.
         """
         # Alpha source
-        alpha_sources = [ReturnsForecast(self.returns, name=i) for i in range(3)]
+        alpha_sources = [ReturnsForecast(
+            self.returns, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         emp_Sigma = np.cov(self.returns.as_matrix().T)
@@ -102,11 +107,11 @@ class TestWhatIf(BaseTest):
         tcost = TcostModel(self.volume, self.sigma, self.a, self.b)
         hcost = HcostModel(self.s)
         market_sim = simulator.MarketSimulator(self.returns,
-        costs=[tcost, hcost], market_volumes=self.volume)
+                                               costs=[tcost, hcost], market_volumes=self.volume)
 
         p_0 = pd.Series(index=self.universe, data=1E6)
         noisy = market_sim.run_backtest(p_0, self.returns.index[1],
-        self.returns.index[10], pol)
+                                        self.returns.index[10], pol)
         # Select tcosts.
 
         def selector(result):
@@ -117,16 +122,19 @@ class TestWhatIf(BaseTest):
                                     parallel=False, fit="linear")
         base_line = noisy.leverage
         for i in range(3):
-            self.assertItemsAlmostEqual(attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
+            self.assertItemsAlmostEqual(
+                attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
         self.assertItemsAlmostEqual(attr['RMS error'], np.zeros(len(noisy.v)))
 
         # least-squares fit attribution
         attr = market_sim.attribute(noisy, pol, selector,
                                     parallel=False, fit="least-squares")
         for i in range(3):
-            self.assertItemsAlmostEqual(attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
+            self.assertItemsAlmostEqual(
+                attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
         # Residual always 0.
-        alpha_sources = [ReturnsForecast(self.returns*0, name=i) for i in range(3)]
+        alpha_sources = [ReturnsForecast(
+            self.returns*0, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         pol = copy.copy(pol)
@@ -139,21 +147,23 @@ class TestWhatIf(BaseTest):
         """Test attributing scalar quantities besides profit.
         """
         # Alpha source
-        alpha_sources = [ReturnsForecast(self.returns, name=i) for i in range(3)]
+        alpha_sources = [ReturnsForecast(
+            self.returns, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         emp_Sigma = np.cov(self.returns.as_matrix().T)
         risk_model = FullSigma(emp_Sigma)
         tcost_model = TcostModel(self.a, self.b, self.sigma, self.volume)
         hcost_model = HcostModel(self.s)
-        pol = SinglePeriodOpt(alpha_model, [100*risk_model, tcost_model, hcost_model], [])
+        pol = SinglePeriodOpt(
+            alpha_model, [100*risk_model, tcost_model, hcost_model], [])
 
         market_sim = simulator.MarketSimulator(self.returns, costs=[tcost_model,
-                                                            hcost_model])
+                                                                    hcost_model])
 
         p_0 = pd.Series(index=self.universe, data=1E6)
         noisy = market_sim.run_backtest(p_0, self.returns.index[1],
-        self.returns.index[10], pol)
+                                        self.returns.index[10], pol)
         # Select tcosts.
 
         def selector(result):
@@ -165,16 +175,19 @@ class TestWhatIf(BaseTest):
                                     parallel=False, fit="linear")
         base_line = noisy.volatility
         for i in range(3):
-            self.assertAlmostEqual(attr[i][0]/weights[i]/sum(p_0), base_line/sum(p_0))
+            self.assertAlmostEqual(
+                attr[i][0]/weights[i]/sum(p_0), base_line/sum(p_0))
         self.assertItemsAlmostEqual(attr['RMS error'], np.zeros(len(noisy.v)))
 
         # least-squares fit attribution
         attr = market_sim.attribute(noisy, pol, selector,
                                     parallel=False, fit="least-squares")
         for i in range(3):
-            self.assertAlmostEqual(attr[i][0]/weights[i]/sum(p_0), base_line/sum(p_0))
+            self.assertAlmostEqual(
+                attr[i][0]/weights[i]/sum(p_0), base_line/sum(p_0))
         # Residual always 0.
-        alpha_sources = [ReturnsForecast(self.returns*0, name=i) for i in range(3)]
+        alpha_sources = [ReturnsForecast(
+            self.returns*0, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         pol = copy.copy(pol)

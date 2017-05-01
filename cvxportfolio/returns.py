@@ -55,13 +55,16 @@ class ReturnsForecast(BaseReturnsModel):
           An expression for the alpha.
         """
         try:
-            alpha = cvx.mul_elemwise(time_locator(self.returns,t),wplus)
+            alpha = cvx.mul_elemwise(time_locator(self.returns, t), wplus)
         except TypeError:
-            alpha = cvx.mul_elemwise(time_locator(self.returns,t).values,wplus)
+            alpha = cvx.mul_elemwise(
+                time_locator(self.returns, t).values, wplus)
         try:
-            alpha -= cvx.mul_elemwise(time_locator(self.delta,t),cvx.abs(wplus))
+            alpha -= cvx.mul_elemwise(time_locator(self.delta,
+                                      t), cvx.abs(wplus))
         except TypeError:
-            alpha -= cvx.mul_elemwise(time_locator(self.delta,t).values,cvx.abs(wplus))
+            alpha -= cvx.mul_elemwise(time_locator(self.delta,
+                                      t).values, cvx.abs(wplus))
 
         return cvx.sum_entries(alpha)
 
@@ -78,9 +81,10 @@ class ReturnsForecast(BaseReturnsModel):
         """
 
         alpha = self.weight_expr(t, wplus)
-        if tau > t  and self.gamma_decay is not None:
+        if tau > t and self.gamma_decay is not None:
             alpha *= (tau-t).days**(-self.gamma_decay)
         return alpha
+
 
 class MPOReturnsForecast(BaseReturnsModel):
     """A single alpha estimateion.
@@ -103,7 +107,7 @@ class MPOReturnsForecast(BaseReturnsModel):
         Returns:
           An expression for the alpha.
         """
-        return self.alpha_data[(t,tau)].values.T*wplus
+        return self.alpha_data[(t, tau)].values.T*wplus
 
 
 class MultipleReturnsForecasts(BaseReturnsModel):
@@ -146,5 +150,6 @@ class MultipleReturnsForecasts(BaseReturnsModel):
         """
         alpha = 0
         for idx, source in enumerate(self.alpha_sources):
-            alpha += source.weight_expr_ahead(t, tau, wplus) * self.weights[idx]
+            alpha += source.weight_expr_ahead(t,
+                                              tau, wplus) * self.weights[idx]
         return alpha

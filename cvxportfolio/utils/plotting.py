@@ -17,6 +17,7 @@ limitations under the License.
 
 import matplotlib.pyplot as plt
 
+
 def plot_what_if(time, true_results, alt_results):
     true_results.value.plot(label=true_results.pol_name)
     for result in alt_results:

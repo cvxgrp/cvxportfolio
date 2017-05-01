@@ -35,13 +35,13 @@ class BaseCost(Expression):
         cost, constr = self._estimate_ahead(t, tau, w_plus, z, value)
         return self.gamma * cost, constr
 
-    def __mul__(self,other):
+    def __mul__(self, other):
         """Read the gamma parameter as a multiplication."""
-        newobj=copy.copy(self)
+        newobj = copy.copy(self)
         newobj.gamma *= other
         return newobj
 
-    def __rmul__(self,other):
+    def __rmul__(self, other):
         """Read the gamma parameter as a multiplication."""
         return self.__mul__(other)
 
@@ -53,7 +53,6 @@ class HcostModel(BaseCost):
       borrow_costs: A dataframe of borrow costs.
       dividends: A dataframe of dividends.
     """
-
 
     def __init__(self, borrow_costs, dividends=0.):
         null_checker(borrow_costs)
@@ -77,31 +76,35 @@ class HcostModel(BaseCost):
             w_plus = w_plus[:-1]  # TODO fix when cvxpy pandas ready
 
         try:
-            self.expression=cvx.mul_elemwise(time_locator(self.borrow_costs,t),cvx.neg(w_plus))
+            self.expression = cvx.mul_elemwise(
+                time_locator(self.borrow_costs, t), cvx.neg(w_plus))
         except TypeError:
-            self.expression=cvx.mul_elemwise(time_locator(self.borrow_costs,t).values,cvx.neg(w_plus))
+            self.expression = cvx.mul_elemwise(time_locator(
+                self.borrow_costs, t).values, cvx.neg(w_plus))
         try:
-            self.expression-=cvx.mul_elemwise(time_locator(self.dividends,t),w_plus)
+            self.expression -= cvx.mul_elemwise(
+                time_locator(self.dividends, t), w_plus)
         except TypeError:
-            self.expression-=cvx.mul_elemwise(time_locator(self.dividends,t).values, w_plus)
+            self.expression -= cvx.mul_elemwise(
+                time_locator(self.dividends, t).values, w_plus)
 
         return cvx.sum_entries(self.expression), []
 
     def _estimate_ahead(self, t, tau, w_plus, z, value):
-        return self._estimate(t,w_plus, z, value)
+        return self._estimate(t, w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
-        self.last_cost = -np.minimum(0,h_plus.iloc[:-1]) * \
-                time_locator(self.borrow_costs,t)
+        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * \
+                time_locator(self.borrow_costs, t)
         self.last_cost -= h_plus.iloc[:-1] * \
-        time_locator(self.dividends,t)
+            time_locator(self.dividends, t)
 
         return sum(self.last_cost)
 
-    def optimization_log(self,t):
+    def optimization_log(self, t):
         return self.expression.value.A1
 
-    def simulation_log(self,t):
+    def simulation_log(self, t):
         return self.last_cost
 
 
@@ -123,13 +126,12 @@ class TcostModel(BaseCost):
         null_checker(sigma)
         self.sigma = sigma
         null_checker(volume)
-        self.volume=volume
+        self.volume = volume
         null_checker(nonlin_coeff)
         self.nonlin_coeff = nonlin_coeff
         null_checker(power)
         self.power = power
         super(TcostModel, self).__init__()
-
 
     def _estimate(self, t, w_plus, z, value):
         """Estimate tcosts given trades.
@@ -151,58 +153,64 @@ class TcostModel(BaseCost):
 
         constr = []
 
-        second_term = time_locator(self.nonlin_coeff,t) * \
-        time_locator(self.sigma,t) * \
-        (value / time_locator(self.volume,t))**(self.power - 1)
+        second_term = time_locator(self.nonlin_coeff, t) * \
+            time_locator(self.sigma, t) * \
+            (value / time_locator(self.volume, t))**(self.power - 1)
 
         # no trade conditions
         if np.isscalar(second_term):
             if np.isnan(second_term):
-                constr+=[z==0]
-                second_term=0
-        else: # it is a pd series
+                constr += [z == 0]
+                second_term = 0
+        else:  # it is a pd series
             no_trade = second_term.index[second_term.isnull()]
-            second_term[no_trade]=0
-            constr += [z[second_term.index.get_loc(tick)]==0 for tick in no_trade]
+            second_term[no_trade] = 0
+            constr += [z[second_term.index.get_loc(tick)]
+                                                   == 0 for tick in no_trade]
 
         try:
-            self.expression=cvx.mul_elemwise(time_locator(self.half_spread,t),cvx.abs(z))
+            self.expression = cvx.mul_elemwise(
+                time_locator(self.half_spread, t), cvx.abs(z))
         except TypeError:
-            self.expression=cvx.mul_elemwise(time_locator(self.half_spread,t).values,cvx.abs(z))
+            self.expression = cvx.mul_elemwise(
+                time_locator(self.half_spread, t).values, cvx.abs(z))
         try:
-            self.expression+=cvx.mul_elemwise(second_term,cvx.abs(z)**self.power)
+            self.expression += cvx.mul_elemwise(second_term,
+                                                cvx.abs(z)**self.power)
         except TypeError:
-            self.expression+=cvx.mul_elemwise(second_term.values,cvx.abs(z)**self.power)
+            self.expression += cvx.mul_elemwise(
+                second_term.values, cvx.abs(z)**self.power)
 
         return cvx.sum_entries(self.expression), constr
 
     def value_expr(self, t, h_plus, u):
 
-        u_nc=u.iloc[:-1]
-        self.tmp_tcosts=np.abs(u_nc)*time_locator(self.half_spread,t) + \
-            time_locator(self.nonlin_coeff,t)*time_locator(self.sigma,t)* \
-            np.abs(u_nc)**self.power/(time_locator(self.volume,t)**(self.power - 1))
+        u_nc = u.iloc[:-1]
+        self.tmp_tcosts = np.abs(u_nc)*time_locator(self.half_spread, t) + \
+            time_locator(self.nonlin_coeff, t)*time_locator(self.sigma, t) * \
+            np.abs(u_nc)**self.power/ \
+                   (time_locator(self.volume, t)**(self.power - 1))
 
         return self.tmp_tcosts.sum()
 
-    def optimization_log(self,t):
+    def optimization_log(self, t):
         try:
             return self.expression.value.A1
         except AttributeError:
             return np.nan
 
-    def simulation_log(self,t):
-        ## TODO find another way
+    def simulation_log(self, t):
+        # TODO find another way
         return self.tmp_tcosts
 
     def _estimate_ahead(self, t, tau, w_plus, z, value):
         """Returns the estimate at time t of tcost at time tau.
         """
-        return self._estimate(t,w_plus, z, value)
+        return self._estimate(t, w_plus, z, value)
 
     def est_period(self, t, tau_start, tau_end, w_plus, z, value):
         """Returns the estimate at time t of tcost over given period.
         """
         K = (tau_end - tau_start).days
-        tcost, constr= self.weight_expr(t, None, z / K, value)
+        tcost, constr = self.weight_expr(t, None, z / K, value)
         return tcost * K, constr

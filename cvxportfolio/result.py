@@ -39,7 +39,7 @@ class SimulationResult():
         borrow_costs: A series of borrow costs over time.
     """
     def __init__(self, initial_portfolio, policy, cash_key, simulator,
-                simulation_times=None, PPY=252, timedelta=pd.Timedelta("1 days")):
+                 simulation_times=None, PPY=252, timedelta=pd.Timedelta("1 days")):
         """
         Initialize the result object.
 
@@ -58,44 +58,42 @@ class SimulationResult():
         self.simulator = simulator
         self.policy = policy
 
-
     def summary(self):
         print(self._summary_string())
 
-
     def _summary_string(self):
-        res=''
-        res+='Number of periods: %d'%self.u.shape[0]+'\n'
-        res+='Initial timestamp: %s'%self.h.index[0]+'\n'
-        res+='Final timestamp: %s'%self.h.index[-1]+'\n'
-        res+='Portfolio return: '+'%.2f%%'%(self.returns.mean()*100*self.PPY)+'\n'
-        res+='Excess return: '+'%.2f%%'%(self.excess_returns.mean()*100*self.PPY)+'\n'
-        res+='Excess risk: '+'%.2f%%'%(self.excess_returns.std()*100*np.sqrt(self.PPY))+'\n'
-        res+='Sharpe ratio: '+'%.2f'%self.sharpe_ratio+'\n'
-        res+='Max. drawdown: '+'%.2f%%'%self.max_drawdown+'\n'
-        res+='Turnover: '+'%.2f%%'%(self.turnover.mean()*100*self.PPY)+'\n'
-        res+='Average policy time: %.3f sec'%self.policy_time.mean()+'\n'
-        res+='Average simulator time: %.3f sec'%self.simulation_time.mean()
+        res = ''
+        res += 'Number of periods: %d' % self.u.shape[0]+'\n'
+        res += 'Initial timestamp: %s' % self.h.index[0]+'\n'
+        res += 'Final timestamp: %s' % self.h.index[-1]+'\n'
+        res += 'Portfolio return: '+ \
+            '%.2f%%' % (self.returns.mean()*100*self.PPY)+'\n'
+        res += 'Excess return: '+ \
+            '%.2f%%' % (self.excess_returns.mean()*100*self.PPY)+'\n'
+        res += 'Excess risk: '+ \
+            '%.2f%%' % (self.excess_returns.std()*100*np.sqrt(self.PPY))+'\n'
+        res += 'Sharpe ratio: '+'%.2f' % self.sharpe_ratio+'\n'
+        res += 'Max. drawdown: '+'%.2f%%' % self.max_drawdown+'\n'
+        res += 'Turnover: '+'%.2f%%' % (self.turnover.mean()*100*self.PPY)+'\n'
+        res += 'Average policy time: %.3f sec' % self.policy_time.mean()+'\n'
+        res += 'Average simulator time: %.3f sec' % self.simulation_time.mean()
         return res
-
 
     def log_data(self, name, t, entry):
         try:
             getattr(self, name).loc[t] = entry
         except AttributeError:
-            setattr(self, name, \
+            setattr(self, name,
                     (pd.Series if np.isscalar(entry) else
-                    pd.DataFrame)(index=[t],data=[entry]))
-
+                     pd.DataFrame)(index=[t], data=[entry]))
 
     def log_policy(self, t, exec_time):
         self.log_data("policy_time", t, exec_time)
-        ## TODO mpo policy requires changes in the optimization_log methods
+        # TODO mpo policy requires changes in the optimization_log methods
         if not isinstance(self.policy, MultiPeriodOpt):
             for cost in self.policy.costs:
                 self.log_data("policy_"+cost.__class__.__name__,
                               t, cost.optimization_log(t))
-
 
     def log_simulation(self, t, u, h_next, risk_free_return, exec_time):
         self.log_data("simulation_time", t, exec_time)
@@ -106,7 +104,6 @@ class SimulationResult():
             self.log_data("simulator_"+cost.__class__.__name__,
                           t, cost.simulation_log(t))
 
-
     @property
     def h(self):
         """
@@ -114,11 +111,10 @@ class SimulationResult():
 
         Infers the timestamp of last element by increasing the final timestamp.
         """
-        tmp=self.h_next.shift(1)
-        tmp.ix[0]=self.initial_portfolio
+        tmp = self.h_next.shift(1)
+        tmp.ix[0] = self.initial_portfolio
         tmp.loc[self.h_next.index[-1] + self.timedelta] = self.h_next.ix[-1]
         return tmp
-
 
     @property
     def v(self):
@@ -126,24 +122,20 @@ class SimulationResult():
         """
         return self.h.sum(axis=1)
 
-
     @property
     def profit(self):
         """The profit made, in dollars."""
         return self.v[-1] - self.v[0]
-
 
     @property
     def w(self):
         """The weights of the portfolio over time."""
         return (self.h.T / self.v).T
 
-
     @property
     def leverage(self):
         """Portfolio leverage"""
         return np.abs(self.w).sum(1)
-
 
     @property
     def volatility(self):
@@ -155,7 +147,6 @@ class SimulationResult():
         """The annualized mean portfolio return."""
         return self.PPY * np.mean(self.returns)
 
-
     @property
     def returns(self):
         """The returns R_t = (v_{t+1}-v_t)/v_t
@@ -163,19 +154,16 @@ class SimulationResult():
         val = self.v
         return pd.Series(data=val.values[1:]/val.values[:-1] - 1, index=val.index[:-1])
 
-
     @property
     def growth_rates(self):
         """The growth rate log(v_{t+1}/v_t)"""
         return np.log(self.returns + 1)
-
 
     @property
     def annual_growth_rate(self):
         """The annualized growth rate PPY/T \sum_{t=1}^T log(v_{t+1}/v_t)
         """
         return self.growth_rates.sum()*self.PPY/self.growth_rates.size
-
 
     @property
     def annual_return(self):
@@ -184,12 +172,10 @@ class SimulationResult():
         ret = self.growth_rates
         return self._growth_to_return(ret.mean())
 
-
     def _growth_to_return(self, growth):
         """Convert growth to annualized percentage return.
         """
         return 100*(np.exp(self.PPY*growth) - 1)
-
 
     def get_quarterly_returns(self, benchmark=None):
         """The annualized returns for each fiscal quarter.
@@ -198,27 +184,22 @@ class SimulationResult():
         quarters = ret.groupby(getFiscalQuarter).aggregate(np.mean)
         return self._growth_to_return(quarters)
 
-
     def get_best_quarter(self, benchmark=None):
         ret = self.get_quarterly_returns(benchmark)
         return (ret.argmax(), ret.max())
-
 
     def get_worst_quarter(self, benchmark=None):
         ret = self.get_quarterly_returns(benchmark)
         return (ret.argmin(), ret.min())
 
-
     @property
     def excess_returns(self):
         return self.returns - self.risk_free_returns
-
 
     @property
     def sharpe_ratio(self):
         return np.sqrt(self.PPY) * np.mean(self.excess_returns) / \
             np.std(self.excess_returns)
-
 
     @property
     def turnover(self):
@@ -227,13 +208,11 @@ class SimulationResult():
         noncash_trades = self.u.drop(self.cash_key, axis=1)
         return np.abs(noncash_trades).sum(axis=1)/self.v
 
-
     @property
     def trading_days(self):
         """The fraction of days with nonzero turnover.
         """
         return (self.turnover.values > 0).sum()/self.turnover.size
-
 
     @property
     def max_drawdown(self):
