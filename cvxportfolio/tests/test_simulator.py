@@ -19,11 +19,10 @@ import pickle
 import copy
 
 import pandas as pd
-import numpy as np
 
 from cvxportfolio import TcostModel, HcostModel
 from .base_test import BaseTest
-from cvxportfolio import MarketSimulator, Hold, SimulationResult
+from cvxportfolio import MarketSimulator, SimulationResult
 
 DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
 

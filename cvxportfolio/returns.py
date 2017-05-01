@@ -16,7 +16,6 @@ limitations under the License.
 
 
 import cvxpy as cvx
-import pandas as pd
 from cvxportfolio.expression import Expression
 from .utils.data_management import *
 

@@ -21,7 +21,7 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
-from ..policies import SinglePeriodOpt, MultiPeriodOpt
+from ..policies import SinglePeriodOpt
 from ..costs import HcostModel, TcostModel
 from ..returns import ReturnsForecast
 from ..risks import FullSigma

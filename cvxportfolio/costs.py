@@ -15,7 +15,6 @@ limitations under the License.
 """
 
 import cvxpy as cvx
-import pandas as pd
 import numpy as np
 import copy
 from .expression import Expression
