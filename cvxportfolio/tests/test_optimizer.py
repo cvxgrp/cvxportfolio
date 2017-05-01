@@ -23,7 +23,7 @@ import pandas as pd
 
 from ..policies import SinglePeriodOpt, MultiPeriodOpt
 from ..costs import HcostModel, TcostModel
-from ..returns import AlphaSource
+from ..returns import ReturnsForecast
 from ..risks import FullSigma
 from .base_test import BaseTest
 
@@ -46,18 +46,17 @@ class TestOptimizer(BaseTest):
         # Alpha source
         gamma = 100.
         n = len(self.universe)
-        alpha_model = AlphaSource(self.returns)
+        alpha_model = ReturnsForecast(self.returns)
         emp_Sigma = np.cov(self.returns.as_matrix().T) + np.eye(n)*1e-3
         risk_model = FullSigma(emp_Sigma)
-        tcost_model = TcostModel(self.volume, self.sigma,
-                                self.a*0, self.b, power=2)
+        tcost_model = TcostModel(0, self.b, self.sigma, self.volume, power=2)
         hcost_model = HcostModel(self.s*0, self.s)
         pol = SinglePeriodOpt(alpha_model,
                             [gamma*risk_model, tcost_model, hcost_model],
                             [], solver=cvx.ECOS)
         t = self.times[1]
         p_0 = pd.Series(index=self.universe, data=1E6)
-        z = pol.get_trades(p_0, t)  #TODO this gives an error in nosetests (MKL)
+        z = pol.get_trades(p_0, t)  
         self.assertAlmostEqual(z.sum(), 0)
         # Compare with CP calculation.
         h = z + p_0
@@ -82,7 +81,7 @@ class TestOptimizer(BaseTest):
     #     bmark.cash=1
     #     gamma = 100.
     #     n = len(self.universe)
-    #     alpha_model = AlphaSource(self.returns)
+    #     alpha_model = ReturnsForecast(self.returns)
     #     emp_Sigma = np.cov(self.returns.as_matrix().T) + np.eye(n)*1e-3
     #     risk_model = FullSigma(emp_Sigma,gamma_half_life=np.inf)
     #     tcost_model = TcostModel(self.volume, self.sigma,

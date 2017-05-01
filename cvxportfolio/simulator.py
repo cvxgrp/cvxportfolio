@@ -151,14 +151,15 @@ class MarketSimulator():
         """Run alternative policies starting from given time.
         """
         ## TODO fix
-        initial_portf = copy.copy(results.holdings.loc[time])
-        all_times = results.holdings.index
+        initial_portf = copy.copy(results.h.loc[time])
+        all_times = results.h.index
         alt_results = self.run_multiple_backtest(initial_portf,
-                                                 all_times[all_times > time],
+                                                time,
+                                                 all_times[-1],
                                                  alt_policies, parallel)
         for idx, alt_result in enumerate(alt_results):
-            alt_result.holdings.loc[time] = results.holdings.loc[time]
-            alt_result.holdings.sort_index(axis=0, inplace=True)
+            alt_result.h.loc[time] = results.h.loc[time]
+            alt_result.h.sort_index(axis=0, inplace=True)
         return alt_results
 
     @staticmethod
@@ -190,7 +191,7 @@ class MarketSimulator():
         # Default selector looks at profits.
         if selector is None:
             def selector(result):
-                return result.v - result.initial_portfolio.v
+                return result.v - sum(result.initial_portfolio)
 
         alpha_stream = policy.alpha_model
         assert isinstance(alpha_stream, MultipleReturnsForecasts)
@@ -208,7 +209,7 @@ class MarketSimulator():
             perturb_pols.append(new_pol)
         # Simulate
         p0 = true_results.initial_portfolio
-        alt_results = self.run_multiple_backtest(p0, times,
+        alt_results = self.run_multiple_backtest(p0, times[0],times[-1],
                                                  perturb_pols, parallel)
         # Attribute.
         true_arr = selector(true_results).values

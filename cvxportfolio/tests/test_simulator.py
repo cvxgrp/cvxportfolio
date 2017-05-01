@@ -21,7 +21,7 @@ import copy
 import pandas as pd
 import numpy as np
 
-from cvxportfolio import AlphaSource, TcostModel, HcostModel
+from cvxportfolio import TcostModel, HcostModel
 from .base_test import BaseTest
 from cvxportfolio import MarketSimulator, Hold, SimulationResult
 
@@ -33,11 +33,12 @@ class TestSimulator(BaseTest):
         with open(DATAFILE, 'rb') as f:
             self.returns, self.sigma, self.volume, self.a, self.b, self.s = \
             pickle.load(f)
-        self.volume['cash']=np.NaN
         self.portfolio = pd.Series(index = self.returns.columns, data=1E6)
-        self.tcost_term = TcostModel(self.volume, self.sigma, self.a, self.b, cash_key='cash')
-        self.hcost_term = HcostModel(self.s, cash_key='cash')
-        self.Simulator = MarketSimulator(self.returns,  self.volume, costs=[self.tcost_term, self.hcost_term])
+        self.tcost_term = TcostModel(self.a, self.b, self.sigma, self.volume)
+        self.hcost_term = HcostModel(self.s)
+        self.Simulator = MarketSimulator(self.returns,
+                                costs=[self.tcost_term, self.hcost_term],
+                                market_volumes=self.volume)
 
     def test_propag(self):
         """Test propagation of portfolio."""
@@ -47,9 +48,9 @@ class TestSimulator(BaseTest):
                                     cash_key='cash',simulator=self.Simulator)
         u=pd.Series(index=self.portfolio.index, data=1E4)
         h_next, u = self.Simulator.propagate(h, u=u, t=t)
-        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
+        results.log_simulation(t=t, u=u, h_next=h_next,risk_free_return=0., exec_time=0)
         self.assertAlmostEquals(results.simulator_TcostModel.sum().sum(), 157.604, 3)
-        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 0., 3)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum().sum(), 0., 3)
         self.assertAlmostEqual(sum(h_next), 28906767.251, 3)
 
     def test_propag_list(self):
@@ -60,9 +61,9 @@ class TestSimulator(BaseTest):
                                     cash_key='cash',simulator=self.Simulator)
         u = pd.Series(index=self.portfolio.index, data=[1E4]*29)
         h_next, u = self.Simulator.propagate(h,u, t=t)
-        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
+        results.log_simulation(t=t, u=u, h_next=h_next,risk_free_return=0., exec_time=0)
         self.assertAlmostEquals(results.simulator_TcostModel.sum().sum(), 157.604, 3)
-        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 0., 3)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum().sum(), 0., 3)
         self.assertAlmostEqual(sum(h_next), 28906767.251, 3)
 
     def test_propag_neg(self):
@@ -73,9 +74,9 @@ class TestSimulator(BaseTest):
                                     cash_key='cash',simulator=self.Simulator)
         u = pd.Series(index=self.portfolio.index, data=[-1E4]*29)
         h_next, u =self.Simulator.propagate(h,u,t=t)
-        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
+        results.log_simulation(t=t, u=u, h_next=h_next,risk_free_return=0., exec_time=0)
         self.assertAlmostEquals(results.simulator_TcostModel.sum().sum(), 157.604, 3)
-        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 0., 3)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum().sum(), 0., 3)
         self.assertAlmostEqual(sum(h_next), 28908611.931, 3)
 
     def test_hcost_pos(self):
@@ -87,8 +88,8 @@ class TestSimulator(BaseTest):
                                     cash_key='cash',simulator=self.Simulator)
         u=pd.Series(index=self.portfolio.index, data=1E4)
         h_next, u = self.Simulator.propagate(h,u, t=t)
-        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
-        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 0.)
+        results.log_simulation(t=t, u=u, h_next=h_next,risk_free_return=0., exec_time=0)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum().sum(), 0.)
 
     def test_hcost_neg(self):
         """Test hcost function, negative positions."""
@@ -99,5 +100,7 @@ class TestSimulator(BaseTest):
                                     cash_key='cash',simulator=self.Simulator)
         u=pd.Series(index=self.portfolio.index,data=-2E6)
         h_next, u = self.Simulator.propagate(h,u, t=t)
-        results.log_simulation(t=t, u=u, h_next=h_next, exec_time=0)
-        self.assertAlmostEquals(results.simulator_HcostModel.sum(), 2800.0)
+        results.log_simulation(t=t, u=u, h_next=h_next,
+        risk_free_return=0.,
+        exec_time=0)
+        self.assertAlmostEquals(results.simulator_HcostModel.sum().sum(), 2800.0)
