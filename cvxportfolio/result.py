@@ -211,7 +211,7 @@ class SimulationResult():
 
     @property
     def excess_returns(self):
-         return self.returns - self.risk_free_returns
+        return self.returns - self.risk_free_returns
 
 
     @property

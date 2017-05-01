@@ -260,9 +260,9 @@ class MultiPeriodOpt(SinglePeriodOpt):
         # planning_periods = self.lookahead_model.get_periods(t)
         for tau in \
 self.trading_times[self.trading_times.index(t):self.trading_times.index(t)+self.lookahead_periods]:
-#        delta_t in [pd.Timedelta('%d days' % i) for i in range(self.lookahead_periods)]:
+            #        delta_t in [pd.Timedelta('%d days' % i) for i in range(self.lookahead_periods)]:
 
-#            tau = t + delta_t
+            #            tau = t + delta_t
             z = cvx.Variable(*w.size)
             wplus = w + z
             obj = self.alpha_model.weight_expr_ahead(t, tau, wplus)

@@ -56,7 +56,7 @@ class TestOptimizer(BaseTest):
                             [], solver=cvx.ECOS)
         t = self.times[1]
         p_0 = pd.Series(index=self.universe, data=1E6)
-        z = pol.get_trades(p_0, t)  
+        z = pol.get_trades(p_0, t)
         self.assertAlmostEqual(z.sum(), 0)
         # Compare with CP calculation.
         h = z + p_0
