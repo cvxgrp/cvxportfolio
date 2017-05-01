@@ -127,7 +127,7 @@ class MarketSimulator():
             assert (not h.isnull().values.any())
             results.log_simulation(t=t, u=u, h_next=h,
                                    risk_free_return=self.market_returns.loc[t,
-                                       self.cash_key],
+                                                                            self.cash_key],
                                    exec_time=end-start)
 
         logging.info('Backtest ended, from %s to %s' %

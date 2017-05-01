@@ -61,10 +61,10 @@ class ReturnsForecast(BaseReturnsModel):
                 time_locator(self.returns, t).values, wplus)
         try:
             alpha -= cvx.mul_elemwise(time_locator(self.delta,
-                                      t), cvx.abs(wplus))
+                                                   t), cvx.abs(wplus))
         except TypeError:
             alpha -= cvx.mul_elemwise(time_locator(self.delta,
-                                      t).values, cvx.abs(wplus))
+                                                   t).values, cvx.abs(wplus))
 
         return cvx.sum_entries(alpha)
 

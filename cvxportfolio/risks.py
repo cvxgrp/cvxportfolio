@@ -147,7 +147,7 @@ class RobustSigma(BaseRiskModel):
     def _estimate(self, t, wplus, z, value):
         self.expression = cvx.quad_form(wplus, locator(self.Sigma, t)) + \
                              locator(self.epsilon, t) * (cvx.abs(wplus).T *
-                                     np.diag(locator(self.Sigma, t)))**2
+                                                         np.diag(locator(self.Sigma, t)))**2
 
         return self.expression
 
@@ -184,7 +184,7 @@ class WorstCaseRisk(BaseRiskModel):
 
     def _estimate(self, t, wplus, z, value):
         self.risks = [risk.weight_expr(t, wplus, z, value)
-                                       for risk in self.riskmodels]
+                      for risk in self.riskmodels]
         return cvx.max_elemwise(*self.risks)
 
     def optimization_log(self, t):

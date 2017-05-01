@@ -38,7 +38,7 @@ class TestSimulator(BaseTest):
         self.hcost_term = HcostModel(self.s)
         self.Simulator = MarketSimulator(self.returns,
                                          costs=[self.tcost_term,
-                                             self.hcost_term],
+                                                self.hcost_term],
                                          market_volumes=self.volume)
 
     def test_propag(self):

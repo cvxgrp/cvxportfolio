@@ -66,11 +66,11 @@ class SimulationResult():
         res += 'Number of periods: %d' % self.u.shape[0]+'\n'
         res += 'Initial timestamp: %s' % self.h.index[0]+'\n'
         res += 'Final timestamp: %s' % self.h.index[-1]+'\n'
-        res += 'Portfolio return: '+ \
+        res += 'Portfolio return: ' + \
             '%.2f%%' % (self.returns.mean()*100*self.PPY)+'\n'
-        res += 'Excess return: '+ \
+        res += 'Excess return: ' + \
             '%.2f%%' % (self.excess_returns.mean()*100*self.PPY)+'\n'
-        res += 'Excess risk: '+ \
+        res += 'Excess risk: ' + \
             '%.2f%%' % (self.excess_returns.std()*100*np.sqrt(self.PPY))+'\n'
         res += 'Sharpe ratio: '+'%.2f' % self.sharpe_ratio+'\n'
         res += 'Max. drawdown: '+'%.2f%%' % self.max_drawdown+'\n'

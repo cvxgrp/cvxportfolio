@@ -166,7 +166,7 @@ class TcostModel(BaseCost):
             no_trade = second_term.index[second_term.isnull()]
             second_term[no_trade] = 0
             constr += [z[second_term.index.get_loc(tick)]
-                                                   == 0 for tick in no_trade]
+                       == 0 for tick in no_trade]
 
         try:
             self.expression = cvx.mul_elemwise(
@@ -188,8 +188,8 @@ class TcostModel(BaseCost):
         u_nc = u.iloc[:-1]
         self.tmp_tcosts = np.abs(u_nc)*time_locator(self.half_spread, t) + \
             time_locator(self.nonlin_coeff, t)*time_locator(self.sigma, t) * \
-            np.abs(u_nc)**self.power/ \
-                   (time_locator(self.volume, t)**(self.power - 1))
+            np.abs(u_nc)**self.power / \
+        (time_locator(self.volume, t)**(self.power - 1))
 
         return self.tmp_tcosts.sum()
 

@@ -285,7 +285,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
             obj -= sum(costs)
             constr += [cvx.sum_entries(z) == 0]
             constr += [con.weight_expr(t, wplus, z, value)
-                                       for con in self.constraints]
+                       for con in self.constraints]
 
             prob = cvx.Problem(cvx.Maximize(obj), constr)
             prob_arr.append(prob)
