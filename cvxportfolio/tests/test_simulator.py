@@ -31,7 +31,7 @@ class TestSimulator(BaseTest):
     def setUp(self):
         with open(DATAFILE, 'rb') as f:
             self.returns, self.sigma, self.volume, self.a, self.b, self.s = \
-            pickle.load(f)
+                pickle.load(f)
         self.portfolio = pd.Series(index = self.returns.columns, data=1E6)
         self.tcost_term = TcostModel(self.a, self.b, self.sigma, self.volume)
         self.hcost_term = HcostModel(self.s)
@@ -44,7 +44,7 @@ class TestSimulator(BaseTest):
         t = self.returns.index[1]
         h = copy.copy(self.portfolio)
         results = SimulationResult(initial_portfolio=h, policy=None,
-                                    cash_key='cash',simulator=self.Simulator)
+                                   cash_key='cash',simulator=self.Simulator)
         u=pd.Series(index=self.portfolio.index, data=1E4)
         h_next, u = self.Simulator.propagate(h, u=u, t=t)
         results.log_simulation(t=t, u=u, h_next=h_next,risk_free_return=0., exec_time=0)
@@ -57,7 +57,7 @@ class TestSimulator(BaseTest):
         t = self.returns.index[1]
         h = copy.copy(self.portfolio)
         results = SimulationResult(initial_portfolio=h, policy=None,
-                                    cash_key='cash',simulator=self.Simulator)
+                                   cash_key='cash',simulator=self.Simulator)
         u = pd.Series(index=self.portfolio.index, data=[1E4]*29)
         h_next, u = self.Simulator.propagate(h,u, t=t)
         results.log_simulation(t=t, u=u, h_next=h_next,risk_free_return=0., exec_time=0)
@@ -70,7 +70,7 @@ class TestSimulator(BaseTest):
         t = self.returns.index[1]
         h = copy.copy(self.portfolio)
         results = SimulationResult(initial_portfolio=h, policy=None,
-                                    cash_key='cash',simulator=self.Simulator)
+                                   cash_key='cash',simulator=self.Simulator)
         u = pd.Series(index=self.portfolio.index, data=[-1E4]*29)
         h_next, u =self.Simulator.propagate(h,u,t=t)
         results.log_simulation(t=t, u=u, h_next=h_next,risk_free_return=0., exec_time=0)
@@ -84,7 +84,7 @@ class TestSimulator(BaseTest):
         t = self.returns.index[1]
         h = copy.copy(self.portfolio)
         results = SimulationResult(initial_portfolio=h, policy=None,
-                                    cash_key='cash',simulator=self.Simulator)
+                                   cash_key='cash',simulator=self.Simulator)
         u=pd.Series(index=self.portfolio.index, data=1E4)
         h_next, u = self.Simulator.propagate(h,u, t=t)
         results.log_simulation(t=t, u=u, h_next=h_next,risk_free_return=0., exec_time=0)
@@ -96,7 +96,7 @@ class TestSimulator(BaseTest):
         t = self.returns.index[1]
         h = copy.copy(self.portfolio)
         results = SimulationResult(initial_portfolio=h, policy=None,
-                                    cash_key='cash',simulator=self.Simulator)
+                                   cash_key='cash',simulator=self.Simulator)
         u=pd.Series(index=self.portfolio.index,data=-2E6)
         h_next, u = self.Simulator.propagate(h,u, t=t)
         results.log_simulation(t=t, u=u, h_next=h_next,

@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 __all__ = ['time_matrix_locator', 'time_locator', 'null_checker',
-            'non_null_data_args']
+           'non_null_data_args']
 
 
 def null_checker(obj):

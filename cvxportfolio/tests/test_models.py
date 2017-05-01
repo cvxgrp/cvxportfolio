@@ -34,7 +34,7 @@ class TestModels(BaseTest):
     def setUp(self):
         with open(DATAFILE, 'rb') as f:
             self.returns, self.sigma, self.volume, self.a, self.b, self.s = \
-            pickle.load(f)
+                pickle.load(f)
         #self.volume['cash']=np.NaN
         self.universe = self.returns.columns
         self.times = self.returns.index
@@ -90,7 +90,7 @@ class TestModels(BaseTest):
         n = len(self.universe)
         value = 1e6
         model = TcostModel(half_spread=self.a, nonlin_coeff=0.,
-                            sigma=self.sigma, volume=self.volume)
+                           sigma=self.sigma, volume=self.volume)
         t = self.times[1]
         z = np.arange(n) - n/2
         z_var = cvx.Variable(n)
@@ -102,28 +102,28 @@ class TestModels(BaseTest):
 
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
-                            sigma=self.sigma, volume=self.volume,power=2)
+                           sigma=self.sigma, volume=self.volume,power=2)
         tcost,_ = model.weight_expr(t, None, z_var, value)
         self.b.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])
         value_expr=model.value_expr(t, None, u)
         self.assertAlmostEqual(tcost.value, value_expr/value)
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
-                            sigma=self.sigma, volume=self.volume,power=1.5)
+                           sigma=self.sigma, volume=self.volume,power=1.5)
         tcost,_ = model.weight_expr(t, None, z_var, value)
         self.b.loc[t] * self.sigma.loc[t] * np.sqrt(value / self.volume.loc[t])
         value_expr=model.value_expr(t, None, u)
         self.assertAlmostEqual(tcost.value, value_expr/value)
 
         model = TcostModel(half_spread=self.a, nonlin_coeff=self.b,
-                            sigma=self.sigma, volume=self.volume)
+                           sigma=self.sigma, volume=self.volume)
         tcost,_ = model.weight_expr(t, None, z_var, value)
         value_expr=model.value_expr(t, None, u)
         self.assertAlmostEqual(tcost.value, value_expr/value)
 
         # with tau
         model = TcostModel(half_spread=self.a, nonlin_coeff=self.b,
-                            sigma=self.sigma, volume=self.volume)
+                           sigma=self.sigma, volume=self.volume)
         tau = self.times[2]
         tcost,_ = model.weight_expr_ahead(t, tau, None, z_var, value)
         value_expr=model.value_expr(t, None, u)
@@ -136,7 +136,7 @@ class TestModels(BaseTest):
         n = len(self.universe)
         value = 1e6
         model = TcostModel(half_spread=self.a, nonlin_coeff=0.,
-                            sigma=self.sigma, volume=self.volume)
+                           sigma=self.sigma, volume=self.volume)
         t = self.times[1]
         z = np.arange(n) - n/2
         z_var = cvx.Variable(n)
@@ -146,27 +146,27 @@ class TestModels(BaseTest):
         self.assertAlmostEqual(tcost.value, est_tcost_lin)
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
-                            sigma=self.sigma, volume=self.volume,power=2)
+                           sigma=self.sigma, volume=self.volume,power=2)
         tcost,_ = model.weight_expr(t, None, z_var, value)
         coeff = self.b.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])
         est_tcost_nonlin = np.square(z[:-1]).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
-                            sigma=self.sigma, volume=self.volume,power=1.5)
+                           sigma=self.sigma, volume=self.volume,power=1.5)
         tcost,_ = model.weight_expr(t, None, z_var, value)
         coeff = self.b.loc[t] * self.sigma.loc[t] * np.sqrt(value / self.volume.loc[t])
         est_tcost_nonlin = np.power(np.abs(z[:-1]), 1.5).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
 
         model = TcostModel(half_spread=self.a, nonlin_coeff=self.b,
-                            sigma=self.sigma, volume=self.volume)
+                           sigma=self.sigma, volume=self.volume)
         tcost,_ = model.weight_expr(t, None, z_var, value)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin + est_tcost_lin)
 
         # with tau
         model = TcostModel(half_spread=self.a, nonlin_coeff=self.b,
-                            sigma=self.sigma, volume=self.volume)
+                           sigma=self.sigma, volume=self.volume)
         tau = self.times[2]
         tcost,_ = model.weight_expr_ahead(t, tau, None, z_var, value)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin + est_tcost_lin)

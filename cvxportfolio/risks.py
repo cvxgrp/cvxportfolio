@@ -23,7 +23,7 @@ import pandas as pd
 from .costs import BaseCost
 
 __all__ = ['FullSigma', 'EmpSigma', 'SqrtSigma', 'WorstCaseRisk',
-            'RobustFactorModelSigma', 'RobustSigma',  'FactorModelSigma']  ## TODO fix redundancies here
+           'RobustFactorModelSigma', 'RobustSigma',  'FactorModelSigma']  ## TODO fix redundancies here
 
 
 def locator(obj, t):
@@ -130,7 +130,7 @@ class FactorModelSigma(BaseRiskModel):
         self.expression = cvx.sum_squares(cvx.mul_elemwise(np.sqrt(locator(self.idiosync, t).values),
                                              wplus)) + \
                              cvx.quad_form((wplus.T*locator(self.exposures, t).values.T).T,
-                                                 locator(self.factor_Sigma, t).values)
+                                           locator(self.factor_Sigma, t).values)
         return self.expression
 
 
@@ -167,8 +167,8 @@ class RobustFactorModelSigma(BaseRiskModel):
         Sigma_F = locator(self.factor_Sigma, t)
         D = locator(self.idiosync, t)
         self.expression = cvx.sum_squares(cvx.mul_elemwise(np.sqrt(D), wplus)) + \
-                               cvx.quad_form(f, Sigma_F) + \
-                               self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F)))**2
+        cvx.quad_form(f, Sigma_F) + \
+        self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F)))**2
 
         return self.expression
 

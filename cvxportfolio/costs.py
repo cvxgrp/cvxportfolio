@@ -94,7 +94,7 @@ class HcostModel(BaseCost):
         self.last_cost = -np.minimum(0,h_plus.iloc[:-1]) * \
                 time_locator(self.borrow_costs,t)
         self.last_cost -= h_plus.iloc[:-1] * \
-                time_locator(self.dividends,t)
+        time_locator(self.dividends,t)
 
         return sum(self.last_cost)
 
@@ -152,8 +152,8 @@ class TcostModel(BaseCost):
         constr = []
 
         second_term = time_locator(self.nonlin_coeff,t) * \
-                        time_locator(self.sigma,t) * \
-                        (value / time_locator(self.volume,t))**(self.power - 1)
+        time_locator(self.sigma,t) * \
+        (value / time_locator(self.volume,t))**(self.power - 1)
 
         # no trade conditions
         if np.isscalar(second_term):

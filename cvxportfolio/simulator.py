@@ -68,7 +68,7 @@ class MarketSimulator():
             null_trades=self.market_volumes.columns[self.market_volumes.loc[t]==0]
             if len(null_trades):
                 logging.info('Setting stocks %s on %s to null trades (because market volumes are 0)'%\
-                                (null_trades, t))
+                             (null_trades, t))
                 u.loc[null_trades] = 0.
 
         hplus = h + u
@@ -103,7 +103,7 @@ class MarketSimulator():
                 (self.market_returns.index>=start_time)&
                 (self.market_returns.index<=end_time)]
         logging.info('Backtest started, from %s to %s' % (simulation_times[0],
-                                                            simulation_times[-1]))
+                                                          simulation_times[-1]))
 
         for t in simulation_times:
             logging.info('Getting trades at time %s' % t)

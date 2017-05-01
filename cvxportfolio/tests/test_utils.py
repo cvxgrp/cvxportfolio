@@ -31,7 +31,7 @@ class TestUtils(BaseTest):
     def setUp(self):
         with open(DATAFILE, 'rb') as f:
             self.returns, self.sigma, self.volume, self.a, self.b, self.s = \
-            pickle.load(f)
+                pickle.load(f)
         self.volume['cash']=np.NaN
 
     def test_null_checker(self):

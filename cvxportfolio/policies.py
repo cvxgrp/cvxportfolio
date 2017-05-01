@@ -26,7 +26,7 @@ from .constraints import BaseConstraint
 
 
 __all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
-            'SinglePeriodOpt', 'MultiPeriodOpt','ProportionalTrade']
+           'SinglePeriodOpt', 'MultiPeriodOpt','ProportionalTrade']
 
 
 class BasePolicy(object):

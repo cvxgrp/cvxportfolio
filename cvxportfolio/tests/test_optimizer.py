@@ -35,7 +35,7 @@ class TestOptimizer(BaseTest):
     def setUp(self):
         with open(DATAFILE, 'rb') as f:
             self.returns, self.sigma, self.volume, self.a, self.b, self.s = \
-            pickle.load(f)
+                pickle.load(f)
         self.s = self.s + 1e-3
         self.universe = self.returns.columns
         self.times = self.returns.index
