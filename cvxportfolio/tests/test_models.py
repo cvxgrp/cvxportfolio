@@ -104,14 +104,14 @@ class TestModels(BaseTest):
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
                             sigma=self.sigma, volume=self.volume,power=2)
         tcost,_ = model.weight_expr(t, None, z_var, value)
-        coeff = self.b.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])
+        self.b.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])
         value_expr=model.value_expr(t, None, u)
         self.assertAlmostEqual(tcost.value, value_expr/value)
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
                             sigma=self.sigma, volume=self.volume,power=1.5)
         tcost,_ = model.weight_expr(t, None, z_var, value)
-        coeff = self.b.loc[t] * self.sigma.loc[t] * np.sqrt(value / self.volume.loc[t])
+        self.b.loc[t] * self.sigma.loc[t] * np.sqrt(value / self.volume.loc[t])
         value_expr=model.value_expr(t, None, u)
         self.assertAlmostEqual(tcost.value, value_expr/value)
 

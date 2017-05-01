@@ -16,7 +16,6 @@ limitations under the License.
 
 import os
 import pickle
-import copy
 
 import pandas as pd
 import numpy as np
@@ -46,7 +45,7 @@ class TestUtils(BaseTest):
     def test_time_locator(self):
         """Test time locator."""
         t=self.returns.index[10]
-        n=len(self.returns.columns)
+        len(self.returns.columns)
         self.assertTrue(np.allclose(self.returns.loc[t],
                                 time_locator(self.returns,t)))
         self.assertTrue(np.allclose(23,
