@@ -1,6 +1,7 @@
 CVXPortfolio
 =============
 [![Build Status](https://travis-ci.org/cvxgrp/cvxportfolio.png?branch=master)](https://travis-ci.org/cvxgrp/cvxportfolio)
+[![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
 
 **The CVXPortfolio documentation is at [cvxportfolio.org](http://www.cvxportfolio.org/).**
 
