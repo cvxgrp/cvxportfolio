@@ -23,7 +23,7 @@ import pandas as pd
 from .costs import BaseCost
 
 __all__ = ['FullSigma', 'EmpSigma', 'SqrtSigma', 'WorstCaseRisk',
-           'RobustFactorModelSigma', 'RobustSigma',  'FactorModelSigma']  # TODO fix redundancies here
+           'RobustFactorModelSigma', 'RobustSigma',  'FactorModelSigma']
 
 
 def locator(obj, t):
@@ -50,7 +50,7 @@ class BaseRiskModel(BaseCost):
         pass
 
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
-        """Estimate risk model at time tau in the future, while t is present."""
+        """Estimate risk model at time tau in the future."""
         if self.gamma_half_life == np.inf:
             gamma_multiplier = 1.
         else:
@@ -130,10 +130,10 @@ class FactorModelSigma(BaseRiskModel):
         super(FactorModelSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
-        self.expression = cvx.sum_squares(cvx.mul_elemwise(np.sqrt(locator(self.idiosync, t).values),
-                                                           wplus)) + \
-                             cvx.quad_form((wplus.T*locator(self.exposures, t).values.T).T,
-                                           locator(self.factor_Sigma, t).values)
+        self.expression = cvx.sum_squares(cvx.mul_elemwise(
+            np.sqrt(locator(self.idiosync, t).values), wplus)) + \
+            cvx.quad_form((wplus.T*locator(self.exposures, t).values.T).T,
+                          locator(self.factor_Sigma, t).values)
         return self.expression
 
 
@@ -146,8 +146,9 @@ class RobustSigma(BaseRiskModel):
 
     def _estimate(self, t, wplus, z, value):
         self.expression = cvx.quad_form(wplus, locator(self.Sigma, t)) + \
-                             locator(self.epsilon, t) * (cvx.abs(wplus).T *
-                                                         np.diag(locator(self.Sigma, t)))**2
+                             locator(self.epsilon, t) * \
+                             (cvx.abs(wplus).T * np.diag(locator(
+                                self.Sigma, t)))**2
 
         return self.expression
 
@@ -170,7 +171,8 @@ class RobustFactorModelSigma(BaseRiskModel):
         f = (wplus.T * F.T).T
         Sigma_F = locator(self.factor_Sigma, t)
         D = locator(self.idiosync, t)
-        self.expression = cvx.sum_squares(cvx.mul_elemwise(np.sqrt(D), wplus)) + \
+        self.expression = cvx.sum_squares(
+            cvx.mul_elemwise(np.sqrt(D), wplus)) + \
             cvx.quad_form(f, Sigma_F) + \
             self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F)))**2
 
@@ -189,5 +191,6 @@ class WorstCaseRisk(BaseRiskModel):
 
     def optimization_log(self, t):
         """Return data to log in the result object."""
-        return pd.Series(index=[model.__class__.__name__ for model in self.riskmodels],
+        return pd.Series(index=[model.__class__.__name__ for
+                                model in self.riskmodels],
                          data=[risk.value[0, 0] for risk in self.risks])

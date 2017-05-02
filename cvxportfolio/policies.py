@@ -64,7 +64,9 @@ class ProportionalTrade(BasePolicy):
     def get_trades(self, portfolio, t):
         try:
             missing_time_steps = len(
-                self.time_steps)-next(i for (i, x) in enumerate(self.time_steps) if x == t)
+                self.time_steps)-next(i for (i, x)
+                                      in enumerate(self.time_steps)
+                                      if x == t)
         except StopIteration:
             raise Exception(
                 "ProportionalTrade can only trade on the given time steps")
@@ -86,7 +88,8 @@ class FixedTrade(BasePolicy):
     def __init__(self, tradevec=None, tradeweight=None):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
         if tradevec is not None and tradeweight is not None:
-            raise(Exception('only one of tradevec and tradeweight can be passed'))
+            raise(Exception(
+                'only one of tradevec and tradeweight can be passed'))
         if tradevec is None and tradeweight is None:
             raise(Exception('one of tradevec and tradeweight must be passed'))
         self.tradevec = tradevec
@@ -114,7 +117,8 @@ class PeriodicRebalance(BaseRebalance):
         """
         Args:
             target: target weights, n+1 vector
-            period: supported options are "day", "week", "month", "quarter", "year".
+            period: supported options are "day", "week", "month", "quarter",
+                "year".
                 rebalance on the first day of each new period
         """
         self.target = target
@@ -122,8 +126,11 @@ class PeriodicRebalance(BaseRebalance):
         super(PeriodicRebalance, self).__init__()
 
     def is_start_period(self, t):
-        result = not getattr(t, self.period) == getattr(self.last_t, self.period) \
-            if hasattr(self, 'last_t') else True
+        result = not getattr(t, self.period) == getattr(self.last_t,
+                                                        self.period) if \
+                                                        hasattr(self,
+                                                                'last_t')\
+                                                        else True
         self.last_t = t
         return result
 
@@ -234,7 +241,7 @@ class SinglePeriodOpt(BasePolicy):
 #         periods = []
 #         tau = t
 #         for length in self.period_lens:
-#             incr = length*pd.Timedelta('1 days')  # TODO generalize to non-days
+#             incr = length*pd.Timedelta('1 days')
 #             periods.append((tau, tau + incr))
 #             tau += incr
 #         return periods
@@ -266,7 +273,9 @@ class MultiPeriodOpt(SinglePeriodOpt):
 
         # planning_periods = self.lookahead_model.get_periods(t)
         for tau in \
-                self.trading_times[self.trading_times.index(t):self.trading_times.index(t)+self.lookahead_periods]:
+                self.trading_times[self.trading_times.index(t):
+                                   self.trading_times.index(t) +
+                                   self.lookahead_periods]:
             # delta_t in [pd.Timedelta('%d days' % i) for i in
             # range(self.lookahead_periods)]:
 
@@ -297,4 +306,5 @@ class MultiPeriodOpt(SinglePeriodOpt):
             prob_arr[-1].constraints += [wplus == self.terminal_weights.values]
 
         sum(prob_arr).solve(solver=self.solver)
-        return pd.Series(index=portfolio.index, data=(z_vars[0].value.A1 * value))
+        return pd.Series(index=portfolio.index,
+                         data=(z_vars[0].value.A1 * value))

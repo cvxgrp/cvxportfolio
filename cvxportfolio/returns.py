@@ -17,9 +17,10 @@ limitations under the License.
 
 import cvxpy as cvx
 from cvxportfolio.expression import Expression
-from .utils.data_management import *
+from .utils.data_management import time_locator, null_checker
 
-__all__ = ['ReturnsForecast', 'MPOReturnsForecast', 'MultipleReturnsForecasts']
+__all__ = ['ReturnsForecast', 'MPOReturnsForecast',
+           'MultipleReturnsForecasts']
 
 
 class BaseReturnsModel(Expression):

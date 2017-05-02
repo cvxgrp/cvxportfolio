@@ -6,14 +6,14 @@ env:
     - LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libgfortran.so.3
   matrix:
     - DISTRIB="conda" PYTHON_VERSION="2.7" INSTALL_ATLAS="true"
-      COVERAGE="true" 
+      COVERAGE="true"
     - DISTRIB="conda" PYTHON_VERSION="3.6" INSTALL_ATLAS="true"
-      COVERAGE="true" 
+      COVERAGE="true"
 sudo: required
 install: source continuous_integration/install.sh
 script:
   - bash continuous_integration/test_script.sh
-  - flake8 .
+  - flake8 --exclude="*/__init__.py" .
 after_success:
     - if [[ "$COVERAGE" == "true" ]]; then coveralls; fi
 cache: apt

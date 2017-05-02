@@ -209,7 +209,7 @@ class TestModels(BaseTest):
         t = self.times[1]
         model = HcostModel(self.s)
         hcost, _ = model.weight_expr(t, wplus, None, None)
-        bcost = np.dot(wplus[:-1].value.T, self.s.loc[t].values)
+        # bcost = np.dot(wplus[:-1].value.T, self.s.loc[t].values)
 
         value = 1000.
         h_plus = pd.Series(index=self.returns.columns,

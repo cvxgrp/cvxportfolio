@@ -63,7 +63,8 @@ class MaxTrade(BaseConstraint):
           z: trade weights
           v: portfolio value
         """
-        return cvx.abs(z[:-1])*v <= self.ADVs.loc[t].values * self.max_fraction  # TODO check [:-1] and fix pandas <=
+        return cvx.abs(z[:-1])*v <= self.ADVs.loc[t].values * self.max_fraction
+        # TODO check [:-1] and fix pandas <=
 
 
 class LongOnly(BaseConstraint):

@@ -51,13 +51,15 @@ class TestWhatIf(BaseTest):
         risk_model = FullSigma(emp_Sigma, gamma=100.)
         tcost_model = TcostModel(self.volume, self.sigma, self.a, self.b)
         hcost_model = HcostModel(self.s, self.s*0)
-        pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model, hcost_model], [],
+        pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model,
+                                            hcost_model], [],
                               solver=cvx.ECOS)
 
         tcost = TcostModel(self.a, self.b, self.sigma, self.volume)
         hcost = HcostModel(self.s)
         market_sim = simulator.MarketSimulator(self.returns,
-                                               costs=[tcost, hcost], market_volumes=self.volume)
+                                               costs=[tcost, hcost],
+                                               market_volumes=self.volume)
 
         p_0 = pd.Series(index=self.universe, data=1E6)
         noisy = market_sim.run_backtest(p_0, self.returns.index[1],
@@ -101,13 +103,15 @@ class TestWhatIf(BaseTest):
         risk_model = FullSigma(emp_Sigma, gamma=100.)
         tcost_model = TcostModel(self.a, self.b, self.sigma, self.volume)
         hcost_model = HcostModel(self.s, self.s*0)
-        pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model, hcost_model], [],
+        pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model,
+                                            hcost_model], [],
                               solver=cvx.ECOS)
 
         tcost = TcostModel(self.volume, self.sigma, self.a, self.b)
         hcost = HcostModel(self.s)
         market_sim = simulator.MarketSimulator(self.returns,
-                                               costs=[tcost, hcost], market_volumes=self.volume)
+                                               costs=[tcost, hcost],
+                                               market_volumes=self.volume)
 
         p_0 = pd.Series(index=self.universe, data=1E6)
         noisy = market_sim.run_backtest(p_0, self.returns.index[1],
@@ -158,8 +162,9 @@ class TestWhatIf(BaseTest):
         pol = SinglePeriodOpt(
             alpha_model, [100*risk_model, tcost_model, hcost_model], [])
 
-        market_sim = simulator.MarketSimulator(self.returns, costs=[tcost_model,
-                                                                    hcost_model])
+        market_sim = simulator.MarketSimulator(self.returns,
+                                               costs=[tcost_model, hcost_model]
+                                               )
 
         p_0 = pd.Series(index=self.universe, data=1E6)
         noisy = market_sim.run_backtest(p_0, self.returns.index[1],

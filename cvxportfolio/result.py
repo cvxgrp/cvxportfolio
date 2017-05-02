@@ -39,7 +39,8 @@ class SimulationResult():
         borrow_costs: A series of borrow costs over time.
     """
     def __init__(self, initial_portfolio, policy, cash_key, simulator,
-                 simulation_times=None, PPY=252, timedelta=pd.Timedelta("1 days")):
+                 simulation_times=None, PPY=252,
+                 timedelta=pd.Timedelta("1 days")):
         """
         Initialize the result object.
 
@@ -152,7 +153,8 @@ class SimulationResult():
         """The returns R_t = (v_{t+1}-v_t)/v_t
         """
         val = self.v
-        return pd.Series(data=val.values[1:]/val.values[:-1] - 1, index=val.index[:-1])
+        return pd.Series(data=val.values[1:]/val.values[:-1] - 1,
+                         index=val.index[:-1])
 
     @property
     def growth_rates(self):

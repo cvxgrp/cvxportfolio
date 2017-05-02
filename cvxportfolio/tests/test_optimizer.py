@@ -111,7 +111,8 @@ class TestOptimizer(BaseTest):
     #     self.assertItemsAlmostEqual(h/sum(p_0), hstar, places=4)
     #
     #
-    #     pol = MultiPeriodOpt(2, alpha_model, [risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS,
+    #     pol = MultiPeriodOpt(2, alpha_model, [risk_model, tcost_model,
+    #                          hcost_model], [], solver=cvx.ECOS,
     #                                 terminal_constr=False)
     #
     #     t = self.times[1]
@@ -123,8 +124,10 @@ class TestOptimizer(BaseTest):
     #     rho = self.b.loc[t]*self.sigma.loc[t]*(sum(p_0)/self.volume.loc[t])
     #     rho = np.hstack([rho, 0])
     #     D = np.diag(rho)
-    #     A = np.bmat([[2*gamma*emp_Sigma + 4*D, -2*D, np.ones((n,1)), np.zeros((n,1))],
-    #                  [-2*D, 2*gamma*emp_Sigma, np.zeros((n,1)), np.ones((n,1))],
+    #     A = np.bmat([[2*gamma*emp_Sigma + 4*D, -2*D, np.ones((n,1)),
+    #                   np.zeros((n,1))],
+    #                  [-2*D, 2*gamma*emp_Sigma, np.zeros((n,1)),
+    #                   np.ones((n,1))],
     #                  [np.ones((1,n)), np.zeros((1,n+2))],
     #                  [np.zeros((1,n)), np.ones((1, n)), np.zeros((1,2))]])
     #     s_val = self.s.loc[t]

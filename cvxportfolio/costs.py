@@ -18,7 +18,7 @@ import cvxpy as cvx
 import numpy as np
 import copy
 from .expression import Expression
-from .utils.data_management import *
+from .utils.data_management import null_checker, time_locator
 
 __all__ = ['HcostModel', 'TcostModel']
 
@@ -189,7 +189,7 @@ class TcostModel(BaseCost):
         self.tmp_tcosts = np.abs(u_nc)*time_locator(self.half_spread, t) + \
             time_locator(self.nonlin_coeff, t)*time_locator(self.sigma, t) * \
             np.abs(u_nc)**self.power / \
-        (time_locator(self.volume, t)**(self.power - 1))
+            (time_locator(self.volume, t)**(self.power - 1))
 
         return self.tmp_tcosts.sum()
 
