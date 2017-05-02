@@ -60,11 +60,11 @@ class TestOptimizer(BaseTest):
         self.assertAlmostEqual(z.sum(), 0)
         # Compare with CP calculation.
         h = z + p_0
-        rho = self.b.loc[t]*self.sigma.loc[t]*(sum(p_0)/self.volume.loc[t])
+        rho = self.b*self.sigma.loc[t]*(sum(p_0)/self.volume.loc[t])
         rho = np.hstack([rho, 0])
         A = 2*gamma*emp_Sigma + 2*np.diag(rho)
-        s_val = self.s.loc[t]
-        s_val['cash'] = 0
+        s_val = pd.Series(index=self.returns.columns, data=self.s)
+        s_val['cash'] = 0.
         b = self.returns.loc[t] + 2*rho*(p_0/sum(p_0)) + s_val
         h0 = np.linalg.solve(A, b)
         offset = np.linalg.solve(A, np.ones(n))
@@ -97,7 +97,7 @@ class TestOptimizer(BaseTest):
     #     self.assertAlmostEqual(z.sum(), 0)
     #     # Compare with CP calculation. Terminal constraint.
     #     h = z + p_0
-    #     rho=self.b.loc[t]*self.sigma.loc[t]*(sum(p_0)/self.volume.loc[t])
+    #     rho=self.b*self.sigma.loc[t]*(sum(p_0)/self.volume.loc[t])
     #     rho=np.hstack([rho, 0])
     #     A = 2*gamma*emp_Sigma + 4*np.diag(rho)
     #     s_val = self.s.loc[t]
@@ -121,7 +121,7 @@ class TestOptimizer(BaseTest):
     #     self.assertAlmostEqual(z.sum(), 0)
     #     # Compare with CP calculation.
     #     h = z + p_0
-    #     rho = self.b.loc[t]*self.sigma.loc[t]*(sum(p_0)/self.volume.loc[t])
+    #     rho = self.b*self.sigma.loc[t]*(sum(p_0)/self.volume.loc[t])
     #     rho = np.hstack([rho, 0])
     #     D = np.diag(rho)
     #     A = np.bmat([[2*gamma*emp_Sigma + 4*D, -2*D, np.ones((n,1)),

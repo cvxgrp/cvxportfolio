@@ -103,14 +103,14 @@ class TestModels(BaseTest):
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
                            sigma=self.sigma, volume=self.volume, power=2)
         tcost, _ = model.weight_expr(t, None, z_var, value)
-        self.b.loc[t] * self.sigma.loc[t] * (value / self.volume.loc[t])
+        self.b * self.sigma.loc[t] * (value / self.volume.loc[t])
         value_expr = model.value_expr(t, None, u)
         self.assertAlmostEqual(tcost.value, value_expr/value)
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
                            sigma=self.sigma, volume=self.volume, power=1.5)
         tcost, _ = model.weight_expr(t, None, z_var, value)
-        self.b.loc[t] * self.sigma.loc[t] * np.sqrt(value / self.volume.loc[t])
+        self.b * self.sigma.loc[t] * np.sqrt(value / self.volume.loc[t])
         value_expr = model.value_expr(t, None, u)
         self.assertAlmostEqual(tcost.value, value_expr/value)
 
@@ -140,13 +140,13 @@ class TestModels(BaseTest):
         z_var = cvx.Variable(n)
         z_var.value = z
         tcost, _ = model.weight_expr(t, None, z_var, value)
-        est_tcost_lin = np.abs(z[:-1]).dot(self.a.loc[t].values)
+        est_tcost_lin = sum(np.abs(z[:-1])*self.a)
         self.assertAlmostEqual(tcost.value, est_tcost_lin)
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
                            sigma=self.sigma, volume=self.volume, power=2)
         tcost, _ = model.weight_expr(t, None, z_var, value)
-        coeff = self.b.loc[t] * self.sigma.loc[t] * \
+        coeff = self.b * self.sigma.loc[t] * \
             (value / self.volume.loc[t])
         est_tcost_nonlin = np.square(z[:-1]).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
@@ -154,7 +154,7 @@ class TestModels(BaseTest):
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
                            sigma=self.sigma, volume=self.volume, power=1.5)
         tcost, _ = model.weight_expr(t, None, z_var, value)
-        coeff = self.b.loc[t] * self.sigma.loc[t] * \
+        coeff = self.b * self.sigma.loc[t] * \
             np.sqrt(value / self.volume.loc[t])
         est_tcost_nonlin = np.power(np.abs(z[:-1]), 1.5).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
@@ -187,12 +187,12 @@ class TestModels(BaseTest):
         t = self.times[1]
         model = HcostModel(self.s)
         hcost, _ = model.weight_expr(t, wplus, None, None)
-        bcost = np.dot(wplus[:-1].value.T, self.s.loc[t].values)
+        bcost = sum(wplus[:-1].value*self.s)
         self.assertAlmostEqual(hcost.value, bcost)
 
         model = HcostModel(self.s*0, div)
         hcost, _ = model.weight_expr(t, wplus, None, None)
-        divs = np.dot(wplus[:-1].value.T, div.loc[t].values)
+        divs = (np.sum(wplus[:-1].value.A1*div))
         self.assertAlmostEqual(-hcost.value, divs)
 
         model = HcostModel(self.s, div)
@@ -209,7 +209,6 @@ class TestModels(BaseTest):
         t = self.times[1]
         model = HcostModel(self.s)
         hcost, _ = model.weight_expr(t, wplus, None, None)
-        # bcost = np.dot(wplus[:-1].value.T, self.s.loc[t].values)
 
         value = 1000.
         h_plus = pd.Series(index=self.returns.columns,
