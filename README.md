@@ -27,5 +27,6 @@ If you wish to cite CVXPortfolio, please use:
 
 Installation
 ------------
-
-We're actively developing on this repo, feel free to clone it. We'll provide pip packages soon.
+`
+pip install cvxportfolio
+`
