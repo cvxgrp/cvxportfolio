@@ -1,3 +1,7 @@
+## infrastructure
+- [ ] makefile: support make docs and make pip
+- [ ] clean up the gitignore for new stuff
+
 ## Tests
 - [ ] fix them
 - [ ] make them work with Travis
