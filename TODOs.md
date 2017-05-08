@@ -1,10 +1,17 @@
+## Examples
+- [ ] modify data files so we don't store NaN (look at how you read them)
+- [ ] real time optimization:
+ - [ ] Excel output
+ - [ ] FIX output
+ - [x] rounding result trade vector (return rounded vector from the policy object).
+
 ## infrastructure
 - [ ] makefile: support make docs and make pip
 - [ ] clean up the gitignore for new stuff
 
 ## Tests
-- [ ] fix them
-- [ ] make them work with Travis
+- [x] fix them
+- [x] make them work with Travis
 - [x] ideally, they should work with python2
 
 ## Misc
