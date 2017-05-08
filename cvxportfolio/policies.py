@@ -20,9 +20,9 @@ import numpy as np
 import logging
 import cvxpy as cvx
 
-from .costs import BaseCost
-from .returns import BaseReturnsModel
-from .constraints import BaseConstraint
+from cvxportfolio.costs import BaseCost
+from cvxportfolio.returns import BaseReturnsModel
+from cvxportfolio.constraints import BaseConstraint
 
 
 __all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
@@ -158,6 +158,11 @@ class AdaptiveRebalance(BaseRebalance):
 
 
 class SinglePeriodOpt(BasePolicy):
+    """Single-period optimization policy.
+
+    Implements the model developed in chapter 4 of our paper
+    https://stanford.edu/~boyd/papers/cvx_portfolio.html
+    """
 
     def __init__(self, alpha_model, costs, constraints, solver=None,
                  solver_opts={}):

@@ -46,7 +46,34 @@
             
   <div class="section" id="policies">
 <span id="id1"></span><h1>Policies<a class="headerlink" href="#policies" title="Permalink to this headline">¶</a></h1>
-<p>TODO</p>
+<p>WORK IN PROGRESS</p>
+<div class="toctree-wrapper compound">
+</div>
+<span class="target" id="module-policies"></span><dl class="class">
+<dt id="policies.SinglePeriodOpt">
+<em class="property">class </em><code class="descclassname">policies.</code><code class="descname">SinglePeriodOpt</code><span class="sig-paren">(</span><em>alpha_model</em>, <em>costs</em>, <em>constraints</em>, <em>solver=None</em>, <em>solver_opts={}</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.SinglePeriodOpt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Single-period optimization policy.</p>
+<p>Implements the model developed in chapter 4 of our paper
+<a class="reference external" href="https://stanford.edu/~boyd/papers/cvx_portfolio.html">https://stanford.edu/~boyd/papers/cvx_portfolio.html</a></p>
+<p class="rubric">Methods</p>
+<dl class="method">
+<dt id="policies.SinglePeriodOpt.get_trades">
+<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.SinglePeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="policies.MultiPeriodOpt">
+<em class="property">class </em><code class="descclassname">policies.</code><code class="descname">MultiPeriodOpt</code><span class="sig-paren">(</span><em>trading_times</em>, <em>terminal_weights</em>, <em>lookahead_periods=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.MultiPeriodOpt" title="Permalink to this definition">¶</a></dt>
+<dd><p class="rubric">Methods</p>
+<dl class="method">
+<dt id="policies.MultiPeriodOpt.get_trades">
+<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.MultiPeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </div>
 
 
@@ -89,7 +116,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../intro/index.html">Hello World</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Documentation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../simulator/index.html">Simulator</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Policies</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Policies</a><ul class="simple">
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>

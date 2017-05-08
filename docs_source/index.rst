@@ -32,6 +32,6 @@ CVXPortfolio is not quite ready yet, but if you want to jump into the developmen
    license/index
 
 
-.. _Quandl: https://www.quandl.com 
+.. _Quandl: https://www.quandl.com
 .. _CVXPY: https://www.cvxpy.org/
 .. _Pandas: http://pandas.pydata.org
