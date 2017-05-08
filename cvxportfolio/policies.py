@@ -49,7 +49,8 @@ class BasePolicy(object):
 
     def get_rounded_trades(self, portfolio, prices, t):
         """Get trades vector as number of shares, rounded to integers."""
-        return np.round(self.get_trades(portfolio, t)/prices)
+        return np.round(self.get_trades(portfolio,
+                                        t)/time_locator(prices,t))[:-1]
 
 
 class Hold(BasePolicy):
