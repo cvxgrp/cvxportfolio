@@ -3,9 +3,19 @@
 Publications
 ============
 
-CVXPortfolio implements the ideas in the accompanying paper:
+CVXPortfolio implements the ideas developed in our accompanying `paper
+<https://web.stanford.edu/~boyd/papers/cvx_portfolio.html>`_.
 
-TODO link to paper
+If you use CVXPortfolio for published work, please cite it as
 
-If you use CVXPortfolio for published work, cite the accompanying paper.
+.. code-block:: latex
 
+  @article{BBDKKNS:17
+      author       = {S. Boyd and E. Busseti and S. Diamond and R. Kahn and K. Koh and P. Nystrup and J. Speth},
+      title        = {Multi-Period Trading via Convex Optimization},
+      journal      = {Foundations and Trends in Optimization},
+      year         = {2017},
+      pages        = {to appear}
+      publisher    = {Now Publishers}
+      url          = {http://stanford.edu/~boyd/papers/cvx_portfolio.html},
+  }

@@ -1,6 +1,0 @@
-.. _policies:
-
-Policies
-========
-
-TODO
