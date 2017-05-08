@@ -45,23 +45,26 @@ def non_null_data_args(f):
     return new_f
 
 
-def time_matrix_locator(obj, t):
+def time_matrix_locator(obj, t, as_numpy=False):
     """Retrieve a matrix from a time indexed Panel, or a static DataFrame."""
     if isinstance(obj, pd.Panel):
-        return obj.iloc[obj.axes[0].get_loc(t, method='pad')]
+        res = obj.iloc[obj.axes[0].get_loc(t, method='pad')]
+        return res.values if as_numpy else res
     elif isinstance(obj, pd.DataFrame):
-        return obj
+        return obj.values if as_numpy else obj
     else:  # obj not pandas
         raise TypeError('Expected Pandas DataFrame or Panel, got:', obj)
 
 
-def time_locator(obj, t):
+def time_locator(obj, t, as_numpy=False):
     """Retrieve data from a time indexed DF, or a Series or scalar."""
     if isinstance(obj, pd.DataFrame):
         res = obj.iloc[obj.axes[0].get_loc(t, method='pad')]
-        return res
-    elif isinstance(obj, pd.Series) or np.isscalar(obj):
+        return res.values if as_numpy else res
+    elif isinstance(obj, pd.Series):
+        return obj.values if as_numpy else obj
+    elif np.isscalar(obj):
         return obj
-    else:  # obj not pandas
+    else:
         raise TypeError(
             'Expected Pandas DataFrame, Series, or scalar. Got:', obj)

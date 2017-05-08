@@ -203,7 +203,7 @@ class MarketSimulator():
             def selector(result):
                 return result.v - sum(result.initial_portfolio)
 
-        alpha_stream = policy.alpha_model
+        alpha_stream = policy.return_forecast
         assert isinstance(alpha_stream, MultipleReturnsForecasts)
         times = true_results.h.index
         weights = alpha_stream.weights
@@ -214,8 +214,8 @@ class MarketSimulator():
         perturb_pols = []
         for idx in range(len(alpha_sources)):
             new_pol = copy.copy(policy)
-            new_pol.alpha_model = MultipleReturnsForecasts(alpha_sources,
-                                                           Wmat[idx, :])
+            new_pol.return_forecast = MultipleReturnsForecasts(alpha_sources,
+                                                               Wmat[idx, :])
             perturb_pols.append(new_pol)
         # Simulate
         p0 = true_results.initial_portfolio

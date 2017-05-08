@@ -55,18 +55,10 @@ class ReturnsForecast(BaseReturnsModel):
         Returns:
           An expression for the alpha.
         """
-        try:
-            alpha = cvx.mul_elemwise(time_locator(self.returns, t), wplus)
-        except TypeError:
-            alpha = cvx.mul_elemwise(
-                time_locator(self.returns, t).values, wplus)
-        try:
-            alpha -= cvx.mul_elemwise(time_locator(self.delta,
-                                                   t), cvx.abs(wplus))
-        except TypeError:
-            alpha -= cvx.mul_elemwise(time_locator(self.delta,
-                                                   t).values, cvx.abs(wplus))
-
+        alpha = cvx.mul_elemwise(
+            time_locator(self.returns, t, as_numpy=True), wplus)
+        alpha -= cvx.mul_elemwise(
+            time_locator(self.delta, t, as_numpy=True), cvx.abs(wplus))
         return cvx.sum_entries(alpha)
 
     def weight_expr_ahead(self, t, tau, wplus):

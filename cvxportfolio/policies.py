@@ -23,6 +23,7 @@ import cvxpy as cvx
 from cvxportfolio.costs import BaseCost
 from cvxportfolio.returns import BaseReturnsModel
 from cvxportfolio.constraints import BaseConstraint
+from cvxportfolio.utils.data_management import time_locator, null_checker
 
 
 __all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
@@ -45,6 +46,10 @@ class BasePolicy(object):
 
     def _nulltrade(self, portfolio):
         return pd.Series(index=portfolio.index, data=0.)
+
+    def get_rounded_trades(self, portfolio, prices, t):
+        """Get trades vector as number of shares, rounded to integers."""
+        return np.round(self.get_trades(portfolio, t)/prices)
 
 
 class Hold(BasePolicy):
@@ -164,12 +169,12 @@ class SinglePeriodOpt(BasePolicy):
     https://stanford.edu/~boyd/papers/cvx_portfolio.html
     """
 
-    def __init__(self, alpha_model, costs, constraints, solver=None,
+    def __init__(self, return_forecast, costs, constraints, solver=None,
                  solver_opts={}):
 
-        self.alpha_model = alpha_model
-        solver_opts = solver_opts
-        assert isinstance(self.alpha_model, BaseReturnsModel)
+        if not isinstance(return_forecast, BaseReturnsModel):
+            null_checker(return_forecast)
+        self.return_forecast = return_forecast
 
         super(SinglePeriodOpt, self).__init__()
 
@@ -191,7 +196,12 @@ class SinglePeriodOpt(BasePolicy):
         z = cvx.Variable(w.size)  # TODO pass index
         wplus = w.values + z
 
-        alpha_term = self.alpha_model.weight_expr(t, wplus)
+        if isinstance(self.return_forecast, BaseReturnsModel):
+            alpha_term = self.return_forecast.weight_expr(t, wplus)
+        else:
+            alpha_term = cvx.sum_entries(cvx.mul_elemwise(
+                time_locator(self.return_forecast, t, as_numpy=True), wplus))
+
         assert(alpha_term.is_concave())
 
         costs, constraints = [], []
@@ -226,7 +236,6 @@ class SinglePeriodOpt(BasePolicy):
                     'The problem is infeasible. Defaulting to no trades')
                 return self._nulltrade(portfolio)
 
-            # TODO will have index
             return pd.Series(index=portfolio.index, data=(z.value.A1 * value))
         except cvx.SolverError:
             logging.error(
