@@ -171,7 +171,7 @@ class SinglePeriodOpt(BasePolicy):
     """
 
     def __init__(self, return_forecast, costs, constraints, solver=None,
-                 solver_opts={}):
+                 solver_opts=None):
 
         if not isinstance(return_forecast, BaseReturnsModel):
             null_checker(return_forecast)
@@ -188,9 +188,22 @@ class SinglePeriodOpt(BasePolicy):
             self.constraints.append(constraint)
 
         self.solver = solver
-        self.solver_opts = solver_opts
+        self.solver_opts = {} if solver_opts is None else solver_opts
 
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=None):
+        """
+        Get optimal trade vector for given portfolio at time t.
+
+        Parameters
+        ----------
+        portfolio : pd.Series
+            Current portfolio vector.
+        t : pd.timestamp
+            Timestamp for the optimization.
+        """
+
+        if t is None:
+            t = pd.datetime.today()
 
         value = sum(portfolio)
         w = portfolio/value

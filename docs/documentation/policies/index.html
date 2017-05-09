@@ -27,7 +27,6 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Examples" href="../../examples/index.html" />
     <link rel="prev" title="Simulator" href="../simulator/index.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
@@ -50,15 +49,46 @@
 </div>
 <span class="target" id="module-policies"></span><dl class="class">
 <dt id="policies.SinglePeriodOpt">
-<em class="property">class </em><code class="descclassname">policies.</code><code class="descname">SinglePeriodOpt</code><span class="sig-paren">(</span><em>return_forecast</em>, <em>costs</em>, <em>constraints</em>, <em>solver=None</em>, <em>solver_opts={}</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.SinglePeriodOpt" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">policies.</code><code class="descname">SinglePeriodOpt</code><span class="sig-paren">(</span><em>return_forecast</em>, <em>costs</em>, <em>constraints</em>, <em>solver=None</em>, <em>solver_opts=None</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.SinglePeriodOpt" title="Permalink to this definition">¶</a></dt>
 <dd><p>Single-period optimization policy.</p>
 <p>Implements the model developed in chapter 4 of our paper
 <a class="reference external" href="https://stanford.edu/~boyd/papers/cvx_portfolio.html">https://stanford.edu/~boyd/papers/cvx_portfolio.html</a></p>
 <p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">get_rounded_trades</span></code>(portfolio,&nbsp;prices,&nbsp;t)</td>
+<td>Get trades vector as number of shares, rounded to integers.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#policies.SinglePeriodOpt.get_trades" title="policies.SinglePeriodOpt.get_trades"><code class="xref py py-obj docutils literal"><span class="pre">get_trades</span></code></a>(portfolio[,&nbsp;t])</td>
+<td>Get optimal trade vector for given portfolio at time t.</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="policies.SinglePeriodOpt.get_trades">
-<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=datetime.datetime(2017</em>, <em>5</em>, <em>8</em>, <em>16</em>, <em>57</em>, <em>57</em>, <em>367772)</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.SinglePeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=None</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.SinglePeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get optimal trade vector for given portfolio at time t.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>portfolio</strong> : pd.Series</p>
+<blockquote>
+<div><p>Current portfolio vector.</p>
+</div></blockquote>
+<p><strong>t</strong> : pd.timestamp</p>
+<blockquote class="last">
+<div><p>Timestamp for the optimization.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 </dd></dl>
 
@@ -66,9 +96,23 @@
 <dt id="policies.MultiPeriodOpt">
 <em class="property">class </em><code class="descclassname">policies.</code><code class="descname">MultiPeriodOpt</code><span class="sig-paren">(</span><em>trading_times</em>, <em>terminal_weights</em>, <em>lookahead_periods=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.MultiPeriodOpt" title="Permalink to this definition">¶</a></dt>
 <dd><p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">get_rounded_trades</span></code>(portfolio,&nbsp;prices,&nbsp;t)</td>
+<td>Get trades vector as number of shares, rounded to integers.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#policies.MultiPeriodOpt.get_trades" title="policies.MultiPeriodOpt.get_trades"><code class="xref py py-obj docutils literal"><span class="pre">get_trades</span></code></a>(portfolio[,&nbsp;t])</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="policies.MultiPeriodOpt.get_trades">
-<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=datetime.datetime(2017</em>, <em>5</em>, <em>8</em>, <em>16</em>, <em>57</em>, <em>57</em>, <em>367817)</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.MultiPeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=datetime.datetime(2017</em>, <em>5</em>, <em>8</em>, <em>17</em>, <em>14</em>, <em>24</em>, <em>145023)</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.MultiPeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
