@@ -10,6 +10,7 @@
 - [ ] clean up the gitignore for new stuff
 
 ## Tests
+- [ ] remove the pickle file, replace it with .csv or something
 - [x] fix them
 - [x] make them work with Travis
 - [x] ideally, they should work with python2
