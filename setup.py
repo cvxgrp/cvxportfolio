@@ -14,7 +14,7 @@ setup(
     license='Apache',
     zip_safe=False,
     description='ConVeX Portfolio Optimization and Simulation toolset.',
-    install_requires=["pandas>=0.19",
+    install_requires=["pandas",
                       "numpy",
                       "matplotlib",
                       "cvxpy"],
