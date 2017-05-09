@@ -27,6 +27,18 @@ If you wish to cite CVXPortfolio, please use:
 
 Installation
 ------------
-`
+
+1. Install [Anaconda](https://docs.continuum.io/anaconda/install).
+2. Install cvxpy with conda.
+```
+conda install -c cvxgrp cvxpy
+```
+3. Install CVXPortfolio with pip.
+```
 pip install cvxportfolio
-`
+```
+4. Test the installation with nose.
+```
+conda install nose
+nosetests cvxportfolio
+```
