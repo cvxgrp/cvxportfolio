@@ -5,6 +5,9 @@
  - [ ] FIX output
  - [x] rounding result trade vector (return rounded vector from the policy object).
 
+## design
+- [ ] impose that last column of returns is cash return. user shouldnt specify cash_key
+
 ## infrastructure
 - [ ] makefile: support make docs and make pip
 - [ ] clean up the gitignore for new stuff
