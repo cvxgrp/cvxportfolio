@@ -23,15 +23,19 @@ import numpy as np
 from cvxportfolio import time_matrix_locator, time_locator, null_checker
 from .base_test import BaseTest
 
-DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
+DIR = os.path.dirname(__file__) + os.path.sep
 
 
 class TestUtils(BaseTest):
 
     def setUp(self):
-        with open(DATAFILE, 'rb') as f:
-            self.returns, self.sigma, self.volume, self.a, self.b, self.s = \
-                pickle.load(f)
+        self.sigma=pd.read_csv(DIR+'sigmas.csv',
+                                index_col=0, parse_dates=[0])
+        self.returns=pd.read_csv(DIR+'returns.csv',
+                                 index_col=0, parse_dates=[0])
+        self.volume=pd.read_csv(DIR+'volumes.csv',
+                                 index_col=0, parse_dates=[0])
+        self.a, self.b, self.s = 0.0005, 1., 0.
         self.volume['cash'] = np.NaN
 
     def test_null_checker(self):

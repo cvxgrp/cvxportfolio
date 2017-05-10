@@ -24,15 +24,19 @@ from cvxportfolio import TcostModel, HcostModel
 from .base_test import BaseTest
 from cvxportfolio import MarketSimulator, SimulationResult
 
-DATAFILE = os.path.dirname(__file__) + os.path.sep + 'sample_data.pickle'
+DIR = os.path.dirname(__file__) + os.path.sep
 
 
 class TestSimulator(BaseTest):
 
     def setUp(self):
-        with open(DATAFILE, 'rb') as f:
-            self.returns, self.sigma, self.volume, self.a, self.b, self.s = \
-                pickle.load(f)
+        self.sigma=pd.read_csv(DIR+'sigmas.csv',
+                                index_col=0, parse_dates=[0])
+        self.returns=pd.read_csv(DIR+'returns.csv',
+                                 index_col=0, parse_dates=[0])
+        self.volume=pd.read_csv(DIR+'volumes.csv',
+                                 index_col=0, parse_dates=[0])
+        self.a, self.b, self.s = 0.0005, 1., 0.
         self.portfolio = pd.Series(index=self.returns.columns, data=1E6)
         self.tcost_term = TcostModel(self.a, self.b, self.sigma, self.volume)
         self.hcost_term = HcostModel(self.s)

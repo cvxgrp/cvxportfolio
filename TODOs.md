@@ -1,7 +1,7 @@
 ## Examples
 - [ ] modify data files so we don't store NaN (look at how you read them)
-- [ ] real time optimization:
- - [ ] Excel output
+- [x] real time optimization:
+ - [x] Excel output
  - [ ] FIX output
  - [x] rounding result trade vector (return rounded vector from the policy object).
 
@@ -10,7 +10,7 @@
 - [ ] clean up the gitignore for new stuff
 
 ## Tests
-- [ ] remove the pickle file, replace it with .csv or something
+- [x] remove the pickle file, replace it with .csv or something
 - [x] fix them
 - [x] make them work with Travis
 - [x] ideally, they should work with python2
