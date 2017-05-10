@@ -23,14 +23,11 @@ The original implementation, `you can see the code here
 wasn't robust enough to be included in the main library. In fact, an API change
 by Pandas broke it.
 
-You can see in the plot that there is a slight difference in the transaction
-cost model with respect to the development code. That is due to how the daily
-volatility was estimated in the original examples. We used *intraday*
-historical volatility, while now the library uses historical volatility of
-open-to-open returns, which matches what is described in the paper. In
-practice, the market impact term of the transaction cost model is either
-negligible for small to medium investors, or needs to be tuned (using the ``b``
-parameter) with realized execution cost data.
+You run it, from the root of the development environment, by
+
+.. code-block::
+
+    python -m examples.paper_examples.portfolio_simulation
 """
 
 import matplotlib.pyplot as plt
@@ -40,15 +37,12 @@ import pandas as pd
 
 import cvxportfolio as cvx
 
+from .common import paper_hcost_model, paper_simulated_tcost_model
 from .data_risk_model import paper_market_data, paper_risk_model
 
 # Start and end times of the back-test.
 start_t = "2012-01-01"
 end_t = "2016-12-31"
-
-# Short fees, in annualized percent (this is equivalent to 1bp per period, as
-# it was in the notebook).
-BORROW_FEE = 2.552
 
 # Get market data.
 market_data = paper_market_data()
@@ -59,10 +53,8 @@ w_b.USDOLLAR = 0.
 w_b /= sum(w_b)
 
 # Cost models.
-simulated_tcost = cvx.TcostModel(
-    a=0.0005/2., b=1.)
-simulated_hcost = cvx.HcostModel(
-    short_fees=BORROW_FEE)
+simulated_tcost = paper_simulated_tcost_model()
+simulated_hcost = paper_hcost_model()
 
 # Market simulator.
 simulator = cvx.MarketSimulator(market_data = paper_market_data(),
