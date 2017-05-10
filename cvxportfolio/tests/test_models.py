@@ -15,7 +15,6 @@ limitations under the License.
 """
 
 import os
-import pickle
 
 import cvxpy as cvx
 import numpy as np
@@ -32,12 +31,12 @@ DIR = os.path.dirname(__file__) + os.path.sep
 class TestModels(BaseTest):
 
     def setUp(self):
-        self.sigma=pd.read_csv(DIR+'sigmas.csv',
-                                index_col=0, parse_dates=[0])
-        self.returns=pd.read_csv(DIR+'returns.csv',
+        self.sigma = pd.read_csv(DIR+'sigmas.csv',
                                  index_col=0, parse_dates=[0])
-        self.volume=pd.read_csv(DIR+'volumes.csv',
-                                 index_col=0, parse_dates=[0])
+        self.returns = pd.read_csv(DIR+'returns.csv',
+                                   index_col=0, parse_dates=[0])
+        self.volume = pd.read_csv(DIR+'volumes.csv',
+                                  index_col=0, parse_dates=[0])
         self.a, self.b, self.s = 0.0005, 1., 0.
         self.universe = self.returns.columns
         self.times = self.returns.index
