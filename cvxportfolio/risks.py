@@ -29,7 +29,10 @@ __all__ = ['FullSigma', 'EmpSigma', 'SqrtSigma', 'WorstCaseRisk',
 def locator(obj, t):
     """Picks last element before t."""
     try:
-        return obj.iloc[obj.axes[0].get_loc(t, method='pad')]
+        return obj.loc[t, :]
+    except KeyError:  # t dne
+        prev_t = obj.loc[:t, :].index.values[0][0]
+        return obj.loc[prev_t, :]
     except AttributeError:  # obj not pandas
         return obj
 
@@ -54,10 +57,10 @@ class BaseRiskModel(BaseCost):
         if self.gamma_half_life == np.inf:
             gamma_multiplier = 1.
         else:
-            decay_factor = 2**(-1/self.gamma_half_life)
+            decay_factor = 2 ** (-1 / self.gamma_half_life)
             # TODO not dependent on days
-            gamma_init = decay_factor**((tau - t).days)
-            gamma_multiplier = gamma_init*(1 - decay_factor)/(1 - decay_factor)
+            gamma_init = decay_factor ** ((tau - t).days)
+            gamma_multiplier = gamma_init * (1 - decay_factor) / (1 - decay_factor)
 
         return gamma_multiplier * self.weight_expr(t, w_plus, z, value)[0], []
 

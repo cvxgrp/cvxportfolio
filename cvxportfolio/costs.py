@@ -95,7 +95,7 @@ class HcostModel(BaseCost):
 
     def value_expr(self, t, h_plus, u):
         self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * \
-                time_locator(self.borrow_costs, t)
+            time_locator(self.borrow_costs, t)
         self.last_cost -= h_plus.iloc[:-1] * \
             time_locator(self.dividends, t)
 
@@ -111,9 +111,14 @@ class HcostModel(BaseCost):
 class TcostModel(BaseCost):
     """A model for transaction costs.
 
+    See figure 2.3 in the white paper:
+    https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf
+
+    Note: There is no c term.
+
     Attributes:
       volume: A dataframe of volumes.
-      sigma: A dataframe of daily volatities.
+      sigma: A dataframe of daily volatilities.
       half_spread: A dataframe of bid-ask spreads divided by 2.
       nonlin_coeff: A dataframe of coefficients for the nonlinear cost.
       power: The nonlinear tcost power.
@@ -165,8 +170,8 @@ class TcostModel(BaseCost):
         else:  # it is a pd series
             no_trade = second_term.index[second_term.isnull()]
             second_term[no_trade] = 0
-            constr += [z[second_term.index.get_loc(tick)]
-                       == 0 for tick in no_trade]
+            constr += [z[second_term.index.get_loc(tick)] == 0
+                       for tick in no_trade]
 
         try:
             self.expression = cvx.mul_elemwise(
@@ -186,10 +191,11 @@ class TcostModel(BaseCost):
     def value_expr(self, t, h_plus, u):
 
         u_nc = u.iloc[:-1]
-        self.tmp_tcosts = np.abs(u_nc)*time_locator(self.half_spread, t) + \
-            time_locator(self.nonlin_coeff, t)*time_locator(self.sigma, t) * \
-            np.abs(u_nc)**self.power / \
-            (time_locator(self.volume, t)**(self.power - 1))
+        self.tmp_tcosts = (
+            np.abs(u_nc) * time_locator(self.half_spread, t) +
+            time_locator(self.nonlin_coeff, t) * time_locator(self.sigma, t) *
+            np.abs(u_nc) ** self.power /
+            (time_locator(self.volume, t) ** (self.power - 1)))
 
         return self.tmp_tcosts.sum()
 
