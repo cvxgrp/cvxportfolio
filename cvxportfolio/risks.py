@@ -31,10 +31,16 @@ def locator(obj, t):
     try:
         return obj.loc[t, :]
     except KeyError:  # t dne
-        prev_t = obj.loc[:t, :].index.values[0][0]
+
+        if isinstance(obj, pd.Panel):
+            return obj.iloc[obj.axes[0].get_loc(t, method='pad')]
+
+        elif isinstance(obj.index, pd.MultiIndex):
+            prev_t = obj.loc[:t, :].index.values[0][0]
+        else:
+            prev_t = obj.loc[:t, :].index.values[0]
+
         return obj.loc[prev_t, :]
-    except AttributeError:  # obj not pandas
-        return obj
 
 
 class BaseRiskModel(BaseCost):
@@ -60,7 +66,8 @@ class BaseRiskModel(BaseCost):
             decay_factor = 2 ** (-1 / self.gamma_half_life)
             # TODO not dependent on days
             gamma_init = decay_factor ** ((tau - t).days)
-            gamma_multiplier = gamma_init * (1 - decay_factor) / (1 - decay_factor)
+            gamma_multiplier = gamma_init * \
+                (1 - decay_factor) / (1 - decay_factor)
 
         return gamma_multiplier * self.weight_expr(t, w_plus, z, value)[0], []
 
@@ -72,6 +79,7 @@ class BaseRiskModel(BaseCost):
 
 
 class FullSigma(BaseRiskModel):
+
     def __init__(self, Sigma, **kwargs):
         """Sigma is either a matrix or a pd.Panel"""
         self.Sigma = Sigma
@@ -92,6 +100,7 @@ class FullSigma(BaseRiskModel):
 
 class EmpSigma(BaseRiskModel):
     """Empirical Sigma matrix, built looking at *lookback* past returns."""
+
     def __init__(self, returns, lookback, **kwargs):
         """returns is dataframe, lookback is int"""
         self.returns = returns
@@ -102,13 +111,14 @@ class EmpSigma(BaseRiskModel):
     def _estimate(self, t, wplus, z, value):
         idx = self.returns.index.get_loc(t)
         # TODO make sure pandas + cvxpy works
-        R = self.returns.iloc[max(idx-1-self.lookback, 0):idx-1]
+        R = self.returns.iloc[max(idx - 1 - self.lookback, 0):idx - 1]
         assert (R.shape[0] > 0)
-        self.expression = cvx.sum_squares(R.values*wplus)/self.lookback
+        self.expression = cvx.sum_squares(R.values * wplus) / self.lookback
         return self.expression
 
 
 class SqrtSigma(BaseRiskModel):
+
     def __init__(self, sigma_sqrt, **kwargs):
         """returns is dataframe, lookback is int"""
         self.sigma_sqrt = sigma_sqrt
@@ -117,11 +127,12 @@ class SqrtSigma(BaseRiskModel):
 
     def _estimate(self, t, wplus, z, value):
         # TODO make sure pandas + cvxpy works
-        self.expression = cvx.sum_squares(wplus.T*self.sigma_sqrt.values)
+        self.expression = cvx.sum_squares(wplus.T * self.sigma_sqrt.values)
         return self.expression
 
 
 class FactorModelSigma(BaseRiskModel):
+
     def __init__(self, exposures, factor_Sigma, idiosync, **kwargs):
         """Each is a pd.Panel (or ) or a vector/matrix"""
         self.exposures = exposures
@@ -135,13 +146,14 @@ class FactorModelSigma(BaseRiskModel):
     def _estimate(self, t, wplus, z, value):
         self.expression = cvx.sum_squares(cvx.mul_elemwise(
             np.sqrt(locator(self.idiosync, t).values), wplus)) + \
-            cvx.quad_form((wplus.T*locator(self.exposures, t).values.T).T,
+            cvx.quad_form((wplus.T * locator(self.exposures, t).values.T).T,
                           locator(self.factor_Sigma, t).values)
         return self.expression
 
 
 class RobustSigma(BaseRiskModel):
     """Implements covariance forecast error risk."""
+
     def __init__(self, Sigma, epsilon, **kwargs):
         self.Sigma = Sigma  # pd.Panel or matrix
         self.epsilon = epsilon  # pd.Series or scalar
@@ -149,15 +161,16 @@ class RobustSigma(BaseRiskModel):
 
     def _estimate(self, t, wplus, z, value):
         self.expression = cvx.quad_form(wplus, locator(self.Sigma, t)) + \
-                             locator(self.epsilon, t) * \
-                             (cvx.abs(wplus).T * np.diag(locator(
-                                self.Sigma, t)))**2
+            locator(self.epsilon, t) * \
+            (cvx.abs(wplus).T * np.diag(locator(
+                self.Sigma, t)))**2
 
         return self.expression
 
 
 class RobustFactorModelSigma(BaseRiskModel):
     """Implements covariance forecast error risk."""
+
     def __init__(self, exposures, factor_Sigma, idiosync, epsilon, **kwargs):
         """Each is a pd.Panel (or ) or a vector/matrix"""
         self.exposures = exposures
@@ -183,6 +196,7 @@ class RobustFactorModelSigma(BaseRiskModel):
 
 
 class WorstCaseRisk(BaseRiskModel):
+
     def __init__(self, riskmodels, **kwargs):
         self.riskmodels = riskmodels
         super(WorstCaseRisk, self).__init__(**kwargs)

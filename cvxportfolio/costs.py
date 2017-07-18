@@ -24,6 +24,7 @@ __all__ = ['HcostModel', 'TcostModel']
 
 
 class BaseCost(Expression):
+
     def __init__(self):
         self.gamma = 1.  # it is changed by gamma * BaseCost()
 

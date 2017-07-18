@@ -98,14 +98,14 @@ class MarketSimulator():
         logging.basicConfig(level=loglevel)
 
         results = SimulationResult(initial_portfolio=copy.copy(
-                                                        initial_portfolio),
-                                   policy=policy, cash_key=self.cash_key,
-                                   simulator=self)
+            initial_portfolio),
+            policy=policy, cash_key=self.cash_key,
+            simulator=self)
         h = initial_portfolio
 
         simulation_times = self.market_returns.index[
-                (self.market_returns.index >= start_time) &
-                (self.market_returns.index <= end_time)]
+            (self.market_returns.index >= start_time) &
+            (self.market_returns.index <= end_time)]
         logging.info('Backtest started, from %s to %s' %
                      (simulation_times[0], simulation_times[-1]))
 
@@ -120,7 +120,7 @@ class MarketSimulator():
                 u = pd.Series(index=h.index, data=0.)
             end = time.time()
             assert (not pd.isnull(u).any())
-            results.log_policy(t, end-start)
+            results.log_policy(t, end - start)
 
             logging.info('Propagating portfolio at time %s' % t)
             start = time.time()
@@ -130,7 +130,7 @@ class MarketSimulator():
             results.log_simulation(t=t, u=u, h_next=h,
                                    risk_free_return=self.market_returns.loc[
                                        t, self.cash_key],
-                                   exec_time=end-start)
+                                   exec_time=end - start)
 
         logging.info('Backtest ended, from %s to %s' %
                      (simulation_times[0], simulation_times[-1]))

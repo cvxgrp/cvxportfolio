@@ -75,15 +75,15 @@ class ReturnsForecast(BaseReturnsModel):
 
         alpha = self.weight_expr(t, wplus)
         if tau > t and self.gamma_decay is not None:
-            alpha *= (tau-t).days**(-self.gamma_decay)
+            alpha *= (tau - t).days**(-self.gamma_decay)
         return alpha
 
 
 class MPOReturnsForecast(BaseReturnsModel):
-    """A single alpha estimateion.
+    """A single alpha estimation.
 
     Attributes:
-      alpha_data: A dict of serieses of return estimates.
+      alpha_data: A dict of series of return estimates.
     """
 
     def __init__(self, alpha_data):
@@ -100,7 +100,7 @@ class MPOReturnsForecast(BaseReturnsModel):
         Returns:
           An expression for the alpha.
         """
-        return self.alpha_data[(t, tau)].values.T*wplus
+        return self.alpha_data[(t, tau)].values.T * wplus
 
 
 class MultipleReturnsForecasts(BaseReturnsModel):
@@ -110,6 +110,7 @@ class MultipleReturnsForecasts(BaseReturnsModel):
       alpha_sources: a list of alpha sources.
       weights: An array of weights for the alpha sources.
     """
+
     def __init__(self, alpha_sources, weights):
         self.alpha_sources = alpha_sources
         self.weights = weights
