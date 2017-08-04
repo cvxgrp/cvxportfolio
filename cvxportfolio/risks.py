@@ -30,6 +30,8 @@ def locator(obj, t):
     """Picks last element before t."""
     try:
         return obj.loc[t, :]
+    except AttributeError:  # obj not pandas
+        return obj
     except KeyError:  # t dne
 
         if isinstance(obj, pd.Panel):
