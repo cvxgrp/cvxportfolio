@@ -65,20 +65,32 @@ class SimulationResult():
 
     def _summary_string(self):
         data = collections.OrderedDict({
-            'Number of periods':            self.u.shape[0],
-            'Initial timestamp':            self.h.index[0],
-            'Final timestamp':              self.h.index[-1],
-            'Portfolio return (%)':         self.returns.mean() * 100 * self.PPY,
-            'Excess return (%)':            self.excess_returns.mean() * 100 * self.PPY,
-            'Excess risk (%)':              self.excess_returns.std() * 100 * np.sqrt(self.PPY),
-            'Sharpe ratio':                 self.sharpe_ratio,
-            'Max. drawdown':                self.max_drawdown,
-            'Turnover (%)':                 self.turnover.mean() * 100 * self.PPY,
-            'Average policy time (sec)':    self.policy_time.mean(),
-            'Average simulator time (sec)': self.simulation_time.mean(),
+            'Number of periods':
+                self.u.shape[0],
+            'Initial timestamp':
+                self.h.index[0],
+            'Final timestamp':
+                self.h.index[-1],
+            'Portfolio return (%)':
+                self.returns.mean() * 100 * self.PPY,
+            'Excess return (%)':
+                self.excess_returns.mean() * 100 * self.PPY,
+            'Excess risk (%)':
+                self.excess_returns.std() * 100 * np.sqrt(self.PPY),
+            'Sharpe ratio':
+                self.sharpe_ratio,
+            'Max. drawdown':
+                self.max_drawdown,
+            'Turnover (%)':
+                self.turnover.mean() * 100 * self.PPY,
+            'Average policy time (sec)':
+                self.policy_time.mean(),
+            'Average simulator time (sec)':
+                self.simulation_time.mean(),
         })
 
-        return pd.Series(data=data).to_string(float_format='{:,.3f}'.format)
+        return (pd.Series(data=data).
+                to_string(float_format='{:,.3f}'.format))
 
     def log_data(self, name, t, entry):
         try:
@@ -226,6 +238,6 @@ class SimulationResult():
         for val in val_arr[1:]:
             if val >= cur_max:
                 cur_max = val
-            elif 100*(cur_max - val)/cur_max > max_dd_so_far:
-                max_dd_so_far = 100*(cur_max - val)/cur_max
+            elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
+                max_dd_so_far = 100 * (cur_max - val) / cur_max
         return max_dd_so_far
