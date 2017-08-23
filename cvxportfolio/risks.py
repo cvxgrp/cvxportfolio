@@ -29,20 +29,17 @@ __all__ = ['FullSigma', 'EmpSigma', 'SqrtSigma', 'WorstCaseRisk',
 def locator(obj, t):
     """Picks last element before t."""
     try:
-        return obj.loc[t, :]
+        if isinstance(obj, pd.Panel):
+            return obj.iloc[obj.axes[0].get_loc(t, method='pad')-1]
+
+        else:
+            prev_t = obj.loc[:t, :].index.values[-1]
+            return obj.loc[prev_t, :]
+        
     except AttributeError:  # obj not pandas
         return obj
-    except KeyError:  # t dne
 
-        if isinstance(obj, pd.Panel):
-            return obj.iloc[obj.axes[0].get_loc(t, method='pad')]
-
-        elif isinstance(obj.index, pd.MultiIndex):
-            prev_t = obj.loc[:t, :].index.values[0][0]
-        else:
-            prev_t = obj.loc[:t, :].index.values[0]
-
-        return obj.loc[prev_t, :]
+        
 
 
 class BaseRiskModel(BaseCost):
