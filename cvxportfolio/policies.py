@@ -50,18 +50,20 @@ class BasePolicy(object):
     def get_rounded_trades(self, portfolio, prices, t):
         """Get trades vector as number of shares, rounded to integers."""
         return np.round(self.get_trades(portfolio,
-                                        t)/time_locator(prices, t))[:-1]
+                                        t) / time_locator(prices, t))[:-1]
 
 
 class Hold(BasePolicy):
     """Hold initial portfolio.
     """
+
     def get_trades(self, portfolio, t=pd.datetime.today()):
         return self._nulltrade(portfolio)
 
 
 class ProportionalTrade(BasePolicy):
     """Gets to target in given time steps."""
+
     def __init__(self, targetweight, time_steps):
         self.targetweight = targetweight
         self.time_steps = time_steps
@@ -70,18 +72,19 @@ class ProportionalTrade(BasePolicy):
     def get_trades(self, portfolio, t=pd.datetime.today()):
         try:
             missing_time_steps = len(
-                self.time_steps)-next(i for (i, x)
-                                      in enumerate(self.time_steps)
-                                      if x == t)
+                self.time_steps) - next(i for (i, x)
+                                        in enumerate(self.time_steps)
+                                        if x == t)
         except StopIteration:
             raise Exception(
                 "ProportionalTrade can only trade on the given time steps")
-        deviation = self.targetweight-portfolio/sum(portfolio)
-        return sum(portfolio)*deviation/missing_time_steps
+        deviation = self.targetweight - portfolio / sum(portfolio)
+        return sum(portfolio) * deviation / missing_time_steps
 
 
 class SellAll(BasePolicy):
     """Sell all non-cash assets."""
+
     def get_trades(self, portfolio, t=pd.datetime.today()):
         trade = -pd.Series(portfolio, copy=True)
         trade.ix[-1] = 0.
@@ -91,6 +94,7 @@ class SellAll(BasePolicy):
 class FixedTrade(BasePolicy):
     """Trade a fixed trade vector.
     """
+
     def __init__(self, tradevec=None, tradeweight=None):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
         if tradevec is not None and tradeweight is not None:
@@ -107,7 +111,7 @@ class FixedTrade(BasePolicy):
     def get_trades(self, portfolio, t=pd.datetime.today()):
         if self.tradevec is not None:
             return self.tradevec
-        return sum(portfolio)*self.tradeweight
+        return sum(portfolio) * self.tradeweight
 
 
 class BaseRebalance(BasePolicy):
@@ -119,6 +123,7 @@ class BaseRebalance(BasePolicy):
 class PeriodicRebalance(BaseRebalance):
     """Track a target portfolio, rebalancing at given times.
     """
+
     def __init__(self, target, period, **kwargs):
         """
         Args:
@@ -134,9 +139,9 @@ class PeriodicRebalance(BaseRebalance):
     def is_start_period(self, t):
         result = not getattr(t, self.period) == getattr(self.last_t,
                                                         self.period) if \
-                                                        hasattr(self,
-                                                                'last_t')\
-                                                        else True
+            hasattr(self,
+                    'last_t')\
+            else True
         self.last_t = t
         return result
 
@@ -148,13 +153,14 @@ class PeriodicRebalance(BaseRebalance):
 class AdaptiveRebalance(BaseRebalance):
     """ Rebalance portfolio when deviates too far from target.
     """
+
     def __init__(self, target, tracking_error):
         self.target = target
         self.tracking_error = tracking_error
         super(AdaptiveRebalance, self).__init__()
 
     def get_trades(self, portfolio, t=pd.datetime.today()):
-        weights = portfolio/sum(portfolio)
+        weights = portfolio / sum(portfolio)
         diff = (weights - self.target).values
 
         if np.linalg.norm(diff, 2) > self.tracking_error:
@@ -206,7 +212,7 @@ class SinglePeriodOpt(BasePolicy):
             t = pd.datetime.today()
 
         value = sum(portfolio)
-        w = portfolio/value
+        w = portfolio / value
         z = cvx.Variable(w.size)  # TODO pass index
         wplus = w.values + z
 
@@ -294,7 +300,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
 
         value = sum(portfolio)
         assert (value > 0.)
-        w = cvx.Constant(portfolio.values/value)
+        w = cvx.Constant(portfolio.values / value)
 
         prob_arr = []
         z_vars = []

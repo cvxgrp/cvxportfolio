@@ -35,5 +35,5 @@ class Expression(object):
 
         This should be overridden if the term is used in the simulator.
         """
-        return sum(h_plus)*self.weight_expr(t, h_plus/sum(h_plus),
-                                            u/sum(u), sum(h_plus))
+        return sum(h_plus) * self.weight_expr(t, h_plus / sum(h_plus),
+                                              u / sum(u), sum(h_plus))

@@ -39,7 +39,7 @@ class BaseConstraint(object):
         """
         if w_plus is None:
             return self._weight_expr(t, None, z, v)
-        return self._weight_expr(t, w_plus-self.w_bench, z, v)
+        return self._weight_expr(t, w_plus - self.w_bench, z, v)
 
     @abstractmethod
     def _weight_expr(self, t, w_plus, z, v):
@@ -49,6 +49,7 @@ class BaseConstraint(object):
 class MaxTrade(BaseConstraint):
     """A limit on maximum trading size.
     """
+
     def __init__(self, ADVs, max_fraction=0.05, **kwargs):
         self.ADVs = ADVs
         self.max_fraction = max_fraction
@@ -63,13 +64,15 @@ class MaxTrade(BaseConstraint):
           z: trade weights
           v: portfolio value
         """
-        return cvx.abs(z[:-1])*v <= self.ADVs.loc[t].values * self.max_fraction
+        return cvx.abs(z[:-1]) * v <= \
+            self.ADVs.loc[t].values * self.max_fraction
         # TODO check [:-1] and fix pandas <=
 
 
 class LongOnly(BaseConstraint):
     """A long only constraint.
     """
+
     def __init__(self, **kwargs):
         super(LongOnly, self).__init__(**kwargs)
 
@@ -89,6 +92,7 @@ class LeverageLimit(BaseConstraint):
     Attributes:
       limit: A series or number giving the leverage limit.
     """
+
     def __init__(self, limit, **kwargs):
         self.limit = limit
         super(LeverageLimit, self).__init__(**kwargs)
