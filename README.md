@@ -19,8 +19,11 @@ If you wish to cite CVXPortfolio, please use:
     title        = {Multi-Period Trading via Convex Optimization},
     journal      = {Foundations and Trends in Optimization},
     year         = {2017},
-    pages        = {to appear}
-    publisher    = {Now Publishers}
+    month        = {August},
+    volume       = {3},
+    number       = {1},
+    pages        = {1--76},
+    publisher    = {Now Publishers},
     url          = {http://stanford.edu/~boyd/papers/cvx_portfolio.html},
 }
 ```
