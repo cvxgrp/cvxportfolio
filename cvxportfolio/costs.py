@@ -112,10 +112,8 @@ class HcostModel(BaseCost):
 class TcostModel(BaseCost):
     """A model for transaction costs.
 
-    See figure 2.3 in the white paper:
-    https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf
-
-    Note: There is no c term.
+    (See figure 2.3 in the paper
+    https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf)
 
     Attributes:
       volume: A dataframe of volumes.
