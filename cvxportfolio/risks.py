@@ -36,13 +36,11 @@ def locator(obj, t):
             prev_t = obj.loc[:t, :].index.values[-2][0]
         else:
             prev_t = obj.loc[:t, :].index.values[-2]
-        
+
         return obj.loc[prev_t, :]
-        
+
     except AttributeError:  # obj not pandas
         return obj
-
-        
 
 
 class BaseRiskModel(BaseCost):
