@@ -231,8 +231,8 @@ class SinglePeriodOpt(BasePolicy):
             costs.append(cost_expr)
             constraints += const_expr
 
-        constraints += [item for item in (con.weight_expr(t, wplus, z, value)
-                                          for con in self.constraints)]
+        constraints += [item for con in self.constraints \
+                             for item in con.weight_expr(t, wplus, z, value)]
 
         for el in costs:
             assert (el.is_convex())

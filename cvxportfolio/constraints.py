@@ -64,8 +64,8 @@ class MaxTrade(BaseConstraint):
           z: trade weights
           v: portfolio value
         """
-        return cvx.abs(z[:-1]) * v <= \
-            self.ADVs.loc[t].values * self.max_fraction
+        return [cvx.abs(z[:-1]) * v <= \
+            self.ADVs.loc[t].values * self.max_fraction]
         # TODO check [:-1] and fix pandas <=
 
 
@@ -83,7 +83,7 @@ class LongOnly(BaseConstraint):
           t: time
           wplus: holdings
         """
-        return w_plus >= 0
+        return [w_plus >= 0]
 
 
 class LeverageLimit(BaseConstraint):
@@ -108,7 +108,7 @@ class LeverageLimit(BaseConstraint):
             limit = self.limit.loc[t]
         else:
             limit = self.limit
-        return cvx.norm(w_plus, 1) <= limit
+        return [cvx.norm(w_plus, 1) <= limit]
 
 
 class LongCash(BaseConstraint):
@@ -125,4 +125,4 @@ class LongCash(BaseConstraint):
           t: time
           wplus: holdings
         """
-        return w_plus[-1] >= 0
+        return [w_plus[-1] >= 0]

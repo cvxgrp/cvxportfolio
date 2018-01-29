@@ -240,37 +240,37 @@ class TestModels(BaseTest):
         model = LongOnly()
         cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n)
-        assert cons.value
+        assert np.any([c.value for c in cons])
         wplus.value = -np.ones(n)
-        assert not cons.value
+        assert not np.any([c.value for c in cons])
 
         # long cash
         model = LongCash()
         cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n)
-        assert cons.value
+        assert np.any([c.value for c in cons])
         tmp = np.ones(n)
         tmp[-1] = -1
         wplus.value = tmp
-        assert not cons.value
+        assert not np.any([c.value for c in cons])
 
         # leverage limit
         model = LeverageLimit(2)
         cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n)/n
-        assert cons.value
+        assert np.any([c.value for c in cons])
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert not cons.value
+        assert not np.any([c.value for c in cons])
         model = LeverageLimit(7)
         cons = model.weight_expr(t, wplus, None, None)
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert cons.value
+        assert np.any([c.value for c in cons])
 
         limits = pd.Series(index=self.times, data=2)
         limits.iloc[1] = 7
@@ -280,9 +280,9 @@ class TestModels(BaseTest):
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert cons.value
+        assert np.any([c.value for c in cons])
         cons = model.weight_expr(self.times[2], wplus, None, None)
-        assert not cons.value
+        assert not np.any([c.value for c in cons])
 
     def test_trade_constr(self):
         """Test trading constraints.
@@ -298,6 +298,6 @@ class TestModels(BaseTest):
         tmp = np.zeros(n)
         tmp[:-1] = self.volume.loc[t].values / value * 0.05
         z.value = tmp
-        assert cons.value
+        assert np.any([c.value for c in cons])
         z.value = -100*z.value  # -100*np.ones(n)
-        assert not cons.value
+        assert not np.any([c.value for c in cons])
