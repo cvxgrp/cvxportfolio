@@ -77,19 +77,19 @@ class HcostModel(BaseCost):
             w_plus = w_plus[:-1]  # TODO fix when cvxpy pandas ready
 
         try:
-            self.expression = cvx.mul_elemwise(
+            self.expression = cvx.multiply(
                 time_locator(self.borrow_costs, t), cvx.neg(w_plus))
         except TypeError:
-            self.expression = cvx.mul_elemwise(time_locator(
+            self.expression = cvx.multiply(time_locator(
                 self.borrow_costs, t).values, cvx.neg(w_plus))
         try:
-            self.expression -= cvx.mul_elemwise(
+            self.expression -= cvx.multiply(
                 time_locator(self.dividends, t), w_plus)
         except TypeError:
-            self.expression -= cvx.mul_elemwise(
+            self.expression -= cvx.multiply(
                 time_locator(self.dividends, t).values, w_plus)
 
-        return cvx.sum_entries(self.expression), []
+        return cvx.sum(self.expression), []
 
     def _estimate_ahead(self, t, tau, w_plus, z, value):
         return self._estimate(t, w_plus, z, value)
@@ -103,7 +103,7 @@ class HcostModel(BaseCost):
         return sum(self.last_cost)
 
     def optimization_log(self, t):
-        return self.expression.value.A1
+        return self.expression.value
 
     def simulation_log(self, t):
         return self.last_cost
@@ -173,19 +173,19 @@ class TcostModel(BaseCost):
                        for tick in no_trade]
 
         try:
-            self.expression = cvx.mul_elemwise(
+            self.expression = cvx.multiply(
                 time_locator(self.half_spread, t), cvx.abs(z))
         except TypeError:
-            self.expression = cvx.mul_elemwise(
+            self.expression = cvx.multiply(
                 time_locator(self.half_spread, t).values, cvx.abs(z))
         try:
-            self.expression += cvx.mul_elemwise(second_term,
+            self.expression += cvx.multiply(second_term,
                                                 cvx.abs(z)**self.power)
         except TypeError:
-            self.expression += cvx.mul_elemwise(
+            self.expression += cvx.multiply(
                 second_term.values, cvx.abs(z)**self.power)
 
-        return cvx.sum_entries(self.expression), constr
+        return cvx.sum(self.expression), constr
 
     def value_expr(self, t, h_plus, u):
 
