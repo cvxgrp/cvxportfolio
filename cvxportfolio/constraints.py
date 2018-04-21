@@ -19,6 +19,8 @@ from abc import ABCMeta, abstractmethod
 import cvxpy as cvx
 import pandas as pd
 
+from .risks import locator
+
 __all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'MaxTrade']
 
 
@@ -65,7 +67,7 @@ class MaxTrade(BaseConstraint):
           v: portfolio value
         """
         return cvx.abs(z[:-1]) * v <= \
-            self.ADVs.loc[t].values * self.max_fraction
+            locator(self.ADVs, t) * self.max_fraction
         # TODO check [:-1] and fix pandas <=
 
 

@@ -27,7 +27,8 @@ from cvxportfolio.utils.data_management import time_locator, null_checker
 
 
 __all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
-           'SinglePeriodOpt', 'MultiPeriodOpt', 'ProportionalTrade']
+           'SinglePeriodOpt', 'MultiPeriodOpt', 'ProportionalTrade',
+           'RankAndLongShort']
 
 
 class BasePolicy(object):
@@ -59,6 +60,41 @@ class Hold(BasePolicy):
 
     def get_trades(self, portfolio, t=pd.datetime.today()):
         return self._nulltrade(portfolio)
+
+
+class RankAndLongShort(BasePolicy):
+    """Rank assets, long the best and short the worst (cash neutral)."""
+
+    def __init__(self, return_forecast, num_long, num_short, target_turnover):
+        self.target_turnover = target_turnover
+        self.num_long = num_long
+        self.num_short = num_short
+        self.return_forecast = return_forecast
+        super(RankAndLongShort, self).__init__()
+
+    def get_trades(self, portfolio, t=pd.datetime.today()):
+        prediction = time_locator(self.return_forecast, t, as_numpy=False)
+        sorted_ret = prediction.sort_values()
+
+        short = sorted_ret.index[:self.num_short]
+        long = sorted_ret.index[-self.num_long:]
+
+        u = pd.Series(0., index=prediction.index)
+        u[short] = -1.
+        u[long] = 1.
+        u /= sum(abs(u))
+        u = sum(portfolio) * u * self.target_turnover
+
+        # import pdb; pdb.set_trace()
+        #
+        # # ex-post cash neutrality
+        # old_cash = portfolio[-1]
+        # if old_cash > 0:
+        #     u[short] = u[short] + old_cash/self.num_short
+        # else:
+        #     u[long] = u[long] + old_cash/self.num_long
+
+        return u
 
 
 class ProportionalTrade(BasePolicy):
@@ -240,18 +276,18 @@ class SinglePeriodOpt(BasePolicy):
         for el in constraints:
             assert (el.is_dcp())
 
-        prob = cvx.Problem(
+        self.prob = cvx.Problem(
             cvx.Maximize(alpha_term - sum(costs)),
             [cvx.sum_entries(z) == 0] + constraints)
         try:
-            prob.solve(solver=self.solver, **self.solver_opts)
+            self.prob.solve(solver=self.solver, **self.solver_opts)
 
-            if prob.status == 'unbounded':
+            if self.prob.status == 'unbounded':
                 logging.error(
                     'The problem is unbounded. Defaulting to no trades')
                 return self._nulltrade(portfolio)
 
-            if prob.status == 'infeasible':
+            if self.prob.status == 'infeasible':
                 logging.error(
                     'The problem is infeasible. Defaulting to no trades')
                 return self._nulltrade(portfolio)
