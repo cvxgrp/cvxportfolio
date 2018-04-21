@@ -76,12 +76,12 @@ class RankAndLongShort(BasePolicy):
         prediction = time_locator(self.return_forecast, t, as_numpy=False)
         sorted_ret = prediction.sort_values()
 
-        short = sorted_ret.index[:self.num_short]
-        long = sorted_ret.index[-self.num_long:]
+        short_trades = sorted_ret.index[:self.num_short]
+        long_trades = sorted_ret.index[-self.num_long:]
 
         u = pd.Series(0., index=prediction.index)
-        u[short] = -1.
-        u[long] = 1.
+        u[short_trades] = -1.
+        u[long_trades] = 1.
         u /= sum(abs(u))
         u = sum(portfolio) * u * self.target_turnover
 
