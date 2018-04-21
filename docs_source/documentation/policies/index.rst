@@ -8,7 +8,7 @@ WORK IN PROGRESS
 .. toctree::
    :maxdepth: 2
 
-.. py:module:: policies
+.. py:module:: cvxportfolio
 
 .. autoclass:: SinglePeriodOpt
 
