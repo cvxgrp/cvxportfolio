@@ -24,6 +24,8 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Risk models" href="../risks/index.html" />
+    <link rel="prev" title="Simulator" href="../simulator/index.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
@@ -51,20 +53,6 @@
 <p>Implements the model developed in chapter 4 of our paper
 <a class="reference external" href="https://stanford.edu/~boyd/papers/cvx_portfolio.html">https://stanford.edu/~boyd/papers/cvx_portfolio.html</a></p>
 <p class="rubric">Methods</p>
-<table border="1" class="longtable docutils">
-<colgroup>
-<col width="10%" />
-<col width="90%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">get_rounded_trades</span></code>(portfolio,&nbsp;prices,&nbsp;t)</td>
-<td>Get trades vector as number of shares, rounded to integers.</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#cvxportfolio.SinglePeriodOpt.get_trades" title="cvxportfolio.SinglePeriodOpt.get_trades"><code class="xref py py-obj docutils literal"><span class="pre">get_trades</span></code></a>(portfolio[,&nbsp;t])</td>
-<td>Get optimal trade vector for given portfolio at time t.</td>
-</tr>
-</tbody>
-</table>
 <dl class="method">
 <dt id="cvxportfolio.SinglePeriodOpt.get_trades">
 <code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=None</em><span class="sig-paren">)</span><a class="headerlink" href="#cvxportfolio.SinglePeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
@@ -93,23 +81,9 @@
 <dt id="cvxportfolio.MultiPeriodOpt">
 <em class="property">class </em><code class="descclassname">cvxportfolio.</code><code class="descname">MultiPeriodOpt</code><span class="sig-paren">(</span><em>trading_times</em>, <em>terminal_weights</em>, <em>lookahead_periods=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cvxportfolio.MultiPeriodOpt" title="Permalink to this definition">¶</a></dt>
 <dd><p class="rubric">Methods</p>
-<table border="1" class="longtable docutils">
-<colgroup>
-<col width="10%" />
-<col width="90%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">get_rounded_trades</span></code>(portfolio,&nbsp;prices,&nbsp;t)</td>
-<td>Get trades vector as number of shares, rounded to integers.</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#cvxportfolio.MultiPeriodOpt.get_trades" title="cvxportfolio.MultiPeriodOpt.get_trades"><code class="xref py py-obj docutils literal"><span class="pre">get_trades</span></code></a>(portfolio[,&nbsp;t])</td>
-<td></td>
-</tr>
-</tbody>
-</table>
 <dl class="method">
 <dt id="cvxportfolio.MultiPeriodOpt.get_trades">
-<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=datetime.datetime(2018</em>, <em>4</em>, <em>21</em>, <em>13</em>, <em>39</em>, <em>27</em>, <em>762957)</em><span class="sig-paren">)</span><a class="headerlink" href="#cvxportfolio.MultiPeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=datetime.datetime(2018</em>, <em>4</em>, <em>21</em>, <em>16</em>, <em>22</em>, <em>51</em>, <em>519837)</em><span class="sig-paren">)</span><a class="headerlink" href="#cvxportfolio.MultiPeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>

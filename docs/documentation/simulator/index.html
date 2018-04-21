@@ -24,6 +24,7 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Policies" href="../policies/index.html" />
     <link rel="prev" title="Documentation" href="../index.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
@@ -61,32 +62,6 @@
 </tbody>
 </table>
 <p class="rubric">Methods</p>
-<table border="1" class="longtable docutils">
-<colgroup>
-<col width="10%" />
-<col width="90%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><a class="reference internal" href="#cvxportfolio.MarketSimulator.attribute" title="cvxportfolio.MarketSimulator.attribute"><code class="xref py py-obj docutils literal"><span class="pre">attribute</span></code></a>(true_results,&nbsp;policy[,&nbsp;selector,&nbsp;…])</td>
-<td>Attributes returns over a period to individual alpha sources.</td>
-</tr>
-<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">propagate</span></code>(h,&nbsp;u,&nbsp;t)</td>
-<td>Propagates the portfolio forward over time period t, given trades u.</td>
-</tr>
-<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">reduce_signal_perturb</span></code>(initial_weights,&nbsp;delta)</td>
-<td>Compute matrix of perturbed weights given initial weights.</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#cvxportfolio.MarketSimulator.run_backtest" title="cvxportfolio.MarketSimulator.run_backtest"><code class="xref py py-obj docutils literal"><span class="pre">run_backtest</span></code></a>(initial_portfolio,&nbsp;start_time,&nbsp;…)</td>
-<td>Backtest a single policy.</td>
-</tr>
-<tr class="row-odd"><td><a class="reference internal" href="#cvxportfolio.MarketSimulator.run_multiple_backtest" title="cvxportfolio.MarketSimulator.run_multiple_backtest"><code class="xref py py-obj docutils literal"><span class="pre">run_multiple_backtest</span></code></a>(initial_portf,&nbsp;…[,&nbsp;…])</td>
-<td>Backtest multiple policies.</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#cvxportfolio.MarketSimulator.what_if" title="cvxportfolio.MarketSimulator.what_if"><code class="xref py py-obj docutils literal"><span class="pre">what_if</span></code></a>(time,&nbsp;results,&nbsp;alt_policies[,&nbsp;parallel])</td>
-<td>Run alternative policies starting from given time.</td>
-</tr>
-</tbody>
-</table>
 <dl class="method">
 <dt id="cvxportfolio.MarketSimulator.run_backtest">
 <code class="descname">run_backtest</code><span class="sig-paren">(</span><em>initial_portfolio</em>, <em>start_time</em>, <em>end_time</em>, <em>policy</em>, <em>loglevel=30</em><span class="sig-paren">)</span><a class="headerlink" href="#cvxportfolio.MarketSimulator.run_backtest" title="Permalink to this definition">¶</a></dt>
