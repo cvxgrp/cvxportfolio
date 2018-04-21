@@ -18,6 +18,7 @@ limitations under the License.
 from abc import ABCMeta, abstractmethod
 import cvxpy as cvx
 import pandas as pd
+import numpy as np
 
 from .risks import locator
 
@@ -67,8 +68,9 @@ class MaxTrade(BaseConstraint):
           v: portfolio value
         """
         return cvx.abs(z[:-1]) * v <= \
-            locator(self.ADVs, t) * self.max_fraction
-        # TODO check [:-1] and fix pandas <=
+            np.array(locator(self.ADVs, t)) * self.max_fraction
+
+        # TODO fix the locator for this usecase
 
 
 class LongOnly(BaseConstraint):

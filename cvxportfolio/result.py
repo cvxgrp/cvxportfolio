@@ -126,8 +126,8 @@ class SimulationResult():
         """
         tmp = self.h_next.shift(1)
         tmp.iloc[0] = self.initial_portfolio
-        #TODO fix
-        #tmp.loc[self.h_next.index[-1] + self.timedelta] = self.h_next.iloc[-1]
+        # TODO fix
+        # tmp.loc[self.h_next.index[-1] + self.timedelta]=self.h_next.iloc[-1]
         return tmp
 
     @property
