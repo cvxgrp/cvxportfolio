@@ -82,7 +82,7 @@ class FullSigma(BaseRiskModel):
     """Quadratic risk model with full covariance matrix.
 
     Args:
-        Sigma (:obj:`pd.Panel`): Panel of Sigma matrices, 
+        Sigma (:obj:`pd.Panel`): Panel of Sigma matrices,
             or single matrix.
 
     """
