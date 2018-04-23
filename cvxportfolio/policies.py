@@ -352,7 +352,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
             #            tau = t + delta_t
             z = cvx.Variable(*w.size)
             wplus = w + z
-            obj = self.alpha_model.weight_expr_ahead(t, tau, wplus)
+            obj = self.return_forecast.weight_expr_ahead(t, tau, wplus)
 
             costs, constr = [], []
             for cost in self.costs:
