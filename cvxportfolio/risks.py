@@ -79,10 +79,16 @@ class BaseRiskModel(BaseCost):
 
 
 class FullSigma(BaseRiskModel):
+    """Quadratic risk model with full covariance matrix.
+
+    Args:
+        Sigma (:obj:`pd.Panel`): Panel of Sigma matrices,
+            or single matrix.
+
+    """
 
     def __init__(self, Sigma, **kwargs):
-        """Sigma is either a matrix or a pd.Panel"""
-        self.Sigma = Sigma
+        self.Sigma = Sigma  # Sigma is either a matrix or a pd.Panel
         try:
             assert(not pd.isnull(Sigma).values.any())
         except AttributeError:

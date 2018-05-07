@@ -10,3 +10,7 @@ to learn to use the library is by looking at the :ref:`examples <examples>`.
 
    simulator/index
    policies/index
+   risks/index
+   costs/index
+   hold_constr/index
+   trade_constr/index

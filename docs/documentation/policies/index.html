@@ -1,20 +1,17 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Policies &#8212; cvxportfolio 0.0.1 documentation</title>
-    
+    <title>Policies &#8212; cvxportfolio 0.0.2 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.0.1',
+        VERSION:     '0.0.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -24,17 +21,19 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Risk models" href="../risks/index.html" />
     <link rel="prev" title="Simulator" href="../simulator/index.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
+  
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
   </head>
-  <body role="document">
+  <body>
   
 
     <div class="document">
@@ -47,30 +46,16 @@
 <p>WORK IN PROGRESS</p>
 <div class="toctree-wrapper compound">
 </div>
-<span class="target" id="module-policies"></span><dl class="class">
-<dt id="policies.SinglePeriodOpt">
-<em class="property">class </em><code class="descclassname">policies.</code><code class="descname">SinglePeriodOpt</code><span class="sig-paren">(</span><em>return_forecast</em>, <em>costs</em>, <em>constraints</em>, <em>solver=None</em>, <em>solver_opts=None</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.SinglePeriodOpt" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="module-cvxportfolio"></span><dl class="class">
+<dt id="cvxportfolio.SinglePeriodOpt">
+<em class="property">class </em><code class="descclassname">cvxportfolio.</code><code class="descname">SinglePeriodOpt</code><span class="sig-paren">(</span><em>return_forecast</em>, <em>costs</em>, <em>constraints</em>, <em>solver=None</em>, <em>solver_opts=None</em><span class="sig-paren">)</span><a class="headerlink" href="#cvxportfolio.SinglePeriodOpt" title="Permalink to this definition">¶</a></dt>
 <dd><p>Single-period optimization policy.</p>
 <p>Implements the model developed in chapter 4 of our paper
 <a class="reference external" href="https://stanford.edu/~boyd/papers/cvx_portfolio.html">https://stanford.edu/~boyd/papers/cvx_portfolio.html</a></p>
 <p class="rubric">Methods</p>
-<table border="1" class="longtable docutils">
-<colgroup>
-<col width="10%" />
-<col width="90%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">get_rounded_trades</span></code>(portfolio,&nbsp;prices,&nbsp;t)</td>
-<td>Get trades vector as number of shares, rounded to integers.</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#policies.SinglePeriodOpt.get_trades" title="policies.SinglePeriodOpt.get_trades"><code class="xref py py-obj docutils literal"><span class="pre">get_trades</span></code></a>(portfolio[,&nbsp;t])</td>
-<td>Get optimal trade vector for given portfolio at time t.</td>
-</tr>
-</tbody>
-</table>
 <dl class="method">
-<dt id="policies.SinglePeriodOpt.get_trades">
-<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=None</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.SinglePeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
+<dt id="cvxportfolio.SinglePeriodOpt.get_trades">
+<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=None</em><span class="sig-paren">)</span><a class="headerlink" href="#cvxportfolio.SinglePeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get optimal trade vector for given portfolio at time t.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -93,26 +78,12 @@
 </dd></dl>
 
 <dl class="class">
-<dt id="policies.MultiPeriodOpt">
-<em class="property">class </em><code class="descclassname">policies.</code><code class="descname">MultiPeriodOpt</code><span class="sig-paren">(</span><em>trading_times</em>, <em>terminal_weights</em>, <em>lookahead_periods=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.MultiPeriodOpt" title="Permalink to this definition">¶</a></dt>
+<dt id="cvxportfolio.MultiPeriodOpt">
+<em class="property">class </em><code class="descclassname">cvxportfolio.</code><code class="descname">MultiPeriodOpt</code><span class="sig-paren">(</span><em>trading_times</em>, <em>terminal_weights</em>, <em>lookahead_periods=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cvxportfolio.MultiPeriodOpt" title="Permalink to this definition">¶</a></dt>
 <dd><p class="rubric">Methods</p>
-<table border="1" class="longtable docutils">
-<colgroup>
-<col width="10%" />
-<col width="90%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">get_rounded_trades</span></code>(portfolio,&nbsp;prices,&nbsp;t)</td>
-<td>Get trades vector as number of shares, rounded to integers.</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#policies.MultiPeriodOpt.get_trades" title="policies.MultiPeriodOpt.get_trades"><code class="xref py py-obj docutils literal"><span class="pre">get_trades</span></code></a>(portfolio[,&nbsp;t])</td>
-<td></td>
-</tr>
-</tbody>
-</table>
 <dl class="method">
-<dt id="policies.MultiPeriodOpt.get_trades">
-<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=datetime.datetime(2017</em>, <em>5</em>, <em>8</em>, <em>17</em>, <em>14</em>, <em>24</em>, <em>145023)</em><span class="sig-paren">)</span><a class="headerlink" href="#policies.MultiPeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
+<dt id="cvxportfolio.MultiPeriodOpt.get_trades">
+<code class="descname">get_trades</code><span class="sig-paren">(</span><em>portfolio</em>, <em>t=datetime.datetime(2018</em>, <em>4</em>, <em>21</em>, <em>16</em>, <em>22</em>, <em>51</em>, <em>519837)</em><span class="sig-paren">)</span><a class="headerlink" href="#cvxportfolio.MultiPeriodOpt.get_trades" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -162,6 +133,10 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Policies</a><ul class="simple">
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../risks/index.html">Risk models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../costs/index.html">Cost models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../hold_constr/index.html">Constraints on holdings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../trade_constr/index.html">Constraints on trades</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
@@ -185,7 +160,7 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2017, Enzo Busseti, Steven Diamond, Stephen Boyd.
+      &copy;2017-2018, Enzo Busseti, Steven Diamond, Stephen Boyd.
       
       |
       <a href="../../_sources/documentation/policies/index.rst.txt"
