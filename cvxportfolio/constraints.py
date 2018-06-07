@@ -112,7 +112,7 @@ class LeverageLimit(BaseConstraint):
             limit = self.limit.loc[t]
         else:
             limit = self.limit
-        return [cvx.norm(w_plus, 1) <= limit]
+        return [cvx.norm(w_plus[:-1], 1) <= limit]
 
 
 class LongCash(BaseConstraint):
