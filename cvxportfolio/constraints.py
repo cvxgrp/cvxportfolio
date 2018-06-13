@@ -22,7 +22,7 @@ import numpy as np
 
 from .risks import locator
 
-__all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'MaxTrade', 'MaxWeights', 
+__all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'MaxTrade', 'MaxWeights',
            'MinWeights']
 
 
