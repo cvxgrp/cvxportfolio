@@ -22,7 +22,8 @@ import numpy as np
 
 from .risks import locator
 
-__all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'MaxTrade', 'MaxWeights', 'MinWeights']
+__all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'MaxTrade', 'MaxWeights', 
+           'MinWeights']
 
 
 class BaseConstraint(object):
@@ -85,7 +86,7 @@ class LongOnly(BaseConstraint):
 
         Args:
           t: time
-          wplus: holdings
+          w_plus: holdings
         """
         return w_plus >= 0
 
@@ -106,7 +107,7 @@ class LeverageLimit(BaseConstraint):
 
         Args:
           t: time
-          wplus: holdings
+          w_plus: holdings
         """
         if isinstance(self.limit, pd.Series):
             limit = self.limit.loc[t]
@@ -127,7 +128,7 @@ class LongCash(BaseConstraint):
 
         Args:
           t: time
-          wplus: holdings
+          w_plus: holdings
         """
         return w_plus[-1] >= 0
 
@@ -148,7 +149,7 @@ class MaxWeights(BaseConstraint):
 
         Args:
           t: time
-          wplus: holdings
+          w_plus: holdings
         """
         if isinstance(self.limit, pd.Series):
             limit = self.limit.loc[t]
@@ -173,7 +174,7 @@ class MinWeights(BaseConstraint):
 
         Args:
           t: time
-          wplus: holdings
+          w_plus: holdings
         """
         if isinstance(self.limit, pd.Series):
             limit = self.limit.loc[t]
