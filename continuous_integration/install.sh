@@ -20,8 +20,9 @@ conda update --yes conda
 
 conda create -n testenv --yes python=$PYTHON_VERSION pip nose pandas
 source activate testenv
-conda install --yes -c cvxgrp cvxpy matplotlib
+conda install --yes -c cvxgrp matplotlib
 pip install flake8
+pip install cvxpy==1.0.6
 
 if [[ "$COVERAGE" == "true" ]]; then
     pip install coverage coveralls
