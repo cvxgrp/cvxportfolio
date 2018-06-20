@@ -55,11 +55,11 @@ class ReturnsForecast(BaseReturnsModel):
         Returns:
           An expression for the alpha.
         """
-        alpha = cvx.mul_elemwise(
+        alpha = cvx.multiply(
             time_locator(self.returns, t, as_numpy=True), wplus)
-        alpha -= cvx.mul_elemwise(
+        alpha -= cvx.multiply(
             time_locator(self.delta, t, as_numpy=True), cvx.abs(wplus))
-        return cvx.sum_entries(alpha)
+        return cvx.sum(alpha)
 
     def weight_expr_ahead(self, t, tau, wplus):
         """Returns the estimate at time t of alpha at time tau.

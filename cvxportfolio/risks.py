@@ -150,7 +150,7 @@ class FactorModelSigma(BaseRiskModel):
         super(FactorModelSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
-        self.expression = cvx.sum_squares(cvx.mul_elemwise(
+        self.expression = cvx.sum_squares(cvx.multiply(
             np.sqrt(locator(self.idiosync, t).values), wplus)) + \
             cvx.quad_form((wplus.T * locator(self.exposures, t).values.T).T,
                           locator(self.factor_Sigma, t).values)
@@ -194,7 +194,7 @@ class RobustFactorModelSigma(BaseRiskModel):
         Sigma_F = locator(self.factor_Sigma, t)
         D = locator(self.idiosync, t)
         self.expression = cvx.sum_squares(
-            cvx.mul_elemwise(np.sqrt(D), wplus)) + \
+            cvx.multiply(np.sqrt(D), wplus)) + \
             cvx.quad_form(f, Sigma_F) + \
             self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F)))**2
 

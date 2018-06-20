@@ -227,7 +227,7 @@ class MarketSimulator():
         Rmat = np.zeros((num_sources, len(attr_times)))
         for idx, result in enumerate(alt_results):
             Rmat[idx, :] = selector(result).values
-        Pmat = cvx.Variable(num_sources, len(attr_times))
+        Pmat = cvx.Variable((num_sources, len(attr_times)))
         if fit == "linear":
             prob = cvx.Problem(cvx.Minimize(0), [Wmat * Pmat == Rmat])
             prob.solve()
@@ -242,7 +242,7 @@ class MarketSimulator():
         wmask = np.tile(weights[:, np.newaxis], (1, len(attr_times))).T
         data = pd.DataFrame(columns=[s.name for s in alpha_sources],
                             index=attr_times,
-                            data=Pmat.value.T.A * wmask)
+                            data=Pmat.value.T * wmask)
         data['residual'] = true_arr - np.matrix((weights * Pmat).value).A1
         data['RMS error'] = np.matrix(
             cvx.norm(Wmat * Pmat - Rmat, 2, axis=0).value).A1
