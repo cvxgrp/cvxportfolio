@@ -22,7 +22,8 @@ import numpy as np
 
 from .risks import locator
 
-__all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'MaxTrade']
+__all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'MaxTrade', 'MaxWeights',
+           'MinWeights']
 
 
 class BaseConstraint(object):
@@ -85,7 +86,7 @@ class LongOnly(BaseConstraint):
 
         Args:
           t: time
-          wplus: holdings
+          w_plus: holdings
         """
         return w_plus >= 0
 
@@ -106,7 +107,7 @@ class LeverageLimit(BaseConstraint):
 
         Args:
           t: time
-          wplus: holdings
+          w_plus: holdings
         """
         if isinstance(self.limit, pd.Series):
             limit = self.limit.loc[t]
@@ -127,6 +128,56 @@ class LongCash(BaseConstraint):
 
         Args:
           t: time
-          wplus: holdings
+          w_plus: holdings
         """
         return w_plus[-1] >= 0
+
+
+class MaxWeights(BaseConstraint):
+    """A max limit on weights.
+
+    Attributes:
+      limit: A series or number giving the weights limit.
+    """
+
+    def __init__(self, limit, **kwargs):
+        self.limit = limit
+        super(MaxWeights, self).__init__(**kwargs)
+
+    def _weight_expr(self, t, w_plus, z, v):
+        """Returns a list of holding constraints.
+
+        Args:
+          t: time
+          w_plus: holdings
+        """
+        if isinstance(self.limit, pd.Series):
+            limit = self.limit.loc[t]
+        else:
+            limit = self.limit
+        return w_plus[:-1] <= limit
+
+
+class MinWeights(BaseConstraint):
+    """A min limit on weights.
+
+    Attributes:
+      limit: A series or number giving the weights limit.
+    """
+
+    def __init__(self, limit, **kwargs):
+        self.limit = limit
+        super(MinWeights, self).__init__(**kwargs)
+
+    def _weight_expr(self, t, w_plus, z, v):
+        """Returns a list of holding constraints.
+
+        Args:
+          t: time
+          w_plus: holdings
+        """
+        if isinstance(self.limit, pd.Series):
+            limit = self.limit.loc[t]
+        else:
+            limit = self.limit
+        return w_plus[:-1] >= limit

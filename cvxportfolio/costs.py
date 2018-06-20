@@ -77,33 +77,32 @@ class HcostModel(BaseCost):
             w_plus = w_plus[:-1]  # TODO fix when cvxpy pandas ready
 
         try:
-            self.expression = cvx.mul_elemwise(
+            self.expression = cvx.multiply(
                 time_locator(self.borrow_costs, t), cvx.neg(w_plus))
         except TypeError:
-            self.expression = cvx.mul_elemwise(time_locator(
+            self.expression = cvx.multiply(time_locator(
                 self.borrow_costs, t).values, cvx.neg(w_plus))
         try:
-            self.expression -= cvx.mul_elemwise(
+            self.expression -= cvx.multiply(
                 time_locator(self.dividends, t), w_plus)
         except TypeError:
-            self.expression -= cvx.mul_elemwise(
+            self.expression -= cvx.multiply(
                 time_locator(self.dividends, t).values, w_plus)
 
-        return cvx.sum_entries(self.expression), []
+        return cvx.sum(self.expression), []
 
     def _estimate_ahead(self, t, tau, w_plus, z, value):
         return self._estimate(t, w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
-        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * \
-            time_locator(self.borrow_costs, t)
-        self.last_cost -= h_plus.iloc[:-1] * \
-            time_locator(self.dividends, t)
+        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * time_locator(
+            self.borrow_costs, t)
+        self.last_cost -= h_plus.iloc[:-1] * time_locator(self.dividends, t)
 
         return sum(self.last_cost)
 
     def optimization_log(self, t):
-        return self.expression.value.A1
+        return self.expression.value
 
     def simulation_log(self, t):
         return self.last_cost
@@ -157,9 +156,9 @@ class TcostModel(BaseCost):
 
         constr = []
 
-        second_term = time_locator(self.nonlin_coeff, t) * \
-            time_locator(self.sigma, t) * \
-            (value / time_locator(self.volume, t))**(self.power - 1)
+        second_term = time_locator(self.nonlin_coeff, t) * time_locator(
+            self.sigma, t) * (value / time_locator(self.volume, t)) ** (
+                              self.power - 1)
 
         # no trade conditions
         if np.isscalar(second_term):
@@ -173,34 +172,35 @@ class TcostModel(BaseCost):
                        for tick in no_trade]
 
         try:
-            self.expression = cvx.mul_elemwise(
+            self.expression = cvx.multiply(
                 time_locator(self.half_spread, t), cvx.abs(z))
         except TypeError:
-            self.expression = cvx.mul_elemwise(
+            self.expression = cvx.multiply(
                 time_locator(self.half_spread, t).values, cvx.abs(z))
         try:
-            self.expression += cvx.mul_elemwise(second_term,
-                                                cvx.abs(z)**self.power)
+            self.expression += cvx.multiply(second_term,
+                                            cvx.abs(z) ** self.power)
         except TypeError:
-            self.expression += cvx.mul_elemwise(
-                second_term.values, cvx.abs(z)**self.power)
+            self.expression += cvx.multiply(
+                second_term.values, cvx.abs(z) ** self.power)
 
-        return cvx.sum_entries(self.expression), constr
+        return cvx.sum(self.expression), constr
 
     def value_expr(self, t, h_plus, u):
 
         u_nc = u.iloc[:-1]
         self.tmp_tcosts = (
-            np.abs(u_nc) * time_locator(self.half_spread, t) +
-            time_locator(self.nonlin_coeff, t) * time_locator(self.sigma, t) *
-            np.abs(u_nc) ** self.power /
-            (time_locator(self.volume, t) ** (self.power - 1)))
+                np.abs(u_nc) * time_locator(self.half_spread, t) +
+                time_locator(self.nonlin_coeff, t) * time_locator(self.sigma,
+                                                                  t) *
+                np.abs(u_nc) ** self.power /
+                (time_locator(self.volume, t) ** (self.power - 1)))
 
         return self.tmp_tcosts.sum()
 
     def optimization_log(self, t):
         try:
-            return self.expression.value.A1
+            return self.expression.value
         except AttributeError:
             return np.nan
 
