@@ -255,7 +255,7 @@ class SinglePeriodOpt(BasePolicy):
         if isinstance(self.return_forecast, BaseReturnsModel):
             alpha_term = self.return_forecast.weight_expr(t, wplus)
         else:
-            alpha_term = cvx.sum_entries(cvx.mul_elemwise(
+            alpha_term = cvx.sum(cvx.multiply(
                 time_locator(self.return_forecast, t, as_numpy=True), wplus))
 
         assert(alpha_term.is_concave())
@@ -278,7 +278,7 @@ class SinglePeriodOpt(BasePolicy):
 
         self.prob = cvx.Problem(
             cvx.Maximize(alpha_term - sum(costs)),
-            [cvx.sum_entries(z) == 0] + constraints)
+            [cvx.sum(z) == 0] + constraints)
         try:
             self.prob.solve(solver=self.solver, **self.solver_opts)
 
@@ -292,7 +292,7 @@ class SinglePeriodOpt(BasePolicy):
                     'The problem is infeasible. Defaulting to no trades')
                 return self._nulltrade(portfolio)
 
-            return pd.Series(index=portfolio.index, data=(z.value.A1 * value))
+            return pd.Series(index=portfolio.index, data=(z.value * value))
         except cvx.SolverError:
             logging.error(
                 'The solver %s failed. Defaulting to no trades' % self.solver)
@@ -362,7 +362,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
                 constr += const_expr
 
             obj -= sum(costs)
-            constr += [cvx.sum_entries(z) == 0]
+            constr += [cvx.sum(z) == 0]
             constr += [con.weight_expr(t, wplus, z, value)
                        for con in self.constraints]
 
@@ -377,4 +377,4 @@ class MultiPeriodOpt(SinglePeriodOpt):
 
         sum(prob_arr).solve(solver=self.solver)
         return pd.Series(index=portfolio.index,
-                         data=(z_vars[0].value.A1 * value))
+                         data=(z_vars[0].value * value))

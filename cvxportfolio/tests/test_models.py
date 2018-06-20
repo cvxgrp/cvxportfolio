@@ -99,7 +99,7 @@ class TestModels(BaseTest):
         z_var = cvx.Variable(n)
         z_var.value = z
         tcost, _ = model.weight_expr(t, None, z_var, value)
-        u = pd.Series(index=self.returns.columns, data=z_var.value.A1*value)
+        u = pd.Series(index=self.returns.columns, data=z_var.value*value)
         value_expr = model.value_expr(t, None, u)
         self.assertAlmostEqual(tcost.value, value_expr/value)
 
@@ -195,7 +195,7 @@ class TestModels(BaseTest):
 
         model = HcostModel(self.s*0, div)
         hcost, _ = model.weight_expr(t, wplus, None, None)
-        divs = (np.sum(wplus[:-1].value.A1*div))
+        divs = (np.sum(wplus[:-1].value*div))
         self.assertAlmostEqual(-hcost.value, divs)
 
         model = HcostModel(self.s, div)
@@ -215,7 +215,7 @@ class TestModels(BaseTest):
 
         value = 1000.
         h_plus = pd.Series(index=self.returns.columns,
-                           data=wplus.value.A1*1000)
+                           data=wplus.value*1000)
         value_expr = model.value_expr(t, h_plus, None)
 
         self.assertAlmostEqual(hcost.value, value_expr/value)
@@ -241,37 +241,37 @@ class TestModels(BaseTest):
         model = LongOnly()
         cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n)
-        assert cons.value
+        assert cons.value()
         wplus.value = -np.ones(n)
-        assert not cons.value
+        assert not cons.value()
 
         # long cash
         model = LongCash()
         cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n)
-        assert cons.value
+        assert cons.value()
         tmp = np.ones(n)
         tmp[-1] = -1
         wplus.value = tmp
-        assert not cons.value
+        assert not cons.value()
 
         # leverage limit
         model = LeverageLimit(2)
         cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n)/n
-        assert cons.value
+        assert cons.value()
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert not cons.value
+        assert not cons.value()
         model = LeverageLimit(7)
         cons = model.weight_expr(t, wplus, None, None)
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert cons.value
+        assert cons.value()
 
         limits = pd.Series(index=self.times, data=2)
         limits.iloc[1] = 7
@@ -281,27 +281,27 @@ class TestModels(BaseTest):
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert cons.value
+        assert cons.value()
         cons = model.weight_expr(self.times[2], wplus, None, None)
-        assert not cons.value
+        assert not cons.value()
 
         # Max weights
         model = MaxWeights(2)
         cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n) / n
-        assert cons.value
+        assert cons.value()
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert not cons.value
+        assert not cons.value()
         model = MaxWeights(7)
         cons = model.weight_expr(t, wplus, None, None)
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert cons.value
+        assert cons.value()
 
         limits = pd.Series(index=self.times, data=2)
         limits.iloc[1] = 7
@@ -311,27 +311,27 @@ class TestModels(BaseTest):
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert cons.value
+        assert cons.value()
         cons = model.weight_expr(self.times[2], wplus, None, None)
-        assert not cons.value
+        assert not cons.value()
 
         # Min weights
         model = MinWeights(2)
         cons = model.weight_expr(t, wplus, None, None)
         wplus.value = np.ones(n) / n
-        assert not cons.value
+        assert not cons.value()
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert not cons.value
+        assert not cons.value()
         model = MinWeights(-3)
         cons = model.weight_expr(t, wplus, None, None)
         tmp = np.zeros(n)
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert cons.value
+        assert cons.value()
 
         limits = pd.Series(index=self.times, data=2)
         limits.iloc[1] = -3
@@ -341,9 +341,9 @@ class TestModels(BaseTest):
         tmp[0] = 4
         tmp[-1] = -3
         wplus.value = tmp
-        assert cons.value
+        assert cons.value()
         cons = model.weight_expr(self.times[2], wplus, None, None)
-        assert not cons.value
+        assert not cons.value()
 
     def test_trade_constr(self):
         """Test trading constraints.
@@ -359,6 +359,6 @@ class TestModels(BaseTest):
         tmp = np.zeros(n)
         tmp[:-1] = self.volume.loc[t].values / value * 0.05
         z.value = tmp
-        assert cons.value
+        assert cons.value()
         z.value = -100*z.value  # -100*np.ones(n)
-        assert not cons.value
+        assert not cons.value()
