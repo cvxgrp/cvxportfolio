@@ -5,11 +5,17 @@ conda config --add channels conda-forge
 source activate testenv
 conda install --yes requests
 cd continuous_integration
+
 REMOTE_PYPI_VERSION=`python -c "import versiongetter; print(versiongetter.pypi_version())"`
+echo $REMOTE_PYPI_VERSION
+
 REMOTE_CONDA_VERSION=`python -c "import versiongetter; print(versiongetter.conda_version('$PYTHON_VERSION',
 '$TRAVIS_OS_NAME'))"`
+echo $REMOTE_CONDA_VERSION
+
 cd ..
 LOCAL_VERSION=`python -c "import cvxportfolio; print(cvxportfolio.__version__)"`
+echo $LOCAL_VERSION
 
 if [ $REMOTE_PYPI_VERSION != $LOCAL_VERSION ]; then
     # Consider deploying to PyPI
