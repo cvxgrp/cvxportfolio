@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='cvxportfolio',
-    version='0.0.4',
+    version='0.0.5',
     author='Enzo Busseti and Steven Diamond',
     author_email='ebusseti@stanford.edu, stevend2@stanford.edu',
     packages=['cvxportfolio',
