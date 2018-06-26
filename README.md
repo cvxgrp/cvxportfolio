@@ -1,14 +1,14 @@
-CVXPortfolio
+`cvxportfolio`
 =============
 [![Build Status](https://travis-ci.org/cvxgrp/cvxportfolio.png?branch=master)](https://travis-ci.org/cvxgrp/cvxportfolio)
 [![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
 
-**The CVXPortfolio documentation is at [cvxportfolio.org](http://www.cvxportfolio.org/).**
+**The `cvxportfolio` documentation is at [cvxportfolio.org](http://www.cvxportfolio.org/).**
 
-CVXPortfolio (ConVeX Portfolio Optimization and Simulation)
-is a toolset based on our paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
-It is written in Python, its major dependencies are [CVXPY](https://github.com/cvxgrp/cvxpy)
-and [Pandas](https://github.com/pandas-dev/pandas).
+`cvxportfolio` is a python library for portfolio optimization and simulation,
+based on the paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
+It is written in Python, its major dependencies are [`cvxpy`](https://github.com/cvxgrp/cvxpy)
+and [`pandas`](https://github.com/pandas-dev/pandas).
 
 See the [examples](https://github.com/cvxgrp/cvxportfolio/tree/master/examples) for basic usage.
 
@@ -32,9 +32,13 @@ Installation
 ------------
 
 1. Install [Anaconda](https://docs.continuum.io/anaconda/install).
-2. Install cvxpy with conda.
+2. Make sure `pandas` is installed.
 ```
-conda install -c cvxgrp cvxpy
+conda install pandas
+```
+3. [Install `cvxpy`](http://www.cvxpy.org/install/index.html). `cvxportfolio` now uses `cvxpy` version 1.0 and above, so if you have an older version, upgrade it. This should work in any case
+```
+pip install cvxpy==1.0.6
 ```
 3. Install CVXPortfolio with pip.
 ```
