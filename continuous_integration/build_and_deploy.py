@@ -35,6 +35,9 @@ print('pypi version:', PYPI_VERSION)
 #     print("Versions match, skipping build.")
 #     exit(0)
 
+subprocess.call(["conda", "config", "--add", "channels", "cvxgrp"])
+subprocess.call(["conda", "config", "--add", "channels", "conda-forge"])
+
 if not (subprocess.call(["conda", "build",
                          "--variant-config-files=conda-recipe/conda_build_config.yaml",
                          "--output-folder=build",
