@@ -95,7 +95,7 @@ class LeverageLimit(BaseConstraint):
     """A limit on leverage.
 
     Attributes:
-      limit: A series or number giving the leverage limit.
+      limit: A (time) series or scalar giving the leverage limit.
     """
 
     def __init__(self, limit, **kwargs):
@@ -113,7 +113,7 @@ class LeverageLimit(BaseConstraint):
             limit = self.limit.loc[t]
         else:
             limit = self.limit
-        return cvx.norm(w_plus, 1) <= limit
+        return cvx.norm(w_plus[:-1], 1) <= limit
 
 
 class LongCash(BaseConstraint):
