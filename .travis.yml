@@ -13,7 +13,7 @@ sudo: required
 install: source continuous_integration/install.sh
 script:
   - bash continuous_integration/test_script.sh
-  - flake8 --exclude="*/__init__.py" .
+  - flake8 .
 after_success:
     - if [[ "$COVERAGE" == "true" ]]; then coveralls; fi
 cache: apt
