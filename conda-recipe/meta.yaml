@@ -11,12 +11,7 @@ build:
 
 requirements:
   build:
-    - python
     - setuptools
-    - pandas
-    - numpy
-    - matplotlib
-    - cvxpy >=1.0.6
   run:
     - python
     - pandas
@@ -29,14 +24,16 @@ test:
     - cvxportfolio
     - cvxportfolio.tests
     - cvxportfolio.utils
+  requires:
+    - nose
+  commands:
+    - nosetests cvxportfolio
 
 about:
   home: http://github.com/cvxgrp/cvxportfolio/
   license: Apache
   license_family: APACHE
-  license_file: ''
   summary: Portfolio optimization and simulation in Python.
-  description: ''
   doc_url: 'http://cvxportfolio.org'
   dev_url: 'http://github.com/cvxgrp/cvxportfolio/'
 

@@ -9,7 +9,7 @@ setup(
               'cvxportfolio.tests',
               'cvxportfolio.utils'],
     package_dir={'cvxportfolio': 'cvxportfolio'},
-    package_data={'cvxportfolio': ['tests/sample_data.pickle']},
+    package_data={'cvxportfolio': ['tests/returns.csv', 'tests/sigmas.csv', 'tests/volumes.csv']},
     url='http://github.com/cvxgrp/cvxportfolio/',
     license='Apache',
     zip_safe=False,
