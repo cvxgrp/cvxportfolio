@@ -35,24 +35,29 @@ print('pypi version:', PYPI_VERSION)
 #     print("Versions match, skipping build.")
 #     exit(0)
 
-# conda
-if not (subprocess.call(["conda", BUILDDIR, "--output-folder=build",
+if not (subprocess.call(["conda", "build",
+                         "--variant-config-files=conda-recipe/conda_build_config.yaml",
+                         "--output-folder=build",
                          "conda-recipe/meta.yaml"]) == 0):
     print('build failed')
     exit(1)
 
-LAST_BUILD_NAME = [el for el in sorted(os.listdir(
-    '%s/%s' % (BUILDDIR, ARCH))) if el[:5] == 'cvxpo'][-1]
+LAST_BUILD_NAME_Py36 = [el for el in sorted(os.listdir(
+    '%s/%s' % (BUILDDIR, ARCH))) if el[:5] == 'cvxpo' and el[-14:] == "py36_0.tar.bz2"][-1]
 
-for NEWARCH in ['osx-64', 'win-32', 'win-64', 'linux-32', 'linux-64']:
-    subprocess.call(["conda", "convert",
-                     "--platform=%s" % NEWARCH,
-                     "%s/%s/%s" % (BUILDDIR, ARCH, LAST_BUILD_NAME),
-                     "-o=%s" % BUILDDIR])
-    subprocess.call(["anaconda", "upload", "--force",
-                     "--user=%s" % CHANNEL] +
-                    ["--token=$CONDA_UPLOAD_TOKEN"] +
-                    ["%s/%s/%s" % (BUILDDIR, NEWARCH, LAST_BUILD_NAME)])
+# LAST_BUILD_NAME_Py27 = [el for el in sorted(os.listdir(
+#     '%s/%s' % (BUILDDIR, ARCH))) if el[:5] == 'cvxpo' and el[-14:] == "py27_0.tar.bz2"][-1]
+
+for LAST_BUILD_NAME in [LAST_BUILD_NAME_Py36]:  # , LAST_BUILD_NAME_Py27]:
+    for NEWARCH in ['osx-64', 'win-32', 'win-64', 'linux-32', 'linux-64']:
+        subprocess.call(["conda", "convert",
+                         "--platform=%s" % NEWARCH,
+                         "%s/%s/%s" % (BUILDDIR, ARCH, LAST_BUILD_NAME),
+                         "-o=%s" % BUILDDIR])
+        subprocess.call(["anaconda", "upload", "--force",
+                         "--user=%s" % CHANNEL] +
+                        ["--token=$CONDA_UPLOAD_TOKEN"] +
+                        ["%s/%s/%s" % (BUILDDIR, NEWARCH, LAST_BUILD_NAME)])
 
 # pypi
 subprocess.call(["python", "setup.py", "sdist"])

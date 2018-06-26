@@ -18,13 +18,13 @@ chmod +x miniconda.sh && ./miniconda.sh -b
 export PATH=/home/travis/miniconda/bin:$PATH
 conda update --yes conda
 
-conda create -n testenv --yes python=$PYTHON_VERSION pip nose pandas
-source activate testenv
-conda install --yes -c cvxgrp matplotlib
 conda install --yes conda-build
 conda install --yes anaconda-client
+
+conda create -n testenv --yes python=$PYTHON_VERSION pip nose pandas
+source activate testenv
+conda install --yes -c cvxgrp matplotlib cvxpy
 pip install flake8
-pip install cvxpy==1.0.6
 
 if [[ "$COVERAGE" == "true" ]]; then
     pip install coverage coveralls
