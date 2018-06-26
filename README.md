@@ -31,21 +31,23 @@ If you wish to cite CVXPortfolio, please use:
 Installation
 ------------
 
-1. Install [Anaconda](https://docs.continuum.io/anaconda/install).
-2. Make sure `pandas` is installed.
+We provide `conda` (recommended) and `pip` packages. From scratch, do:
+
+1. Install [Anaconda](https://docs.continuum.io/anaconda/install)
+2. Install `pandas`
 ```
 conda install pandas
 ```
-3. Install `cvxpy`. (`cvxportfolio` uses `cvxpy` version 1.0 and above, so if you have an older version, upgrade it.) If this doesn't work, follow instructions [here](http://www.cvxpy.org/install/index.html).
+3. Install `cvxpy` (if it doesn't work, follow instructions [here](http://www.cvxpy.org/install/index.html))
 ```
 conda install -c conda-forge lapack
 conda install -c cvxgrp cvxpy
 ```
-3. Install CVXPortfolio with pip.
+3. Install `cvxportfolio`
 ```
-pip install cvxportfolio
+conda install -c cvxgrp cvxportfolio
 ```
-4. Test the installation with nose.
+4. Test the installation with `nose`
 ```
 conda install nose
 nosetests cvxportfolio
