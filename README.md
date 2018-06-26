@@ -36,7 +36,7 @@ Installation
 ```
 conda install pandas
 ```
-3. [Install `cvxpy`](http://www.cvxpy.org/install/index.html). `cvxportfolio` now uses `cvxpy` version 1.0 and above, so if you have an older version, upgrade it. This should work in any case
+3. Install `cvxpy`. (`cvxportfolio` uses `cvxpy` version 1.0 and above, so if you have an older version, upgrade it.)
 ```
 pip install cvxpy==1.0.6
 ```
