@@ -24,6 +24,6 @@ addons:
     - libgfortran3
 deploy:
   provider: script
-  script: bash continuous_integration/deploy_script.sh
+  script: python continuous_integration/build_and_deploy.py
   on:
     branch: master
