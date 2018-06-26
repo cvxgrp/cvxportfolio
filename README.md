@@ -36,9 +36,10 @@ Installation
 ```
 conda install pandas
 ```
-3. Install `cvxpy`. (`cvxportfolio` uses `cvxpy` version 1.0 and above, so if you have an older version, upgrade it.)
+3. Install `cvxpy`. (`cvxportfolio` uses `cvxpy` version 1.0 and above, so if you have an older version, upgrade it.) If this doesn't work, follow instructions [here](http://www.cvxpy.org/install/index.html).
 ```
-pip install cvxpy==1.0.6
+conda install -c conda-forge lapack
+conda install -c cvxgrp cvxpy
 ```
 3. Install CVXPortfolio with pip.
 ```
