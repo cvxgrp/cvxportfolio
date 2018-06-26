@@ -31,9 +31,9 @@ PYPI_VERSION = pypi_version()
 print('local version:', LOCAL_VERSION)
 print('pypi version:', PYPI_VERSION)
 
-if (LOCAL_VERSION == PYPI_VERSION):
-    print("Versions match, skipping build.")
-    exit(0)
+# if (LOCAL_VERSION == PYPI_VERSION):
+#     print("Versions match, skipping build.")
+#     exit(0)
 
 # conda
 if not (subprocess.call(["conda", BUILDDIR, "--output-folder=build",
