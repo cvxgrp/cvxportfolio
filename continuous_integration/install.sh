@@ -21,6 +21,8 @@ conda update --yes conda
 conda create -n testenv --yes python=$PYTHON_VERSION pip nose pandas
 source activate testenv
 conda install --yes -c cvxgrp matplotlib
+conda install --yes conda-build
+conda install --yes anaconda-client
 pip install flake8
 pip install cvxpy==1.0.6
 
