@@ -1,0 +1,44 @@
+package:
+  name: cvxportfolio
+  version: "0.0.4"
+
+source:
+  path: ..
+
+build:
+  number: 0
+  script: python setup.py install --single-version-externally-managed --record record.txt
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - pandas
+    - numpy
+    - matplotlib
+    - cvxpy >=1.0.6
+  run:
+    - python
+    - pandas
+    - numpy
+    - matplotlib
+    - cvxpy >=1.0.6
+
+test:
+  imports:
+    - cvxportfolio
+    - cvxportfolio.tests
+    - cvxportfolio.utils
+
+about:
+  home: http://github.com/cvxgrp/cvxportfolio/
+  license: Apache
+  license_family: APACHE
+  license_file: ''
+  summary: Portfolio optimization and simulation in Python.
+  description: ''
+  doc_url: 'http://cvxportfolio.org'
+  dev_url: 'http://github.com/cvxgrp/cvxportfolio/'
+
+extra:
+  recipe-maintainers: 'Enzo Busseti'

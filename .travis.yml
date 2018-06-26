@@ -22,3 +22,8 @@ addons:
     packages:
     - gfortran
     - libgfortran3
+deploy:
+  provider: script
+  script: bash continuous_integration/deploy_script.sh
+  on:
+    branch: master
