@@ -20,11 +20,12 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
+from .base_test import BaseTest
+from ..constraints import (LongOnly, LeverageLimit, LongCash, DollarNeutral,
+                           MaxTrade, MaxWeights, MinWeights, FactorMinLimit,
+                           FactorMaxLimit, FixedAlpha)
 from ..costs import HcostModel, TcostModel
 from ..returns import ReturnsForecast, MultipleReturnsForecasts
-from ..constraints import (LongOnly, LeverageLimit, LongCash, MaxTrade,
-                           MaxWeights, MinWeights)
-from .base_test import BaseTest
 
 DIR = os.path.dirname(__file__) + os.path.sep
 
@@ -255,6 +256,14 @@ class TestModels(BaseTest):
         wplus.value = tmp
         assert not cons.value()
 
+        # dollar neutral
+        model = DollarNeutral()
+        cons = model.weight_expr(t, wplus, None, None)
+        wplus.value = np.zeros(n)
+        assert cons.value()
+        wplus.value = np.ones(n)
+        assert not cons.value()
+
         # leverage limit
         model = LeverageLimit(2)
         cons = model.weight_expr(t, wplus, None, None)
@@ -344,6 +353,53 @@ class TestModels(BaseTest):
         assert cons.value()
         cons = model.weight_expr(self.times[2], wplus, None, None)
         assert not cons.value()
+
+        # Factor Max Limit
+        model = FactorMaxLimit(np.ones((n - 1, 2)), [.5, 1])
+        cons = model.weight_expr(t, wplus, None, None)
+        wplus.value = np.ones(n) / n
+        assert not cons.value()
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[1] = -3
+        wplus.value = tmp
+        assert not cons.value()
+        model = FactorMaxLimit(np.ones((n - 1, 2)), [4, 4])
+        cons = model.weight_expr(t, wplus, None, None)
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[1] = -3
+        wplus.value = tmp
+        assert cons.value()
+
+        # Factor Min Limit
+        model = FactorMinLimit(np.ones((n - 1, 2)), [.5, 1])
+        cons = model.weight_expr(t, wplus, None, None)
+        wplus.value = np.ones(n) / n
+        assert not cons.value()
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[1] = -3
+        wplus.value = tmp
+        assert cons.value()
+        model = FactorMinLimit(np.ones((n - 1, 2)), [-4, -4])
+        cons = model.weight_expr(t, wplus, None, None)
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[1] = -3
+        wplus.value = tmp
+        assert cons.value()
+
+        # Fixed Alpha
+        model = FixedAlpha(np.ones((n - 1, 1)), 1)
+        cons = model.weight_expr(t, wplus, None, None)
+        wplus.value = np.ones(n) / n
+        assert not cons.value()
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[1] = -3
+        wplus.value = tmp
+        assert cons.value()
 
     def test_trade_constr(self):
         """Test trading constraints.
