@@ -16,14 +16,16 @@ limitations under the License.
 
 
 from abc import ABCMeta, abstractmethod
+
 import cvxpy as cvx
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from .risks import locator
 
-__all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'MaxTrade', 'MaxWeights',
-           'MinWeights']
+__all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'DollarNeutral', 'MaxTrade',
+           'MaxWeights', 'MinWeights', 'FactorMaxLimit', 'FactorMinLimit',
+           'FixedAlpha']
 
 
 class BaseConstraint(object):
@@ -133,6 +135,23 @@ class LongCash(BaseConstraint):
         return w_plus[-1] >= 0
 
 
+class DollarNeutral(BaseConstraint):
+    """Long-short dollar neutral strategy.
+    """
+
+    def __init__(self, **kwargs):
+        super(DollarNeutral, self).__init__(**kwargs)
+
+    def _weight_expr(self, t, w_plus, z, v):
+        """Returns a list of holding constraints.
+
+        Args:
+          t: time
+          w_plus: holdings
+        """
+        return sum(w_plus[:-1]) == 0
+
+
 class MaxWeights(BaseConstraint):
     """A max limit on weights.
 
@@ -181,3 +200,79 @@ class MinWeights(BaseConstraint):
         else:
             limit = self.limit
         return w_plus[:-1] >= limit
+
+
+class FactorMaxLimit(BaseConstraint):
+    """A max limit on portfolio-wide factor (e.g. beta) exposure.
+
+    Attributes:
+        factor_exposure: An (n * r) matrix giving the factor exposure per asset
+        per factor, where n represents # of assets and r represents # of factors
+        limit: A series of list or a single list giving the factor limits
+    """
+    def __init__(self, factor_exposure, limit, **kwargs):
+        super(FactorMaxLimit, self).__init__(**kwargs)
+        self.factor_exposure = factor_exposure
+        self.limit = limit
+
+    def _weight_expr(self, t, w_plus, z, v):
+        """Returns a list of holding constraints.
+
+        Args:
+            t: time
+            w_plus: holdings
+        """
+        if isinstance(self.limit, pd.Series):
+            limit = self.limit.loc[t]
+        else:
+            limit = self.limit
+        return self.factor_exposure.T * w_plus[:-1] <= limit
+
+
+class FactorMinLimit(BaseConstraint):
+    """A min limit on portfolio-wide factor (e.g. beta) exposure.
+
+    Attributes:
+        factor_exposure: An (n * r) matrix giving the factor exposure per asset
+        per factor, where n represents # of assets and r represents # of factors
+        limit: A series of list or a single list giving the factor limits
+    """
+    def __init__(self, factor_exposure, limit, **kwargs):
+        super(FactorMinLimit, self).__init__(**kwargs)
+        self.factor_exposure = factor_exposure
+        self.limit = limit
+
+    def _weight_expr(self, t, w_plus, z, v):
+        """Returns a list of holding constraints.
+
+        Args:
+            t: time
+            w_plus: holdings
+        """
+        if isinstance(self.limit, pd.Series):
+            limit = self.limit.loc[t]
+        else:
+            limit = self.limit
+        return self.factor_exposure.T * w_plus[:-1] >= limit
+
+
+class FixedAlpha(BaseConstraint):
+    """A constraint to fix portfolio-wide alpha
+
+    Attributes:
+        forecast_returns: An (n * 1) vector giving the return forecast on each
+        asset
+        alpha_target: A series or number giving the targeted portfolio return
+    """
+
+    def __init__(self, return_forecast, alpha_target, **kwargs):
+        super(FixedAlpha, self).__init__(**kwargs)
+        self.return_forecast = return_forecast
+        self.alpha_target = alpha_target
+
+    def _weight_expr(self, t, w_plus, z, v):
+        if isinstance(self.alpha_target, pd.Series):
+            alpha_target = self.alpha_target.loc[t]
+        else:
+            alpha_target = self.alpha_target
+        return self.return_forecast.T * w_plus[:-1] == alpha_target
