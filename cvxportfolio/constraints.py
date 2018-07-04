@@ -181,3 +181,41 @@ class MinWeights(BaseConstraint):
         else:
             limit = self.limit
         return w_plus[:-1] >= limit
+
+    
+class DollarNeutral(BaseConstraint):
+    def __init__(self, **kwargs):
+        super(DollarNeutral, self).__init__(**kwargs)
+
+    def _weight_expr(self, t, w_plus, z, v):
+        return sum(w_plus[:-1]) == 0
+
+
+class FactorMaxLimit(BaseConstraint):
+    def __init__(self, factor_exposure, limit, **kwargs):
+        super(FactorMaxLimit, self).__init__(**kwargs)
+        self.factor_exposure = factor_exposure
+        self.limit = limit
+
+    def _weight_expr(self, t, w_plus, z, v):
+        return self.factor_exposure.T * w_plus[:-1] <= self.limit
+
+
+class FactorMinLimit(BaseConstraint):
+    def __init__(self, factor_exposure, limit, **kwargs):
+        super(FactorMinLimit, self).__init__(**kwargs)
+        self.factor_exposure = factor_exposure
+        self.limit = limit
+
+    def _weight_expr(self, t, w_plus, z, v):
+        return self.factor_exposure.T * w_plus[:-1] >= self.limit
+
+
+class FixedAlphaConstraint(BaseConstraint):
+    def __init__(self, returns, alpha, **kwargs):
+        super(FixedAlphaConstraint, self).__init__(**kwargs)
+        self.returns = returns
+        self.alpha = alpha
+
+    def _weight_expr(self, t, w_plus, z, v):
+        return self.returns.T * w_plus[:-1] == self.alpha
