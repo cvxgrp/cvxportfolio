@@ -22,7 +22,8 @@ import pandas as pd
 
 from ..costs import HcostModel, TcostModel
 from ..returns import ReturnsForecast, MultipleReturnsForecasts
-from ..constraints import (LongOnly, LeverageLimit, LongCash, MaxTrade)
+from ..constraints import (LongOnly, LeverageLimit, LongCash, MaxTrade,
+                           MaxWeights, MinWeights)
 from .base_test import BaseTest
 
 DIR = os.path.dirname(__file__) + os.path.sep
@@ -283,6 +284,66 @@ class TestModels(BaseTest):
         assert np.any([c.value() for c in cons])
         cons = model.weight_expr(self.times[2], wplus, None, None)
         assert not np.any([c.value() for c in cons])
+
+        # Max weights
+        model = MaxWeights(2)
+        cons = model.weight_expr(t, wplus, None, None)
+        wplus.value = np.ones(n) / n
+        assert cons.value
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[-1] = -3
+        wplus.value = tmp
+        assert not cons.value
+        model = MaxWeights(7)
+        cons = model.weight_expr(t, wplus, None, None)
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[-1] = -3
+        wplus.value = tmp
+        assert cons.value
+
+        limits = pd.Series(index=self.times, data=2)
+        limits.iloc[1] = 7
+        model = MaxWeights(limits)
+        cons = model.weight_expr(t, wplus, None, None)
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[-1] = -3
+        wplus.value = tmp
+        assert cons.value
+        cons = model.weight_expr(self.times[2], wplus, None, None)
+        assert not cons.value
+
+        # Min weights
+        model = MinWeights(2)
+        cons = model.weight_expr(t, wplus, None, None)
+        wplus.value = np.ones(n) / n
+        assert not cons.value
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[-1] = -3
+        wplus.value = tmp
+        assert not cons.value
+        model = MinWeights(-3)
+        cons = model.weight_expr(t, wplus, None, None)
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[-1] = -3
+        wplus.value = tmp
+        assert cons.value
+
+        limits = pd.Series(index=self.times, data=2)
+        limits.iloc[1] = -3
+        model = MinWeights(limits)
+        cons = model.weight_expr(t, wplus, None, None)
+        tmp = np.zeros(n)
+        tmp[0] = 4
+        tmp[-1] = -3
+        wplus.value = tmp
+        assert cons.value
+        cons = model.weight_expr(self.times[2], wplus, None, None)
+        assert not cons.value
 
     def test_trade_constr(self):
         """Test trading constraints.
