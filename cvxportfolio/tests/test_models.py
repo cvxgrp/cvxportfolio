@@ -33,11 +33,11 @@ DIR = os.path.dirname(__file__) + os.path.sep
 class TestModels(BaseTest):
 
     def setUp(self):
-        self.sigma = pd.read_csv(DIR+'sigmas.csv',
+        self.sigma = pd.read_csv(DIR + 'sigmas.csv',
                                  index_col=0, parse_dates=[0])
-        self.returns = pd.read_csv(DIR+'returns.csv',
+        self.returns = pd.read_csv(DIR + 'returns.csv',
                                    index_col=0, parse_dates=[0])
-        self.volume = pd.read_csv(DIR+'volumes.csv',
+        self.volume = pd.read_csv(DIR + 'volumes.csv',
                                   index_col=0, parse_dates=[0])
         self.a, self.b, self.s = 0.0005, 1., 0.
         self.universe = self.returns.columns
@@ -54,13 +54,13 @@ class TestModels(BaseTest):
         w.value = np.ones(len(self.universe))
         self.assertAlmostEqual(alpha.value, self.returns.loc[t].sum())
         # with delta
-        source = ReturnsForecast(self.returns, self.returns/10)
+        source = ReturnsForecast(self.returns, self.returns / 10)
         alpha = source.weight_expr(t, w)
         tmp = np.ones(len(self.universe))
         tmp[0] = -1
         w.value = tmp
-        value = self.returns.loc[t].sum() - 2*self.returns.loc[t].values[0]
-        value -= self.returns.loc[t].sum()/10
+        value = self.returns.loc[t].sum() - 2 * self.returns.loc[t].values[0]
+        value -= self.returns.loc[t].sum() / 10
         self.assertAlmostEqual(alpha.value, value)
 
         # alpha stream
@@ -74,7 +74,7 @@ class TestModels(BaseTest):
         alpha = stream.weight_expr(t, w)
         value = self.returns.loc[t].sum()
         w.value = np.ones(len(self.universe))
-        self.assertEqual(alpha.value, -2*value)
+        self.assertEqual(alpha.value, -2 * value)
 
         # with exp decay
         w = cvx.Variable(len(self.universe))
@@ -85,8 +85,8 @@ class TestModels(BaseTest):
         w.value = np.ones(len(self.universe))
         alpha_t = source.weight_expr(t, w)
         alpha_tau = source.weight_expr_ahead(t, tau, w)
-        decay = diff**(-2)
-        self.assertAlmostEqual(alpha_tau.value, decay*alpha_t.value)
+        decay = diff ** (-2)
+        self.assertAlmostEqual(alpha_tau.value, decay * alpha_t.value)
 
     def test_tcost_value_expr(self):
         """Test the value expression of the tcost.
@@ -96,33 +96,33 @@ class TestModels(BaseTest):
         model = TcostModel(half_spread=self.a, nonlin_coeff=0.,
                            sigma=self.sigma, volume=self.volume)
         t = self.times[1]
-        z = np.arange(n) - n/2
+        z = np.arange(n) - n / 2
         z_var = cvx.Variable(n)
         z_var.value = z
         tcost, _ = model.weight_expr(t, None, z_var, value)
-        u = pd.Series(index=self.returns.columns, data=z_var.value*value)
+        u = pd.Series(index=self.returns.columns, data=z_var.value * value)
         value_expr = model.value_expr(t, None, u)
-        self.assertAlmostEqual(tcost.value, value_expr/value)
+        self.assertAlmostEqual(tcost.value, value_expr / value)
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
                            sigma=self.sigma, volume=self.volume, power=2)
         tcost, _ = model.weight_expr(t, None, z_var, value)
         self.b * self.sigma.loc[t] * (value / self.volume.loc[t])
         value_expr = model.value_expr(t, None, u)
-        self.assertAlmostEqual(tcost.value, value_expr/value)
+        self.assertAlmostEqual(tcost.value, value_expr / value)
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
                            sigma=self.sigma, volume=self.volume, power=1.5)
         tcost, _ = model.weight_expr(t, None, z_var, value)
         self.b * self.sigma.loc[t] * np.sqrt(value / self.volume.loc[t])
         value_expr = model.value_expr(t, None, u)
-        self.assertAlmostEqual(tcost.value, value_expr/value)
+        self.assertAlmostEqual(tcost.value, value_expr / value)
 
         model = TcostModel(half_spread=self.a, nonlin_coeff=self.b,
                            sigma=self.sigma, volume=self.volume)
         tcost, _ = model.weight_expr(t, None, z_var, value)
         value_expr = model.value_expr(t, None, u)
-        self.assertAlmostEqual(tcost.value, value_expr/value)
+        self.assertAlmostEqual(tcost.value, value_expr / value)
 
         # with tau
         model = TcostModel(half_spread=self.a, nonlin_coeff=self.b,
@@ -130,7 +130,7 @@ class TestModels(BaseTest):
         tau = self.times[2]
         tcost, _ = model.weight_expr_ahead(t, tau, None, z_var, value)
         value_expr = model.value_expr(t, None, u)
-        self.assertAlmostEqual(tcost.value, value_expr/value)
+        self.assertAlmostEqual(tcost.value, value_expr / value)
 
     def test_tcost(self):
         """Test tcost model.
@@ -140,18 +140,18 @@ class TestModels(BaseTest):
         model = TcostModel(half_spread=self.a, nonlin_coeff=0.,
                            sigma=self.sigma, volume=self.volume)
         t = self.times[1]
-        z = np.arange(n) - n/2
+        z = np.arange(n) - n / 2
         z_var = cvx.Variable(n)
         z_var.value = z
         tcost, _ = model.weight_expr(t, None, z_var, value)
-        est_tcost_lin = sum(np.abs(z[:-1])*self.a)
+        est_tcost_lin = sum(np.abs(z[:-1]) * self.a)
         self.assertAlmostEqual(tcost.value, est_tcost_lin)
 
         model = TcostModel(half_spread=0, nonlin_coeff=self.b,
                            sigma=self.sigma, volume=self.volume, power=2)
         tcost, _ = model.weight_expr(t, None, z_var, value)
         coeff = self.b * self.sigma.loc[t] * \
-            (value / self.volume.loc[t])
+                (value / self.volume.loc[t])
         est_tcost_nonlin = np.square(z[:-1]).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
 
@@ -159,7 +159,7 @@ class TestModels(BaseTest):
                            sigma=self.sigma, volume=self.volume, power=1.5)
         tcost, _ = model.weight_expr(t, None, z_var, value)
         coeff = self.b * self.sigma.loc[t] * \
-            np.sqrt(value / self.volume.loc[t])
+                np.sqrt(value / self.volume.loc[t])
         est_tcost_nonlin = np.power(np.abs(z[:-1]), 1.5).dot(coeff.values)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin)
 
@@ -175,7 +175,7 @@ class TestModels(BaseTest):
         tcost, _ = model.weight_expr_ahead(t, tau, None, z_var, value)
         self.assertAlmostEqual(tcost.value, est_tcost_nonlin + est_tcost_lin)
 
-        tau = t + 10*pd.Timedelta('1 days')
+        tau = t + 10 * pd.Timedelta('1 days')
         tcost_tau, _ = model.est_period(t, t, tau, None, z_var, value)
         tcost_t, _ = model.weight_expr(t, None, z_var / 10, value)
         tcost_t *= 10
@@ -184,19 +184,19 @@ class TestModels(BaseTest):
     def test_hcost(self):
         """Test holding cost model.
         """
-        div = self.s/2
+        div = self.s / 2
         n = len(self.universe)
         wplus = cvx.Variable(n)
-        wplus.value = np.arange(n) - n/2
+        wplus.value = np.arange(n) - n / 2
         t = self.times[1]
         model = HcostModel(self.s)
         hcost, _ = model.weight_expr(t, wplus, None, None)
-        bcost = sum(wplus[:-1].value*self.s)
+        bcost = sum(wplus[:-1].value * self.s)
         self.assertAlmostEqual(hcost.value, bcost)
 
-        model = HcostModel(self.s*0, div)
+        model = HcostModel(self.s * 0, div)
         hcost, _ = model.weight_expr(t, wplus, None, None)
-        divs = (np.sum(wplus[:-1].value*div))
+        divs = (np.sum(wplus[:-1].value * div))
         self.assertAlmostEqual(-hcost.value, divs)
 
         model = HcostModel(self.s, div)
@@ -206,30 +206,30 @@ class TestModels(BaseTest):
     def test_hcost_value_expr(self):
         """Test the value expression of the hcost.
         """
-        div = self.s/2
+        div = self.s / 2
         n = len(self.universe)
         wplus = cvx.Variable(n)
-        wplus.value = np.arange(n) - n/2
+        wplus.value = np.arange(n) - n / 2
         t = self.times[1]
         model = HcostModel(self.s)
         hcost, _ = model.weight_expr(t, wplus, None, None)
 
         value = 1000.
         h_plus = pd.Series(index=self.returns.columns,
-                           data=wplus.value*1000)
+                           data=wplus.value * 1000)
         value_expr = model.value_expr(t, h_plus, None)
 
-        self.assertAlmostEqual(hcost.value, value_expr/value)
+        self.assertAlmostEqual(hcost.value, value_expr / value)
 
-        model = HcostModel(self.s*0, div)
+        model = HcostModel(self.s * 0, div)
         hcost, _ = model.weight_expr(t, wplus, None, None)
         value_expr = model.value_expr(t, h_plus, None)
-        self.assertAlmostEqual(-hcost.value, value_expr/value)
+        self.assertAlmostEqual(-hcost.value, value_expr / value)
 
         model = HcostModel(self.s, div)
         hcost, _ = model.weight_expr(t, wplus, None, None)
         value_expr = model.value_expr(t, h_plus, None)
-        self.assertAlmostEqual(hcost.value, value_expr/value)
+        self.assertAlmostEqual(hcost.value, value_expr / value)
 
     def test_hold_constrs(self):
         """Test holding constraints.
@@ -267,7 +267,7 @@ class TestModels(BaseTest):
         # leverage limit
         model = LeverageLimit(2)
         cons = model.weight_expr(t, wplus, None, None)
-        wplus.value = np.ones(n)/n
+        wplus.value = np.ones(n) / n
         assert np.all([c.value() for c in cons])
         tmp = np.zeros(n)
         tmp[0] = 4
@@ -416,5 +416,5 @@ class TestModels(BaseTest):
         tmp[:-1] = self.volume.loc[t].values / value * 0.05
         z.value = tmp
         assert np.all([c.value() for c in cons])
-        z.value = -100*z.value  # -100*np.ones(n)
+        z.value = -100 * z.value  # -100*np.ones(n)
         assert not np.any([c.value() for c in cons])

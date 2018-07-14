@@ -53,7 +53,7 @@ div.sphinxsidebar {
     margin-left: -100%;
     font-size: 90%;
     word-wrap: break-word;
-    overflow-wrap : break-word;
+    overflow-wrap: break-word;
 }
 
 div.sphinxsidebar ul {
@@ -253,9 +253,9 @@ img.align-right, .figure.align-right, object.align-right {
 }
 
 img.align-center, .figure.align-center, object.align-center {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .align-left {
@@ -476,7 +476,7 @@ dl.glossary dt {
     border: 3px solid red;
 }
 
-.footnote:target  {
+.footnote:target {
     background-color: #ffa;
 }
 
@@ -513,7 +513,7 @@ abbr, acronym {
 
 pre {
     overflow: auto;
-    overflow-y: hidden;  /* fixes display issues on Chrome browsers */
+    overflow-y: hidden; /* fixes display issues on Chrome browsers */
 }
 
 span.pre {

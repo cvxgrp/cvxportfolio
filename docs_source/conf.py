@@ -19,8 +19,8 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../'))
 
+sys.path.insert(0, os.path.abspath('../'))
 
 # -- General configuration ------------------------------------------------
 
@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc',  'numpydoc',
+extensions = ['sphinx.ext.autodoc', 'numpydoc',
               'sphinx.ext.mathjax',
               'sphinx.ext.githubpages']
 
@@ -79,7 +79,6 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -89,9 +88,9 @@ table_styling_embed_css = False
 html_theme = 'alabaster'
 
 html_sidebars = {
-   '**': [
-       'about.html', 'navigation.html', 'searchbox.html',
-   ]
+    '**': [
+        'about.html', 'navigation.html', 'searchbox.html',
+    ]
 }
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -113,12 +112,10 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'cvxportfoliodoc'
-
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -148,7 +145,6 @@ latex_documents = [
      'Enzo Busseti, Steven Diamond', 'manual'),
 ]
 
-
 # -- Options for manual page output ---------------------------------------
 
 # One entry per manual page. List of tuples
@@ -157,7 +153,6 @@ man_pages = [
     (master_doc, 'cvxportfolio', 'cvxportfolio Documentation',
      [author], 1)
 ]
-
 
 # -- Options for Texinfo output -------------------------------------------
 

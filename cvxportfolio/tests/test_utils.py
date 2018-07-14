@@ -28,11 +28,11 @@ DIR = os.path.dirname(__file__) + os.path.sep
 class TestUtils(BaseTest):
 
     def setUp(self):
-        self.sigma = pd.read_csv(DIR+'sigmas.csv',
+        self.sigma = pd.read_csv(DIR + 'sigmas.csv',
                                  index_col=0, parse_dates=[0])
-        self.returns = pd.read_csv(DIR+'returns.csv',
+        self.returns = pd.read_csv(DIR + 'returns.csv',
                                    index_col=0, parse_dates=[0])
-        self.volume = pd.read_csv(DIR+'volumes.csv',
+        self.volume = pd.read_csv(DIR + 'volumes.csv',
                                   index_col=0, parse_dates=[0])
         self.a, self.b, self.s = 0.0005, 1., 0.
         self.volume['cash'] = np.NaN
@@ -61,8 +61,8 @@ class TestUtils(BaseTest):
         index = ['a', 'b', 'c']
         df = pd.DataFrame(index=index, columns=index,
                           data=[[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        pn = pd.Panel({'1': df, '2': df*2})
+        pn = pd.Panel({'1': df, '2': df * 2})
         self.assertTrue(np.allclose(df.values,
                                     time_matrix_locator(df, t=12)))
-        self.assertTrue(np.allclose(df.values*2,
+        self.assertTrue(np.allclose(df.values * 2,
                                     time_matrix_locator(pn, t='2')))

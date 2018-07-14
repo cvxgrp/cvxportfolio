@@ -28,6 +28,7 @@ from .returns import MultipleReturnsForecasts
 from .result import SimulationResult
 from .costs import BaseCost
 
+
 # TODO update benchmark weights (?)
 # Also could try jitting with numba.
 
@@ -77,8 +78,8 @@ class MarketSimulator():
         hplus = h + u
         costs = [cost.value_expr(t, h_plus=hplus, u=u) for cost in self.costs]
         for cost in costs:
-            assert(not pd.isnull(cost))
-            assert(not np.isinf(cost))
+            assert (not pd.isnull(cost))
+            assert (not np.isinf(cost))
 
         u[self.cash_key] = - sum(u[u.index != self.cash_key]) - sum(costs)
         hplus[self.cash_key] = h[self.cash_key] + u[self.cash_key]
@@ -177,7 +178,7 @@ class MarketSimulator():
             np.zeros((len(initial_weights), len(initial_weights)))
         for i in range(len(initial_weights)):
             perturb_weights_matrix[i, :] = initial_weights / \
-                (1 - delta * initial_weights[i])
+                                           (1 - delta * initial_weights[i])
             perturb_weights_matrix[i, i] = (1 - delta) * initial_weights[i]
         return perturb_weights_matrix
 

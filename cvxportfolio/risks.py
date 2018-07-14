@@ -23,7 +23,7 @@ import pandas as pd
 from .costs import BaseCost
 
 __all__ = ['FullSigma', 'EmpSigma', 'SqrtSigma', 'WorstCaseRisk',
-           'RobustFactorModelSigma', 'RobustSigma',  'FactorModelSigma']
+           'RobustFactorModelSigma', 'RobustSigma', 'FactorModelSigma']
 
 
 def locator(obj, t):
@@ -67,7 +67,7 @@ class BaseRiskModel(BaseCost):
             # TODO not dependent on days
             gamma_init = decay_factor ** ((tau - t).days)
             gamma_multiplier = gamma_init * \
-                (1 - decay_factor) / (1 - decay_factor)
+                               (1 - decay_factor) / (1 - decay_factor)
 
         return gamma_multiplier * self.weight_expr(t, w_plus, z, value)[0], []
 
@@ -90,7 +90,7 @@ class FullSigma(BaseRiskModel):
     def __init__(self, Sigma, **kwargs):
         self.Sigma = Sigma  # Sigma is either a matrix or a pd.Panel
         try:
-            assert(not pd.isnull(Sigma).values.any())
+            assert (not pd.isnull(Sigma).values.any())
         except AttributeError:
             assert (not pd.isnull(Sigma).any())
         super(FullSigma, self).__init__(**kwargs)
@@ -111,7 +111,7 @@ class EmpSigma(BaseRiskModel):
         """returns is dataframe, lookback is int"""
         self.returns = returns
         self.lookback = lookback
-        assert(not np.any(pd.isnull(returns)))
+        assert (not np.any(pd.isnull(returns)))
         super(EmpSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
@@ -128,7 +128,7 @@ class SqrtSigma(BaseRiskModel):
     def __init__(self, sigma_sqrt, **kwargs):
         """returns is dataframe, lookback is int"""
         self.sigma_sqrt = sigma_sqrt
-        assert(not np.any(pd.isnull(sigma_sqrt)))
+        assert (not np.any(pd.isnull(sigma_sqrt)))
         super(SqrtSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
@@ -146,14 +146,14 @@ class FactorModelSigma(BaseRiskModel):
         self.factor_Sigma = factor_Sigma
         assert (not factor_Sigma.isnull().values.any())
         self.idiosync = idiosync
-        assert(not idiosync.isnull().values.any())
+        assert (not idiosync.isnull().values.any())
         super(FactorModelSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
         self.expression = cvx.sum_squares(cvx.multiply(
             np.sqrt(locator(self.idiosync, t).values), wplus)) + \
-            cvx.quad_form((wplus.T * locator(self.exposures, t).values.T).T,
-                          locator(self.factor_Sigma, t).values)
+                          cvx.quad_form((wplus.T * locator(self.exposures, t).values.T).T,
+                                        locator(self.factor_Sigma, t).values)
         return self.expression
 
 
@@ -167,9 +167,9 @@ class RobustSigma(BaseRiskModel):
 
     def _estimate(self, t, wplus, z, value):
         self.expression = cvx.quad_form(wplus, locator(self.Sigma, t)) + \
-            locator(self.epsilon, t) * \
-            (cvx.abs(wplus).T * np.diag(locator(
-                self.Sigma, t)))**2
+                          locator(self.epsilon, t) * \
+                          (cvx.abs(wplus).T * np.diag(locator(
+                              self.Sigma, t))) ** 2
 
         return self.expression
 
@@ -184,7 +184,7 @@ class RobustFactorModelSigma(BaseRiskModel):
         self.factor_Sigma = factor_Sigma
         assert (not factor_Sigma.isnull().values.any())
         self.idiosync = idiosync
-        assert(not idiosync.isnull().values.any())
+        assert (not idiosync.isnull().values.any())
         self.epsilon = epsilon
         super(RobustFactorModelSigma, self).__init__(**kwargs)
 
@@ -195,8 +195,8 @@ class RobustFactorModelSigma(BaseRiskModel):
         D = locator(self.idiosync, t)
         self.expression = cvx.sum_squares(
             cvx.multiply(np.sqrt(D), wplus)) + \
-            cvx.quad_form(f, Sigma_F) + \
-            self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F)))**2
+                          cvx.quad_form(f, Sigma_F) + \
+                          self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F))) ** 2
 
         return self.expression
 

@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-
 import cvxpy as cvx
 from cvxportfolio.expression import Expression
 from .utils.data_management import time_locator, null_checker
@@ -75,7 +74,7 @@ class ReturnsForecast(BaseReturnsModel):
 
         alpha = self.weight_expr(t, wplus)
         if tau > t and self.gamma_decay is not None:
-            alpha *= (tau - t).days**(-self.gamma_decay)
+            alpha *= (tau - t).days ** (-self.gamma_decay)
         return alpha
 
 

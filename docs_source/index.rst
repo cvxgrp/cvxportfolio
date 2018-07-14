@@ -1,7 +1,7 @@
 .. cvxportfolio documentation master file, created by
-   sphinx-quickstart on Mon Apr 24 13:19:35 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+sphinx-quickstart on Mon Apr 24 13:19:35 2017.
+You can adapt this file completely to your liking, but it should at least
+contain the root `toctree` directive.
 
 Welcome to CVXPortfolio
 ========================================
@@ -22,14 +22,14 @@ CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond, wi
 CVXPortfolio is not quite ready yet, but if you want to jump into the development branch `feel free <https://github.com/cvxgrp/cvxportfolio>`_.
 
 .. toctree::
-   :hidden:
+:hidden:
 
-   install/index
-   intro/index
-   documentation/index
-   examples/index
-   citing/index
-   license/index
+       install/index
+       intro/index
+       documentation/index
+       examples/index
+       citing/index
+       license/index
 
 
 .. _Quandl: https://www.quandl.com

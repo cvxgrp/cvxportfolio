@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-
 from abc import ABCMeta, abstractmethod
 
 import cvxpy as cvx
@@ -71,7 +70,7 @@ class MaxTrade(BaseConstraint):
           v: portfolio value
         """
         return [cvx.abs(z[:-1]) * v <= \
-            np.array(locator(self.ADVs, t)) * self.max_fraction]
+                np.array(locator(self.ADVs, t)) * self.max_fraction]
 
         # TODO fix the locator for this usecase
 
@@ -134,7 +133,6 @@ class LongCash(BaseConstraint):
         """
 
         return [w_plus[-1] >= 0]
-
 
 
 class DollarNeutral(BaseConstraint):
@@ -212,6 +210,7 @@ class FactorMaxLimit(BaseConstraint):
         per factor, where n represents # of assets and r represents # of factors
         limit: A series of list or a single list giving the factor limits
     """
+
     def __init__(self, factor_exposure, limit, **kwargs):
         super(FactorMaxLimit, self).__init__(**kwargs)
         self.factor_exposure = factor_exposure
@@ -239,6 +238,7 @@ class FactorMinLimit(BaseConstraint):
         per factor, where n represents # of assets and r represents # of factors
         limit: A series of list or a single list giving the factor limits
     """
+
     def __init__(self, factor_exposure, limit, **kwargs):
         super(FactorMinLimit, self).__init__(**kwargs)
         self.factor_exposure = factor_exposure

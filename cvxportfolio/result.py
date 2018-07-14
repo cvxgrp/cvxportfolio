@@ -39,6 +39,7 @@ class SimulationResult():
         tcosts: A series of transaction costs over time.
         borrow_costs: A series of borrow costs over time.
     """
+
     def __init__(self, initial_portfolio, policy, cash_key, simulator,
                  simulation_times=None, PPY=252,
                  timedelta=pd.Timedelta("1 days")):
@@ -214,7 +215,7 @@ class SimulationResult():
     @property
     def sharpe_ratio(self):
         return np.sqrt(self.PPY) * np.mean(self.excess_returns) / \
-            np.std(self.excess_returns)
+               np.std(self.excess_returns)
 
     @property
     def turnover(self):

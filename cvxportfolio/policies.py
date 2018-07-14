@@ -25,7 +25,6 @@ from cvxportfolio.returns import BaseReturnsModel
 from cvxportfolio.constraints import BaseConstraint
 from cvxportfolio.utils.data_management import time_locator, null_checker
 
-
 __all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
            'SinglePeriodOpt', 'MultiPeriodOpt', 'ProportionalTrade',
            'RankAndLongShort']
@@ -134,14 +133,14 @@ class FixedTrade(BasePolicy):
     def __init__(self, tradevec=None, tradeweight=None):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
         if tradevec is not None and tradeweight is not None:
-            raise(Exception(
+            raise (Exception(
                 'only one of tradevec and tradeweight can be passed'))
         if tradevec is None and tradeweight is None:
-            raise(Exception('one of tradevec and tradeweight must be passed'))
+            raise (Exception('one of tradevec and tradeweight must be passed'))
         self.tradevec = tradevec
         self.tradeweight = tradeweight
-        assert(self.tradevec is None or sum(self.tradevec) == 0.)
-        assert(self.tradeweight is None or sum(self.tradeweight) == 0.)
+        assert (self.tradevec is None or sum(self.tradevec) == 0.)
+        assert (self.tradeweight is None or sum(self.tradeweight) == 0.)
         super(FixedTrade, self).__init__()
 
     def get_trades(self, portfolio, t=pd.datetime.today()):
@@ -176,7 +175,7 @@ class PeriodicRebalance(BaseRebalance):
         result = not getattr(t, self.period) == getattr(self.last_t,
                                                         self.period) if \
             hasattr(self,
-                    'last_t')\
+                    'last_t') \
             else True
         self.last_t = t
         return result
@@ -258,7 +257,7 @@ class SinglePeriodOpt(BasePolicy):
             alpha_term = cvx.sum(cvx.multiply(
                 time_locator(self.return_forecast, t, as_numpy=True), wplus))
 
-        assert(alpha_term.is_concave())
+        assert (alpha_term.is_concave())
 
         costs, constraints = [], []
 
@@ -268,7 +267,7 @@ class SinglePeriodOpt(BasePolicy):
             constraints += const_expr
 
         constraints += [item for con in self.constraints \
-                             for item in con.weight_expr(t, wplus, z, value)]
+                        for item in con.weight_expr(t, wplus, z, value)]
 
         for el in costs:
             assert (el.is_convex())
@@ -297,6 +296,7 @@ class SinglePeriodOpt(BasePolicy):
             logging.error(
                 'The solver %s failed. Defaulting to no trades' % self.solver)
             return self._nulltrade(portfolio)
+
 
 # class LookaheadModel():
 #     """Returns the planning periods for multi-period.
@@ -344,8 +344,8 @@ class MultiPeriodOpt(SinglePeriodOpt):
         # planning_periods = self.lookahead_model.get_periods(t)
         for tau in \
                 self.trading_times[self.trading_times.index(t):
-                                   self.trading_times.index(t) +
-                                   self.lookahead_periods]:
+                self.trading_times.index(t) +
+                self.lookahead_periods]:
             # delta_t in [pd.Timedelta('%d days' % i) for i in
             # range(self.lookahead_periods)]:
 

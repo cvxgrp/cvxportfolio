@@ -29,11 +29,11 @@ DIR = os.path.dirname(__file__) + os.path.sep
 class TestSimulator(BaseTest):
 
     def setUp(self):
-        self.sigma = pd.read_csv(DIR+'sigmas.csv',
+        self.sigma = pd.read_csv(DIR + 'sigmas.csv',
                                  index_col=0, parse_dates=[0])
-        self.returns = pd.read_csv(DIR+'returns.csv',
+        self.returns = pd.read_csv(DIR + 'returns.csv',
                                    index_col=0, parse_dates=[0])
-        self.volume = pd.read_csv(DIR+'volumes.csv',
+        self.volume = pd.read_csv(DIR + 'volumes.csv',
                                   index_col=0, parse_dates=[0])
         self.a, self.b, self.s = 0.0005, 1., 0.
         self.portfolio = pd.Series(index=self.returns.columns, data=1E6)
@@ -66,7 +66,7 @@ class TestSimulator(BaseTest):
         h = copy.copy(self.portfolio)
         results = SimulationResult(initial_portfolio=h, policy=None,
                                    cash_key='cash', simulator=self.Simulator)
-        u = pd.Series(index=self.portfolio.index, data=[1E4]*29)
+        u = pd.Series(index=self.portfolio.index, data=[1E4] * 29)
         h_next, u = self.Simulator.propagate(h, u, t=t)
         results.log_simulation(t=t, u=u, h_next=h_next,
                                risk_free_return=0., exec_time=0)
@@ -82,7 +82,7 @@ class TestSimulator(BaseTest):
         h = copy.copy(self.portfolio)
         results = SimulationResult(initial_portfolio=h, policy=None,
                                    cash_key='cash', simulator=self.Simulator)
-        u = pd.Series(index=self.portfolio.index, data=[-1E4]*29)
+        u = pd.Series(index=self.portfolio.index, data=[-1E4] * 29)
         h_next, u = self.Simulator.propagate(h, u, t=t)
         results.log_simulation(t=t, u=u, h_next=h_next,
                                risk_free_return=0., exec_time=0)
