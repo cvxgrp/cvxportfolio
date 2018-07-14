@@ -377,4 +377,4 @@ class MultiPeriodOpt(SinglePeriodOpt):
 
         sum(prob_arr).solve(solver=self.solver)
         return pd.Series(index=portfolio.index,
-                         data=(z_vars[0].value.A1 * value))
+                         data=(z_vars[0].value * value))

@@ -95,10 +95,9 @@ class HcostModel(BaseCost):
         return self._estimate(t, w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
-        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * \
-            time_locator(self.borrow_costs, t)
-        self.last_cost -= h_plus.iloc[:-1] * \
-            time_locator(self.dividends, t)
+        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * time_locator(
+            self.borrow_costs, t)
+        self.last_cost -= h_plus.iloc[:-1] * time_locator(self.dividends, t)
 
         return sum(self.last_cost)
 
@@ -157,9 +156,9 @@ class TcostModel(BaseCost):
 
         constr = []
 
-        second_term = time_locator(self.nonlin_coeff, t) * \
-            time_locator(self.sigma, t) * \
-            (value / time_locator(self.volume, t))**(self.power - 1)
+        second_term = time_locator(self.nonlin_coeff, t) * time_locator(
+            self.sigma, t) * (value / time_locator(self.volume, t)) ** (
+                              self.power - 1)
 
         # no trade conditions
         if np.isscalar(second_term):
@@ -180,10 +179,10 @@ class TcostModel(BaseCost):
                 time_locator(self.half_spread, t).values, cvx.abs(z))
         try:
             self.expression += cvx.multiply(second_term,
-                                                cvx.abs(z)**self.power)
+                                            cvx.abs(z) ** self.power)
         except TypeError:
             self.expression += cvx.multiply(
-                second_term.values, cvx.abs(z)**self.power)
+                second_term.values, cvx.abs(z) ** self.power)
 
         return cvx.sum(self.expression), constr
 
@@ -191,16 +190,17 @@ class TcostModel(BaseCost):
 
         u_nc = u.iloc[:-1]
         self.tmp_tcosts = (
-            np.abs(u_nc) * time_locator(self.half_spread, t) +
-            time_locator(self.nonlin_coeff, t) * time_locator(self.sigma, t) *
-            np.abs(u_nc) ** self.power /
-            (time_locator(self.volume, t) ** (self.power - 1)))
+                np.abs(u_nc) * time_locator(self.half_spread, t) +
+                time_locator(self.nonlin_coeff, t) * time_locator(self.sigma,
+                                                                  t) *
+                np.abs(u_nc) ** self.power /
+                (time_locator(self.volume, t) ** (self.power - 1)))
 
         return self.tmp_tcosts.sum()
 
     def optimization_log(self, t):
         try:
-            return self.expression.value.A1
+            return self.expression.value
         except AttributeError:
             return np.nan
 

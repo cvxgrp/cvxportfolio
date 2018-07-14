@@ -1,14 +1,14 @@
-CVXPortfolio
+`cvxportfolio`
 =============
 [![Build Status](https://travis-ci.org/cvxgrp/cvxportfolio.png?branch=master)](https://travis-ci.org/cvxgrp/cvxportfolio)
 [![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
 
-**The CVXPortfolio documentation is at [cvxportfolio.org](http://www.cvxportfolio.org/).**
+**The `cvxportfolio` documentation is at [cvxportfolio.org](http://www.cvxportfolio.org/).**
 
-CVXPortfolio (ConVeX Portfolio Optimization and Simulation)
-is a toolset based on our paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
-It is written in Python, its major dependencies are [CVXPY](https://github.com/cvxgrp/cvxpy)
-and [Pandas](https://github.com/pandas-dev/pandas).
+`cvxportfolio` is a python library for portfolio optimization and simulation,
+based on the paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
+It is written in Python, its major dependencies are [`cvxpy`](https://github.com/cvxgrp/cvxpy)
+and [`pandas`](https://github.com/pandas-dev/pandas).
 
 See the [examples](https://github.com/cvxgrp/cvxportfolio/tree/master/examples) for basic usage.
 
@@ -31,16 +31,23 @@ If you wish to cite CVXPortfolio, please use:
 Installation
 ------------
 
-1. Install [Anaconda](https://docs.continuum.io/anaconda/install).
-2. Install cvxpy with conda.
+We provide `conda` (recommended) and `pip` packages. From scratch, do:
+
+1. Install [Anaconda](https://docs.continuum.io/anaconda/install)
+2. Install `pandas`
 ```
+conda install pandas
+```
+3. Install `cvxpy` (if it doesn't work, follow instructions [here](http://www.cvxpy.org/install/index.html))
+```
+conda install -c conda-forge lapack
 conda install -c cvxgrp cvxpy
 ```
-3. Install CVXPortfolio with pip.
+3. Install `cvxportfolio`
 ```
-pip install cvxportfolio
+conda install -c cvxgrp cvxportfolio
 ```
-4. Test the installation with nose.
+4. Test the installation with `nose`
 ```
 conda install nose
 nosetests cvxportfolio

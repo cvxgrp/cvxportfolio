@@ -13,7 +13,7 @@ sudo: required
 install: source continuous_integration/install.sh
 script:
   - bash continuous_integration/test_script.sh
-  - flake8 --exclude="*/__init__.py" .
+  - flake8 .
 after_success:
     - if [[ "$COVERAGE" == "true" ]]; then coveralls; fi
 cache: apt
@@ -22,3 +22,8 @@ addons:
     packages:
     - gfortran
     - libgfortran3
+deploy:
+  provider: script
+  script: python continuous_integration/build_and_deploy.py
+  on:
+    branch: master
