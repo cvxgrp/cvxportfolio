@@ -334,6 +334,8 @@ class MultiPeriodOpt(SinglePeriodOpt):
 
     def get_trades(self, portfolio, t=pd.datetime.today()):
         value = sum(portfolio)
+        print("Getting trades at : ", t)
+
         assert (value > 0.)
         w = cvx.Constant(portfolio.values / value)
 
@@ -345,11 +347,8 @@ class MultiPeriodOpt(SinglePeriodOpt):
                 self.trading_times[self.trading_times.index(t):
                                    self.trading_times.index(t) +
                                    self.lookahead_periods]:
-            # delta_t in [pd.Timedelta('%d days' % i) for i in
-            # range(self.lookahead_periods)]:
-
-            #            tau = t + delta_t
-            #z = cvx.Variable(*w.size)
+            
+            # z = cvx.Variable(*w.size)
             z = cvx.Variable(w.size)
 
             wplus = w + z

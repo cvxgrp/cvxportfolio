@@ -176,7 +176,7 @@ class SimulationResult():
 
     @property
     def annual_growth_rate(self):
-        """The annualized growth rate PPY/T \sum_{t=1}^T log(v_{t+1}/v_t)
+        """The annualized growth rate PPY/T sum_{t=1}^T log(v_{t+1}/v_t)
         """
         return self.growth_rates.sum() * self.PPY / self.growth_rates.size
 
