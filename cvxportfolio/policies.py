@@ -334,7 +334,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
 
     def get_trades(self, portfolio, t=pd.datetime.today()):
         value = sum(portfolio)
-        print("Getting trades at : ", t)
+        # print("Getting trades at : ", t)
 
         assert (value > 0.)
         w = cvx.Constant(portfolio.values / value)
