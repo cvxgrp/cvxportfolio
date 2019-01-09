@@ -89,6 +89,18 @@ class MPOReturnsForecast(BaseReturnsModel):
     def __init__(self, alpha_data):
         self.alpha_data = alpha_data
 
+    def weight_expr(self, t, wplus):
+        """Returns the estimate at time t of alpha at time t.
+
+        Args:
+          t: time estimate is made.
+          wplus: An expression for holdings.
+
+        Returns:
+          An expression for the alpha.
+        """
+        return self.alpha_data[(t, t)].values.T * wplus
+
     def weight_expr_ahead(self, t, tau, wplus):
         """Returns the estimate at time t of alpha at time tau.
 
