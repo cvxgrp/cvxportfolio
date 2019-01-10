@@ -347,7 +347,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
                 self.trading_times[self.trading_times.index(t):
                                    self.trading_times.index(t) +
                                    self.lookahead_periods]:
-            
+
             # z = cvx.Variable(*w.size)
             z = cvx.Variable(w.size)
 
