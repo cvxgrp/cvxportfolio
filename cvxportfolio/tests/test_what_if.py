@@ -1,7 +1,21 @@
 """
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+Copyright (C) Enzo Busseti 2016-2019 
 
-Licensed under the Apache License, Version 2.0 (the "License");
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+Code written before September 2016 is copyrighted to 
+Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.,
+and is licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
@@ -31,11 +45,11 @@ DIR = os.path.dirname(__file__) + os.path.sep
 class TestWhatIf(BaseTest):
 
     def setUp(self):
-        self.sigma = pd.read_csv(DIR+'sigmas.csv',
+        self.sigma = pd.read_csv(DIR + 'sigmas.csv',
                                  index_col=0, parse_dates=[0])
-        self.returns = pd.read_csv(DIR+'returns.csv',
+        self.returns = pd.read_csv(DIR + 'returns.csv',
                                    index_col=0, parse_dates=[0])
-        self.volume = pd.read_csv(DIR+'volumes.csv',
+        self.volume = pd.read_csv(DIR + 'volumes.csv',
                                   index_col=0, parse_dates=[0])
         self.a, self.b, self.s = 0.0005, 1., 0.
         self.universe = self.returns.columns
@@ -52,7 +66,7 @@ class TestWhatIf(BaseTest):
         emp_Sigma = np.cov(self.returns.as_matrix().T)
         risk_model = FullSigma(emp_Sigma, gamma=100.)
         tcost_model = TcostModel(self.volume, self.sigma, self.a, self.b)
-        hcost_model = HcostModel(self.s, self.s*0)
+        hcost_model = HcostModel(self.s, self.s * 0)
         pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model,
                                             hcost_model], [],
                               solver=cvx.ECOS)
@@ -72,7 +86,7 @@ class TestWhatIf(BaseTest):
         base_line = noisy.v - sum(p_0)
         for i in range(3):
             self.assertItemsAlmostEqual(
-                attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
+                attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
         self.assertItemsAlmostEqual(attr['RMS error'], np.zeros(len(noisy.v)))
 
         # least-squares fit attribution
@@ -81,10 +95,10 @@ class TestWhatIf(BaseTest):
         base_line = noisy.v - sum(p_0)
         for i in range(3):
             self.assertItemsAlmostEqual(
-                attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
+                attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
         # Residual always 0.
         alpha_sources = [ReturnsForecast(
-            self.returns*0, name=i) for i in range(3)]
+            self.returns * 0, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         pol = copy.copy(pol)
@@ -104,7 +118,7 @@ class TestWhatIf(BaseTest):
         emp_Sigma = np.cov(self.returns.as_matrix().T)
         risk_model = FullSigma(emp_Sigma, gamma=100.)
         tcost_model = TcostModel(self.a, self.b, self.sigma, self.volume)
-        hcost_model = HcostModel(self.s, self.s*0)
+        hcost_model = HcostModel(self.s, self.s * 0)
         pol = SinglePeriodOpt(alpha_model, [risk_model, tcost_model,
                                             hcost_model], [],
                               solver=cvx.ECOS)
@@ -129,7 +143,7 @@ class TestWhatIf(BaseTest):
         base_line = noisy.leverage
         for i in range(3):
             self.assertItemsAlmostEqual(
-                attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
+                attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
         self.assertItemsAlmostEqual(attr['RMS error'], np.zeros(len(noisy.v)))
 
         # least-squares fit attribution
@@ -137,10 +151,10 @@ class TestWhatIf(BaseTest):
                                     parallel=False, fit="least-squares")
         for i in range(3):
             self.assertItemsAlmostEqual(
-                attr[i]/weights[i]/sum(p_0), base_line/sum(p_0))
+                attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
         # Residual always 0.
         alpha_sources = [ReturnsForecast(
-            self.returns*0, name=i) for i in range(3)]
+            self.returns * 0, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         pol = copy.copy(pol)
@@ -162,7 +176,7 @@ class TestWhatIf(BaseTest):
         tcost_model = TcostModel(self.a, self.b, self.sigma, self.volume)
         hcost_model = HcostModel(self.s)
         pol = SinglePeriodOpt(
-            alpha_model, [100*risk_model, tcost_model, hcost_model], [])
+            alpha_model, [100 * risk_model, tcost_model, hcost_model], [])
 
         market_sim = simulator.MarketSimulator(self.returns,
                                                costs=[tcost_model, hcost_model]
@@ -183,7 +197,7 @@ class TestWhatIf(BaseTest):
         base_line = noisy.volatility
         for i in range(3):
             self.assertAlmostEqual(
-                attr[i][0]/weights[i]/sum(p_0), base_line/sum(p_0))
+                attr[i][0] / weights[i] / sum(p_0), base_line / sum(p_0))
         self.assertItemsAlmostEqual(attr['RMS error'], np.zeros(len(noisy.v)))
 
         # least-squares fit attribution
@@ -191,10 +205,10 @@ class TestWhatIf(BaseTest):
                                     parallel=False, fit="least-squares")
         for i in range(3):
             self.assertAlmostEqual(
-                attr[i][0]/weights[i]/sum(p_0), base_line/sum(p_0))
+                attr[i][0] / weights[i] / sum(p_0), base_line / sum(p_0))
         # Residual always 0.
         alpha_sources = [ReturnsForecast(
-            self.returns*0, name=i) for i in range(3)]
+            self.returns * 0, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
         pol = copy.copy(pol)
