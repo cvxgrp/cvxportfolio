@@ -36,6 +36,7 @@ import numpy as np
 import pandas as pd
 
 from .risks import locator
+from .utils.data_management import time_locator
 
 __all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'DollarNeutral', 'MaxTrade',
            'MaxWeights', 'MinWeights', 'FactorMaxLimit', 'FactorMinLimit',
@@ -220,8 +221,8 @@ class FactorMaxLimit(BaseConstraint):
     """A max limit on portfolio-wide factor (e.g. beta) exposure.
 
     Attributes:
-        factor_exposure: An (n * r) matrix giving the factor exposure per asset
-        per factor, where n represents # of assets and r represents # of factors
+        factor_exposure: An (T * N) matrix giving the specific one factor exposure by N assets
+        and T periods, where T represents # of periods and N represents # of assets
         limit: A series of list or a single list giving the factor limits
     """
 
@@ -241,15 +242,15 @@ class FactorMaxLimit(BaseConstraint):
             limit = self.limit.loc[t]
         else:
             limit = self.limit
-        return self.factor_exposure.T * w_plus[:-1] <= limit
+        return time_locator(self.factor_exposure, t).values.T * w_plus[:-1] <= limit
 
 
 class FactorMinLimit(BaseConstraint):
     """A min limit on portfolio-wide factor (e.g. beta) exposure.
 
     Attributes:
-        factor_exposure: An (n * r) matrix giving the factor exposure per asset
-        per factor, where n represents # of assets and r represents # of factors
+        factor_exposure: An (T * N) matrix giving the specific one factor exposure by N assets
+        and T periods, where T represents # of periods and N represents # of assets
         limit: A series of list or a single list giving the factor limits
     """
 
@@ -269,7 +270,7 @@ class FactorMinLimit(BaseConstraint):
             limit = self.limit.loc[t]
         else:
             limit = self.limit
-        return self.factor_exposure.T * w_plus[:-1] >= limit
+        return time_locator(self.factor_exposure, t).values.T * w_plus[:-1] >= limit
 
 
 class FixedAlpha(BaseConstraint):
