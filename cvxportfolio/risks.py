@@ -166,7 +166,7 @@ class FactorModelSigma(BaseRiskModel):
     def _estimate(self, t, wplus, z, value):
         self.expression = cvx.sum_squares(cvx.multiply(
             np.sqrt(locator(self.idiosync, t).values), wplus)) + \
-            cvx.quad_form((locator(self.exposures, t).values.T * wplus),
+            cvx.quad_form((wplus.T * locator(self.exposures, t).values.T).T,
                           locator(self.factor_Sigma, t).values)
         return self.expression
 
