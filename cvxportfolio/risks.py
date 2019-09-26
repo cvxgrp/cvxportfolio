@@ -43,10 +43,7 @@ __all__ = ['FullSigma', 'EmpSigma', 'SqrtSigma', 'WorstCaseRisk',
 def locator(obj, t):
     """Picks last element before t."""
     try:
-        if isinstance(obj, pd.Panel):
-            return obj.iloc[obj.axes[0].get_loc(t, method='pad')]
-
-        elif isinstance(obj.index, pd.MultiIndex):
+        if isinstance(obj.index, pd.MultiIndex):
             prev_t = obj.loc[:t, :].index.values[-1][0]
         else:
             prev_t = obj.loc[:t, :].index.values[-1]
