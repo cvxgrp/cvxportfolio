@@ -1,21 +1,7 @@
 """
-Copyright (C) Enzo Busseti 2016-2019 
+Copyright 2017 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-
-Code written before September 2016 is copyrighted to 
-Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.,
-and is licensed under the Apache License, Version 2.0 (the "License");
+Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
@@ -42,11 +28,11 @@ DIR = os.path.dirname(__file__) + os.path.sep
 class TestUtils(BaseTest):
 
     def setUp(self):
-        self.sigma = pd.read_csv(DIR + 'sigmas.csv',
+        self.sigma = pd.read_csv(DIR+'sigmas.csv',
                                  index_col=0, parse_dates=[0])
-        self.returns = pd.read_csv(DIR + 'returns.csv',
+        self.returns = pd.read_csv(DIR+'returns.csv',
                                    index_col=0, parse_dates=[0])
-        self.volume = pd.read_csv(DIR + 'volumes.csv',
+        self.volume = pd.read_csv(DIR+'volumes.csv',
                                   index_col=0, parse_dates=[0])
         self.a, self.b, self.s = 0.0005, 1., 0.
         self.volume['cash'] = np.NaN
@@ -75,8 +61,8 @@ class TestUtils(BaseTest):
         index = ['a', 'b', 'c']
         df = pd.DataFrame(index=index, columns=index,
                           data=[[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        pn = pd.Panel({'1': df, '2': df * 2})
+        pn = pd.Panel({'1': df, '2': df*2})
         self.assertTrue(np.allclose(df.values,
                                     time_matrix_locator(df, t=12)))
-        self.assertTrue(np.allclose(df.values * 2,
+        self.assertTrue(np.allclose(df.values*2,
                                     time_matrix_locator(pn, t='2')))

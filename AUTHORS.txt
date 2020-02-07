@@ -1,3 +1,4 @@
 AUTHORS
-September 2016 - today: Enzo Busseti continued development as sole author.
-June 2016 - September 2016: Enzo Busseti and Steven Diamond initiated the developement of the software library. Stephen Boyd directed the project. BlackRock Inc. provided support via technical, financial, and (additional) human resources.
+Enzo Busseti and Steven Diamond developed the software library. Stephen Boyd directed the
+project. BlackRock Inc. provided support via technical, financial, and (additional)
+human resources.
