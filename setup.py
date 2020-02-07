@@ -2,14 +2,15 @@ from setuptools import setup
 
 setup(
     name='cvxportfolio',
-    version='0.0.5',
+    version='0.0.6',
     author='Enzo Busseti and Steven Diamond',
     author_email='ebusseti@stanford.edu, stevend2@stanford.edu',
     packages=['cvxportfolio',
               'cvxportfolio.tests',
               'cvxportfolio.utils'],
     package_dir={'cvxportfolio': 'cvxportfolio'},
-    package_data={'cvxportfolio': ['tests/returns.csv', 'tests/sigmas.csv', 'tests/volumes.csv']},
+    package_data={'cvxportfolio': [
+        'tests/returns.csv', 'tests/sigmas.csv', 'tests/volumes.csv']},
     url='http://github.com/cvxgrp/cvxportfolio/',
     license='Apache',
     zip_safe=False,
