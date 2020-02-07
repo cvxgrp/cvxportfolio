@@ -1,21 +1,7 @@
 """
-Copyright (C) Enzo Busseti 2016-2019 
+Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-
-Code written before September 2016 is copyrighted to 
-Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.,
-and is licensed under the Apache License, Version 2.0 (the "License");
+Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
@@ -45,9 +31,8 @@ __all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
            'RankAndLongShort']
 
 
-class BasePolicy(object):
+class BasePolicy(object, metaclass=ABCMeta):
     """ Base class for a trading policy. """
-    __metaclass__ = ABCMeta
 
     def __init__(self):
         self.costs = []
@@ -148,10 +133,9 @@ class FixedTrade(BasePolicy):
     def __init__(self, tradevec=None, tradeweight=None):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
         if tradevec is not None and tradeweight is not None:
-            raise(Exception(
-                'only one of tradevec and tradeweight can be passed'))
+            raise Exception
         if tradevec is None and tradeweight is None:
-            raise(Exception('one of tradevec and tradeweight must be passed'))
+            raise Exception
         self.tradevec = tradevec
         self.tradeweight = tradeweight
         assert(self.tradevec is None or sum(self.tradevec) == 0.)
@@ -364,7 +348,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
             # range(self.lookahead_periods)]:
 
             #            tau = t + delta_t
-            z = cvx.Variable(*w.size)
+            z = cvx.Variable(*w.shape)
             wplus = w + z
             obj = self.return_forecast.weight_expr_ahead(t, tau, wplus)
 
