@@ -1,8 +1,11 @@
 language: python
 python:
   - "3.8"
+  - "2.7"
 install:
   - pip install -r requirements.txt
 script:
-  - nosetests
+  - nosetests --with-coverage cvxportfolio
   - flake8 .
+after_success:
+  - coveralls

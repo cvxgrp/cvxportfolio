@@ -32,11 +32,11 @@ DIR = os.path.dirname(__file__) + os.path.sep
 class TestOptimizer(BaseTest):
 
     def setUp(self):
-        self.sigma = pd.read_csv(DIR+'sigmas.csv',
+        self.sigma = pd.read_csv(DIR + 'sigmas.csv',
                                  index_col=0, parse_dates=[0])
-        self.returns = pd.read_csv(DIR+'returns.csv',
+        self.returns = pd.read_csv(DIR + 'returns.csv',
                                    index_col=0, parse_dates=[0])
-        self.volume = pd.read_csv(DIR+'volumes.csv',
+        self.volume = pd.read_csv(DIR + 'volumes.csv',
                                   index_col=0, parse_dates=[0])
         self.a, self.b, self.s = 0.0005, 1., 0.
         self.s = self.s + 1e-3
@@ -50,12 +50,12 @@ class TestOptimizer(BaseTest):
         gamma = 100.
         n = len(self.universe)
         alpha_model = ReturnsForecast(self.returns)
-        emp_Sigma = np.cov(self.returns.as_matrix().T) + np.eye(n)*1e-3
+        emp_Sigma = np.cov(self.returns.to_numpy().T) + np.eye(n) * 1e-3
         risk_model = FullSigma(emp_Sigma)
         tcost_model = TcostModel(0, self.b, self.sigma, self.volume, power=2)
-        hcost_model = HcostModel(self.s*0, self.s)
+        hcost_model = HcostModel(self.s * 0, self.s)
         pol = SinglePeriodOpt(alpha_model,
-                              [gamma*risk_model, tcost_model, hcost_model],
+                              [gamma * risk_model, tcost_model, hcost_model],
                               [], solver=cvx.ECOS)
         t = self.times[1]
         p_0 = pd.Series(index=self.universe, data=1E6)
@@ -63,18 +63,18 @@ class TestOptimizer(BaseTest):
         self.assertAlmostEqual(z.sum(), 0)
         # Compare with CP calculation.
         h = z + p_0
-        rho = self.b*self.sigma.loc[t]*(sum(p_0)/self.volume.loc[t])
+        rho = self.b * self.sigma.loc[t] * (sum(p_0) / self.volume.loc[t])
         rho = np.hstack([rho, 0])
-        A = 2*gamma*emp_Sigma + 2*np.diag(rho)
+        A = 2 * gamma * emp_Sigma + 2 * np.diag(rho)
         s_val = pd.Series(index=self.returns.columns, data=self.s)
         s_val['cash'] = 0.
-        b = self.returns.loc[t] + 2*rho*(p_0/sum(p_0)) + s_val
+        b = self.returns.loc[t] + 2 * rho * (p_0 / sum(p_0)) + s_val
         h0 = np.linalg.solve(A, b)
         offset = np.linalg.solve(A, np.ones(n))
-        nu = (1 - h0.sum())/offset.sum()
-        hstar = h0 + nu*offset
+        nu = (1 - h0.sum()) / offset.sum()
+        hstar = h0 + nu * offset
         self.assertAlmostEqual(hstar.sum(), 1)
-        self.assertItemsAlmostEqual(h/sum(p_0), hstar, places=4)
+        self.assertItemsAlmostEqual(h / sum(p_0), hstar, places=4)
 
     # def test_multi_period(self):
     #     """Test multiperiod optimizer.
@@ -85,7 +85,7 @@ class TestOptimizer(BaseTest):
     #     gamma = 100.
     #     n = len(self.universe)
     #     alpha_model = ReturnsForecast(self.returns)
-    #     emp_Sigma = np.cov(self.returns.as_matrix().T) + np.eye(n)*1e-3
+    #     emp_Sigma = np.cov(self.returns.to_numpy().T) + np.eye(n)*1e-3
     #     risk_model = FullSigma(emp_Sigma,gamma_half_life=np.inf)
     #     tcost_model = TcostModel(self.volume, self.sigma,
     #                             self.a*0, self.b, power=2)
