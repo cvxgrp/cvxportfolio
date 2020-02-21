@@ -1,3 +1,16 @@
+# 2020
+
+## Drop pd.Panel
+- [ ] Change design of predictions. Panel is used for covariances and MPOReturnForecasts. Require from the user a function that returns
+the prediction(s) (made at time tau) for time t.
+
+## Drop support of example ipynb's 
+- [ ] Move the non-explanatory code into cvxportfolio proper (e.g., factor model risk estimator).
+- [ ] Move the rest into the documentation.
+
+--- 
+# 2017
+
 ## Examples
 - [ ] modify data files so we don't store NaN (look at how you read them)
 - [x] real time optimization:
