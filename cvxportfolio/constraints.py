@@ -21,7 +21,8 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
-from .risks import locator
+from .utils import null_checker, values_in_time
+
 
 __all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'DollarNeutral', 'MaxTrade',
            'MaxWeights', 'MinWeights', 'FactorMaxLimit', 'FactorMinLimit',
@@ -71,9 +72,7 @@ class MaxTrade(BaseConstraint):
           v: portfolio value
         """
         return cvx.abs(z[:-1]) * v <= \
-            np.array(locator(self.ADVs, t)) * self.max_fraction
-
-        # TODO fix the locator for this usecase
+            np.array(values_in_time(self.ADVs, t)) * self.max_fraction
 
 
 class LongOnly(BaseConstraint):
@@ -111,11 +110,7 @@ class LeverageLimit(BaseConstraint):
           t: time
           w_plus: holdings
         """
-        if isinstance(self.limit, pd.Series):
-            limit = self.limit.loc[t]
-        else:
-            limit = self.limit
-        return cvx.norm(w_plus[:-1], 1) <= limit
+        return cvx.norm(w_plus[:-1], 1) <= values_in_time(self.limit, t)
 
 
 class LongCash(BaseConstraint):
@@ -170,11 +165,7 @@ class MaxWeights(BaseConstraint):
           t: time
           w_plus: holdings
         """
-        if isinstance(self.limit, pd.Series):
-            limit = self.limit.loc[t]
-        else:
-            limit = self.limit
-        return w_plus[:-1] <= limit
+        return w_plus[:-1] <= values_in_time(self.limit, t)
 
 
 class MinWeights(BaseConstraint):
@@ -195,11 +186,7 @@ class MinWeights(BaseConstraint):
           t: time
           w_plus: holdings
         """
-        if isinstance(self.limit, pd.Series):
-            limit = self.limit.loc[t]
-        else:
-            limit = self.limit
-        return w_plus[:-1] >= limit
+        return w_plus[:-1] >= values_in_time(self.limit, t)
 
 
 class FactorMaxLimit(BaseConstraint):
@@ -210,6 +197,7 @@ class FactorMaxLimit(BaseConstraint):
         per factor, where n represents # of assets and r represents # of factors
         limit: A series of list or a single list giving the factor limits
     """
+
     def __init__(self, factor_exposure, limit, **kwargs):
         super(FactorMaxLimit, self).__init__(**kwargs)
         self.factor_exposure = factor_exposure
@@ -222,11 +210,8 @@ class FactorMaxLimit(BaseConstraint):
             t: time
             w_plus: holdings
         """
-        if isinstance(self.limit, pd.Series):
-            limit = self.limit.loc[t]
-        else:
-            limit = self.limit
-        return self.factor_exposure.T * w_plus[:-1] <= limit
+        return values_in_time(self.factor_exposure, t).T * w_plus[:-1] <= \
+            values_in_time(self.limit, t)
 
 
 class FactorMinLimit(BaseConstraint):
@@ -237,6 +222,7 @@ class FactorMinLimit(BaseConstraint):
         per factor, where n represents # of assets and r represents # of factors
         limit: A series of list or a single list giving the factor limits
     """
+
     def __init__(self, factor_exposure, limit, **kwargs):
         super(FactorMinLimit, self).__init__(**kwargs)
         self.factor_exposure = factor_exposure
@@ -253,7 +239,7 @@ class FactorMinLimit(BaseConstraint):
             limit = self.limit.loc[t]
         else:
             limit = self.limit
-        return self.factor_exposure.T * w_plus[:-1] >= limit
+        return values_in_time(self.factor_exposure, t).T * w_plus[:-1] >= values_in_time(self.limit, t)
 
 
 class FixedAlpha(BaseConstraint):
@@ -271,8 +257,5 @@ class FixedAlpha(BaseConstraint):
         self.alpha_target = alpha_target
 
     def _weight_expr(self, t, w_plus, z, v):
-        if isinstance(self.alpha_target, pd.Series):
-            alpha_target = self.alpha_target.loc[t]
-        else:
-            alpha_target = self.alpha_target
-        return self.return_forecast.T * w_plus[:-1] == alpha_target
+        return values_in_time(self.return_forecast, t).T * w_plus[:-1] == \
+            values_in_time(self.alpha_target, t)

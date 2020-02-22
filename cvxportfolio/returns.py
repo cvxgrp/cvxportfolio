@@ -17,7 +17,7 @@ limitations under the License.
 
 import cvxpy as cvx
 from cvxportfolio.expression import Expression
-from .utils.data_management import time_locator, null_checker
+from .utils import values_in_time, null_checker
 
 __all__ = ['ReturnsForecast', 'MPOReturnsForecast',
            'MultipleReturnsForecasts']
@@ -56,9 +56,9 @@ class ReturnsForecast(BaseReturnsModel):
           An expression for the alpha.
         """
         alpha = cvx.multiply(
-            time_locator(self.returns, t, as_numpy=True), wplus)
+            values_in_time(self.returns, t), wplus)
         alpha -= cvx.multiply(
-            time_locator(self.delta, t, as_numpy=True), cvx.abs(wplus))
+            values_in_time(self.delta, t), cvx.abs(wplus))
         return cvx.sum(alpha)
 
     def weight_expr_ahead(self, t, tau, wplus):

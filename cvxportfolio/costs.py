@@ -18,7 +18,8 @@ import cvxpy as cvx
 import numpy as np
 import copy
 from .expression import Expression
-from .utils.data_management import null_checker, time_locator
+from .utils import null_checker, values_in_time
+
 
 __all__ = ['HcostModel', 'TcostModel']
 
@@ -78,16 +79,16 @@ class HcostModel(BaseCost):
 
         try:
             self.expression = cvx.multiply(
-                time_locator(self.borrow_costs, t), cvx.neg(w_plus))
+                values_in_time(self.borrow_costs, t), cvx.neg(w_plus))
         except TypeError:
-            self.expression = cvx.multiply(time_locator(
+            self.expression = cvx.multiply(values_in_time(
                 self.borrow_costs, t).values, cvx.neg(w_plus))
         try:
             self.expression -= cvx.multiply(
-                time_locator(self.dividends, t), w_plus)
+                values_in_time(self.dividends, t), w_plus)
         except TypeError:
             self.expression -= cvx.multiply(
-                time_locator(self.dividends, t).values, w_plus)
+                values_in_time(self.dividends, t).values, w_plus)
 
         return cvx.sum(self.expression), []
 
@@ -95,9 +96,9 @@ class HcostModel(BaseCost):
         return self._estimate(t, w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
-        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * time_locator(
+        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * values_in_time(
             self.borrow_costs, t)
-        self.last_cost -= h_plus.iloc[:-1] * time_locator(self.dividends, t)
+        self.last_cost -= h_plus.iloc[:-1] * values_in_time(self.dividends, t)
 
         return sum(self.last_cost)
 
@@ -156,9 +157,9 @@ class TcostModel(BaseCost):
 
         constr = []
 
-        second_term = time_locator(self.nonlin_coeff, t) * time_locator(
-            self.sigma, t) * (value / time_locator(self.volume, t)) ** (
-                              self.power - 1)
+        second_term = values_in_time(self.nonlin_coeff, t) * values_in_time(
+            self.sigma, t) * (value / values_in_time(self.volume, t)) ** (
+            self.power - 1)
 
         # no trade conditions
         if np.isscalar(second_term):
@@ -173,10 +174,10 @@ class TcostModel(BaseCost):
 
         try:
             self.expression = cvx.multiply(
-                time_locator(self.half_spread, t), cvx.abs(z))
+                values_in_time(self.half_spread, t), cvx.abs(z))
         except TypeError:
             self.expression = cvx.multiply(
-                time_locator(self.half_spread, t).values, cvx.abs(z))
+                values_in_time(self.half_spread, t).values, cvx.abs(z))
         try:
             self.expression += cvx.multiply(second_term,
                                             cvx.abs(z) ** self.power)
@@ -190,11 +191,11 @@ class TcostModel(BaseCost):
 
         u_nc = u.iloc[:-1]
         self.tmp_tcosts = (
-                np.abs(u_nc) * time_locator(self.half_spread, t) +
-                time_locator(self.nonlin_coeff, t) * time_locator(self.sigma,
+            np.abs(u_nc) * values_in_time(self.half_spread, t) +
+            values_in_time(self.nonlin_coeff, t) * values_in_time(self.sigma,
                                                                   t) *
-                np.abs(u_nc) ** self.power /
-                (time_locator(self.volume, t) ** (self.power - 1)))
+            np.abs(u_nc) ** self.power /
+            (values_in_time(self.volume, t) ** (self.power - 1)))
 
         return self.tmp_tcosts.sum()
 

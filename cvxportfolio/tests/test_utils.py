@@ -19,7 +19,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from cvxportfolio import time_matrix_locator, time_locator, null_checker
+from cvxportfolio import values_in_time, null_checker
 from .base_test import BaseTest
 
 DIR = os.path.dirname(__file__) + os.path.sep
@@ -50,11 +50,11 @@ class TestUtils(BaseTest):
         t = self.returns.index[10]
         len(self.returns.columns)
         self.assertTrue(np.allclose(self.returns.loc[t],
-                                    time_locator(self.returns, t)))
+                                    values_in_time(self.returns, t)))
         self.assertTrue(np.allclose(23,
-                                    time_locator(23, t)))
+                                    values_in_time(23, t)))
         self.assertTrue(np.allclose(self.returns.loc[t],
-                                    time_locator(self.returns.loc[t], t)))
+                                    values_in_time(self.returns.loc[t], t)))
 
     # TODO drop Panel support and change this
 

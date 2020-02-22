@@ -23,7 +23,7 @@ import cvxpy as cvx
 from cvxportfolio.costs import BaseCost
 from cvxportfolio.returns import BaseReturnsModel
 from cvxportfolio.constraints import BaseConstraint
-from cvxportfolio.utils.data_management import time_locator, null_checker
+from cvxportfolio.utils import values_in_time, null_checker
 
 
 __all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
@@ -50,7 +50,7 @@ class BasePolicy(object, metaclass=ABCMeta):
     def get_rounded_trades(self, portfolio, prices, t):
         """Get trades vector as number of shares, rounded to integers."""
         return np.round(self.get_trades(portfolio,
-                                        t) / time_locator(prices, t))[:-1]
+                                        t) / values_in_time(prices, t))[:-1]
 
 
 class Hold(BasePolicy):
@@ -72,7 +72,7 @@ class RankAndLongShort(BasePolicy):
         super(RankAndLongShort, self).__init__()
 
     def get_trades(self, portfolio, t=pd.datetime.today()):
-        prediction = time_locator(self.return_forecast, t, as_numpy=False)
+        prediction = values_in_time(self.return_forecast, t)
         sorted_ret = prediction.sort_values()
 
         short_trades = sorted_ret.index[:self.num_short]
@@ -254,7 +254,8 @@ class SinglePeriodOpt(BasePolicy):
             alpha_term = self.return_forecast.weight_expr(t, wplus)
         else:
             alpha_term = cvx.sum(cvx.multiply(
-                time_locator(self.return_forecast, t, as_numpy=True), wplus))
+                values_in_time(self.return_forecast, t).values,
+                wplus))
 
         assert(alpha_term.is_concave())
 

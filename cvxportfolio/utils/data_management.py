@@ -17,8 +17,7 @@ limitations under the License.
 import numpy as np
 import pandas as pd
 
-__all__ = ['time_matrix_locator', 'time_locator', 'null_checker',
-           'non_null_data_args']
+__all__ = ['null_checker', 'non_null_data_args']
 
 
 def null_checker(obj):
@@ -45,26 +44,26 @@ def non_null_data_args(f):
     return new_f
 
 
-def time_matrix_locator(obj, t, as_numpy=False):
-    """Retrieve a matrix from a time indexed Panel, or a static DataFrame."""
-    if isinstance(obj, pd.Panel):
-        res = obj.iloc[obj.axes[0].get_loc(t, method='pad')]
-        return res.values if as_numpy else res
-    elif isinstance(obj, pd.DataFrame):
-        return obj.values if as_numpy else obj
-    else:  # obj not pandas
-        raise TypeError('Expected Pandas DataFrame or Panel, got:', obj)
+# def time_matrix_locator(obj, t, as_numpy=False):
+#     """Retrieve a matrix from a time indexed Panel, or a static DataFrame."""
+#     if isinstance(obj, pd.Panel):
+#         res = obj.iloc[obj.axes[0].get_loc(t, method='pad')]
+#         return res.values if as_numpy else res
+#     elif isinstance(obj, pd.DataFrame):
+#         return obj.values if as_numpy else obj
+#     else:  # obj not pandas
+#         raise TypeError('Expected Pandas DataFrame or Panel, got:', obj)
 
 
-def time_locator(obj, t, as_numpy=False):
-    """Retrieve data from a time indexed DF, or a Series or scalar."""
-    if isinstance(obj, pd.DataFrame):
-        res = obj.iloc[obj.axes[0].get_loc(t, method='pad')]
-        return res.values if as_numpy else res
-    elif isinstance(obj, pd.Series):
-        return obj.values if as_numpy else obj
-    elif np.isscalar(obj):
-        return obj
-    else:
-        raise TypeError(
-            'Expected Pandas DataFrame, Series, or scalar. Got:', obj)
+# def time_locator(obj, t, as_numpy=False):
+#     """Retrieve data from a time indexed DF, or a Series or scalar."""
+#     if isinstance(obj, pd.DataFrame):
+#         res = obj.iloc[obj.axes[0].get_loc(t, method='pad')]
+#         return res.values if as_numpy else res
+#     elif isinstance(obj, pd.Series):
+#         return obj.values if as_numpy else obj
+#     elif np.isscalar(obj):
+#         return obj
+#     else:
+#         raise TypeError(
+#             'Expected Pandas DataFrame, Series, or scalar. Got:', obj)

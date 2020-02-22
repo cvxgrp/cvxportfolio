@@ -17,3 +17,4 @@ limitations under the License.
 
 from .plotting import plot_what_if
 from .data_management import *
+from .locate_values import *
