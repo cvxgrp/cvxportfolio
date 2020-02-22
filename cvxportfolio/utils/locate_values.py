@@ -25,7 +25,7 @@ __all__ = ['values_in_time']
 
 
 def values_in_time(obj, t, tau=None):
-    """Obtain value(s) of object at time t, or right before. 
+    """Obtain value(s) of object at time t, or right before.
 
     Optionally specify time tau>=t for which we want a prediction,
     otherwise it is assumed tau = t.

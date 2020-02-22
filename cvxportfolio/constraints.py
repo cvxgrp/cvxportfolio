@@ -19,9 +19,8 @@ from abc import ABCMeta, abstractmethod
 
 import cvxpy as cvx
 import numpy as np
-import pandas as pd
 
-from .utils import null_checker, values_in_time
+from .utils import values_in_time
 
 
 __all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'DollarNeutral', 'MaxTrade',
@@ -235,11 +234,8 @@ class FactorMinLimit(BaseConstraint):
             t: time
             w_plus: holdings
         """
-        if isinstance(self.limit, pd.Series):
-            limit = self.limit.loc[t]
-        else:
-            limit = self.limit
-        return values_in_time(self.factor_exposure, t).T * w_plus[:-1] >= values_in_time(self.limit, t)
+        return values_in_time(self.factor_exposure, t).T * w_plus[:-1] >= \
+            values_in_time(self.limit, t)
 
 
 class FixedAlpha(BaseConstraint):
