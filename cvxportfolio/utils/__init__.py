@@ -18,3 +18,4 @@ limitations under the License.
 from .plotting import plot_what_if
 from .data_management import *
 from .locate_values import *
+from .risk_model import fit_factor_model_risk
