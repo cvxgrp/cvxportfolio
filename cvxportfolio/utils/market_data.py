@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 import pandas_datareader as pdr
 
-__all__ = ['get_adjusted_symbol', 'get_featurized_symbol']
+__all__ = ['get_adjusted_symbol', 'get_featurized_symbol', 'MarketData']
 
 
 def get_adjusted_symbol(yahoo_symbol, start, end):
@@ -103,7 +103,7 @@ def get_featurized_symbol(yahoo_symbol, start, end,
 
 
 DATA_OVERLAP = pd.Timedelta('2d')
-CASH = 'USDOLLAR'
+# CASH = 'USDOLLAR'
 logger = logging.getLogger(__name__)
 
 
@@ -121,7 +121,7 @@ class MarketData(object):
                                start=datetime.today() - self._history,
                                end=datetime.today())
         self._update_index()
-        self._download_cash()
+        # self._download_cash()
 
     def _update_index(self):
         self._index = pd.DatetimeIndex(sorted(set(
@@ -142,10 +142,10 @@ class MarketData(object):
             self._data[symbol] = self._get_featurized_symbol(
                 symbol, start, end)
 
-    def _download_cash(self):
-        self._data[CASH] = self._get_us_effective_rate(
-            self._index[0] - pd.Timedelta('2d'), self._index[-1]).loc[
-            self._index]
+    # def _download_cash(self):
+    #     self._data[CASH] = self._get_us_effective_rate(
+    #         self._index[0] - pd.Timedelta('2d'), self._index[-1]).loc[
+    #         self._index]
 
     def add_symbols(self, symbols):
         self._symbols = sorted(list(set(self._symbols).union(symbols)))
@@ -168,11 +168,11 @@ class MarketData(object):
 
         self._update_index()
 
-    def _get_us_effective_rate(self, start, end):
-        logger.info(f'Downloading US federal fund effective rate from {start} to {end}')
-        return pdr.get_data_fred('DTB3',
-                                 start=start,
-                                 end=end)['DTB3'].fillna(method='ffill')
+    # def _get_us_effective_rate(self, start, end):
+    #     logger.info(f'Downloading US federal fund effective rate from {start} to {end}')
+    #     return pdr.get_data_fred('DTB3',
+    #                              start=start,
+    # end=end)['DTB3'].fillna(method='ffill') / 365
 
     def _get_featurized_symbol(self, symbol, start, end):
         logger.info(f'Downloading {symbol} from {start} to {end}')
@@ -209,8 +209,8 @@ class MarketData(object):
     def returns(self):
         rets = pd.DataFrame({symbol: self._data[symbol]['return']
                              for symbol in self._symbols})
-        rets[CASH] = self._data[CASH] / 100.
-        rets[CASH] = rets[CASH].fillna(method='ffill').fillna(method='bfill')
+        # rets[CASH] = self._data[CASH] / 100.
+        # rets[CASH] = rets[CASH].fillna(method='ffill').fillna(method='bfill')
         return rets
 
     @property
