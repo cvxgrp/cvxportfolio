@@ -85,7 +85,7 @@ def fit_factor_model_risk(returns, num_factors=10,
 
     factor_returns = pd.DataFrame(u[:, 1:][:, ::-1], index=returns.index)
 
-    if not np.all(idyo_variances >= 0):
+    if not np.all(idyo_variances > 0):
         raise(Exception('Low-rank algorithm failed. ' +
                         'Try reducing num_factors.'))
 

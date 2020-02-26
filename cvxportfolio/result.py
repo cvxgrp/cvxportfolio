@@ -123,11 +123,12 @@ class SimulationResult():
         """
         Concatenate initial portfolio and h_next dataframe.
 
-        Infers the timestamp of last element by increasing the final timestamp.
         """
+        tmp = pd.copy(self.h_next)
+        tmp.loc['last'] = np.nan
         tmp = self.h_next.shift(1)
         tmp.iloc[0] = self.initial_portfolio
-        # TODO fix
+        # TODO fix ?
         # tmp.loc[self.h_next.index[-1] + self.timedelta]=self.h_next.iloc[-1]
         return tmp
 
