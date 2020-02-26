@@ -218,6 +218,7 @@ class MarketData(object):
         return pd.DataFrame({symbol: self._data[symbol]['range']
                              for symbol in self._symbols})
 
+
 if __name__ == '__main__':
 
     import pickle
