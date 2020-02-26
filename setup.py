@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='cvxportfolio',
-    version='0.0.8',
+    version='0.0.9',
     author='Enzo Busseti and Steven Diamond',
     author_email='enzo.busseti@gmail.com, stevend2@stanford.edu',
     packages=['cvxportfolio',
@@ -18,6 +18,7 @@ setup(
     install_requires=["pandas",
                       "numpy",
                       "matplotlib",
-                      "cvxpy>=1.0.6"],
+                      "cvxpy>=1.0.6",
+                      "pandas_datareader"],
     use_2to3=True,
 )
