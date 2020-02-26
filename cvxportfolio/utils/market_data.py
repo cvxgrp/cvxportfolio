@@ -18,8 +18,10 @@ import numpy as np
 import pandas as pd
 import pandas_datareader as pdr
 
+__all__ = ['get_adjusted_symbol', 'get_featurized_symbol']
 
-def adjusted_barchart(yahoo_symbol, start, end):
+
+def get_adjusted_symbol(yahoo_symbol, start, end):
     """Utility function to get adjusted data from yahoo finance."""
 
     data = pdr.get_data_yahoo(symbols=yahoo_symbol,
@@ -36,11 +38,11 @@ def adjusted_barchart(yahoo_symbol, start, end):
     return adjusted_data
 
 
-def cvxportfolio_featurize_barchart(data, Open='Open', Close='Close',
-                                    AdjClose='Adj Close',
-                                    Max='High', Min='Low',
-                                    Volume='Volume',
-                                    extra_features=False):
+def _featurize_barchart(data, Open='Open', Close='Close',
+                        AdjClose='Adj Close',
+                        Max='High', Min='Low',
+                        Volume='Volume',
+                        extra_features=False):
     """CVXPortfolio conventional featurization of standard (e.g., daily) barchart data.
 
     Specify the correct names of the columns in the `data` pd.DataFrame.
@@ -86,12 +88,12 @@ def cvxportfolio_featurize_barchart(data, Open='Open', Close='Close',
     return featurized
 
 
-def cvxportfolio_featurized_symbol(yahoo_symbol, start, end,
-                                   extra_features=False):
+def get_featurized_symbol(yahoo_symbol, start, end,
+                          extra_features=False):
 
     data = pdr.get_data_yahoo(symbols=yahoo_symbol,
                               start=start, end=end)
 
-    return cvxportfolio_featurize_barchart(
+    return _featurize_barchart(
         data,
         extra_features=extra_features)
