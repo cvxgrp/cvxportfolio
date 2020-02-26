@@ -124,7 +124,7 @@ class SimulationResult():
         Concatenate initial portfolio and h_next dataframe.
 
         """
-        tmp = pd.copy(self.h_next)
+        tmp = self.h_next.copy()
         tmp.loc['last'] = np.nan
         tmp = self.h_next.shift(1)
         tmp.iloc[0] = self.initial_portfolio
