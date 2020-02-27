@@ -19,8 +19,11 @@ import numpy as np
 import scipy.sparse.linalg as spl
 
 
-def fit_factor_model_risk(returns, num_factors=10,
-                          SVDTOL=1E-5, MAX_SVD_ITERS=100):
+def fit_factor_model_risk(returns,
+                          num_factors=10,
+                          SVDTOL=1E-2,
+                          MAX_SVD_ITERS=100,
+                          regularizer=1E-8):
 
     means = (returns).mean()
     stds = (returns).std()
@@ -46,14 +49,19 @@ def fit_factor_model_risk(returns, num_factors=10,
 
     for i in range(MAX_SVD_ITERS):
 
-        u, s, v = spl.svds(normalized, k=num_factors + 1)
-
-        low_rank_approx = u[:, 1:] @ np.diag(s[1:] - s[0]) @ v[1:, ]
-        # low_rank_approx = u@np.diag(s)@v
-        # loadings = s[:num_factors] -s[num_factors]
+        # if num_factors < 99:
+        u, s, v = spl.svds(normalized, k=num_factors)
+#         else:
+#             u, s, v = np.linalg.svd(normalized, full_matrices=False)
+#             s = s[:num_factors][::-1]
+#             u = u[:,:num_factors][:,::-1]
+#             #v = v.T
+#             v = v[:num_factors][::-1]
 
         if na_count == 0:
             break
+
+        low_rank_approx = u[:, :] @ np.diag(s[:]) @ v[:, ]
 
         error.mask(na_mask, other=low_rank_approx - normalized,
                    inplace=True)
@@ -72,35 +80,34 @@ def fit_factor_model_risk(returns, num_factors=10,
         raise(Exception('Iterative SVD did not converge. ' +
                         'Try reducing num_factors.'))
 
-    factors = v[1:, :]
-    factors = pd.DataFrame(factors, columns=returns.columns)
+    factors = pd.DataFrame(v, columns=returns.columns)
     factors = factors.iloc[::-1].reset_index(drop=True)
 
     factor_exposures = factors * stds
-    factor_covariance = np.diag((s[1:] - s[0])[::-1]**2) / returns.shape[0]
+    factor_covariance = np.diag((s[:])[::-1]**2) / returns.shape[0]
 
     factor_diag = np.diag(factor_exposures.T @
                           factor_covariance @ factor_exposures)
-    idyo_variances = stds**2 - factor_diag
+    idyo_variances = pd.Series(np.maximum((stds**2) - factor_diag, 0.),
+                               index=stds.index) + regularizer
 
-    factor_returns = pd.DataFrame(u[:, 1:][:, ::-1], index=returns.index)
+    # factor_returns = pd.DataFrame(u[:, ::-1], index=returns.index)
 
-    if not np.all(idyo_variances > 0):
-        raise(Exception('Low-rank algorithm failed. ' +
-                        'Try reducing num_factors.'))
+    return factor_exposures, factor_covariance, idyo_variances,  # factor_returns, stds
 
-    # print(s)
 
-    # confront with random
-    # A = np.random.randn(*returns.shape)
-    # A = pd.DataFrame(A)
-    # A = (A) / A.std()
-    # u, new_s, v = spl.svds(A, k=num_factors)
-    # print(s[1:] > new_s)
+def factor_covariance_log_lik(factor_exposures,
+                              factor_covariance,
+                              idyo_variances,
+                              returns):
 
-    return {'factor_exposures': factor_exposures,
-            'factor_covariance': factor_covariance,
-            'idyo_variances': idyo_variances,
-            'factor_returns': factor_returns,
-            # 'stds': stds
-            }
+    assert not np.any(np.any(returns.isnull()))
+
+    cov = factor_exposures.T @ factor_covariance @ \
+        factor_exposures + np.diag(idyo_variances)
+
+    log_determinant = np.log(np.linalg.eig(cov)[0]).sum()
+    cov_inv = np.linalg.inv(cov)
+
+    return (-log_determinant * returns.shape[0] -
+            np.trace(cov_inv @ (returns.T @ returns).values))
