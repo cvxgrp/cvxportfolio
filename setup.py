@@ -6,8 +6,7 @@ setup(
     author='Enzo Busseti',
     author_email='enzo.busseti@gmail.com',
     packages=['cvxportfolio',
-              'cvxportfolio.tests',
-              'cvxportfolio.utils'],
+              'cvxportfolio.tests'],
     package_dir={'cvxportfolio': 'cvxportfolio'},
     package_data={'cvxportfolio': [
         'tests/returns.csv', 'tests/sigmas.csv', 'tests/volumes.csv']},
