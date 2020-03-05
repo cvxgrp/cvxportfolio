@@ -1,5 +1,5 @@
 """
-Copyright 2020 Enzo Busseti.
+Copyright 2017 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,12 +16,16 @@ limitations under the License.
 
 import logging
 
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['values_in_time']
+__all__ = ['null_checker', 'non_null_data_args',
+           'values_in_time', 'plot_what_if']
 
 
 def values_in_time(obj, t, tau=None):
@@ -63,14 +67,35 @@ def values_in_time(obj, t, tau=None):
         except KeyError:
             return obj
 
-        # if isinstance(obj.index, pd.MultiIndex):
-        #     previous_tau = obj.loc[:tau, :].index.values[-1][0]
-        #     if return_all_ts:
-        #         return obj.loc[previous_tau]
-        #     else:
-        #         return obj.loc[previous_tau].loc[t]
-        # else:
-        #     previous_tau = obj.loc[:tau, :].index.values[-1]
-        #     return obj.loc[prev_tau, :]
-
     return obj
+
+
+def plot_what_if(time, true_results, alt_results):
+    true_results.value.plot(label=true_results.pol_name)
+    for result in alt_results:
+        result.value.plot(label=result.pol_name, linestyle="--")
+    plt.axvline(x=time, linestyle=":")
+
+
+def null_checker(obj):
+    """Check if obj contains NaN."""
+    if (isinstance(obj, pd.Panel) or
+        isinstance(obj, pd.DataFrame) or
+            isinstance(obj, pd.Series)):
+        if np.any(pd.isnull(obj)):
+            raise ValueError('Data object contains NaN values', obj)
+    elif np.isscalar(obj):
+        if np.isnan(obj):
+            raise ValueError('Data object contains NaN values', obj)
+    else:
+        raise TypeError('Data object can only be scalar or Pandas.')
+
+
+def non_null_data_args(f):
+    def new_f(*args, **kwds):
+        for el in args:
+            null_checker(el)
+        for el in kwds.values():
+            null_checker(el)
+        return f(*args, **kwds)
+    return new_f
