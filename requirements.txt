@@ -2,4 +2,3 @@ pandas
 numpy
 matplotlib
 cvxpy>=1.0.6
-pandas_datareader

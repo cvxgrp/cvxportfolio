@@ -12,7 +12,6 @@ based on the paper [Multi-Period Trading via Convex Optimization](https://web.st
 It is written in Python, its major dependencies are [`cvxpy`](https://github.com/cvxgrp/cvxpy)
 and [`pandas`](https://github.com/pandas-dev/pandas).
 
-See the [examples](https://github.com/cvxgrp/cvxportfolio/tree/master/examples) for basic usage.
 
 If you wish to cite CVXPortfolio, please use:
 ```
