@@ -117,5 +117,5 @@ class TestSimulator(BaseTest):
         results.log_simulation(t=t, u=u, h_next=h_next,
                                risk_free_return=0.,
                                exec_time=0)
-        self.assertAlmostEquals(
+        self.assertAlmostEqual(
             results.simulator_HcostModel.sum().sum(), 2800.0)
