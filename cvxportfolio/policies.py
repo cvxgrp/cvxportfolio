@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 from abc import ABCMeta, abstractmethod
+import datetime as dt
 import pandas as pd
 import numpy as np
 import logging
@@ -40,7 +41,7 @@ class BasePolicy(object):
         self.constraints = []
 
     @abstractmethod
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=dt.datetime.today()):
         """Trades list given current portfolio and time t.
         """
         return NotImplemented
@@ -58,7 +59,7 @@ class Hold(BasePolicy):
     """Hold initial portfolio.
     """
 
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=dt.datetime.today()):
         return self._nulltrade(portfolio)
 
 
@@ -72,7 +73,7 @@ class RankAndLongShort(BasePolicy):
         self.return_forecast = return_forecast
         super(RankAndLongShort, self).__init__()
 
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=dt.datetime.today()):
         prediction = time_locator(self.return_forecast, t, as_numpy=False)
         sorted_ret = prediction.sort_values()
 
@@ -105,7 +106,7 @@ class ProportionalTrade(BasePolicy):
         self.time_steps = time_steps
         super(ProportionalTrade, self).__init__()
 
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=dt.datetime.today()):
         try:
             missing_time_steps = len(
                 self.time_steps) - next(i for (i, x)
@@ -121,7 +122,7 @@ class ProportionalTrade(BasePolicy):
 class SellAll(BasePolicy):
     """Sell all non-cash assets."""
 
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=dt.datetime.today()):
         trade = -pd.Series(portfolio, copy=True)
         trade.ix[-1] = 0.
         return trade
@@ -144,7 +145,7 @@ class FixedTrade(BasePolicy):
         assert(self.tradeweight is None or sum(self.tradeweight) == 0.)
         super(FixedTrade, self).__init__()
 
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=dt.datetime.today()):
         if self.tradevec is not None:
             return self.tradevec
         return sum(portfolio) * self.tradeweight
@@ -181,7 +182,7 @@ class PeriodicRebalance(BaseRebalance):
         self.last_t = t
         return result
 
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=dt.datetime.today()):
         return self._rebalance(portfolio) if self.is_start_period(t) else \
             self._nulltrade(portfolio)
 
@@ -195,7 +196,7 @@ class AdaptiveRebalance(BaseRebalance):
         self.tracking_error = tracking_error
         super(AdaptiveRebalance, self).__init__()
 
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=dt.datetime.today()):
         weights = portfolio / sum(portfolio)
         diff = (weights - self.target).values
 
@@ -245,7 +246,7 @@ class SinglePeriodOpt(BasePolicy):
         """
 
         if t is None:
-            t = pd.datetime.today()
+            t = dt.datetime.today()
 
         value = sum(portfolio)
         w = portfolio / value
@@ -332,7 +333,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
         self.terminal_weights = terminal_weights
         super(MultiPeriodOpt, self).__init__(*args, **kwargs)
 
-    def get_trades(self, portfolio, t=pd.datetime.today()):
+    def get_trades(self, portfolio, t=dt.datetime.today()):
 
         value = sum(portfolio)
         assert (value > 0.)
