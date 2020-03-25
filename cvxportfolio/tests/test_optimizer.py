@@ -50,7 +50,7 @@ class TestOptimizer(BaseTest):
         gamma = 100.
         n = len(self.universe)
         alpha_model = ReturnsForecast(self.returns)
-        emp_Sigma = np.cov(self.returns.as_matrix().T) + np.eye(n)*1e-3
+        emp_Sigma = np.cov(self.returns.values.T) + np.eye(n)*1e-3
         risk_model = FullSigma(emp_Sigma)
         tcost_model = TcostModel(0, self.b, self.sigma, self.volume, power=2)
         hcost_model = HcostModel(self.s*0, self.s)

@@ -49,7 +49,7 @@ class TestWhatIf(BaseTest):
             self.returns, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
-        emp_Sigma = np.cov(self.returns.as_matrix().T)
+        emp_Sigma = np.cov(self.returns.values.T)
         risk_model = FullSigma(emp_Sigma, gamma=100.)
         tcost_model = TcostModel(self.volume, self.sigma, self.a, self.b)
         hcost_model = HcostModel(self.s, self.s*0)
@@ -101,7 +101,7 @@ class TestWhatIf(BaseTest):
             self.returns, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
-        emp_Sigma = np.cov(self.returns.as_matrix().T)
+        emp_Sigma = np.cov(self.returns.values.T)
         risk_model = FullSigma(emp_Sigma, gamma=100.)
         tcost_model = TcostModel(self.a, self.b, self.sigma, self.volume)
         hcost_model = HcostModel(self.s, self.s*0)
@@ -157,7 +157,7 @@ class TestWhatIf(BaseTest):
             self.returns, name=i) for i in range(3)]
         weights = np.array([0.1, 0.3, 0.6])
         alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
-        emp_Sigma = np.cov(self.returns.as_matrix().T)
+        emp_Sigma = np.cov(self.returns.values.T)
         risk_model = FullSigma(emp_Sigma)
         tcost_model = TcostModel(self.a, self.b, self.sigma, self.volume)
         hcost_model = HcostModel(self.s)
