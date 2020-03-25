@@ -79,8 +79,7 @@ def plot_what_if(time, true_results, alt_results):
 
 def null_checker(obj):
     """Check if obj contains NaN."""
-    if (isinstance(obj, pd.Panel) or
-        isinstance(obj, pd.DataFrame) or
+    if (isinstance(obj, pd.DataFrame) or
             isinstance(obj, pd.Series)):
         if np.any(pd.isnull(obj)):
             raise ValueError('Data object contains NaN values', obj)
