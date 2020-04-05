@@ -243,8 +243,8 @@ class MarketSimulator():
         data = pd.DataFrame(columns=[s.name for s in alpha_sources],
                             index=attr_times,
                             data=Pmat.value.T * wmask)
-        data['residual'] = true_arr - np.matrix((weights * Pmat).value).A1
-        data['RMS error'] = np.matrix(
-            cvx.norm(Wmat * Pmat - Rmat, 2, axis=0).value).A1
+        data['residual'] = true_arr - np.asarray((weights * Pmat).value).ravel()
+        data['RMS error'] = np.asarray(
+            cvx.norm(Wmat * Pmat - Rmat, 2, axis=0).value).ravel()
         data['RMS error'] /= np.sqrt(num_sources)
         return data
