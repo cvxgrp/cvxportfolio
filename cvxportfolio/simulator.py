@@ -220,7 +220,7 @@ class MarketSimulator():
         # Simulate
         p0 = true_results.initial_portfolio
         alt_results = self.run_multiple_backtest(p0, times[0], times[-1],
-                                                 perturb_pols, parallel)
+                                                 perturb_pols, parallel=parallel)
         # Attribute.
         true_arr = selector(true_results).values
         attr_times = selector(true_results).index
