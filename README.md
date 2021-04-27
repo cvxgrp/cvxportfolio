@@ -5,7 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
 [![Apache 2.0 License](https://img.shields.io/badge/License-APACHEv2-green.svg)](https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE)
 
-**The documentation of the package is given at [cvxportfolio.org](http://www.cvxportfolio.org/).**
+**The documentation of the package is given at [www.cvxgrp.org/cvxportfolio/](https://www.cvxgrp.org/cvxportfolio/).**
 
 `cvxportfolio` is a python library for portfolio optimization and simulation,
 based on the paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
