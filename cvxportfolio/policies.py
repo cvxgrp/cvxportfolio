@@ -293,7 +293,7 @@ class SinglePeriodOpt(BasePolicy):
                 return self._nulltrade(portfolio)
 
             return pd.Series(index=portfolio.index, data=(z.value * value))
-        except cvx.SolverError:
+        except (cvx.SolverError, TypeError):
             logging.error(
                 'The solver %s failed. Defaulting to no trades' % self.solver)
             return self._nulltrade(portfolio)
