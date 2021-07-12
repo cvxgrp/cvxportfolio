@@ -209,7 +209,7 @@ class FactorMaxLimit(BaseConstraint):
             t: time
             w_plus: holdings
         """
-        return values_in_time(self.factor_exposure, t).T * w_plus[:-1] <= \
+        return values_in_time(self.factor_exposure, t).T @ w_plus[:-1] <= \
             values_in_time(self.limit, t)
 
 
@@ -234,7 +234,7 @@ class FactorMinLimit(BaseConstraint):
             t: time
             w_plus: holdings
         """
-        return values_in_time(self.factor_exposure, t).T * w_plus[:-1] >= \
+        return values_in_time(self.factor_exposure, t).T @ w_plus[:-1] >= \
             values_in_time(self.limit, t)
 
 
@@ -253,5 +253,5 @@ class FixedAlpha(BaseConstraint):
         self.alpha_target = alpha_target
 
     def _weight_expr(self, t, w_plus, z, v):
-        return values_in_time(self.return_forecast, t).T * w_plus[:-1] == \
+        return values_in_time(self.return_forecast, t).T @ w_plus[:-1] == \
             values_in_time(self.alpha_target, t)

@@ -229,12 +229,12 @@ class MarketSimulator():
             Rmat[idx, :] = selector(result).values
         Pmat = cvx.Variable((num_sources, len(attr_times)))
         if fit == "linear":
-            prob = cvx.Problem(cvx.Minimize(0), [Wmat * Pmat == Rmat])
+            prob = cvx.Problem(cvx.Minimize(0), [Wmat @ Pmat == Rmat])
             prob.solve()
         elif fit == "least-squares":
-            error = cvx.sum_squares(Wmat * Pmat - Rmat)
+            error = cvx.sum_squares(Wmat @ Pmat - Rmat)
             prob = cvx.Problem(cvx.Minimize(error),
-                               [Pmat.T * weights == true_arr])
+                               [Pmat.T @ weights == true_arr])
             prob.solve()
         else:
             raise Exception("Unknown fitting method.")
@@ -243,8 +243,8 @@ class MarketSimulator():
         data = pd.DataFrame(columns=[s.name for s in alpha_sources],
                             index=attr_times,
                             data=Pmat.value.T * wmask)
-        data['residual'] = true_arr - np.asarray((weights * Pmat).value).ravel()
+        data['residual'] = true_arr - np.asarray((weights @ Pmat).value).ravel()
         data['RMS error'] = np.asarray(
-            cvx.norm(Wmat * Pmat - Rmat, 2, axis=0).value).ravel()
+            cvx.norm(Wmat @ Pmat - Rmat, 2, axis=0).value).ravel()
         data['RMS error'] /= np.sqrt(num_sources)
         return data
