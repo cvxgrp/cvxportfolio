@@ -21,10 +21,6 @@ the prediction(s) (made at time tau) for time t.
 ## design
 - [ ] impose that last column of returns is cash return. user shouldnt specify cash_key
 
-## infrastructure
-- [ ] makefile: support make docs and make pip
-- [ ] clean up the gitignore for new stuff
-
 ## Tests
 - [x] remove the pickle file, replace it with .csv or something
 - [x] fix them

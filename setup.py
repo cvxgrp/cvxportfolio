@@ -14,9 +14,20 @@ setup(
     license='Apache',
     zip_safe=False,
     description='ConVeX Portfolio Optimization and Simulation toolset.',
-    install_requires=["pandas",
-                      "numpy",
+    install_requires=["cvxpy>=1.2.1",
                       "matplotlib",
-                      "cvxpy>=1.0.6"],
+                      "multiprocess",
+                      "numpy",
+                      "pandas_datareader"
+                      "pandas"],
+    extras_require={"dev": [
+        "coveralls",
+        "flake8",
+        "numpydoc",
+        "pytest",
+        "pytest-cov",
+        "sphinx",
+        "twine",
+    ]},
     use_2to3=True,
 )

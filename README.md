@@ -1,9 +1,9 @@
 `cvxportfolio`
 =============
 [![CVXportfolio on PyPI](https://img.shields.io/pypi/v/cvxportfolio.svg)](https://pypi.org/project/cvxportfolio/)
-[![Build Status](https://travis-ci.org/cvxgrp/cvxportfolio.png?branch=master)](https://travis-ci.org/cvxgrp/cvxportfolio)
+[![Build Status](https://github.com/cvxgrp/cvxportfolio/workflows/Build%20Status/badge.svg?branch=master)](https://github.com/cvxgrp/cvxportfolio/actions?query=workflow%3A%22Build+Status%22)
 [![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
-[![Apache 2.0 License](https://img.shields.io/badge/License-APACHEv2-green.svg)](https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE)
+[![Apache 2.0 License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE)
 
 **The documentation of the package is given at [cvxgrp.org/cvxportfolio/](https://www.cvxgrp.org/cvxportfolio/).**
 

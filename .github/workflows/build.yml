@@ -1,0 +1,47 @@
+name: Build Status
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+concurrency:
+   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+   cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: [3.8, 3.9]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        make dev
+
+    - name: Lint
+      run: |
+        make lint
+
+    - name: Test
+      run: |
+        make test
+
+    - name: Twine check
+      run: |
+        python setup.py sdist bdist_wheel
+        twine check dist/*
+
+    # TODO coveralls

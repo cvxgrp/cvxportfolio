@@ -1,4 +1,0 @@
-pandas
-numpy
-matplotlib
-cvxpy>=1.0.6
