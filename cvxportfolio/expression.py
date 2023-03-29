@@ -17,7 +17,7 @@ limitations under the License.
 from abc import ABCMeta, abstractmethod
 
 
-class Expression(object):
+class Expression:
     __metaclass__ = ABCMeta
 
     @abstractmethod
