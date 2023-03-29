@@ -23,14 +23,11 @@ import pandas as pd
 import pytest
 
 
-#from .base_test import BaseTest
 from cvxportfolio.constraints import (LongOnly, LeverageLimit, LongCash, DollarNeutral,
                            MaxTrade, MaxWeights, MinWeights, FactorMinLimit,
                            FactorMaxLimit, FixedAlpha)
 from cvxportfolio.costs import HcostModel, TcostModel
 from cvxportfolio.returns import ReturnsForecast, MultipleReturnsForecasts
-
-#DIR = os.path.dirname(__file__) + os.path.sep
 
 
 @pytest.fixture()
