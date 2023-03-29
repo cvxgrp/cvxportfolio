@@ -21,11 +21,11 @@ import numpy as np
 import pandas as pd
 
 from .base_test import BaseTest
-from ..constraints import (LongOnly, LeverageLimit, LongCash, DollarNeutral,
+from cvxportfolio.constraints import (LongOnly, LeverageLimit, LongCash, DollarNeutral,
                            MaxTrade, MaxWeights, MinWeights, FactorMinLimit,
                            FactorMaxLimit, FixedAlpha)
-from ..costs import HcostModel, TcostModel
-from ..returns import ReturnsForecast, MultipleReturnsForecasts
+from cvxportfolio.costs import HcostModel, TcostModel
+from cvxportfolio.returns import ReturnsForecast, MultipleReturnsForecasts
 
 DIR = os.path.dirname(__file__) + os.path.sep
 
