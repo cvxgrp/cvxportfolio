@@ -14,22 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import os
-
 import pytest
 import numpy as np
 
 from cvxportfolio import values_in_time, null_checker
 
-
 def test_null_checker(returns):
     """Test null check."""
     with pytest.raises(ValueError):
         null_checker(np.NaN)
-        
+
     assert null_checker(1.) is None
     assert null_checker(returns) is None
-    
+
     returns.iloc[0, 0] = np.NaN
     with pytest.raises(ValueError):
         null_checker(returns)
@@ -37,8 +34,6 @@ def test_null_checker(returns):
 def test_time_locator(returns):
     """Test time locator."""
     t = returns.index[10]
-    #len(self.returns.columns)
     assert np.allclose(returns.loc[t], values_in_time(returns, t))
     assert np.allclose(23, values_in_time(23, t))
     assert np.allclose(returns.loc[t], values_in_time(returns.loc[t], t))
-    

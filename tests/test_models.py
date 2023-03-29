@@ -40,7 +40,7 @@ def test_alpha(returns):
 
     universe = returns.columns
     times = returns.index
-    
+
     # Alpha source
     w = cvx.Variable(len(universe))
     source = ReturnsForecast(returns)
