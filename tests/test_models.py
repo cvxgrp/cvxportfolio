@@ -18,10 +18,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.constraints import (DollarNeutral, FactorMaxLimit,
-                                      FactorMinLimit, FixedAlpha,
-                                      LeverageLimit, LongCash, LongOnly,
-                                      MaxTrade, MaxWeights, MinWeights)
+from cvxportfolio.constraints import (
+    DollarNeutral,
+    FactorMaxLimit,
+    FactorMinLimit,
+    FixedAlpha,
+    LeverageLimit,
+    LongCash,
+    LongOnly,
+    MaxTrade,
+    MaxWeights,
+    MinWeights,
+)
 from cvxportfolio.costs import HcostModel, TcostModel
 from cvxportfolio.returns import MultipleReturnsForecasts, ReturnsForecast
 

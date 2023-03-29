@@ -30,7 +30,7 @@ def getFiscalQuarter(dt):
     return "Q%i %s" % (quarter, year)
 
 
-class SimulationResult():
+class SimulationResult:
     """A container for the result of a simulation.
 
     Attributes:

@@ -20,9 +20,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio import (FullSigma, HcostModel, MultipleReturnsForecasts,
-                          ReturnsForecast, SinglePeriodOpt, TcostModel,
-                          simulator)
+from cvxportfolio import (
+    FullSigma,
+    HcostModel,
+    MultipleReturnsForecasts,
+    ReturnsForecast,
+    SinglePeriodOpt,
+    TcostModel,
+    simulator,
+)
 
 
 @pytest.fixture()

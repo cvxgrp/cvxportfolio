@@ -16,8 +16,7 @@ limitations under the License.
 import pandas as pd
 import pytest
 
-from cvxportfolio import (HcostModel, MarketSimulator, SimulationResult,
-                          TcostModel)
+from cvxportfolio import HcostModel, MarketSimulator, SimulationResult, TcostModel
 
 
 @pytest.fixture()
@@ -41,84 +40,34 @@ def simulator(returns, hcost_term, tcost_term, volumes):
         returns, costs=[tcost_term, hcost_term], market_volumes=volumes
     )
 
-    # def setUp(self):
-    #    self.a, self.b, self.s = 0.0005, 1., 0.
-    #    self.portfolio = pd.Series(index=self.returns.columns, data=1E6)
-    #    self.tcost_term = TcostModel(self.a, self.b, self.sigma, self.volume)
-    #    self.hcost_term = HcostModel(self.s)
-    #    self.Simulator = MarketSimulator(self.returns,
-    #                                     costs=[self.tcost_term,
-    #                                            self.hcost_term],
-    #                                     market_volumes=self.volume)
 
-
-def test_propag(returns, portfolio, simulator):
+@pytest.mark.parametrize("value,expected", [(1e4, 28906767.251), (-1e4, 28908611.931)])
+def test_propag(returns, portfolio, simulator, value, expected):
     """Test propagation of portfolio."""
     t = returns.index[1]
     results = SimulationResult(
         initial_portfolio=portfolio, policy=None, cash_key="cash", simulator=simulator
     )
-    u = pd.Series(index=portfolio.index, data=1e4)
-    h_next, u = simulator.propagate(portfolio, u=u, t=t)
+    u1 = pd.Series(index=portfolio.index, data=value)
+    u2 = pd.Series(index=portfolio.index, data=[value] * 29)
+
+    pd.testing.assert_series_equal(u1, u2)
+
+    h_next, u = simulator.propagate(portfolio, u=u1, t=t)
     results.log_simulation(t=t, u=u, h_next=h_next, risk_free_return=0.0, exec_time=0)
     assert results.simulator_TcostModel.sum().sum() == pytest.approx(157.604, abs=1e-3)
     assert results.simulator_HcostModel.sum().sum() == pytest.approx(0.0, abs=1e-3)
-    assert sum(h_next) == pytest.approx(28906767.251, abs=1e-3)
+    assert sum(h_next) == pytest.approx(expected, abs=1e-3)
 
 
 def test_propag_list(returns, portfolio, simulator):
-    """Test propagation of portfolio, list of trades."""
-    t = returns.index[1]
-    results = SimulationResult(
-        initial_portfolio=portfolio, policy=None, cash_key="cash", simulator=simulator
-    )
-    u = pd.Series(index=portfolio.index, data=[1e4] * 29)
-    h_next, u = simulator.propagate(portfolio, u, t=t)
-    results.log_simulation(t=t, u=u, h_next=h_next, risk_free_return=0.0, exec_time=0)
-    assert results.simulator_TcostModel.sum().sum() == pytest.approx(157.604, abs=1e-3)
-    assert results.simulator_HcostModel.sum().sum() == pytest.approx(0.0, abs=1e-3)
-    assert sum(h_next) == pytest.approx(28906767.251, abs=1e-3)
-
-
-def test_propag_neg(returns, portfolio, simulator):
-    """Test propagation of portfolio, negative trades."""
-    t = returns.index[1]
-    results = SimulationResult(
-        initial_portfolio=portfolio, policy=None, cash_key="cash", simulator=simulator
-    )
-    u = pd.Series(index=portfolio.index, data=[-1e4] * 29)
-    h_next, u = simulator.propagate(portfolio, u, t=t)
-    results.log_simulation(t=t, u=u, h_next=h_next, risk_free_return=0.0, exec_time=0)
-    assert results.simulator_TcostModel.sum().sum() == pytest.approx(157.604, abs=1e-3)
-    assert results.simulator_HcostModel.sum().sum() == pytest.approx(0.0, abs=1e-3)
-    assert sum(h_next) == pytest.approx(28908611.931, abs=1e-3)
-
-
-def test_hcost_pos(returns, portfolio, tcost_term, volumes):
-    """Test hcost function, positive positions."""
-    hcost_term = HcostModel(0.0)
-    hcost_term.borrow_costs += 0.0
-    simulator = MarketSimulator(
-        returns, costs=[tcost_term, hcost_term], market_volumes=volumes
-    )
-
-    t = returns.index[1]
-
-    results = SimulationResult(
-        initial_portfolio=portfolio, policy=None, cash_key="cash", simulator=simulator
-    )
-    u = pd.Series(index=portfolio.index, data=1e4)
-    h_next, u = simulator.propagate(portfolio, u, t=t)
-    results.log_simulation(t=t, u=u, h_next=h_next, risk_free_return=0.0, exec_time=0)
-    assert results.simulator_HcostModel.sum().sum() == pytest.approx(0.0, abs=1e-8)
-
-    # self.assertAlmostEquals(results.simulator_HcostModel.sum().sum(), 0.)
+    pass
+    # obsolete tests only covering initialization of u1
 
 
 def test_hcost_neg(returns, portfolio, tcost_term, volumes):
     """Test hcost function, negative positions."""
-    hcost_term = HcostModel(0.0)
-    hcost_term.borrow_costs += 0.0001
+    hcost_term = HcostModel(0.0001)
     simulator = MarketSimulator(
         returns, costs=[tcost_term, hcost_term], market_volumes=volumes
     )
