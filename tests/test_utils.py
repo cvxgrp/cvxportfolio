@@ -13,23 +13,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-import pytest
 import numpy as np
+import pytest
 
-from cvxportfolio import values_in_time, null_checker
+from cvxportfolio import null_checker, values_in_time
 
-def test_null_checker(returns):
+
+def test_null_checker_nan():
     """Test null check."""
     with pytest.raises(ValueError):
         null_checker(np.NaN)
 
-    assert null_checker(1.) is None
+
+def test_null_checker_valid(returns):
+    assert null_checker(1.0) is None
     assert null_checker(returns) is None
 
+
+def test_nan_in_returns(returns):
     returns.iloc[0, 0] = np.NaN
     with pytest.raises(ValueError):
         null_checker(returns)
+
 
 def test_time_locator(returns):
     """Test time locator."""
