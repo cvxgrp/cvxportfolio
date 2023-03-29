@@ -59,13 +59,13 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
                                         hcost_model], [],
                           solver=cvx.ECOS)
 
-    tcost = TcostModel(self.a, self.b, self.sigma, self.volume)
-    hcost = HcostModel(self.s)
-    market_sim = simulator.MarketSimulator(self.returns,
+    tcost = TcostModel(0.0005, 1.0, sigma, volumes)
+    hcost = HcostModel(0.0)
+    market_sim = simulator.MarketSimulator(returns,
                                            costs=[tcost, hcost],
-                                           market_volumes=self.volume)
+                                           market_volumes=volumes)
 
-    p_0 = pd.Series(index=self.universe, data=1E6)
+    p_0 = pd.Series(index=returns.columns, data=1E6)
     noisy = market_sim.run_backtest(p_0, returns.index[1],
                                     returns.index[10], pol)
     # linear fit attribution
@@ -73,28 +73,27 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
                                 parallel=False, fit="linear")
     base_line = noisy.v - sum(p_0)
     for i in range(3):
-        self.assertItemsAlmostEqual(
-            attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
-    self.assertItemsAlmostEqual(attr['RMS error'], np.zeros(len(noisy.v)))
-
+        assert np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
+    
+    assert np.allclose(attr['RMS error'], np.zeros(len(noisy.v)))
+    
     # least-squares fit attribution
     attr = market_sim.attribute(noisy, pol,
                                 parallel=False, fit="least-squares")
     base_line = noisy.v - sum(p_0)
     for i in range(3):
-        self.assertItemsAlmostEqual(
-            attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
+        assert np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
+        
     # Residual always 0.
     alpha_sources = [ReturnsForecast(
-        self.returns * 0, name=i) for i in range(3)]
+        returns * 0, name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
-    pol = copy.copy(pol)
     pol.alpha_model = alpha_model
     attr = market_sim.attribute(noisy, pol,
                                 parallel=False, fit="least-squares")
-    self.assertItemsAlmostEqual(attr['residual'], np.zeros(len(noisy.v)))
-
+    assert np.allclose(attr['residual'], np.zeros(len(noisy.v)))
+    
 def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost_model):
     """Test attributing series quantities besides profit.
     """
@@ -111,15 +110,17 @@ def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost
                                         hcost_model], [],
                           solver=cvx.ECOS)
 
-    tcost = TcostModel(self.volume, self.sigma, self.a, self.b)
-    hcost = HcostModel(self.s)
-    market_sim = simulator.MarketSimulator(self.returns,
+    tcost = TcostModel(0.0005, 1.0, sigma, volumes)
+    
+    #tcost = TcostModel(volumes, sigma, self.a, self.b)
+    hcost = HcostModel(0.0)
+    market_sim = simulator.MarketSimulator(returns,
                                            costs=[tcost, hcost],
-                                           market_volumes=self.volume)
+                                           market_volumes=volumes)
 
-    p_0 = pd.Series(index=self.universe, data=1E6)
-    noisy = market_sim.run_backtest(p_0, self.returns.index[1],
-                                    self.returns.index[10], pol)
+    p_0 = pd.Series(index=returns.columns, data=1E6)
+    noisy = market_sim.run_backtest(p_0, returns.index[1],
+                                    returns.index[10], pol)
     # Select tcosts.
 
     def selector(result):
@@ -130,26 +131,25 @@ def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost
                                 parallel=False, fit="linear")
     base_line = noisy.leverage
     for i in range(3):
-        self.assertItemsAlmostEqual(
-            attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
-    self.assertItemsAlmostEqual(attr['RMS error'], np.zeros(len(noisy.v)))
+        np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
+
+    np.allclose(attr['RMS error'], np.zeros(len(noisy.v)))
 
     # least-squares fit attribution
     attr = market_sim.attribute(noisy, pol, selector,
                                 parallel=False, fit="least-squares")
     for i in range(3):
-        self.assertItemsAlmostEqual(
-            attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
+        np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
     # Residual always 0.
     alpha_sources = [ReturnsForecast(
-        self.returns * 0, name=i) for i in range(3)]
+        returns * 0, name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     pol = copy.copy(pol)
     pol.alpha_model = alpha_model
     attr = market_sim.attribute(noisy, pol, selector,
                                 parallel=False, fit="least-squares")
-    self.assertItemsAlmostEqual(attr['residual'], np.zeros(len(noisy.v)))
+    assert np.allclose(attr['residual'], np.zeros(len(noisy.v)))
 
 def test_attribute_non_profit_scalar(returns, sigma, volumes):
     """Test attributing scalar quantities besides profit.
@@ -160,8 +160,10 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     emp_Sigma = np.cov(returns.to_numpy().T)
     risk_model = FullSigma(emp_Sigma)
-    tcost_model = TcostModel(self.a, self.b, sigma, volumes)
-    hcost_model = HcostModel(self.s)
+    tcost_model = TcostModel(0.0005, 1.0, sigma, volumes)
+    
+    #tcost = TcostModel(volumes, sigma, self.a, self.b)
+    hcost_model = HcostModel(0.0)
     pol = SinglePeriodOpt(
         alpha_model, [100 * risk_model, tcost_model, hcost_model], [])
 
@@ -169,9 +171,9 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
                                            costs=[tcost_model, hcost_model]
                                            )
 
-    p_0 = pd.Series(index=self.universe, data=1E6)
-    noisy = market_sim.run_backtest(p_0, self.returns.index[1],
-                                    self.returns.index[10], pol)
+    p_0 = pd.Series(index=returns.columns, data=1E6)
+    noisy = market_sim.run_backtest(p_0, returns.index[1],
+                                    returns.index[10], pol)
     # Select tcosts.
 
     def selector(result):
@@ -183,23 +185,21 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
                                 parallel=False, fit="linear")
     base_line = noisy.volatility
     for i in range(3):
-        self.assertAlmostEqual(
-            attr[i][0] / weights[i] / sum(p_0), base_line / sum(p_0))
-    self.assertItemsAlmostEqual(attr['RMS error'], np.zeros(len(noisy.v)))
+        assert np.allclose(attr[i][0] / weights[i] / sum(p_0), base_line / sum(p_0))
+    assert np.allclose(attr['RMS error'], np.zeros(len(noisy.v)))
 
     # least-squares fit attribution
     attr = market_sim.attribute(noisy, pol, selector,
                                 parallel=False, fit="least-squares")
     for i in range(3):
-        self.assertAlmostEqual(
-            attr[i][0] / weights[i] / sum(p_0), base_line / sum(p_0))
+        assert np.allclose(attr[i][0] / weights[i] / sum(p_0), base_line / sum(p_0))
     # Residual always 0.
     alpha_sources = [ReturnsForecast(
-        self.returns * 0, name=i) for i in range(3)]
+        returns * 0, name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
-    pol = copy.copy(pol)
+
     pol.alpha_model = alpha_model
     attr = market_sim.attribute(noisy, pol, selector,
                                 parallel=False, fit="least-squares")
-    self.assertItemsAlmostEqual(attr['residual'], np.zeros(len(noisy.v)))
+    assert np.allclose(attr['residual'], np.zeros(len(noisy.v)))

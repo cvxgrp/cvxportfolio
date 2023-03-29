@@ -92,15 +92,18 @@ def test_propag_neg(returns, portfolio, simulator):
 
 
     
-def test_hcost_pos(returns, portfolio, simulator):
+def test_hcost_pos(returns, portfolio, tcost_term, volumes):
     """Test hcost function, positive positions."""
-    self.hcost_term.borrow_costs += 0
+    hcost_term = HcostModel(0.0)
+    hcost_term.borrow_costs += 0.0
+    simulator = MarketSimulator(returns, costs=[tcost_term, hcost_term], market_volumes=volumes)
+    
     t = returns.index[1]
 
-    results = SimulationResult(initial_portfolio=h, policy=None,
+    results = SimulationResult(initial_portfolio=portfolio, policy=None,
                                cash_key='cash', simulator=simulator)
-    u = pd.Series(index=self.portfolio.index, data=1E4)
-    h_next, u = simulator.propagate(h, u, t=t)
+    u = pd.Series(index=portfolio.index, data=1E4)
+    h_next, u = simulator.propagate(portfolio, u, t=t)
     results.log_simulation(t=t, u=u, h_next=h_next,
                            risk_free_return=0., exec_time=0)
     assert results.simulator_HcostModel.sum().sum() == pytest.approx(0.0, abs=1e-8)
@@ -108,9 +111,13 @@ def test_hcost_pos(returns, portfolio, simulator):
     #self.assertAlmostEquals(results.simulator_HcostModel.sum().sum(), 0.)
 
     
-def test_hcost_neg(returns, portfolio, simulator):
+def test_hcost_neg(returns, portfolio, tcost_term, volumes):
     """Test hcost function, negative positions."""
-    simulator.hcost_term.borrow_costs += .0001
+    hcost_term = HcostModel(0.0)
+    hcost_term.borrow_costs += 0.0001
+    simulator = MarketSimulator(returns, costs=[tcost_term, hcost_term], market_volumes=volumes)
+    
+    #simulator.hcost_term.borrow_costs += .0001
     t = returns.index[1]
     results = SimulationResult(initial_portfolio=portfolio, policy=None,
                                cash_key='cash', simulator=simulator)
