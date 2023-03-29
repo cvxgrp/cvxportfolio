@@ -30,31 +30,6 @@ from cvxportfolio.costs import HcostModel, TcostModel
 from cvxportfolio.returns import ReturnsForecast, MultipleReturnsForecasts
 
 
-@pytest.fixture()
-def sigma(resource_dir):
-    return pd.read_csv(resource_dir / "sigmas.csv", index_col=0, parse_dates=[0])
-
-@pytest.fixture()
-def returns(resource_dir):
-    return pd.read_csv(resource_dir / "returns.csv", index_col=0, parse_dates=[0])
-
-@pytest.fixture()
-def volumes(resource_dir):
-    return pd.read_csv(resource_dir / "volumes.csv", index_col=0, parse_dates=[0])
-
-
-#class TestModels(BaseTest):
-
-    #def setUp(self):
-        #self.sigma = pd.read_csv(DIR+'sigmas.csv',
-        #                         index_col=0, parse_dates=[0])
-        #self.returns = pd.read_csv(DIR+'returns.csv',
-        #                           index_col=0, parse_dates=[0])
-        #self.volume = pd.read_csv(DIR+'volumes.csv',
-        #                          index_col=0, parse_dates=[0])
-        #self.a, self.b, self.s = 0.0005, 1., 0.
-        #self.universe = self.returns.columns
-        #self.times = self.returns.index
 
 def test_alpha(returns):
     """Test alpha models.
