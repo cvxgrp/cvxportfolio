@@ -27,9 +27,6 @@ from cvxportfolio.returns import ReturnsForecast
 from cvxportfolio.risks import FullSigma
 
 
-    #self.a, self.b, self.s = 0.0005, 1., 0.
-    #self.s = self.s + 1e-3
-
 @pytest.fixture()
 def tcost_model(sigma, volumes):
     return TcostModel(0, 1.0, sigma, volumes, power=2)
@@ -51,8 +48,6 @@ def test_single_period_opt(returns, sigma, volumes, tcost_model, hcost_model):
     alpha_model = ReturnsForecast(returns)
     emp_Sigma = np.cov(returns.to_numpy().T) + np.eye(n) * 1e-3
     risk_model = FullSigma(emp_Sigma)
-    #tcost_model = TcostModel(0, 1.0, sigma, volumes, power=2)
-    #hcost_model = HcostModel(0.0, 1e-3)
     pol = SinglePeriodOpt(alpha_model,
                           [gamma * risk_model, tcost_model, hcost_model],
                           [], solver=cvx.ECOS)
@@ -73,10 +68,5 @@ def test_single_period_opt(returns, sigma, volumes, tcost_model, hcost_model):
     nu = (1 - h0.sum()) / offset.sum()
     hstar = h0 + nu * offset
     assert hstar.sum() == pytest.approx(1.0)
-    
-    print(hstar)
     assert np.allclose(h / sum(p_0), hstar)
-    
-    #self.assertItemsAlmostEqual(h / sum(p_0), hstar, places=4)
-
     

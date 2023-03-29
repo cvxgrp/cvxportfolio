@@ -24,7 +24,7 @@ import copy
 
 from cvxportfolio import simulator, HcostModel, TcostModel, SinglePeriodOpt
 from cvxportfolio import ReturnsForecast, MultipleReturnsForecasts, FullSigma
-from .base_test import BaseTest
+#from .base_test import BaseTest
 
 @pytest.fixture()
 def tcost_model(volumes, sigma):
