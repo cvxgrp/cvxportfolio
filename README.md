@@ -32,7 +32,7 @@ If you wish to cite CVXPortfolio, please use:
 Installation
 ------------
 
-To install the package:
+To install the package from pypi:
 ```
 pip install cvxportfolio
 ```
@@ -40,7 +40,7 @@ pip install cvxportfolio
 To test it:
 
 ```
-pip install nose
-nosetests cvxportfolio
+poetry install
+poetry run pytest
 ```
 
