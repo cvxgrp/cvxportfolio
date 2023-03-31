@@ -32,7 +32,7 @@ from .costs import BaseCost
 # Also could try jitting with numba.
 
 
-class MarketSimulator():
+class MarketSimulator:
     logger = None
 
     def __init__(self, market_returns, costs,

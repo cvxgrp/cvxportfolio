@@ -1,7 +1,6 @@
 `cvxportfolio`
 =============
 [![CVXportfolio on PyPI](https://img.shields.io/pypi/v/cvxportfolio.svg)](https://pypi.org/project/cvxportfolio/)
-[![Build Status](https://travis-ci.org/cvxgrp/cvxportfolio.png?branch=master)](https://travis-ci.org/cvxgrp/cvxportfolio)
 [![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
 [![Apache 2.0 License](https://img.shields.io/badge/License-APACHEv2-green.svg)](https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE)
 
@@ -32,7 +31,7 @@ If you wish to cite CVXPortfolio, please use:
 Installation
 ------------
 
-To install the package:
+To install the package from pypi:
 ```
 pip install cvxportfolio
 ```
@@ -40,7 +39,7 @@ pip install cvxportfolio
 To test it:
 
 ```
-pip install nose
-nosetests cvxportfolio
+poetry install
+poetry run pytest
 ```
 

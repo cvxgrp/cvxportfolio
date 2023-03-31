@@ -32,8 +32,9 @@ __all__ = ['Hold', 'FixedTrade', 'PeriodicRebalance', 'AdaptiveRebalance',
            'RankAndLongShort']
 
 
-class BasePolicy(object, metaclass=ABCMeta):
+class BasePolicy:
     """ Base class for a trading policy. """
+    __metaclass__ = ABCMeta
 
     def __init__(self):
         self.costs = []

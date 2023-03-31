@@ -28,7 +28,7 @@ __all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'DollarNeutral', 'MaxTrade',
            'FixedAlpha']
 
 
-class BaseConstraint(object):
+class BaseConstraint:
     __metaclass__ = ABCMeta
 
     def __init__(self, **kwargs):
