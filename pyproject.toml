@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cvxportfolio"
-version = "0.0.1"
+version = "0.0.2"
 description = "..."
 authors = ["Enzo Busseti", "Steven Diamond", "Stephen Boyd"]
 readme = "README.md"
