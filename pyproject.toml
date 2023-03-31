@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "cvxportfolio"
-version = "0.0.0"
+version = "0.0.1"
 description = "..."
-authors = ["Enzo Busetti", "Steven Diamond", "Stephen Boyd"]
+authors = ["Enzo Buseti", "Steven Diamond", "Stephen Boyd"]
 readme = "README.md"
 repository = "https://github.com/cvxgrp/cvxportfolio"
 packages = [{include = "cvxportfolio"}]
