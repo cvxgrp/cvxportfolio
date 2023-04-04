@@ -40,7 +40,7 @@ jobs:
     
     - name: Install the kernel
       run: |
-        ipython kernel install --name "cvxgrp" --user
+        ipython kernel install --name "Python" --user
         
     # Build the book
     - name: Build the book
