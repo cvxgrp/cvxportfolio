@@ -1,1 +1,46 @@
+name: deploy-book
 
+on: [push]
+
+# This job installs dependencies, builds the book, and pushes it to `gh-pages`
+jobs:
+  deploy-book:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    # Install dependencies
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install jupyterbook
+      run: |
+        pip install -r requirements.txt
+        pip install jupyter-book
+    - name: Clean Font-Manager
+      run: |
+        sudo echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | sudo debconf-set-selections
+        sudo apt-get install -y ttf-mscorefonts-installer
+        sudo fc-cache -vr
+        rm ~/.cache/matplotlib -fr
+        fc list
+        fc-match Arial 
+    - name: Install the kernel
+      run: |
+        ipython kernel install --name "quaternion" --user
+        
+    # Build the book
+    - name: Build the book
+      run: |
+        jupyter-book clean book
+        jupyter-book build book
+        cp -r book/_build/html ./docs
+    
+    # Push the book's HTML to github-pages
+    - name: GitHub Pages action
+      uses: peaceiris/actions-gh-pages@v3.6.1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: book/_build/html
