@@ -9,16 +9,26 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    # Install dependencies
-    - name: Set up Python 3.9
+    - name: Set up Python 3.10
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+          python-version: 3.10
 
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.3.3
+      with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+              
+    - name: Install dependencies
+      run: | 
+            poetry --version
+            poetry install -vv
+            
     - name: Install jupyterbook
       run: |
-        pip install -r requirements.txt
         pip install jupyter-book
+    
     - name: Clean Font-Manager
       run: |
         sudo echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | sudo debconf-set-selections
@@ -27,9 +37,10 @@ jobs:
         rm ~/.cache/matplotlib -fr
         fc list
         fc-match Arial 
+    
     - name: Install the kernel
       run: |
-        ipython kernel install --name "quaternion" --user
+        ipython kernel install --name "cvxgrp" --user
         
     # Build the book
     - name: Build the book
