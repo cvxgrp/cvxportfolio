@@ -3,5 +3,7 @@
 format: jb-book
 root: docs/index
 chapters:
-    - file: docs/SMI/Fun
-    - file: docs/US Names/Elvis
+    - file: docs/examples
+      sections:
+        - glob: docs/notebooks/*
+
