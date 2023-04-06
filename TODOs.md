@@ -1,10 +1,17 @@
+# 2023
+- [ ] Extensive use of cvxpy Parameter and Constant for passing data from Cvxportfolio to cvxpy
+- [ ] Separate Problem creation at the start of each backtest and problem update (i.e., Parameters update) for the next steps in the backtest
+- [ ] Update data sources in notebooks with ones that work in 2023
+- [ ] Merge SPO and MPO (SPO is MPO with steps = 1)
+- [ ] Add ability to specify constraints at steps in time for MPO
+
 # 2020
 
 ## Drop pd.Panel
 - [ ] Change design of predictions. Panel is used for covariances and MPOReturnForecasts. Require from the user a function that returns
 the prediction(s) (made at time tau) for time t.
 
-## Drop support of example ipynb's 
+## Drop support of example ipynb's
 - [ ] Move the non-explanatory code into cvxportfolio proper (e.g., factor model risk estimator).
 - [ ] Move the rest into the documentation.
 
