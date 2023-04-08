@@ -23,16 +23,25 @@ import numpy as np
 from .utils import values_in_time
 
 
-__all__ = ['LongOnly', 'LeverageLimit', 'LongCash', 'DollarNeutral', 'MaxTrade',
-           'MaxWeights', 'MinWeights', 'FactorMaxLimit', 'FactorMinLimit',
-           'FixedAlpha']
+__all__ = [
+    "LongOnly",
+    "LeverageLimit",
+    "LongCash",
+    "DollarNeutral",
+    "MaxTrade",
+    "MaxWeights",
+    "MinWeights",
+    "FactorMaxLimit",
+    "FactorMinLimit",
+    "FixedAlpha",
+]
 
 
 class BaseConstraint:
     __metaclass__ = ABCMeta
 
     def __init__(self, **kwargs):
-        self.w_bench = kwargs.pop('w_bench', 0.)
+        self.w_bench = kwargs.pop("w_bench", 0.0)
 
     def weight_expr(self, t, w_plus, z, v):
         """Returns a list of trade constraints.
@@ -53,8 +62,7 @@ class BaseConstraint:
 
 
 class MaxTrade(BaseConstraint):
-    """A limit on maximum trading size.
-    """
+    """A limit on maximum trading size."""
 
     def __init__(self, ADVs, max_fraction=0.05, **kwargs):
         self.ADVs = ADVs
@@ -70,13 +78,14 @@ class MaxTrade(BaseConstraint):
           z: trade weights
           v: portfolio value
         """
-        return cvx.abs(z[:-1]) * v <= \
-            np.array(values_in_time(self.ADVs, t)) * self.max_fraction
+        return (
+            cvx.abs(z[:-1]) * v
+            <= np.array(values_in_time(self.ADVs, t)) * self.max_fraction
+        )
 
 
 class LongOnly(BaseConstraint):
-    """A long only constraint.
-    """
+    """A long only constraint."""
 
     def __init__(self, **kwargs):
         super(LongOnly, self).__init__(**kwargs)
@@ -113,8 +122,7 @@ class LeverageLimit(BaseConstraint):
 
 
 class LongCash(BaseConstraint):
-    """Requires that cash be non-negative.
-    """
+    """Requires that cash be non-negative."""
 
     def __init__(self, **kwargs):
         super(LongCash, self).__init__(**kwargs)
@@ -130,8 +138,7 @@ class LongCash(BaseConstraint):
 
 
 class DollarNeutral(BaseConstraint):
-    """Long-short dollar neutral strategy.
-    """
+    """Long-short dollar neutral strategy."""
 
     def __init__(self, **kwargs):
         super(DollarNeutral, self).__init__(**kwargs)
@@ -209,8 +216,9 @@ class FactorMaxLimit(BaseConstraint):
             t: time
             w_plus: holdings
         """
-        return values_in_time(self.factor_exposure, t).T @ w_plus[:-1] <= \
-            values_in_time(self.limit, t)
+        return values_in_time(self.factor_exposure, t).T @ w_plus[
+            :-1
+        ] <= values_in_time(self.limit, t)
 
 
 class FactorMinLimit(BaseConstraint):
@@ -234,8 +242,9 @@ class FactorMinLimit(BaseConstraint):
             t: time
             w_plus: holdings
         """
-        return values_in_time(self.factor_exposure, t).T @ w_plus[:-1] >= \
-            values_in_time(self.limit, t)
+        return values_in_time(self.factor_exposure, t).T @ w_plus[
+            :-1
+        ] >= values_in_time(self.limit, t)
 
 
 class FixedAlpha(BaseConstraint):
@@ -253,5 +262,6 @@ class FixedAlpha(BaseConstraint):
         self.alpha_target = alpha_target
 
     def _weight_expr(self, t, w_plus, z, v):
-        return values_in_time(self.return_forecast, t).T @ w_plus[:-1] == \
-            values_in_time(self.alpha_target, t)
+        return values_in_time(self.return_forecast, t).T @ w_plus[
+            :-1
+        ] == values_in_time(self.alpha_target, t)

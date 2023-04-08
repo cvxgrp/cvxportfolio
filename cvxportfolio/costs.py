@@ -21,13 +21,12 @@ from .expression import Expression
 from .utils import null_checker, values_in_time
 
 
-__all__ = ['HcostModel', 'TcostModel']
+__all__ = ["HcostModel", "TcostModel"]
 
 
 class BaseCost(Expression):
-
     def __init__(self):
-        self.gamma = 1.  # it is changed by gamma * BaseCost()
+        self.gamma = 1.0  # it is changed by gamma * BaseCost()
 
     def weight_expr(self, t, w_plus, z, value):
         cost, constr = self._estimate(t, w_plus, z, value)
@@ -56,7 +55,7 @@ class HcostModel(BaseCost):
       dividends: A dataframe of dividends.
     """
 
-    def __init__(self, borrow_costs, dividends=0.):
+    def __init__(self, borrow_costs, dividends=0.0):
         null_checker(borrow_costs)
         self.borrow_costs = borrow_costs
         null_checker(dividends)
@@ -79,16 +78,18 @@ class HcostModel(BaseCost):
 
         try:
             self.expression = cvx.multiply(
-                values_in_time(self.borrow_costs, t), cvx.neg(w_plus))
+                values_in_time(self.borrow_costs, t), cvx.neg(w_plus)
+            )
         except TypeError:
-            self.expression = cvx.multiply(values_in_time(
-                self.borrow_costs, t).values, cvx.neg(w_plus))
+            self.expression = cvx.multiply(
+                values_in_time(self.borrow_costs, t).values, cvx.neg(w_plus)
+            )
         try:
-            self.expression -= cvx.multiply(
-                values_in_time(self.dividends, t), w_plus)
+            self.expression -= cvx.multiply(values_in_time(self.dividends, t), w_plus)
         except TypeError:
             self.expression -= cvx.multiply(
-                values_in_time(self.dividends, t).values, w_plus)
+                values_in_time(self.dividends, t).values, w_plus
+            )
 
         return cvx.sum(self.expression), []
 
@@ -97,7 +98,8 @@ class HcostModel(BaseCost):
 
     def value_expr(self, t, h_plus, u):
         self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * values_in_time(
-            self.borrow_costs, t)
+            self.borrow_costs, t
+        )
         self.last_cost -= h_plus.iloc[:-1] * values_in_time(self.dividends, t)
 
         return sum(self.last_cost)
@@ -123,8 +125,7 @@ class TcostModel(BaseCost):
       power: The nonlinear tcost power.
     """
 
-    def __init__(self, half_spread, nonlin_coeff=0., sigma=0., volume=1.,
-                 power=1.5):
+    def __init__(self, half_spread, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5):
         null_checker(half_spread)
         self.half_spread = half_spread
         null_checker(sigma)
@@ -157,9 +158,11 @@ class TcostModel(BaseCost):
 
         constr = []
 
-        second_term = values_in_time(self.nonlin_coeff, t) * values_in_time(
-            self.sigma, t) * (value / values_in_time(self.volume, t)) ** (
-            self.power - 1)
+        second_term = (
+            values_in_time(self.nonlin_coeff, t)
+            * values_in_time(self.sigma, t)
+            * (value / values_in_time(self.volume, t)) ** (self.power - 1)
+        )
 
         # no trade conditions
         if np.isscalar(second_term):
@@ -169,33 +172,36 @@ class TcostModel(BaseCost):
         else:  # it is a pd series
             no_trade = second_term.index[second_term.isnull()]
             second_term[no_trade] = 0
-            constr += [z[second_term.index.get_loc(tick)] == 0
-                       for tick in no_trade]
+            constr += [z[second_term.index.get_loc(tick)] == 0 for tick in no_trade]
 
         try:
             self.expression = cvx.multiply(
-                values_in_time(self.half_spread, t), cvx.abs(z))
+                values_in_time(self.half_spread, t), cvx.abs(z)
+            )
         except TypeError:
             self.expression = cvx.multiply(
-                values_in_time(self.half_spread, t).values, cvx.abs(z))
+                values_in_time(self.half_spread, t).values, cvx.abs(z)
+            )
         try:
-            self.expression += cvx.multiply(second_term,
-                                            cvx.abs(z) ** self.power)
+            self.expression += cvx.multiply(second_term, cvx.abs(z) ** self.power)
         except TypeError:
             self.expression += cvx.multiply(
-                second_term.values, cvx.abs(z) ** self.power)
+                second_term.values, cvx.abs(z) ** self.power
+            )
 
         return cvx.sum(self.expression), constr
 
     def value_expr(self, t, h_plus, u):
-
         u_nc = u.iloc[:-1]
-        self.tmp_tcosts = (
-            np.abs(u_nc) * values_in_time(self.half_spread, t) +
-            values_in_time(self.nonlin_coeff, t) * values_in_time(self.sigma,
-                                                                  t) *
-            np.abs(u_nc) ** self.power /
-            (values_in_time(self.volume, t) ** (self.power - 1)))
+        self.tmp_tcosts = np.abs(u_nc) * values_in_time(
+            self.half_spread, t
+        ) + values_in_time(self.nonlin_coeff, t) * values_in_time(
+            self.sigma, t
+        ) * np.abs(
+            u_nc
+        ) ** self.power / (
+            values_in_time(self.volume, t) ** (self.power - 1)
+        )
 
         return self.tmp_tcosts.sum()
 
@@ -210,13 +216,11 @@ class TcostModel(BaseCost):
         return self.tmp_tcosts
 
     def _estimate_ahead(self, t, tau, w_plus, z, value):
-        """Returns the estimate at time t of tcost at time tau.
-        """
+        """Returns the estimate at time t of tcost at time tau."""
         return self._estimate(t, w_plus, z, value)
 
     def est_period(self, t, tau_start, tau_end, w_plus, z, value):
-        """Returns the estimate at time t of tcost over given period.
-        """
+        """Returns the estimate at time t of tcost over given period."""
         K = (tau_end - tau_start).days
         tcost, constr = self.weight_expr(t, None, z / K, value)
         return tcost * K, constr

@@ -19,8 +19,7 @@ import cvxpy as cvx
 from cvxportfolio.expression import Expression
 from .utils import values_in_time, null_checker
 
-__all__ = ['ReturnsForecast', 'MPOReturnsForecast',
-           'MultipleReturnsForecasts']
+__all__ = ["ReturnsForecast", "MPOReturnsForecast", "MultipleReturnsForecasts"]
 
 
 class BaseReturnsModel(Expression):
@@ -36,7 +35,7 @@ class ReturnsForecast(BaseReturnsModel):
       half_life: Number of days for alpha auto-correlation to halve.
     """
 
-    def __init__(self, returns, delta=0., gamma_decay=None, name=None):
+    def __init__(self, returns, delta=0.0, gamma_decay=None, name=None):
         null_checker(returns)
         self.returns = returns
         null_checker(delta)
@@ -55,10 +54,8 @@ class ReturnsForecast(BaseReturnsModel):
         Returns:
           An expression for the alpha.
         """
-        alpha = cvx.multiply(
-            values_in_time(self.returns, t), wplus)
-        alpha -= cvx.multiply(
-            values_in_time(self.delta, t), cvx.abs(wplus))
+        alpha = cvx.multiply(values_in_time(self.returns, t), wplus)
+        alpha -= cvx.multiply(values_in_time(self.delta, t), cvx.abs(wplus))
         return cvx.sum(alpha)
 
     def weight_expr_ahead(self, t, tau, wplus):
@@ -75,7 +72,7 @@ class ReturnsForecast(BaseReturnsModel):
 
         alpha = self.weight_expr(t, wplus)
         if tau > t and self.gamma_decay is not None:
-            alpha *= (tau - t).days**(-self.gamma_decay)
+            alpha *= (tau - t).days ** (-self.gamma_decay)
         return alpha
 
 
@@ -144,6 +141,5 @@ class MultipleReturnsForecasts(BaseReturnsModel):
         """
         alpha = 0
         for idx, source in enumerate(self.alpha_sources):
-            alpha += source.weight_expr_ahead(t,
-                                              tau, wplus) * self.weights[idx]
+            alpha += source.weight_expr_ahead(t, tau, wplus) * self.weights[idx]
         return alpha

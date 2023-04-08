@@ -23,11 +23,19 @@ import pandas as pd
 
 from .costs import BaseCost
 from .utils import values_in_time
+
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['FullSigma', 'EmpSigma', 'SqrtSigma', 'WorstCaseRisk',
-           'RobustFactorModelSigma', 'RobustSigma',  'FactorModelSigma']
+__all__ = [
+    "FullSigma",
+    "EmpSigma",
+    "SqrtSigma",
+    "WorstCaseRisk",
+    "RobustFactorModelSigma",
+    "RobustSigma",
+    "FactorModelSigma",
+]
 
 
 # def locator(obj, t):
@@ -48,11 +56,10 @@ __all__ = ['FullSigma', 'EmpSigma', 'SqrtSigma', 'WorstCaseRisk',
 
 
 class BaseRiskModel(BaseCost):
-
     def __init__(self, **kwargs):
-        self.w_bench = kwargs.pop('w_bench', 0.)
+        self.w_bench = kwargs.pop("w_bench", 0.0)
         super(BaseRiskModel, self).__init__()
-        self.gamma_half_life = kwargs.pop('gamma_half_life', np.inf)
+        self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
 
     def weight_expr(self, t, w_plus, z, value):
         self.expression = self._estimate(t, w_plus - self.w_bench, z, value)
@@ -65,13 +72,12 @@ class BaseRiskModel(BaseCost):
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
         """Estimate risk model at time tau in the future."""
         if self.gamma_half_life == np.inf:
-            gamma_multiplier = 1.
+            gamma_multiplier = 1.0
         else:
             decay_factor = 2 ** (-1 / self.gamma_half_life)
             # TODO not dependent on days
             gamma_init = decay_factor ** ((tau - t).days)
-            gamma_multiplier = gamma_init * \
-                (1 - decay_factor) / (1 - decay_factor)
+            gamma_multiplier = gamma_init * (1 - decay_factor) / (1 - decay_factor)
 
         return gamma_multiplier * self.weight_expr(t, w_plus, z, value)[0], []
 
@@ -94,18 +100,16 @@ class FullSigma(BaseRiskModel):
     def __init__(self, Sigma, **kwargs):
         self.Sigma = Sigma  # Sigma is either a matrix or a pd.Panel
         try:
-            assert(not pd.isnull(Sigma).values.any())
+            assert not pd.isnull(Sigma).values.any()
         except AttributeError:
-            assert (not pd.isnull(Sigma).any())
+            assert not pd.isnull(Sigma).any()
         super(FullSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
         try:
-            self.expression = cvx.quad_form(
-                wplus, values_in_time(self.Sigma, t))
+            self.expression = cvx.quad_form(wplus, values_in_time(self.Sigma, t))
         except TypeError:
-            self.expression = cvx.quad_form(
-                wplus, values_in_time(self.Sigma, t).values)
+            self.expression = cvx.quad_form(wplus, values_in_time(self.Sigma, t).values)
         return self.expression
 
 
@@ -116,24 +120,23 @@ class EmpSigma(BaseRiskModel):
         """returns is dataframe, lookback is int"""
         self.returns = returns
         self.lookback = lookback
-        assert(not np.any(pd.isnull(returns)))
+        assert not np.any(pd.isnull(returns))
         super(EmpSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
         idx = self.returns.index.get_loc(t)
         # TODO make sure pandas + cvxpy works
-        R = self.returns.iloc[max(idx - 1 - self.lookback, 0):idx - 1]
-        assert (R.shape[0] > 0)
+        R = self.returns.iloc[max(idx - 1 - self.lookback, 0) : idx - 1]
+        assert R.shape[0] > 0
         self.expression = cvx.sum_squares(R.values * wplus) / self.lookback
         return self.expression
 
 
 class SqrtSigma(BaseRiskModel):
-
     def __init__(self, sigma_sqrt, **kwargs):
         """returns is dataframe, lookback is int"""
         self.sigma_sqrt = sigma_sqrt
-        assert(not np.any(pd.isnull(sigma_sqrt)))
+        assert not np.any(pd.isnull(sigma_sqrt))
         super(SqrtSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
@@ -143,22 +146,23 @@ class SqrtSigma(BaseRiskModel):
 
 
 class FactorModelSigma(BaseRiskModel):
-
     def __init__(self, exposures, factor_Sigma, idiosync, **kwargs):
         """Each is a pd.Panel (or ) or a vector/matrix"""
         self.exposures = exposures
-        assert (not exposures.isnull().values.any())
+        assert not exposures.isnull().values.any()
         self.factor_Sigma = factor_Sigma
-        assert (not factor_Sigma.isnull().values.any())
+        assert not factor_Sigma.isnull().values.any()
         self.idiosync = idiosync
-        assert(not idiosync.isnull().values.any())
+        assert not idiosync.isnull().values.any()
         super(FactorModelSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
-        self.expression = cvx.sum_squares(cvx.multiply(
-            np.sqrt(values_in_time(self.idiosync, t)), wplus)) + \
-            cvx.quad_form((wplus.T @ values_in_time(self.exposures, t).values.T).T,
-                          values_in_time(self.factor_Sigma, t).values)
+        self.expression = cvx.sum_squares(
+            cvx.multiply(np.sqrt(values_in_time(self.idiosync, t)), wplus)
+        ) + cvx.quad_form(
+            (wplus.T @ values_in_time(self.exposures, t).values.T).T,
+            values_in_time(self.factor_Sigma, t).values,
+        )
         return self.expression
 
 
@@ -171,10 +175,11 @@ class RobustSigma(BaseRiskModel):
         super(RobustSigma, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
-        self.expression = cvx.quad_form(wplus, values_in_time(self.Sigma, t)) + \
-            values_in_time(self.epsilon, t) * \
-            (cvx.abs(wplus).T * np.diag(values_in_time(
-                self.Sigma, t)))**2
+        self.expression = (
+            cvx.quad_form(wplus, values_in_time(self.Sigma, t))
+            + values_in_time(self.epsilon, t)
+            * (cvx.abs(wplus).T * np.diag(values_in_time(self.Sigma, t))) ** 2
+        )
 
         return self.expression
 
@@ -185,11 +190,11 @@ class RobustFactorModelSigma(BaseRiskModel):
     def __init__(self, exposures, factor_Sigma, idiosync, epsilon, **kwargs):
         """Each is a pd.Panel (or ) or a vector/matrix"""
         self.exposures = exposures
-        assert (not exposures.isnull().values.any())
+        assert not exposures.isnull().values.any()
         self.factor_Sigma = factor_Sigma
-        assert (not factor_Sigma.isnull().values.any())
+        assert not factor_Sigma.isnull().values.any()
         self.idiosync = idiosync
-        assert(not idiosync.isnull().values.any())
+        assert not idiosync.isnull().values.any()
         self.epsilon = epsilon
         super(RobustFactorModelSigma, self).__init__(**kwargs)
 
@@ -198,27 +203,27 @@ class RobustFactorModelSigma(BaseRiskModel):
         f = (wplus.T * F.T).T
         Sigma_F = values_in_time(self.factor_Sigma, t)
         D = values_in_time(self.idiosync, t)
-        self.expression = cvx.sum_squares(
-            cvx.multiply(np.sqrt(D), wplus)) + \
-            cvx.quad_form(f, Sigma_F) + \
-            self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F)))**2
+        self.expression = (
+            cvx.sum_squares(cvx.multiply(np.sqrt(D), wplus))
+            + cvx.quad_form(f, Sigma_F)
+            + self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F))) ** 2
+        )
 
         return self.expression
 
 
 class WorstCaseRisk(BaseRiskModel):
-
     def __init__(self, riskmodels, **kwargs):
         self.riskmodels = riskmodels
         super(WorstCaseRisk, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
-        self.risks = [risk.weight_expr(t, wplus, z, value)
-                      for risk in self.riskmodels]
+        self.risks = [risk.weight_expr(t, wplus, z, value) for risk in self.riskmodels]
         return cvx.max_elemwise(*self.risks)
 
     def optimization_log(self, t):
         """Return data to log in the result object."""
-        return pd.Series(index=[model.__class__.__name__ for
-                                model in self.riskmodels],
-                         data=[risk.value[0, 0] for risk in self.risks])
+        return pd.Series(
+            index=[model.__class__.__name__ for model in self.riskmodels],
+            data=[risk.value[0, 0] for risk in self.risks],
+        )

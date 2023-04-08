@@ -26,8 +26,7 @@ class Expression:
         pass
 
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
-        """Returns the estimate at time t of cost at time tau.
-        """
+        """Returns the estimate at time t of cost at time tau."""
         return self.weight_expr(t, w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
@@ -35,5 +34,6 @@ class Expression:
 
         This should be overridden if the term is used in the simulator.
         """
-        return sum(h_plus) * self.weight_expr(t, h_plus / sum(h_plus),
-                                              u / sum(u), sum(h_plus))
+        return sum(h_plus) * self.weight_expr(
+            t, h_plus / sum(h_plus), u / sum(u), sum(h_plus)
+        )

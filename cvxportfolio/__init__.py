@@ -22,6 +22,12 @@ from .constraints import *
 from .utils import *
 from .costs import TcostModel, HcostModel
 from .returns import *
-from .risks import (FullSigma, EmpSigma, SqrtSigma,
-                    FactorModelSigma, RobustFactorModelSigma,
-                    RobustSigma, WorstCaseRisk)
+from .risks import (
+    FullSigma,
+    EmpSigma,
+    SqrtSigma,
+    FactorModelSigma,
+    RobustFactorModelSigma,
+    RobustSigma,
+    WorstCaseRisk,
+)
