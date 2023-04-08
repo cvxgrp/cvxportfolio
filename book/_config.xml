@@ -1,8 +1,8 @@
 # Book settings
 # Learn more at https://jupyterbook.org/customize/config.html
 
-title: cvxportfolio
-author: Thomas Schmelzer
+title: Cvxportfolio
+author: Cvxportfolio's Contributors
 only_build_toc_files: true
 
 execute:
