@@ -1,7 +1,0 @@
-#!/bin/bash
-#source activate cvxportfolio-testing
-make html
-cp CNAME html/
-rm -r ../docs
-mv html ../docs
-#source deactivate
