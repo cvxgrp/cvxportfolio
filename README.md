@@ -1,4 +1,4 @@
-# [cvxportfolio](https://tschm.github.io/cvxportfolio/)
+# [cvxportfolio](https://cvxgrp.github.io/cvxportfolio/)
 
 [![CVXportfolio on PyPI](https://img.shields.io/pypi/v/cvxportfolio.svg)](https://pypi.org/project/cvxportfolio/)
 [![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
