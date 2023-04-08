@@ -2,6 +2,7 @@
 
 [![CVXportfolio on PyPI](https://img.shields.io/pypi/v/cvxportfolio.svg)](https://pypi.org/project/cvxportfolio/)
 [![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
+[![Downloads](https://static.pepy.tech/personalized-badge/cvxportfolio?period=month&units=international_system&left_color=black&right_color=orange&left_text=PyPI%20downloads%20per%20month)](https://pepy.tech/project/cvxportfolio)
 [![Apache 2.0 License](https://img.shields.io/badge/License-APACHEv2-green.svg)](https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE)
 
 **The documentation of the package is given at [cvxportfolio.readthedocs.io](https://cvxportfolio.readthedocs.io/en/latest/).**
