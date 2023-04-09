@@ -59,7 +59,7 @@ def values_in_time(obj, t, tau=None):
 
     if isinstance(obj, pd.Series) or isinstance(obj, pd.DataFrame):
         try:
-            if isinstance(obj.index, pd.MultiIndex):
+            if not (tau is None) and isinstance(obj.index, pd.MultiIndex):
                 return obj.loc[(t, tau)]
             else:
                 return obj.loc[t]
