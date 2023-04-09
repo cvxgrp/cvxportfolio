@@ -103,9 +103,9 @@ html_theme_options = {
     'github_repo': 'cvxportfolio',
     'github_button': 'true',
     'github_banner': True,
-    'travis_button': 'true',
+    # 'travis_button': 'true',
     #'analytics_id': 'UA-57212131-3',
-    'show_powered_by': 'false',
+    'show_powered_by': 'true',
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
