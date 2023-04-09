@@ -347,7 +347,7 @@ class MultiPeriodOpt(SinglePeriodOpt):
 
         # planning_periods = self.lookahead_model.get_periods(t)
         for tau in self.trading_times[
-            self.trading_times.index(t) : self.trading_times.index(t)
+            self.trading_times.get_loc(t) : self.trading_times.get_loc(t)
             + self.lookahead_periods
         ]:
             # delta_t in [pd.Timedelta('%d days' % i) for i in
@@ -375,7 +375,8 @@ class MultiPeriodOpt(SinglePeriodOpt):
 
         # Terminal constraint.
         if self.terminal_weights is not None:
-            prob_arr[-1].constraints += [wplus == self.terminal_weights.values]
+            # prob_arr[-1].constraints += [wplus == self.terminal_weights.values]
+            prob_arr[-1] = cvx.Problem(cvx.Maximize(obj), constr + [wplus == self.terminal_weights.values])
 
         sum(prob_arr).solve(solver=self.solver)
         return pd.Series(index=portfolio.index, data=(z_vars[0].value * value))
