@@ -10,11 +10,11 @@ packages = [{include = "cvxportfolio"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9.0"
-qdldl = ">=0.1.7"
-pandas = "*"
+pandas = "<2.0.0" # as of 2023-04-10 pandas 2 breaks yfinance
 numpy = "*"
 cvxpy = "*"
 multiprocess = "*"
+
 
 [tool.poetry.dev-dependencies]
 pytest = "7.2.0"
