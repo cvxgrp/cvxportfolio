@@ -10,9 +10,9 @@ packages = [{include = "cvxportfolio"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9.0"
+qdldl = ">=0.1.7"
 pandas = "*"
 numpy = "*"
-#matplotlib = "*"
 cvxpy = "*"
 multiprocess = "*"
 
@@ -20,6 +20,8 @@ multiprocess = "*"
 pytest = "7.2.0"
 pytest-cov = "*"
 matplotlib = "*"
+yfinance = "*"
+pandas_datareader = "*"
 
 [build-system]
 requires = ["poetry>=1.0.2"]
