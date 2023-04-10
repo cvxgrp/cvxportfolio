@@ -1,0 +1,42 @@
+name: deploy-book
+
+on: [push]
+
+# This job installs dependencies, builds the book, and pushes it to `gh-pages`
+jobs:
+  deploy-book:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    # Install dependencies
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    # Install poetry
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.3.3
+      with:
+          virtualenvs-create: false
+
+    - name: Install jupyterbook
+      run: |
+        poetry install -vv
+        poetry run pip install jupyter-book
+        poetry run python -m ipykernel install --user --name="cvxportfolio"
+        
+    # Build the book
+    - name: Build the book
+      run: |
+        poetry run jupyter-book clean book
+        poetry run jupyter-book build book
+        cp -r book/_build/html ./docs
+    
+    # Push the book's HTML to github-pages
+    - name: GitHub Pages action
+      uses: peaceiris/actions-gh-pages@v3.6.1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: book/_build/html
