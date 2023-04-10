@@ -33,15 +33,38 @@ If you wish to cite CVXPortfolio, please use:
 Installation
 ------------
 
-To install the package from pypi:
+To install the package
 ```
 pip install cvxportfolio
 ```
 
-To test it:
+Testing
+------------
+
+To test it
 
 ```
 poetry install
-poetry run pytest
+poetry run pytest --cov
 ```
+
+Examples
+------------
+
+You can see basic usage in the example notebooks. Ensure you have `jupyter` installed. \E.g.\,
+```
+pip install jupyter
+```
+
+Clone the repository, create the `cvxportfolio` kernel, and start `jupyter`
+
+```
+git clone https://github.com/cvxgrp/cvxportfolio.git
+cd cvxportfolio
+bash create_kernel.sh
+cd examples
+jupyter notebook
+```
+
+Currently [HelloWorld](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/HelloWorld.ipynb) and [MultiPeriodTCostOptimization](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodTCostOptimization.ipynb) can be run using the `cvxportfolio` kernel. We are working on simplifying the user interface and these may change (very fast).
 
