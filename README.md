@@ -51,7 +51,7 @@ poetry run pytest --cov
 Examples
 ------------
 
-You can see basic usage in the example notebooks. Ensure you have `jupyter` installed. \E.g.\,
+You can see basic usage in the example notebooks. Ensure you have `jupyter` installed. *E.g.*,
 ```
 pip install jupyter
 ```
