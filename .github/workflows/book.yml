@@ -29,15 +29,20 @@ jobs:
     - name: Install jupyterbook
       run: |
         poetry install -vv
-        poetry run pip install jupyter-book
+        poetry run pip install --no-cache \
+            jupyter-book \    
+            sphinx==5.0.2 \
+            sphinx-autoapi==1.8.4 \
+            sphinx-rtd-theme==1.0.0 \
+            recommonmark==0.7.1
         poetry run python -m ipykernel install --user --name="cvxportfolio"
     
     # Build sphinx
-    - name: Build sphinx documentation
-      uses: ammaraskar/sphinx-action@master
-      with:
-        docs-folder: "docs/"
-        #build-command: "sphinx-build -b html . _build"
+    #- name: Build sphinx documentation
+    #  uses: ammaraskar/sphinx-action@master
+    #  with:
+    #    docs-folder: "docs/"
+    #    #build-command: "sphinx-build -b html . _build"
         
     # Build the book
     - name: Build the book
