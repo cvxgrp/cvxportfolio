@@ -14,25 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import yfinance as yf
+import pandas as pd
+
 
 class BaseData:
     
-    def load_raw(self, symbol):
+    def load_raw(self, symbols):
         raise NotImplementedError
         
-    def load(self, symbol):
-        return self.preload(self.load_raw(symbol))
+    def load(self, symbols):
+        return self.preload(self.load_raw(symbols))
         
-    def store(self, symbol, data):
+    def store(self, symbols, data):
         raise NotImplementedError
         
-    def download(self, symbol, current=None):
+    def download(self, symbols, current=None):
         raise NotImplementedError
         
-    def update_and_load(self, symbol):
-        current = self.load_raw(symbol)
-        updated = self.download(symbol, current)
-        self.store(symbol, updated)
+    def update_and_load(self, symbols):
+        current = self.load_raw(symbols)
+        updated = self.download(symbols, current)
+        self.store(symbols, updated)
         return preload(updated)
         
     def preload(self, data):
@@ -41,7 +44,12 @@ class BaseData:
         
 class YfinanceBase(BaseData):
     
-    pass
+    def download(self, symbols, current=None, overlap=5):
+        if current is None:
+            updated = yf.download()
+            
+    def preload(self, data):
+        return data
 
 class LocalDataStore(BaseData):
     
@@ -56,11 +64,11 @@ class RateBase(BaseData):
     pass
     
     
-class Yfinance(YfinanceBase, LocalDataStore)
+class Yfinance(YfinanceBase, LocalDataStore):
     
     pass
     
-class Fred(FredBase, LocalDataStore)
+class Fred(FredBase, LocalDataStore):
 
     pass
     

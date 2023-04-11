@@ -1,1 +1,9 @@
 numpydoc
+myst-parser
+multiprocess
+numpy
+pandas
+cvxpy
+yfinance
+pandas_datareader
+matplotlib

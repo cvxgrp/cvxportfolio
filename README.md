@@ -8,11 +8,11 @@
 [![Binder](http://mybinder.org/badge_logo.svg)](http://mybinder.org/v2/gh/cvxgrp/cvxportfolio/HEAD)
 
 
-**Cvxportfolio is currently under redevelopment. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
+**Cvxportfolio is currently under development. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
 
 
 `cvxportfolio` is a python library for portfolio optimization and simulation,
-based on the paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
+based on the paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
 It is written in Python, its major dependencies are [`cvxpy`](https://github.com/cvxgrp/cvxpy)
 and [`pandas`](https://github.com/pandas-dev/pandas). 
 The documentation of the package is at [cvxportfolio.readthedocs.io](https://cvxportfolio.readthedocs.io/en/latest/).
@@ -70,7 +70,7 @@ cd examples
 jupyter notebook
 ```
 
-The example notebooks were used to develop the plots and results in [the paper](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html). We are keeping 
-them for historical record but they don't currently run. We'll do our best to restore them. For a working example (as of 2023Q2) look at [HelloWorld](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/HelloWorld.ipynb) and [MultiPeriodTCostOptimization](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodTCostOptimization.ipynb).
-Currently we are working on simplifying the user interface and these may change (very fast).
+The example notebooks were used to develop the plots and results in [the paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf). We are keeping 
+them for historical record but they don't currently run. We'll do our best to restore them. For a working example (as of 2023-04-11) look at [HelloWorld](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/HelloWorld.ipynb) and [MultiPeriodTCostOptimization](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodTCostOptimization.ipynb).
+Currently we are working on simplifying the user interface and these may change.
 
