@@ -30,7 +30,7 @@ jobs:
       run: |
         poetry install -vv
         
-        poetry run pip install --no-cache \
+        poetry run pip install --no-cache\
           jupyter-book \    
           sphinx==5.0.2 \
           sphinx-autoapi==1.8.4 \
