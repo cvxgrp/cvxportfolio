@@ -7,7 +7,7 @@
 
 **Cvxportfolio is currently under development. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
 
-CVXPortfolio is a package for simulating and optimizing multi-period investment based on the framework outlined in the paper [Multi-Period Trading via Convex Optimization](http://stanford.edu/~boyd/papers/cvx_portfolio.html).
+CVXPortfolio is a package for simulating and optimizing multi-period investment based on the framework outlined in the paper [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
 
 The simulator is able to simulate the evolution of a portfolio, taking into account asset returns, transaction costs, and holding costs. The package includes simple but reasonable models of transaction cost based on asset bid-ask spread, volume, and volatility.
 
