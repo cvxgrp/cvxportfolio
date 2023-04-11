@@ -2,7 +2,7 @@
 
 # Publications
 
-CVXPortfolio implements the ideas developed in our accompanying [paper](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
+CVXPortfolio implements the ideas developed in our accompanying [paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
 
 If you use CVXPortfolio for published work, please cite it as
 

@@ -17,7 +17,7 @@ The package relies on [Pandas] for data handling (e.g., prices, returns, volumes
 
 CVXPortfolio is released under a permissive open source {ref}`license <lic>`. It includes basic functionality for simulation and simple or complex optimization based trading. Users can easily extend the package with additional trading strategies.
 
-CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond, with input from Stephen Boyd and the authors of [the paper](http://stanford.edu/~boyd/papers/cvx_portfolio.html).
+CVXPortfolio was designed and implemented by Enzo Busseti and Steven Diamond, with input from Stephen Boyd and the authors of [the paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
 
 CVXPortfolio is not quite ready yet, but if you want to jump into the development branch [feel free](https://github.com/cvxgrp/cvxportfolio).
 
