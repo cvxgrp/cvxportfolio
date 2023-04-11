@@ -42,7 +42,6 @@ class BaseData:
 class YfinanceBase(BaseData):
     
     pass
-    
 
 class LocalDataStore(BaseData):
     
