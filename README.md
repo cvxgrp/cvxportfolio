@@ -8,7 +8,7 @@
 [![Binder](http://mybinder.org/badge_logo.svg)](http://mybinder.org/v2/gh/cvxgrp/cvxportfolio/HEAD)
 
 
-**Cvxportfolio is currently under redevelopment. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
+**Cvxportfolio is currently under development. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
 
 
 `cvxportfolio` is a python library for portfolio optimization and simulation,

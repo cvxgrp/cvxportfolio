@@ -5,7 +5,7 @@
 
 # Welcome to CVXPortfolio
 
-**Cvxportfolio is currently under redevelopment. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
+**Cvxportfolio is currently under development. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
 
 CVXPortfolio is a package for simulating and optimizing multi-period investment based on the framework outlined in the paper [Multi-Period Trading via Convex Optimization](http://stanford.edu/~boyd/papers/cvx_portfolio.html).
 
@@ -14,7 +14,6 @@ The simulator is able to simulate the evolution of a portfolio, taking into acco
 CVXPortfolio provides functionality for implementing trading strategies using the convex optimization package [CVXPY].
 
 The package relies on [Pandas] for data handling (e.g., prices, returns, volumes).
-Our simple {ref}`examples <examples>` show how [Quandl] can be used to import open source financial data, but any other source can be used instead.
 
 CVXPortfolio is released under a permissive open source {ref}`license <lic>`. It includes basic functionality for simulation and simple or complex optimization based trading. Users can easily extend the package with additional trading strategies.
 
@@ -35,4 +34,3 @@ license/index
 
 [cvxpy]: https://www.cvxpy.org/
 [pandas]: http://pandas.pydata.org
-[quandl]: https://www.quandl.com
