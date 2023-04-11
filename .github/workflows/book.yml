@@ -37,14 +37,14 @@ jobs:
       uses: ammaraskar/sphinx-action@master
       with:
         docs-folder: "docs/"
-        build-command: "sphinx-build -b html . _build"
+        #build-command: "sphinx-build -b html . _build"
         
     # Build the book
     - name: Build the book
       run: |
         poetry run jupyter-book clean book
         poetry run jupyter-book build book
-        cp -r book/_build/html ./docs
+        #cp -r book/_build/html ./docs
     
     # Push the book's HTML to github-pages
     - name: GitHub Pages action
