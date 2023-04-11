@@ -26,7 +26,7 @@ CVXPortfolio is not quite ready yet, but if you want to jump into the developmen
 
    install/index
    intro/index
-   documentation/index
+   API/index
    examples/index
    citing/index
    license/index
