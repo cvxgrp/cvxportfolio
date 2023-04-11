@@ -20,22 +20,22 @@ import pandas as pd
 
 class BaseData:
     
-    def load_raw(self, symbols):
+    def load_raw(self, symbol):
         raise NotImplementedError
         
-    def load(self, symbols):
-        return self.preload(self.load_raw(symbols))
+    def load(self, symbol):
+        return self.preload(self.load_raw(symbol))
         
-    def store(self, symbols, data):
+    def store(self, symbol, data):
         raise NotImplementedError
         
-    def download(self, symbols, current=None):
+    def download(self, symbol, current=None):
         raise NotImplementedError
         
-    def update_and_load(self, symbols):
-        current = self.load_raw(symbols)
-        updated = self.download(symbols, current)
-        self.store(symbols, updated)
+    def update_and_load(self, symbol):
+        current = self.load_raw(symbol)
+        updated = self.download(symbol, current)
+        self.store(symbol, updated)
         return preload(updated)
         
     def preload(self, data):
@@ -44,21 +44,28 @@ class BaseData:
         
 class YfinanceBase(BaseData):
     
-    def download(self, symbols, current=None, overlap=5):
+    def download(self, symbol, current=None, overlap=5):
         if current is None:
-            updated = yf.download()
+            updated = yf.download(symbol)
+            intraday_return = np.log(updated['Close'] - updated['Open'])
+            overnight_return = np.log(updated['Close']).diff() - np.log(updated['Adj Close']).diff()
+            
+            updated.loc[updated.index[-1], ['High', 'Low', 'Close', 'Adj Close', 'Volume']] = np.nan
             
     def preload(self, data):
         return data
 
+
 class LocalDataStore(BaseData):
     
     pass
-    
+
+
 class FredBase(BaseData):
     
     pass
-    
+
+
 class RateBase(BaseData):
     
     pass
