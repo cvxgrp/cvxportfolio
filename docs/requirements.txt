@@ -6,3 +6,4 @@ pandas
 cvxpy
 yfinance
 pandas_datareader
+matplotlib
