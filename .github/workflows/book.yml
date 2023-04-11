@@ -24,12 +24,20 @@ jobs:
       uses: snok/install-poetry@v1.3.3
       with:
           virtualenvs-create: false
-
+  
+    # Install Jupyterbook
     - name: Install jupyterbook
       run: |
         poetry install -vv
         poetry run pip install jupyter-book
         poetry run python -m ipykernel install --user --name="cvxportfolio"
+    
+    # Build sphinx
+    - name: Build sphinx documentation
+      uses: ammaraskar/sphinx-action@master
+      with:
+        docs-folder: "docs/"
+        build-command: "sphinx-build -b html . _build"
         
     # Build the book
     - name: Build the book
