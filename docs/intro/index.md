@@ -9,7 +9,7 @@ of real market data. It then presents the results.
 To run it locally install [jupyter]
 
 ```
-conda install jupyter
+pip install jupyter
 ```
 
 and load the notebook file.
