@@ -66,7 +66,7 @@ class Estimator:
 class CvxpyExpression(Estimator):
     """Base class for estimators that are Cvxpy expression."""
     
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z):
         """Compile term to cvxpy expression.
         
         This is called by a Policy class on its terms before the start of the backtest
@@ -83,7 +83,6 @@ class CvxpyExpression(Estimator):
         Args:
             w_plus (cvxpy.Variable): post-trade allocation weights vector
             z (cvxpy.Variable): trades weight vector
-            portfolio_value (float): total portfolio value (in, e.g., US dollars)
         """
         raise NotImplementedError
         
