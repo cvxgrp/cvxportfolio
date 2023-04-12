@@ -15,10 +15,10 @@ limitations under the License.
 """
 
 from pathlib import Path
-
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import pandas_datareader
 
 
 class BaseData:
@@ -31,12 +31,12 @@ class BaseData:
     def load(self, symbol):
         """Load data from database using `self.preload` function to process it."""
         return self.preload(self.load_raw(symbol))
-        
+    
     def store(self, symbol, data):
         """Store data in database."""
         raise NotImplementedError
         
-    def download(self, symbol, current=None):
+    def download(self, symbol, current):
         """Download data from external source."""
         raise NotImplementedError
         
@@ -59,15 +59,15 @@ class YfinanceBase(BaseData):
     """
     
     def internal_process(self, data):
+        """Manipulate yfinance data for better storing."""
         intraday_logreturn = np.log(data['Close']) - np.log(data['Open'])
         close_to_close_logreturn = np.log(data['Adj Close']).diff().shift(-1)
         open_to_open_logreturn = close_to_close_logreturn + intraday_logreturn - intraday_logreturn.shift(-1)
         data['Return'] = np.exp(open_to_open_logreturn) - 1
         del data['Adj Close']
+        # eliminate intraday data
         data.loc[data.index[-1], ['High', 'Low', 'Close', 'Return', 'Volume']] = np.nan
-        return data
-        
-        
+        return data    
     
     def download(self, symbol, current=None, overlap=5, **kwargs):
         """Download single stock from Yahoo Finance.
@@ -135,8 +135,25 @@ class LocalDataStore(BaseData):
 
 
 class FredBase(BaseData):
+    """Base class for FRED data access.
+    """
     
-    pass
+    def __init__(self, chunksize=pd.Timedelta('1000d')):
+        self.chunksize=chunksize
+    
+    def download(self, symbol='DFF', current=None):
+        if current is None:
+            end = pd.Timestamp.today()
+            return pandas_datareader.get_data_fred(symbol, 
+                        start='1900-01-01', 
+                        end = pd.Timestamp.today())[symbol]
+        else:
+            new = pandas_datareader.get_data_fred(symbol, 
+                                    start=current.index[-1], 
+                                    end = pd.Timestamp.today())[symbol]
+            assert new.index[0] == current.index[-1]
+            return pd.concat([current.iloc[:-1], new])
+        
 
 
 class RateBase(BaseData):
@@ -147,6 +164,9 @@ class RateBase(BaseData):
 class Yfinance(YfinanceBase, LocalDataStore):
     
     """ Yahoo Finance data interface using local data store.
+    
+    Args:
+        base_location (pathlib.Path): filesystem directory where to store files.
     """
     
     def __init__(self, *args, **kwargs):

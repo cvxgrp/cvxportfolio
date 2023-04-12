@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.data import YfinanceBase, LocalDataStore, Yfinance
+from cvxportfolio.data import YfinanceBase, LocalDataStore, Yfinance, FredBase
 
 
 def test_yfinance_download():
@@ -79,6 +79,7 @@ def test_local_store_dataframe(tmp_path):
     
 
 def test_yfinance(tmp_path):
+    """Test yfinance ability to store and retrieve."""
     
     store = Yfinance(tmp_path)
     data = store.update_and_load('ZM')
@@ -95,4 +96,14 @@ def test_yfinance(tmp_path):
     print((data1.iloc[:len(data)-1].Return- data.iloc[:-1].Return).describe().T)
     
     assert np.allclose(data1.iloc[:len(data)-1].Return, data.iloc[:-1].Return)    
+    
+    
+def test_fred_base():
+    data = FredBase().download("DFF")
+    assert data['2023-04-06'] == 4.83
+    assert data.index[0] == pd.Timestamp('1954-07-01')
+    print(data)
+    olddata = data.iloc[:-123]
+    newdata = FredBase().download("DFF", olddata)
+    assert np.all(data == newdata)
     
