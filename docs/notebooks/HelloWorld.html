@@ -1,0 +1,1182 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Hello World &#8212; cvxportfolio</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" href="../../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/clipboard.min.js"></script>
+    <script src="../../_static/copybutton.js"></script>
+    <script src="../../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../../_static/design-tabs.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../../_static/sphinx-thebe.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'docs/notebooks/HelloWorld';</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="prev" title="Examples" href="../examples.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search this book..."
+         aria-label="Search this book..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    <p class="title logo__title">cvxportfolio</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../index.html">
+                    cvxportfolio
+                </a>
+            </li>
+        </ul>
+        <ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../examples.html">Examples</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Hello World</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-launch-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Launch interactive content">
+    <i class="fas fa-rocket"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://mybinder.org/v2/gh/cvxgrp/cvxportfolio/main?urlpath=tree/book/docs/notebooks/HelloWorld.ipynb" target="_blank"
+   class="btn btn-sm dropdown-item"
+   title="Launch onBinder"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  
+    <img src="../../_static/images/logo_binder.svg">
+  </span>
+<span class="btn__text-container">Binder</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/cvxgrp/cvxportfolio" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/cvxgrp/cvxportfolio/issues/new?title=Issue%20on%20page%20%2Fdocs/notebooks/HelloWorld.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../../_sources/docs/notebooks/HelloWorld.ipynb" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.ipynb</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script>
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Hello World</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="hello-world">
+<h1>Hello World<a class="headerlink" href="#hello-world" title="Permalink to this heading">#</a></h1>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">matplotlib</span> inline
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">cvxportfolio</span> <span class="k">as</span> <span class="nn">cp</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Download the problem data with <code class="docutils literal notranslate"><span class="pre">yfinance</span></code>. We select five liquid stocks.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">yfinance</span>
+<span class="n">tickers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;AMZN&quot;</span><span class="p">,</span> <span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;MSFT&quot;</span><span class="p">,</span> <span class="s2">&quot;GOOGL&quot;</span><span class="p">,</span> <span class="s2">&quot;TSLA&quot;</span><span class="p">]</span>
+<span class="c1"># start_date = &quot;2012-01-01&quot;</span>
+<span class="c1"># end_date = &quot;2016-12-31&quot;</span>
+<span class="n">returns</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+    <span class="nb">dict</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">(</span>
+                <span class="n">ticker</span><span class="p">,</span>
+                <span class="n">yfinance</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="n">ticker</span><span class="p">)[</span> <span class="c1">#, start_date=start_date, end_date=end_date)[</span>
+                    <span class="s2">&quot;Adj Close&quot;</span>
+                <span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">ticker</span> <span class="ow">in</span> <span class="n">tickers</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">returns</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>AMZN</th>
+      <th>AAPL</th>
+      <th>MSFT</th>
+      <th>GOOGL</th>
+      <th>TSLA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>6519.000000</td>
+      <td>10671.000000</td>
+      <td>9345.000000</td>
+      <td>4693.000000</td>
+      <td>3218.000000</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>0.001700</td>
+      <td>0.001097</td>
+      <td>0.001132</td>
+      <td>0.000983</td>
+      <td>0.002125</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>0.036083</td>
+      <td>0.028215</td>
+      <td>0.021317</td>
+      <td>0.019433</td>
+      <td>0.036140</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>-0.247661</td>
+      <td>-0.518692</td>
+      <td>-0.301159</td>
+      <td>-0.116341</td>
+      <td>-0.210628</td>
+    </tr>
+    <tr>
+      <th>25%</th>
+      <td>-0.013295</td>
+      <td>-0.013065</td>
+      <td>-0.009217</td>
+      <td>-0.007994</td>
+      <td>-0.015605</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>0.000402</td>
+      <td>0.000000</td>
+      <td>0.000351</td>
+      <td>0.000745</td>
+      <td>0.001218</td>
+    </tr>
+    <tr>
+      <th>75%</th>
+      <td>0.014799</td>
+      <td>0.014695</td>
+      <td>0.011355</td>
+      <td>0.010067</td>
+      <td>0.019381</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>0.344714</td>
+      <td>0.332281</td>
+      <td>0.195652</td>
+      <td>0.199915</td>
+      <td>0.243951</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>We get the return on cash from FRED.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas_datareader</span>
+
+<span class="n">returns</span><span class="p">[[</span><span class="s2">&quot;USDOLLAR&quot;</span><span class="p">]]</span> <span class="o">=</span>  <span class="n">pandas_datareader</span><span class="o">.</span><span class="n">get_data_fred</span><span class="p">(</span><span class="s2">&quot;DFF&quot;</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="s1">&#39;2000-01-01&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">250</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">returns</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;ffill&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+
+<span class="n">returns</span><span class="o">.</span><span class="n">tail</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>AMZN</th>
+      <th>AAPL</th>
+      <th>MSFT</th>
+      <th>GOOGL</th>
+      <th>TSLA</th>
+      <th>USDOLLAR</th>
+    </tr>
+    <tr>
+      <th>Date</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2023-04-05</th>
+      <td>-0.027417</td>
+      <td>-0.011290</td>
+      <td>-0.009889</td>
+      <td>-0.002387</td>
+      <td>-0.036660</td>
+      <td>0.000193</td>
+    </tr>
+    <tr>
+      <th>2023-04-06</th>
+      <td>0.009496</td>
+      <td>0.005496</td>
+      <td>0.025533</td>
+      <td>0.037810</td>
+      <td>-0.002480</td>
+      <td>0.000193</td>
+    </tr>
+    <tr>
+      <th>2023-04-10</th>
+      <td>0.001078</td>
+      <td>-0.015972</td>
+      <td>-0.007579</td>
+      <td>-0.018262</td>
+      <td>-0.002972</td>
+      <td>0.000193</td>
+    </tr>
+    <tr>
+      <th>2023-04-11</th>
+      <td>-0.022022</td>
+      <td>-0.007591</td>
+      <td>-0.022668</td>
+      <td>-0.010241</td>
+      <td>0.012357</td>
+      <td>0.000193</td>
+    </tr>
+    <tr>
+      <th>2023-04-12</th>
+      <td>-0.012210</td>
+      <td>-0.001399</td>
+      <td>0.001096</td>
+      <td>-0.006265</td>
+      <td>-0.018363</td>
+      <td>0.000193</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>We compute rolling estimates of the first and second moments of the returns using a window of 1000 days. We shift them by one unit (so at every day we present the optimizer with only past data).</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">r_hat</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+<span class="n">Sigma_hat</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span><span class="o">.</span><span class="n">cov</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+
+<span class="n">r_hat</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>AMZN</th>
+      <th>AAPL</th>
+      <th>MSFT</th>
+      <th>GOOGL</th>
+      <th>TSLA</th>
+      <th>USDOLLAR</th>
+    </tr>
+    <tr>
+      <th>Date</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2014-06-20</th>
+      <td>0.001314</td>
+      <td>0.001108</td>
+      <td>0.000786</td>
+      <td>0.001036</td>
+      <td>0.002961</td>
+      <td>0.000005</td>
+    </tr>
+    <tr>
+      <th>2014-06-23</th>
+      <td>0.001300</td>
+      <td>0.001116</td>
+      <td>0.000803</td>
+      <td>0.001059</td>
+      <td>0.002971</td>
+      <td>0.000005</td>
+    </tr>
+    <tr>
+      <th>2014-06-24</th>
+      <td>0.001293</td>
+      <td>0.001127</td>
+      <td>0.000804</td>
+      <td>0.001085</td>
+      <td>0.003083</td>
+      <td>0.000005</td>
+    </tr>
+    <tr>
+      <th>2014-06-25</th>
+      <td>0.001300</td>
+      <td>0.001127</td>
+      <td>0.000794</td>
+      <td>0.001089</td>
+      <td>0.003189</td>
+      <td>0.000005</td>
+    </tr>
+    <tr>
+      <th>2014-06-26</th>
+      <td>0.001302</td>
+      <td>0.001121</td>
+      <td>0.000777</td>
+      <td>0.001113</td>
+      <td>0.003368</td>
+      <td>0.000005</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>2023-04-05</th>
+      <td>0.000382</td>
+      <td>0.001468</td>
+      <td>0.001111</td>
+      <td>0.000753</td>
+      <td>0.003311</td>
+      <td>0.000048</td>
+    </tr>
+    <tr>
+      <th>2023-04-06</th>
+      <td>0.000345</td>
+      <td>0.001456</td>
+      <td>0.001104</td>
+      <td>0.000747</td>
+      <td>0.003248</td>
+      <td>0.000048</td>
+    </tr>
+    <tr>
+      <th>2023-04-10</th>
+      <td>0.000353</td>
+      <td>0.001442</td>
+      <td>0.001121</td>
+      <td>0.000778</td>
+      <td>0.003254</td>
+      <td>0.000048</td>
+    </tr>
+    <tr>
+      <th>2023-04-11</th>
+      <td>0.000356</td>
+      <td>0.001423</td>
+      <td>0.001100</td>
+      <td>0.000759</td>
+      <td>0.003243</td>
+      <td>0.000048</td>
+    </tr>
+    <tr>
+      <th>2023-04-12</th>
+      <td>0.000320</td>
+      <td>0.001412</td>
+      <td>0.001074</td>
+      <td>0.000738</td>
+      <td>0.003294</td>
+      <td>0.000048</td>
+    </tr>
+  </tbody>
+</table>
+<p>2218 rows × 6 columns</p>
+</div></div></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">Sigma_hat</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th></th>
+      <th>AMZN</th>
+      <th>AAPL</th>
+      <th>MSFT</th>
+      <th>GOOGL</th>
+      <th>TSLA</th>
+      <th>USDOLLAR</th>
+    </tr>
+    <tr>
+      <th>Date</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th rowspan="5" valign="top">2014-06-20</th>
+      <th>AMZN</th>
+      <td>4.237160e-04</td>
+      <td>1.014461e-04</td>
+      <td>9.996416e-05</td>
+      <td>1.531471e-04</td>
+      <td>2.003648e-04</td>
+      <td>9.720131e-10</td>
+    </tr>
+    <tr>
+      <th>AAPL</th>
+      <td>1.014461e-04</td>
+      <td>2.841137e-04</td>
+      <td>7.152266e-05</td>
+      <td>1.037272e-04</td>
+      <td>1.220261e-04</td>
+      <td>-6.378260e-10</td>
+    </tr>
+    <tr>
+      <th>MSFT</th>
+      <td>9.996416e-05</td>
+      <td>7.152266e-05</td>
+      <td>1.983344e-04</td>
+      <td>8.818676e-05</td>
+      <td>1.074343e-04</td>
+      <td>-7.018994e-10</td>
+    </tr>
+    <tr>
+      <th>GOOGL</th>
+      <td>1.531471e-04</td>
+      <td>1.037272e-04</td>
+      <td>8.818676e-05</td>
+      <td>2.528908e-04</td>
+      <td>1.364906e-04</td>
+      <td>2.541239e-10</td>
+    </tr>
+    <tr>
+      <th>TSLA</th>
+      <td>2.003648e-04</td>
+      <td>1.220261e-04</td>
+      <td>1.074343e-04</td>
+      <td>1.364906e-04</td>
+      <td>1.424632e-03</td>
+      <td>-6.411383e-10</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th rowspan="5" valign="top">2023-04-12</th>
+      <th>AAPL</th>
+      <td>3.197513e-04</td>
+      <td>4.661772e-04</td>
+      <td>3.418314e-04</td>
+      <td>3.160256e-04</td>
+      <td>4.705983e-04</td>
+      <td>-1.812093e-08</td>
+    </tr>
+    <tr>
+      <th>MSFT</th>
+      <td>3.282268e-04</td>
+      <td>3.418314e-04</td>
+      <td>4.124012e-04</td>
+      <td>3.411503e-04</td>
+      <td>4.167399e-04</td>
+      <td>1.507538e-09</td>
+    </tr>
+    <tr>
+      <th>GOOGL</th>
+      <td>3.212671e-04</td>
+      <td>3.160256e-04</td>
+      <td>3.411503e-04</td>
+      <td>4.383390e-04</td>
+      <td>3.825360e-04</td>
+      <td>-2.200099e-08</td>
+    </tr>
+    <tr>
+      <th>TSLA</th>
+      <td>4.529263e-04</td>
+      <td>4.705983e-04</td>
+      <td>4.167399e-04</td>
+      <td>3.825360e-04</td>
+      <td>1.852271e-03</td>
+      <td>-1.109274e-07</td>
+    </tr>
+    <tr>
+      <th>USDOLLAR</th>
+      <td>-2.292455e-08</td>
+      <td>-1.812093e-08</td>
+      <td>1.507538e-09</td>
+      <td>-2.200099e-08</td>
+      <td>-1.109274e-07</td>
+      <td>3.283309e-09</td>
+    </tr>
+  </tbody>
+</table>
+<p>13308 rows × 6 columns</p>
+</div></div></div>
+</div>
+<p>For the cash return instead we simply use the previous day’s return.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">r_hat</span><span class="p">[</span><span class="s1">&#39;USDOLLAR&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="p">[</span><span class="s1">&#39;USDOLLAR&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Here we define the transaction cost and holding cost model (sections 2.3 and 2.4 <a class="reference external" href="https://web.stanford.edu/~boyd/papers/cvx_portfolio.html">of the paper</a>). The data can be expressed
+as</p>
+<ul class="simple">
+<li><p>a scalar (like we’re doing here), the same value for all assets and all time periods;</p></li>
+<li><p>a Pandas Series indexed by the asset names, for asset-specific values;</p></li>
+<li><p>a Pandas DataFrame indexed by timestamps with asset names as columns, for values that vary by asset and in time.</p></li>
+</ul>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">tcost_model</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">TcostModel</span><span class="p">(</span><span class="n">half_spread</span><span class="o">=</span><span class="mf">10e-4</span><span class="p">)</span>
+<span class="n">hcost_model</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">HcostModel</span><span class="p">(</span><span class="n">borrow_costs</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We define the single period optimization policy (section 4 <a class="reference external" href="https://web.stanford.edu/~boyd/papers/cvx_portfolio.html">of the paper</a>).</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">risk_model</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">FullSigma</span><span class="p">(</span><span class="n">Sigma_hat</span><span class="p">)</span>
+<span class="n">gamma_risk</span><span class="p">,</span> <span class="n">gamma_trade</span><span class="p">,</span> <span class="n">gamma_hold</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span>
+<span class="n">leverage_limit</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">LeverageLimit</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="n">spo_policy</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">SinglePeriodOpt</span><span class="p">(</span>
+    <span class="n">return_forecast</span><span class="o">=</span><span class="n">r_hat</span><span class="p">,</span>
+    <span class="n">costs</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">gamma_risk</span> <span class="o">*</span> <span class="n">risk_model</span><span class="p">,</span>
+        <span class="n">gamma_trade</span> <span class="o">*</span> <span class="n">tcost_model</span><span class="p">,</span>
+        <span class="n">gamma_hold</span> <span class="o">*</span> <span class="n">hcost_model</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="n">constraints</span><span class="o">=</span><span class="p">[</span><span class="n">leverage_limit</span><span class="p">],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We run a backtest, which returns a result object. By calling its summary method we get some basic statistics.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">market_sim</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">MarketSimulator</span><span class="p">(</span>
+    <span class="n">returns</span><span class="p">,</span> <span class="p">[</span><span class="n">tcost_model</span><span class="p">,</span> <span class="n">hcost_model</span><span class="p">],</span> <span class="n">cash_key</span><span class="o">=</span><span class="s2">&quot;USDOLLAR&quot;</span>
+<span class="p">)</span>
+<span class="n">init_portfolio</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">returns</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="mf">250000.0</span><span class="p">)</span>
+<span class="n">init_portfolio</span><span class="o">.</span><span class="n">USDOLLAR</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">market_sim</span><span class="o">.</span><span class="n">run_multiple_backtest</span><span class="p">(</span>
+    <span class="n">init_portfolio</span><span class="p">,</span>
+    <span class="n">start_time</span><span class="o">=</span><span class="s2">&quot;2020-01-01&quot;</span><span class="p">,</span>
+    <span class="n">end_time</span><span class="o">=</span><span class="s2">&quot;2023-04-01&quot;</span><span class="p">,</span>
+    <span class="n">policies</span><span class="o">=</span><span class="p">[</span><span class="n">spo_policy</span><span class="p">,</span> 
+             <span class="n">cp</span><span class="o">.</span><span class="n">Hold</span><span class="p">()</span>
+            <span class="p">],</span>
+<span class="p">)</span>
+<span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Number of periods                               818
+Initial timestamp               2020-01-02 00:00:00
+Final timestamp                 2023-03-31 00:00:00
+Portfolio return (%)                         62.376
+Excess return (%)                            61.373
+Excess risk (%)                              64.411
+Sharpe ratio                                  0.953
+Max. drawdown                                70.894
+Turnover (%)                                 32.884
+Average policy time (sec)                     0.044
+Average simulator time (sec)                  0.004
+</pre></div>
+</div>
+</div>
+</div>
+<p>The total value of the portfolio in time.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Number of periods                               818
+Initial timestamp               2020-01-02 00:00:00
+Final timestamp                 2023-03-31 00:00:00
+Portfolio return (%)                         41.343
+Excess return (%)                            40.340
+Excess risk (%)                              45.013
+Sharpe ratio                                  0.897
+Max. drawdown                                59.516
+Turnover (%)                                  0.000
+Average policy time (sec)                     0.000
+Average simulator time (sec)                  0.005
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>&lt;Axes: &gt;
+</pre></div>
+</div>
+<img alt="../../_images/d2fde00c7d14530795d23fe72ce4c3c2547054138bfad875b81abfa47e6d27e1.png" src="../../_images/d2fde00c7d14530795d23fe72ce4c3c2547054138bfad875b81abfa47e6d27e1.png" />
+</div>
+</div>
+<p>The weights vector of the portfolio in time.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">w</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>&lt;Axes: &gt;
+</pre></div>
+</div>
+<img alt="../../_images/ffe51febdb24be1f204318afdc78c91f9c001f75619302c42e363381ffe0d643.png" src="../../_images/ffe51febdb24be1f204318afdc78c91f9c001f75619302c42e363381ffe0d643.png" />
+</div>
+</div>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            name: "python3",
+            path: "./docs/notebooks"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+                </article>
+              
+
+              
+              
+                <footer class="bd-footer-article">
+                  
+<div class="footer-article-items footer-article__inner">
+  
+    <div class="footer-article-item"><!-- Previous / next buttons -->
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../examples.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Examples</p>
+      </div>
+    </a>
+</div></div>
+  
+</div>
+
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By The Cvxportfolio Contributors
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  <p class="copyright">
+    
+      © Copyright 2022.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
