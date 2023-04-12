@@ -23,7 +23,6 @@ The documentation of the package is at [cvxportfolio.readthedocs.io](https://cvx
 Installation
 ------------
 
-To install the package
 ```
 pip install cvxportfolio
 ```
@@ -46,7 +45,7 @@ Examples
 You can see basic usage of the package in the [example notebooks](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/).
 Currently we are working on simplifying the user interface and these may change.
 
-To run them, clone the repository, create the environment and the `cvxportfolio` kernel, and then start [`jupyter`](https://jupyter.org/).
+To run them clone the repository, create the environment and the `cvxportfolio` kernel, and then start [`jupyter`](https://jupyter.org/).
 
 ```
 git clone https://github.com/cvxgrp/cvxportfolio.git
@@ -60,7 +59,7 @@ poetry run jupyter notebook
 The ones that run without isses (as of 2023-04-11) are [HelloWorld](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/HelloWorld.ipynb) and [MultiPeriodTCostOptimization](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodTCostOptimization.ipynb).
 
 The other example notebooks were used to develop the plots and results in [the paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf). We are keeping 
-them for historical record but they don't currently run because various libraries have broken. 
+them for historical record but they don't currently run. 
 We are doing our best to restore them. 
 
 
