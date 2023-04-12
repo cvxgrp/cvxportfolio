@@ -1,19 +1,16 @@
-"""
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
-Copyright 2023- The Cvxportfolio Contributors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import datetime as dt
 import pandas as pd
@@ -41,7 +38,6 @@ __all__ = [
 
 class BasePolicy:
     """Base class for a trading policy."""
-
 
     def __init__(self):
         self.costs = []
@@ -268,12 +264,8 @@ class SinglePeriodOpt(BasePolicy):
             costs.append(cost_expr)
             constraints += const_expr
 
-        constraints += [
-            item
-            for item in (
-                con.weight_expr(t, wplus, z, value) for con in self.constraints
-            )
-        ]
+        for constr in self.constraints:
+            constraints += constr.weight_expr(t, wplus, z, value)
 
         for el in costs:
             assert el.is_convex()
@@ -364,7 +356,8 @@ class MultiPeriodOpt(SinglePeriodOpt):
 
             obj -= sum(costs)
             constr += [cvx.sum(z) == 0]
-            constr += [con.weight_expr(t, wplus, z, value) for con in self.constraints]
+            for single_constr in self.constraints:
+                constr += single_constr.weight_expr(t, wplus, z, value)
 
             prob = cvx.Problem(cvx.Maximize(obj), constr)
             prob_arr.append(prob)
@@ -374,7 +367,9 @@ class MultiPeriodOpt(SinglePeriodOpt):
         # Terminal constraint.
         if self.terminal_weights is not None:
             # prob_arr[-1].constraints += [wplus == self.terminal_weights.values]
-            prob_arr[-1] = cvx.Problem(cvx.Maximize(obj), constr + [wplus == self.terminal_weights.values])
+            prob_arr[-1] = cvx.Problem(
+                cvx.Maximize(obj), constr + [wplus == self.terminal_weights.values]
+            )
 
         sum(prob_arr).solve(solver=self.solver)
         return pd.Series(index=portfolio.index, data=(z_vars[0].value * value))

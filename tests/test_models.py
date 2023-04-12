@@ -1,18 +1,19 @@
-"""
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+# Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+# Copyright 2023- The Cvxportfolio Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
 import cvxpy as cvx
 import numpy as np
 import pandas as pd
@@ -249,7 +250,7 @@ def test_hold_constrs(returns):
 
     # long only
     model = LongOnly()
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.ones(n)
     assert cons.value()
     wplus.value = -np.ones(n)
@@ -257,7 +258,7 @@ def test_hold_constrs(returns):
 
     # long cash
     model = LongCash()
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.ones(n)
     assert cons.value()
     tmp = np.ones(n)
@@ -267,7 +268,7 @@ def test_hold_constrs(returns):
 
     # dollar neutral
     model = DollarNeutral()
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.zeros(n)
     assert cons.value()
     wplus.value = np.ones(n)
@@ -275,7 +276,7 @@ def test_hold_constrs(returns):
 
     # leverage limit
     model = LeverageLimit(2)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.ones(n) / n
     assert cons.value()
     tmp = np.zeros(n)
@@ -284,7 +285,7 @@ def test_hold_constrs(returns):
     wplus.value = tmp
     assert not cons.value()
     model = LeverageLimit(7)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[-1] = -3
@@ -294,18 +295,18 @@ def test_hold_constrs(returns):
     limits = pd.Series(index=returns.index, data=2)
     limits.iloc[1] = 7
     model = LeverageLimit(limits)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[-1] = -3
     wplus.value = tmp
     assert cons.value()
-    cons = model.weight_expr(returns.index[2], wplus, None, None)
+    cons = model.weight_expr(returns.index[2], wplus, None, None)[0]
     assert not cons.value()
 
     # Max weights
     model = MaxWeights(2)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.ones(n) / n
     assert cons.value()
     tmp = np.zeros(n)
@@ -314,7 +315,7 @@ def test_hold_constrs(returns):
     wplus.value = tmp
     assert not cons.value()
     model = MaxWeights(7)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[-1] = -3
@@ -324,18 +325,18 @@ def test_hold_constrs(returns):
     limits = pd.Series(index=returns.index, data=2)
     limits.iloc[1] = 7
     model = MaxWeights(limits)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[-1] = -3
     wplus.value = tmp
     assert cons.value()
-    cons = model.weight_expr(returns.index[2], wplus, None, None)
+    cons = model.weight_expr(returns.index[2], wplus, None, None)[0]
     assert not cons.value()
 
     # Min weights
     model = MinWeights(2)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.ones(n) / n
     assert not cons.value()
     tmp = np.zeros(n)
@@ -344,7 +345,7 @@ def test_hold_constrs(returns):
     wplus.value = tmp
     assert not cons.value()
     model = MinWeights(-3)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[-1] = -3
@@ -354,18 +355,18 @@ def test_hold_constrs(returns):
     limits = pd.Series(index=returns.index, data=2)
     limits.iloc[1] = -3
     model = MinWeights(limits)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[-1] = -3
     wplus.value = tmp
     assert cons.value()
-    cons = model.weight_expr(returns.index[2], wplus, None, None)
+    cons = model.weight_expr(returns.index[2], wplus, None, None)[0]
     assert not cons.value()
 
     # Factor Max Limit
     model = FactorMaxLimit(np.ones((n - 1, 2)), [0.5, 1])
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.ones(n) / n
     assert not cons.value()
     tmp = np.zeros(n)
@@ -374,7 +375,7 @@ def test_hold_constrs(returns):
     wplus.value = tmp
     assert not cons.value()
     model = FactorMaxLimit(np.ones((n - 1, 2)), [4, 4])
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[1] = -3
@@ -383,7 +384,7 @@ def test_hold_constrs(returns):
 
     # Factor Min Limit
     model = FactorMinLimit(np.ones((n - 1, 2)), [0.5, 1])
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.ones(n) / n
     assert not cons.value()
     tmp = np.zeros(n)
@@ -392,7 +393,7 @@ def test_hold_constrs(returns):
     wplus.value = tmp
     assert cons.value()
     model = FactorMinLimit(np.ones((n - 1, 2)), [-4, -4])
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[1] = -3
@@ -401,7 +402,7 @@ def test_hold_constrs(returns):
 
     # Fixed Alpha
     model = FixedAlpha(np.ones((n - 1, 1)), 1)
-    cons = model.weight_expr(t, wplus, None, None)
+    cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.ones(n) / n
     assert not cons.value()
     tmp = np.zeros(n)
@@ -420,7 +421,7 @@ def test_trade_constr(returns, volumes):
     # avg daily value limits.
     value = 1e6
     model = MaxTrade(volumes, max_fraction=0.1)
-    cons = model.weight_expr(t, None, z, value)
+    cons = model.weight_expr(t, None, z, value)[0]
     tmp = np.zeros(n)
     tmp[:-1] = volumes.loc[t].values / value * 0.05
     z.value = tmp

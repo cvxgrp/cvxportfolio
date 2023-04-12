@@ -1,20 +1,16 @@
-"""
-Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
-Copyright 2023- The Cvxportfolio Contributors
-
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 import cvxpy as cvx
@@ -38,7 +34,6 @@ __all__ = [
 
 
 class BaseConstraint:
-
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop("w_bench", 0.0)
 
@@ -76,10 +71,10 @@ class MaxTrade(BaseConstraint):
           z: trade weights
           v: portfolio value
         """
-        return (
+        return [
             cvx.abs(z[:-1]) * v
             <= np.array(values_in_time(self.ADVs, t)) * self.max_fraction
-        )
+        ]
 
 
 class LongOnly(BaseConstraint):
@@ -95,7 +90,7 @@ class LongOnly(BaseConstraint):
           t: time
           w_plus: holdings
         """
-        return w_plus >= 0
+        return [w_plus >= 0]
 
 
 class LeverageLimit(BaseConstraint):
@@ -116,7 +111,7 @@ class LeverageLimit(BaseConstraint):
           t: time
           w_plus: holdings
         """
-        return cvx.norm(w_plus[:-1], 1) <= values_in_time(self.limit, t)
+        return [cvx.norm(w_plus[:-1], 1) <= values_in_time(self.limit, t)]
 
 
 class LongCash(BaseConstraint):
@@ -132,7 +127,7 @@ class LongCash(BaseConstraint):
           t: time
           w_plus: holdings
         """
-        return w_plus[-1] >= 0
+        return [w_plus[-1] >= 0]
 
 
 class DollarNeutral(BaseConstraint):
@@ -148,7 +143,7 @@ class DollarNeutral(BaseConstraint):
           t: time
           w_plus: holdings
         """
-        return sum(w_plus[:-1]) == 0
+        return [sum(w_plus[:-1]) == 0]
 
 
 class MaxWeights(BaseConstraint):
@@ -169,7 +164,7 @@ class MaxWeights(BaseConstraint):
           t: time
           w_plus: holdings
         """
-        return w_plus[:-1] <= values_in_time(self.limit, t)
+        return [w_plus[:-1] <= values_in_time(self.limit, t)]
 
 
 class MinWeights(BaseConstraint):
@@ -190,7 +185,7 @@ class MinWeights(BaseConstraint):
           t: time
           w_plus: holdings
         """
-        return w_plus[:-1] >= values_in_time(self.limit, t)
+        return [w_plus[:-1] >= values_in_time(self.limit, t)]
 
 
 class FactorMaxLimit(BaseConstraint):
@@ -214,9 +209,10 @@ class FactorMaxLimit(BaseConstraint):
             t: time
             w_plus: holdings
         """
-        return values_in_time(self.factor_exposure, t).T @ w_plus[
-            :-1
-        ] <= values_in_time(self.limit, t)
+        return [
+            values_in_time(self.factor_exposure, t).T @ w_plus[:-1]
+            <= values_in_time(self.limit, t)
+        ]
 
 
 class FactorMinLimit(BaseConstraint):
@@ -240,9 +236,10 @@ class FactorMinLimit(BaseConstraint):
             t: time
             w_plus: holdings
         """
-        return values_in_time(self.factor_exposure, t).T @ w_plus[
-            :-1
-        ] >= values_in_time(self.limit, t)
+        return [
+            values_in_time(self.factor_exposure, t).T @ w_plus[:-1]
+            >= values_in_time(self.limit, t)
+        ]
 
 
 class FixedAlpha(BaseConstraint):
@@ -260,6 +257,7 @@ class FixedAlpha(BaseConstraint):
         self.alpha_target = alpha_target
 
     def _weight_expr(self, t, w_plus, z, v):
-        return values_in_time(self.return_forecast, t).T @ w_plus[
-            :-1
-        ] == values_in_time(self.alpha_target, t)
+        return [
+            values_in_time(self.return_forecast, t).T @ w_plus[:-1]
+            == values_in_time(self.alpha_target, t)
+        ]

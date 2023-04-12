@@ -25,6 +25,7 @@ sphinx = "*"
 numpydoc = "*" # for sphinx
 myst-parser = "*"
 jupyter = "*"
+black = "*"
 
 [build-system]
 requires = ["poetry>=1.0.2"]
