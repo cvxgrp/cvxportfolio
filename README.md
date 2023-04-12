@@ -18,21 +18,7 @@ and [`pandas`](https://github.com/pandas-dev/pandas).
 The documentation of the package is at [cvxportfolio.readthedocs.io](https://cvxportfolio.readthedocs.io/en/latest/).
 
 
-If you wish to cite CVXPortfolio, please use:
-```
-@article{BBDKKNS:17,
-    author       = {S. Boyd and E. Busseti and S. Diamond and R. Kahn and K. Koh and P. Nystrup and J. Speth},
-    title        = {Multi-Period Trading via Convex Optimization},
-    journal      = {Foundations and Trends in Optimization},
-    year         = {2017},
-    month        = {August},
-    volume       = {3},
-    number       = {1},
-    pages        = {1--76},
-    publisher    = {Now Publishers},
-    url          = {http://stanford.edu/~boyd/papers/cvx_portfolio.html},
-}
-```
+
 
 Installation
 ------------
@@ -68,7 +54,38 @@ cd examples
 poetry run jupyter notebook
 ```
 
-The example notebooks were used to develop the plots and results in [the paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf). We are keeping 
-them for historical record but they don't currently run. We'll do our best to restore them. For a working example (as of 2023-04-11) look at [HelloWorld](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/HelloWorld.ipynb) and [MultiPeriodTCostOptimization](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodTCostOptimization.ipynb).
+The ones that run without isses (as of 2023-04-11) are [HelloWorld](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/HelloWorld.ipynb) and [MultiPeriodTCostOptimization](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodTCostOptimization.ipynb).
 Currently we are working on simplifying the user interface and these may change.
+
+The other example notebooks were used to develop the plots and results in [the paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf). We are keeping 
+them for historical record but they don't currently run because various libraries have broken. 
+We are doing our best to restore them. 
+
+
+Citing
+------------
+
+If you wish to cite CVXPortfolio, please use:
+```
+@article{BBDKKNS:17,
+    author       = {S. Boyd and E. Busseti and S. Diamond and R. Kahn and K. Koh and P. Nystrup and J. Speth},
+    title        = {Multi-Period Trading via Convex Optimization},
+    journal      = {Foundations and Trends in Optimization},
+    year         = {2017},
+    month        = {August},
+    volume       = {3},
+    number       = {1},
+    pages        = {1--76},
+    publisher    = {Now Publishers},
+    url          = {http://stanford.edu/~boyd/papers/cvx_portfolio.html},
+}
+```
+
+
+License
+------------
+
+Cvxportfolio is licensed under the [Apache 2.0](http://www.apache.org/licenses/) permissive
+open source license.
+
 
