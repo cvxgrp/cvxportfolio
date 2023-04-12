@@ -45,7 +45,7 @@ class BaseData:
         current = self.load_raw(symbol)
         updated = self.download(symbol, current)
         self.store(symbol, updated)
-        return preload(updated)
+        return self.preload(updated)
         
     def preload(self, data):
         """Prepare data to serve to the user."""
@@ -57,6 +57,17 @@ class YfinanceBase(BaseData):
     
     This should not be used directly unless you know what you're doing.
     """
+    
+    def internal_process(self, data):
+        intraday_logreturn = np.log(data['Close']) - np.log(data['Open'])
+        close_to_close_logreturn = np.log(data['Adj Close']).diff().shift(-1)
+        open_to_open_logreturn = close_to_close_logreturn + intraday_logreturn - intraday_logreturn.shift(-1)
+        data['Return'] = np.exp(open_to_open_logreturn) - 1
+        del data['Adj Close']
+        data.loc[data.index[-1], ['High', 'Low', 'Close', 'Return', 'Volume']] = np.nan
+        return data
+        
+        
     
     def download(self, symbol, current=None, overlap=5, **kwargs):
         """Download single stock from Yahoo Finance.
@@ -75,17 +86,13 @@ class YfinanceBase(BaseData):
         Returns:
             updated (pandas.DataFrame): updated DataFrame for the symbol
         """
-        if current is None:
+        if (current is None) or (len(current) < overlap):
             updated = yf.download(symbol, **kwargs)
-            intraday_logreturn = np.log(updated['Close']) - np.log(updated['Open'])
-            close_to_close_logreturn = np.log(updated['Adj Close']).diff().shift(-1)
-            open_to_open_logreturn = close_to_close_logreturn + intraday_logreturn - intraday_logreturn.shift(-1)
-            updated['Return'] = np.exp(open_to_open_logreturn) - 1
-            del updated['Adj Close']
-            updated.loc[updated.index[-1], ['High', 'Low', 'Close', 'Return', 'Volume']] = np.nan
-            return updated
+            return self.internal_process(updated)
         else:
-            raise NotImplementedError
+            new = yf.download(symbol, start=current.index[-overlap], **kwargs)
+            new = self.internal_process(new)
+            return pd.concat([current.iloc[:-overlap], new])
             
     def preload(self, data):
         """Prepare data for use by Cvxportfolio.
@@ -101,7 +108,7 @@ class YfinanceBase(BaseData):
 
 
 class LocalDataStore(BaseData):
-    """Local data store.
+    """Local data store for pandas Series and DataFrames.
     
     Args:
         base_location (pathlib.Path): filesystem directory where to store files.
@@ -115,10 +122,12 @@ class LocalDataStore(BaseData):
     
     def load_raw(self, symbol, **kwargs):
         """Load raw data from local store."""
-        tmp = pd.read_csv(self.location / f'{symbol}.csv', 
-            index_col = 0, parse_dates=True, **kwargs)
-        return tmp.iloc[:,0] if tmp.shape[1] == 1 else tmp
-
+        try:
+            tmp = pd.read_csv(self.location / f'{symbol}.csv', 
+                index_col = 0, parse_dates=True, **kwargs)
+            return tmp.iloc[:,0] if tmp.shape[1] == 1 else tmp
+        except FileNotFoundError:
+            return None
         
     def store(self, symbol, data, **kwargs):
         """Store data locally."""
@@ -140,7 +149,10 @@ class Yfinance(YfinanceBase, LocalDataStore):
     """ Yahoo Finance data interface using local data store.
     """
     
-    def update_and_load(symbol):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def update_and_load(self, symbol):
         """Update data for symbol and load it."""
         return super().update_and_load(symbol)
     

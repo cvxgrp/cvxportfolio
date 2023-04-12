@@ -19,8 +19,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.data import YfinanceBase, LocalDataStore
-
+from cvxportfolio.data import YfinanceBase, LocalDataStore, Yfinance
 
 
 def test_yfinance_download():
@@ -35,6 +34,7 @@ def test_yfinance_download():
     
 
 def test_local_store_series(tmp_path):
+    """Test storing and retrieving of a Series with datetime index."""
     store = LocalDataStore(tmp_path)
     for data in [pd.Series(0., pd.date_range('2020-01-01', '2020-01-10'), name='prova1'),
                  pd.Series(3, pd.date_range('2020-01-01', '2020-01-10'), name='prova2'),
@@ -49,14 +49,19 @@ def test_local_store_series(tmp_path):
         print(data1.index.dtype)
         print(data1.dtypes)
 
+        assert data.name == data1.name
         assert all(data == data1)
         assert all(data.index == data1.index)
         assert data.dtypes == data1.dtypes
         
+    assert store.load('blahblah') is None
+        
+        
 def test_local_store_dataframe(tmp_path):
+    """Test storing and retrieving of a DataFrame with datetime index."""
     store = LocalDataStore(tmp_path)
     index = pd.date_range('2020-01-01', '2020-01-02', freq='H')
-    data = {'one':range(len(index)), 'two':np.arange(len(index))/20., 'three':['hello']*len(index)}
+    data = {'one':range(len(index)), 'two':np.arange(len(index))/19., 'three':['hello']*len(index), 'four':[np.nan]*len(index)}
     data = pd.DataFrame(data, index=index)
     print(data)
     print(data.index.dtype)
@@ -71,4 +76,23 @@ def test_local_store_dataframe(tmp_path):
     assert all(data == data1)
     assert all(data.index == data1.index)
     assert all(data.dtypes == data1.dtypes)    
+    
+
+def test_yfinance(tmp_path):
+    
+    store = Yfinance(tmp_path)
+    data = store.update_and_load('ZM')
+    
+    print(data)
+    
+    assert np.isclose(data.loc['2023-04-05', 'Return'], data.loc['2023-04-06', 'Open'] / data.loc['2023-04-05', 'Open'] - 1)
+    
+    data1 = store.update_and_load('ZM')
+    print(data1)
+    
+    assert np.isnan(data1.iloc[-1]['Close'])
+    
+    print((data1.iloc[:len(data)-1].Return- data.iloc[:-1].Return).describe().T)
+    
+    assert np.allclose(data1.iloc[:len(data)-1].Return, data.iloc[:-1].Return)    
     
