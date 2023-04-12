@@ -1,5 +1,6 @@
 """
 Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+Copyright 2023- The Cvxportfolio Contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +15,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from abc import ABCMeta, abstractmethod
-
 
 class Expression:
-    __metaclass__ = ABCMeta
 
-    @abstractmethod
     def weight_expr(self, t, w_plus, z, value):
         """Returns the estimate of cost at time t."""
-        pass
+        raise NotImplementedError
 
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
         """Returns the estimate at time t of cost at time tau."""

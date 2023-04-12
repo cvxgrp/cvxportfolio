@@ -1,5 +1,7 @@
 """
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+Copyright 2023- The Cvxportfolio Contributors
+
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -122,7 +124,7 @@ class TcostModel(BaseCost):
       sigma: A dataframe of daily volatilities.
       half_spread: A dataframe of bid-ask spreads divided by 2.
       nonlin_coeff: A dataframe of coefficients for the nonlinear cost.
-      power: The nonlinear tcost power.
+      power (float): The nonlinear tcost power.
     """
 
     def __init__(self, half_spread, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5):
@@ -135,7 +137,7 @@ class TcostModel(BaseCost):
         null_checker(nonlin_coeff)
         self.nonlin_coeff = nonlin_coeff
         null_checker(power)
-        self.power = power
+        self.power: float = power 
         super(TcostModel, self).__init__()
 
     def _estimate(self, t, w_plus, z, value):

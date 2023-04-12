@@ -1,5 +1,6 @@
 """
 Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+Copyright 2023- The Cvxportfolio Contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +15,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from abc import abstractmethod
 import logging
 
 import cvxpy as cvx
@@ -65,7 +65,6 @@ class BaseRiskModel(BaseCost):
         self.expression = self._estimate(t, w_plus - self.w_bench, z, value)
         return self.gamma * self.expression, []
 
-    @abstractmethod
     def _estimate(self, t, w_plus, z, value):
         pass
 

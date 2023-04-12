@@ -1,5 +1,6 @@
 """
 Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+Copyright 2023- The Cvxportfolio Contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +15,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from abc import ABCMeta, abstractmethod
 import datetime as dt
 import pandas as pd
 import numpy as np
@@ -42,16 +42,14 @@ __all__ = [
 class BasePolicy:
     """Base class for a trading policy."""
 
-    __metaclass__ = ABCMeta
 
     def __init__(self):
         self.costs = []
         self.constraints = []
 
-    @abstractmethod
     def get_trades(self, portfolio, t=dt.datetime.today()):
         """Trades list given current portfolio and time t."""
-        return NotImplemented
+        return NotImplementedError
 
     def _nulltrade(self, portfolio):
         return pd.Series(index=portfolio.index, data=0.0)

@@ -1,5 +1,7 @@
 """
-Copyright 2016 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+Copyright 2023- The Cvxportfolio Contributors
+
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +16,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-
-from abc import ABCMeta, abstractmethod
 
 import cvxpy as cvx
 import numpy as np
@@ -38,7 +38,6 @@ __all__ = [
 
 
 class BaseConstraint:
-    __metaclass__ = ABCMeta
 
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop("w_bench", 0.0)
@@ -56,9 +55,8 @@ class BaseConstraint:
             return self._weight_expr(t, None, z, v)
         return self._weight_expr(t, w_plus - self.w_bench, z, v)
 
-    @abstractmethod
     def _weight_expr(self, t, w_plus, z, v):
-        pass
+        raise NotImplementedError
 
 
 class MaxTrade(BaseConstraint):
