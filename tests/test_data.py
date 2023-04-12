@@ -107,10 +107,11 @@ def test_yfinance(tmp_path):
     print(data1)
 
     assert np.isnan(data1.iloc[-1]["Close"])
+    
 
     print((data1.iloc[: len(data) - 1].Return - data.iloc[:-1].Return).describe().T)
 
-    assert np.allclose(data1.iloc[: len(data) - 1].Return, data.iloc[:-1].Return)
+    assert np.allclose(data1.loc[data.index[:-1]].Return, data.iloc[:-1].Return)
 
 
 def test_fred_base():
