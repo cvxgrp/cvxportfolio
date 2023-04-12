@@ -117,7 +117,7 @@ class LocalDataStore(BaseData):
     def __init__(self, base_location=Path.home()/'cvxportfolio'):
         self.location = base_location / self.__class__.__name__
         if not self.location.is_dir():
-               self.location.mkdir()
+               self.location.mkdir(parents=True)
                print(f'Created folder at {self.location}')
     
     def load_raw(self, symbol, **kwargs):
