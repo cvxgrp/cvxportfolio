@@ -100,7 +100,13 @@ class YfinanceBase(BaseData):
 
 class LocalDataStore(BaseData):
     
-    pass
+    def load_raw(self, symbol):
+        """Load raw data from local store."""
+        raise NotImplementedError
+        
+    def store(self, symbol, data):
+        """Store data locally."""
+        raise NotImplementedError
 
 
 class FredBase(BaseData):
@@ -115,7 +121,12 @@ class RateBase(BaseData):
     
 class Yfinance(YfinanceBase, LocalDataStore):
     
-    pass
+    """ Yahoo Finance data interface using local data store.
+    """
+    
+    def update_and_load(symbol):
+        """Update data for symbol and load it."""
+        return super().update_and_load(symbol)
     
 class Fred(FredBase, LocalDataStore):
 
