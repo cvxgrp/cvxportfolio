@@ -40,6 +40,9 @@ class Estimator:
             returns (pandas.DataFrame): market returns
             volumes (pandas.DataFrame): market volumes
             kwargs (dict): extra data available
+        
+        Returns:
+            children_result (list): result of recursive call on children
         """
 
         return [
@@ -60,6 +63,9 @@ class Estimator:
             t (pd.TimeStamp): point in time of the simulation
             current_portfolio (pd.Series): current portfolio in value form (e.g., US dollars)
             kwargs (dict): extra data used
+        
+        Returns:
+            children_result (list): result of recursive call on children
         """
         return [
             child.values_in_time(t, current_portfolio, **kwargs) for child in children
