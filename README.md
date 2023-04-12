@@ -31,7 +31,9 @@ pip install cvxportfolio
 Testing
 ------------
 
-To test it
+To test it locally set up the development environment with [`poetry`](https://python-poetry.org/) (you will need to
+install it first) and run [`pytest`](https://pytest.org/). 
+
 
 ```
 poetry install
@@ -41,9 +43,10 @@ poetry run pytest --cov
 Examples
 ------------
 
-You can see basic usage in the example notebooks.
+You can see basic usage of the package in the [example notebooks](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/).
+Currently we are working on simplifying the user interface and these may change.
 
-Clone the repository, create the environment and the `cvxportfolio` kernel, then start `jupyter`
+To run them, clone the repository, create the environment and the `cvxportfolio` kernel, and then start [`jupyter`](https://jupyter.org/).
 
 ```
 git clone https://github.com/cvxgrp/cvxportfolio.git
@@ -55,7 +58,6 @@ poetry run jupyter notebook
 ```
 
 The ones that run without isses (as of 2023-04-11) are [HelloWorld](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/HelloWorld.ipynb) and [MultiPeriodTCostOptimization](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodTCostOptimization.ipynb).
-Currently we are working on simplifying the user interface and these may change.
 
 The other example notebooks were used to develop the plots and results in [the paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf). We are keeping 
 them for historical record but they don't currently run because various libraries have broken. 
