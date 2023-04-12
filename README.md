@@ -35,6 +35,8 @@ install it first) and run [`pytest`](https://pytest.org/).
 
 
 ```
+git clone https://github.com/cvxgrp/cvxportfolio.git
+cd cvxportfolio
 poetry install
 poetry run pytest --cov
 ```

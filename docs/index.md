@@ -35,6 +35,8 @@ pip install cvxportfolio
 To test it
 
 ```
+git clone https://github.com/cvxgrp/cvxportfolio.git
+cd cvxportfolio
 poetry install
 poetry run pytest --cov
 ```
