@@ -31,3 +31,4 @@ def test_yfinance_download():
     print(data.loc['2023-04-10']['Return'])
     print(data.loc['2023-04-11', 'Open'] / data.loc['2023-04-10', 'Open'] - 1)
     assert np.isclose(data.loc['2023-04-10', 'Return'], data.loc['2023-04-11', 'Open'] / data.loc['2023-04-10', 'Open'] - 1)
+    assert np.isnan(data.iloc[-1]['Close'])
