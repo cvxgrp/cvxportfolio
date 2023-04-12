@@ -55,19 +55,17 @@ poetry run pytest --cov
 Examples
 ------------
 
-You can see basic usage in the example notebooks. Ensure you have `jupyter` installed. *E.g.*,
-```
-pip install jupyter
-```
+You can see basic usage in the example notebooks.
 
-Clone the repository, create the `cvxportfolio` kernel, and start `jupyter`
+Clone the repository, create the environment and the `cvxportfolio` kernel, then start `jupyter`
 
 ```
 git clone https://github.com/cvxgrp/cvxportfolio.git
 cd cvxportfolio
+poetry install
 bash create_kernel.sh
 cd examples
-jupyter notebook
+poetry run jupyter notebook
 ```
 
 The example notebooks were used to develop the plots and results in [the paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf). We are keeping 

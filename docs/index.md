@@ -44,16 +44,12 @@ We suggest to start with our basic "[HelloWorld]" example. It sets up
 a portfolio optimization problem and simulates a backtest with 5 years
 of real market data. It then presents the results.
 
-To run it locally ensure you have `jupyter` installed. *E.g.*,
-```
-pip install jupyter
-```
-
-Clone the repository, create the `cvxportfolio` kernel, and start `jupyter`
+To run it clone the repository, create the environment and the `cvxportfolio` kernel, then start `jupyter`
 
 ```
 git clone https://github.com/cvxgrp/cvxportfolio.git
 cd cvxportfolio
+poetry install
 bash create_kernel.sh
 cd examples
 jupyter notebook
