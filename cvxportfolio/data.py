@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from pathlib import Path
+
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -99,14 +101,28 @@ class YfinanceBase(BaseData):
 
 
 class LocalDataStore(BaseData):
+    """Local data store.
     
-    def load_raw(self, symbol):
+    Args:
+        base_location (pathlib.Path): filesystem directory where to store files.
+    
+    """
+    def __init__(self, base_location=Path.home()/'cvxportfolio'):
+        self.location = base_location / self.__class__.__name__
+        if not self.location.is_dir():
+               self.location.mkdir()
+               print(f'Created folder at {self.location}')
+    
+    def load_raw(self, symbol, **kwargs):
         """Load raw data from local store."""
-        raise NotImplementedError
+        tmp = pd.read_csv(self.location / f'{symbol}.csv', 
+            index_col = 0, parse_dates=True, **kwargs)
+        return tmp.iloc[:,0] if tmp.shape[1] == 1 else tmp
+
         
-    def store(self, symbol, data):
+    def store(self, symbol, data, **kwargs):
         """Store data locally."""
-        raise NotImplementedError
+        data.to_csv(self.location / f'{symbol}.csv', **kwargs)
 
 
 class FredBase(BaseData):

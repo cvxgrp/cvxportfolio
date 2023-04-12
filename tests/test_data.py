@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.data import YfinanceBase
+from cvxportfolio.data import YfinanceBase, LocalDataStore
 
 
 
@@ -32,3 +32,43 @@ def test_yfinance_download():
     print(data.loc['2023-04-11', 'Open'] / data.loc['2023-04-10', 'Open'] - 1)
     assert np.isclose(data.loc['2023-04-10', 'Return'], data.loc['2023-04-11', 'Open'] / data.loc['2023-04-10', 'Open'] - 1)
     assert np.isnan(data.iloc[-1]['Close'])
+    
+
+def test_local_store_series(tmp_path):
+    store = LocalDataStore(tmp_path)
+    for data in [pd.Series(0., pd.date_range('2020-01-01', '2020-01-10'), name='prova1'),
+                 pd.Series(3, pd.date_range('2020-01-01', '2020-01-10'), name='prova2'),
+                 pd.Series('ciao', pd.date_range('2020-01-01', '2020-01-02', freq='H'), name='prova3')]:
+        print(data)
+        print(data.index.dtype)
+        print(data.dtypes)
+
+        store.store(data.name, data)
+        data1 = store.load(data.name)
+        print(data1)
+        print(data1.index.dtype)
+        print(data1.dtypes)
+
+        assert all(data == data1)
+        assert all(data.index == data1.index)
+        assert data.dtypes == data1.dtypes
+        
+def test_local_store_dataframe(tmp_path):
+    store = LocalDataStore(tmp_path)
+    index = pd.date_range('2020-01-01', '2020-01-02', freq='H')
+    data = {'one':range(len(index)), 'two':np.arange(len(index))/20., 'three':['hello']*len(index)}
+    data = pd.DataFrame(data, index=index)
+    print(data)
+    print(data.index.dtype)
+    print(data.dtypes)
+
+    store.store('example', data)
+    data1 = store.load('example')
+    print(data1)
+    print(data1.index.dtype)
+    print(data1.dtypes)
+
+    assert all(data == data1)
+    assert all(data.index == data1.index)
+    assert all(data.dtypes == data1.dtypes)    
+    
