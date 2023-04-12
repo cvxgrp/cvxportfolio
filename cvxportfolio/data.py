@@ -138,9 +138,6 @@ class FredBase(BaseData):
     """Base class for FRED data access.
     """
     
-    def __init__(self, chunksize=pd.Timedelta('1000d')):
-        self.chunksize=chunksize
-    
     def download(self, symbol='DFF', current=None):
         if current is None:
             end = pd.Timestamp.today()
@@ -157,8 +154,12 @@ class FredBase(BaseData):
 
 
 class RateBase(BaseData):
+    """Manipulate rate data from percent annualized to daily."""
     
-    pass
+    trading_days = 250
+    
+    def preload(self, data):
+        return np.exp(np.log(1 + data/100) / self.trading_days) - 1
     
     
 class Yfinance(YfinanceBase, LocalDataStore):
@@ -175,12 +176,14 @@ class Yfinance(YfinanceBase, LocalDataStore):
     def update_and_load(self, symbol):
         """Update data for symbol and load it."""
         return super().update_and_load(symbol)
-    
-class Fred(FredBase, LocalDataStore):
 
-    pass
     
-class FredRate(Fred, RateBase):
+class FredRate(FredBase, RateBase, LocalDataStore):
+    """Load and store FRED rates like DFF."""
     
-    pass
-    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs) 
+        
+    def update_and_load(self, symbol):
+        """Update data for symbol and load it."""
+        return super().update_and_load(symbol)   

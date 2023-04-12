@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.data import YfinanceBase, LocalDataStore, Yfinance, FredBase
+from cvxportfolio.data import YfinanceBase, LocalDataStore, Yfinance, FredBase, FredRate
 
 
 def test_yfinance_download():
@@ -106,4 +106,10 @@ def test_fred_base():
     olddata = data.iloc[:-123]
     newdata = FredBase().download("DFF", olddata)
     assert np.all(data == newdata)
+    
+def test_fred(tmp_path):
+    store = FredRate(tmp_path)
+    data = store.update_and_load('DFF')
+    print(data)
+    assert np.isclose((1 + data['2023-04-10'])**store.trading_days, 1 + 4.83/100)
     
