@@ -56,8 +56,8 @@ class YfinanceBase(BaseData):
     This should not be used directly unless you know what you're doing.
     """
     
-    def download(self, symbol, current=None, overlap=5):
-        """Download single stock from YFinance.
+    def download(self, symbol, current=None, overlap=5, **kwargs):
+        """Download single stock from Yahoo Finance.
         
         If data was already downloaded we only download
         the most recent missing portion.
@@ -68,12 +68,13 @@ class YfinanceBase(BaseData):
             current (pandas.DataFrame or None): current data present locally
             overlap (int): how many lines of current data will be overwritten
                 by newly downloaded data
+            kwargs (dict): extra arguments passed to yfinance.download
         
         Returns:
             updated (pandas.DataFrame): updated DataFrame for the symbol
         """
         if current is None:
-            updated = yf.download(symbol)
+            updated = yf.download(symbol, **kwargs)
             intraday_logreturn = np.log(updated['Close']) - np.log(updated['Open'])
             close_to_close_logreturn = np.log(updated['Adj Close']).diff().shift(-1)
             open_to_open_logreturn = close_to_close_logreturn + intraday_logreturn - intraday_logreturn.shift(-1)

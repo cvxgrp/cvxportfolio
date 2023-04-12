@@ -26,7 +26,7 @@ from cvxportfolio.data import YfinanceBase
 def test_yfinance_download():
     """Test YfinanceBase."""
 
-    data = YfinanceBase().download('AAPL')
+    data = YfinanceBase().download('AAPL', start = '2023-04-01', end = '2023-04-15')
     print(data)
     print(data.loc['2023-04-10']['Return'])
     print(data.loc['2023-04-11', 'Open'] / data.loc['2023-04-10', 'Open'] - 1)
