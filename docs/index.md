@@ -27,6 +27,7 @@ CVXPortfolio is not quite ready yet, but if you want to jump into the developmen
 install/index
 intro/index
 documentation/index
+Repository <https://github.com/cvxgrp/cvxportfolio>
 examples/index
 citing/index
 license/index
@@ -34,3 +35,4 @@ license/index
 
 [cvxpy]: https://www.cvxpy.org/
 [pandas]: http://pandas.pydata.org
+

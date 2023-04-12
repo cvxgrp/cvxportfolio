@@ -52,8 +52,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'cvxportfolio'
-copyright = '2017-2018, Enzo Busseti, Steven Diamond, Stephen Boyd'
-author = 'Enzo Busseti, Steven Diamond, Stephen Boyd'
+copyright = 'The Cvxportfolio Contributors'
+author = 'The Cvxportfolio Contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -89,7 +89,7 @@ todo_include_todos = False
 # a list of builtin themes.
 #
 table_styling_embed_css = False
-html_theme = 'alabaster'
+html_theme = 'alabaster' #'sphinx_book_theme'
 
 html_sidebars = {
    '**': [
@@ -101,15 +101,15 @@ html_sidebars = {
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {
-    'github_user': 'cvxgrp',
-    'github_repo': 'cvxportfolio',
-    'github_button': 'true',
-    'github_banner': True,
-    # 'travis_button': 'true',
-    #'analytics_id': 'UA-57212131-3',
-    'show_powered_by': 'true',
-}
+# html_theme_options = {
+#     'github_user': 'cvxgrp',
+#     'github_repo': 'cvxportfolio',
+#     'github_button': 'true',
+#     'github_banner': False,
+#     # 'travis_button': 'true',
+#     #'analytics_id': 'UA-57212131-3',
+#     'show_powered_by': 'true',
+# }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -147,8 +147,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'cvxportfolio.tex', 'cvxportfolio Documentation',
-     'Enzo Busseti, Steven Diamond', 'manual'),
+    (master_doc, 'cvxportfolio.tex', 'Cvxportfolio Documentation',
+     'The Cvxportfolio Contributors', 'manual'),
 ]
 
 
@@ -157,7 +157,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'cvxportfolio', 'cvxportfolio Documentation',
+    (master_doc, 'cvxportfolio', 'Cvxportfolio Documentation',
      [author], 1)
 ]
 
@@ -168,7 +168,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'cvxportfolio', 'cvxportfolio Documentation',
+    (master_doc, 'cvxportfolio', 'Cvxportfolio Documentation',
      author, 'cvxportfolio', 'One line description of project.',
      'Miscellaneous'),
 ]
