@@ -30,12 +30,11 @@ class Estimator:
     methods defined here one should be careful on deciding whether to call
     the `super()` corresponding method. It can make sense to call it before
     some logic, after, or not calling it at all. Also, any subclass of this that uses
-    logic defined here should be careful to register classes contained inside
-    it in the `self.children` list.
+    logic defined here should be careful to put estimator subclasses at the class
+    attribute level, so that the two methods defined here get called recursively 
+    on them.
     """
-
-    children = []
-
+    
     def pre_evaluation(self, returns, volumes, start_time, end_time):
         """Run computation on estimators before the simulation with full prescience.
 
@@ -58,11 +57,12 @@ class Estimator:
             start_time (pandas.Timestamp): start time of the simulation
             end_time (pandas.Timestamp): end time of the simulation
         """
-        for child in self.children:
-            child.pre_evaluation(returns, volumes, start_time, end_time)
+        for _, subestimator in self.__dict__.items():
+            if isinstance(subestimator, Estimator):
+                subestimator.pre_evaluation(returns, volumes, start_time, end_time)
 
     def values_in_time(self, t, **kwargs):
-        """Evaluates estimator at a point in time recursively on its children.
+        """Evaluates estimator at a point in time recursively on its sub-estimators.
 
         This function is called by Simulator classes on Policy classes
         returning the current trades list. Policy classes, if
@@ -75,8 +75,9 @@ class Estimator:
             t (pd.TimeStamp): point in time of the simulation
             kwargs (dict): extra data used
         """
-        for child in self.children:
-            child.values_in_time(t, **kwargs) 
+        for _, subestimator in self.__dict__.items():
+            if isinstance(subestimator, Estimator):
+                subestimator.values_in_time(t, **kwargs) 
         
 
 
@@ -129,8 +130,7 @@ class DataEstimator(Estimator):
     
     def __init__(self, data, use_last_available_time=False):
         self.data = data
-        self.use_last_available_time = use_last_available_time
-        
+        self.use_last_available_time = use_last_available_time        
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned.

@@ -91,7 +91,7 @@ class ParticipationRateLimit(BaseTradeConstraint):
     def __init__(self, volumes, max_fraction_of_volumes=0.05):
         self.volumes = ParameterEstimator(volumes)
         self.max_participation_rate = ParameterEstimator(max_fraction_of_volumes)
-        self.children = [self.volumes, self.max_participation_rate]
+        # self.children = [self.volumes, self.max_participation_rate]
 
 
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
@@ -134,7 +134,7 @@ class LeverageLimit(BaseWeightConstraint):
 
     def __init__(self, limit):#, **kwargs):
         self.limit = ParameterEstimator(limit)
-        self.children = [self.limit]
+        # self.children = [self.limit]
         #super(LeverageLimit, self).__init__(**kwargs)
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
@@ -201,7 +201,7 @@ class MaxWeights(BaseWeightConstraint):
 
     def __init__(self, limit):#, **kwargs):
         self.limit = ParameterEstimator(limit)
-        self.children = [self.limit]
+        #self.children = [self.limit]
         #super(MinWeights, self).__init__(**kwargs)
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
@@ -227,7 +227,7 @@ class MinWeights(BaseWeightConstraint):
 
     def __init__(self, limit):#, **kwargs):
         self.limit = ParameterEstimator(limit)
-        self.children = [self.limit]
+        #self.children = [self.limit]
         #super(MinWeights, self).__init__(**kwargs)
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
@@ -257,7 +257,7 @@ class FactorMaxLimit(BaseWeightConstraint):
         #super(FactorMaxLimit, self).__init__(**kwargs)
         self.factor_exposure = ParameterEstimator(factor_exposure)
         self.limit = ParameterEstimator(limit)
-        self.children = [self.limit, self.factor_exposure]
+        #self.children = [self.limit, self.factor_exposure]
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
@@ -289,7 +289,7 @@ class FactorMinLimit(BaseWeightConstraint):
         #super(FactorMaxLimit, self).__init__(**kwargs)
         self.factor_exposure = ParameterEstimator(factor_exposure)
         self.limit = ParameterEstimator(limit)
-        self.children = [self.limit, self.factor_exposure]
+        #self.children = [self.limit, self.factor_exposure]
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
@@ -328,7 +328,7 @@ class FixedFactorLoading(BaseWeightConstraint):
         #super(FactorMaxLimit, self).__init__(**kwargs)
         self.factor_exposure = ParameterEstimator(factor_exposure)
         self.target = ParameterEstimator(target)
-        self.children = [self.target, self.factor_exposure]
+        #self.children = [self.target, self.factor_exposure]
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
