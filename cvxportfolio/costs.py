@@ -18,6 +18,9 @@ Currently these are two: TransactionCostModel and HoldingCostModel.
 (In previous versions of Cvxportfolio these were used in the simulator as well,
 but now instead we include their logic in the simulator itself.)
 
+We do our best to include parameters that are accurate for the real market.
+It should be easy to adjust these to other settings by following the description 
+provided in the class definitions.
 """
 
 import cvxpy as cvx
