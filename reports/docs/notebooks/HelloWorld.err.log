@@ -1,0 +1,92 @@
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/jupyter_cache/executors/utils.py", line 58, in single_nb_execution
+    executenb(
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/nbclient/client.py", line 1204, in execute
+    return NotebookClient(nb=nb, resources=resources, km=km, **kwargs).execute()
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/nbclient/util.py", line 84, in wrapped
+    return just_run(coro(*args, **kwargs))
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/nbclient/util.py", line 62, in just_run
+    return loop.run_until_complete(coro)
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/nbclient/client.py", line 663, in async_execute
+    await self.async_execute_cell(
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/nbclient/client.py", line 965, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/nbclient/client.py", line 862, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+market_sim = cp.MarketSimulator(
+    returns, [tcost_model, hcost_model], cash_key="USDOLLAR"
+)
+init_portfolio = pd.Series(index=returns.columns, data=250000.0)
+init_portfolio.USDOLLAR = 0
+results = market_sim.run_multiple_backtest(
+    init_portfolio,
+    start_time="2020-01-01",
+    end_time="2023-04-01",
+    policies=[spo_policy, 
+             cp.Hold()
+            ],
+)
+results[0].summary()
+------------------
+
+[0;31m---------------------------------------------------------------------------[0m
+[0;31mRemoteTraceback[0m                           Traceback (most recent call last)
+[0;31mRemoteTraceback[0m: 
+"""
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/multiprocess/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+  File "/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/multiprocess/pool.py", line 48, in mapstar
+    return list(map(*args))
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 161, in _run_backtest
+    return self.run_backtest(
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 120, in run_backtest
+    u = policy.get_trades(h, t)
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/policies.py", line 268, in get_trades
+    constraints += constr.weight_expr(t, wplus, z, value)
+AttributeError: 'LeverageLimit' object has no attribute 'weight_expr'
+"""
+
+The above exception was the direct cause of the following exception:
+
+[0;31mAttributeError[0m                            Traceback (most recent call last)
+Cell [0;32mIn[10], line 6[0m
+[1;32m      4[0m init_portfolio [38;5;241m=[39m pd[38;5;241m.[39mSeries(index[38;5;241m=[39mreturns[38;5;241m.[39mcolumns, data[38;5;241m=[39m[38;5;241m250000.0[39m)
+[1;32m      5[0m init_portfolio[38;5;241m.[39mUSDOLLAR [38;5;241m=[39m [38;5;241m0[39m
+[0;32m----> 6[0m results [38;5;241m=[39m [43mmarket_sim[49m[38;5;241;43m.[39;49m[43mrun_multiple_backtest[49m[43m([49m
+[1;32m      7[0m [43m    [49m[43minit_portfolio[49m[43m,[49m
+[1;32m      8[0m [43m    [49m[43mstart_time[49m[38;5;241;43m=[39;49m[38;5;124;43m"[39;49m[38;5;124;43m2020-01-01[39;49m[38;5;124;43m"[39;49m[43m,[49m
+[1;32m      9[0m [43m    [49m[43mend_time[49m[38;5;241;43m=[39;49m[38;5;124;43m"[39;49m[38;5;124;43m2023-04-01[39;49m[38;5;124;43m"[39;49m[43m,[49m
+[1;32m     10[0m [43m    [49m[43mpolicies[49m[38;5;241;43m=[39;49m[43m[[49m[43mspo_policy[49m[43m,[49m[43m [49m
+[1;32m     11[0m [43m             [49m[43mcp[49m[38;5;241;43m.[39;49m[43mHold[49m[43m([49m[43m)[49m
+[1;32m     12[0m [43m            [49m[43m][49m[43m,[49m
+[1;32m     13[0m [43m)[49m
+[1;32m     14[0m results[[38;5;241m0[39m][38;5;241m.[39msummary()
+
+File [0;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py:168[0m, in [0;36mMarketSimulator.run_multiple_backtest[0;34m(self, initial_portf, start_time, end_time, policies, loglevel, parallel)[0m
+[1;32m    166[0m [38;5;28;01mif[39;00m parallel:
+[1;32m    167[0m     workers [38;5;241m=[39m multiprocess[38;5;241m.[39mPool(num_workers)
+[0;32m--> 168[0m     results [38;5;241m=[39m [43mworkers[49m[38;5;241;43m.[39;49m[43mmap[49m[43m([49m[43m_run_backtest[49m[43m,[49m[43m [49m[43mpolicies[49m[43m)[49m
+[1;32m    169[0m     workers[38;5;241m.[39mclose()
+[1;32m    170[0m     [38;5;28;01mreturn[39;00m results
+
+File [0;32m/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/multiprocess/pool.py:367[0m, in [0;36mPool.map[0;34m(self, func, iterable, chunksize)[0m
+[1;32m    362[0m [38;5;28;01mdef[39;00m [38;5;21mmap[39m([38;5;28mself[39m, func, iterable, chunksize[38;5;241m=[39m[38;5;28;01mNone[39;00m):
+[1;32m    363[0m [38;5;250m    [39m[38;5;124;03m'''[39;00m
+[1;32m    364[0m [38;5;124;03m    Apply `func` to each element in `iterable`, collecting the results[39;00m
+[1;32m    365[0m [38;5;124;03m    in a list that is returned.[39;00m
+[1;32m    366[0m [38;5;124;03m    '''[39;00m
+[0;32m--> 367[0m     [38;5;28;01mreturn[39;00m [38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43m_map_async[49m[43m([49m[43mfunc[49m[43m,[49m[43m [49m[43miterable[49m[43m,[49m[43m [49m[43mmapstar[49m[43m,[49m[43m [49m[43mchunksize[49m[43m)[49m[38;5;241;43m.[39;49m[43mget[49m[43m([49m[43m)[49m
+
+File [0;32m/opt/hostedtoolcache/Python/3.10.10/x64/lib/python3.10/site-packages/multiprocess/pool.py:774[0m, in [0;36mApplyResult.get[0;34m(self, timeout)[0m
+[1;32m    772[0m     [38;5;28;01mreturn[39;00m [38;5;28mself[39m[38;5;241m.[39m_value
+[1;32m    773[0m [38;5;28;01melse[39;00m:
+[0;32m--> 774[0m     [38;5;28;01mraise[39;00m [38;5;28mself[39m[38;5;241m.[39m_value
+
+[0;31mAttributeError[0m: 'LeverageLimit' object has no attribute 'weight_expr'
+AttributeError: 'LeverageLimit' object has no attribute 'weight_expr'
+
