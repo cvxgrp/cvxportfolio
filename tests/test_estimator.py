@@ -138,6 +138,13 @@ def test_dataframe_multindex():
     estimator = DataEstimator(data)
     assert np.all(estimator.values_in_time('2022-01-05') == data.loc['2022-01-05'])
     
+    estimator = DataEstimator(data, use_last_available_time=True)
+    assert np.all(estimator.values_in_time('2022-02-05') == data.loc['2022-01-30'])
+    assert np.all(estimator.values_in_time('2022-01-05') == data.loc['2022-01-05'])
+    with pytest.raises(MissingValuesError):
+        estimator.values_in_time('2020-01-05')
+    
+    
     index = pd.MultiIndex.from_product([second_level, timeindex])
     data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
     estimator = DataEstimator(data)

@@ -176,7 +176,11 @@ class DataEstimator(Estimator):
         ):
             try:
                 if self.use_last_available_time:
-                    tmp = self.data.loc[self.data.index <= t].iloc[-1]
+                    if isinstance(self.data.index, pd.MultiIndex):
+                        newt = self.data.index.levels[0][self.data.index.levels[0] <= t][-1]
+                    else:
+                        newt = self.data.index[self.data.index <= t][-1]
+                    tmp = self.data.loc[newt]
                 else:
                     tmp = self.data.loc[t]
                 if hasattr(tmp, 'values'):
