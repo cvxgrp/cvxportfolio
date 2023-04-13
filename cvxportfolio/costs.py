@@ -11,6 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This module implements cost functions used by optimization-based policies. 
+
+Currently these are two: TransactionCostModel and HoldingCostModel. 
+
+(In previous versions of Cvxportfolio these were used in the simulator as well,
+but now instead we include their logic in the simulator itself.)
+
+"""
 
 import cvxpy as cvx
 import numpy as np
