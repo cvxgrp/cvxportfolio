@@ -42,9 +42,9 @@ Traceback (most recent call last):
     result = (True, func(*args, **kwds))
   File "/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py", line 48, in mapstar
     return list(map(*args))
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 249, in _run_backtest
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 254, in _run_backtest
     return self.run_backtest(
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 208, in run_backtest
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 213, in run_backtest
     u = policy.get_trades(h, t)
   File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/policies.py", line 268, in get_trades
     constraints += constr.weight_expr(t, wplus, z, value)
@@ -69,12 +69,12 @@ Cell [0;32mIn[10], line 6[0m
 [1;32m     13[0m [43m)[49m
 [1;32m     14[0m results[[38;5;241m0[39m][38;5;241m.[39msummary()
 
-File [0;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py:256[0m, in [0;36mMarketSimulator.run_multiple_backtest[0;34m(self, initial_portf, start_time, end_time, policies, loglevel, parallel)[0m
-[1;32m    254[0m [38;5;28;01mif[39;00m parallel:
-[1;32m    255[0m     workers [38;5;241m=[39m multiprocess[38;5;241m.[39mPool(num_workers)
-[0;32m--> 256[0m     results [38;5;241m=[39m [43mworkers[49m[38;5;241;43m.[39;49m[43mmap[49m[43m([49m[43m_run_backtest[49m[43m,[49m[43m [49m[43mpolicies[49m[43m)[49m
-[1;32m    257[0m     workers[38;5;241m.[39mclose()
-[1;32m    258[0m     [38;5;28;01mreturn[39;00m results
+File [0;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py:261[0m, in [0;36mMarketSimulator.run_multiple_backtest[0;34m(self, initial_portf, start_time, end_time, policies, loglevel, parallel)[0m
+[1;32m    259[0m [38;5;28;01mif[39;00m parallel:
+[1;32m    260[0m     workers [38;5;241m=[39m multiprocess[38;5;241m.[39mPool(num_workers)
+[0;32m--> 261[0m     results [38;5;241m=[39m [43mworkers[49m[38;5;241;43m.[39;49m[43mmap[49m[43m([49m[43m_run_backtest[49m[43m,[49m[43m [49m[43mpolicies[49m[43m)[49m
+[1;32m    262[0m     workers[38;5;241m.[39mclose()
+[1;32m    263[0m     [38;5;28;01mreturn[39;00m results
 
 File [0;32m/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py:367[0m, in [0;36mPool.map[0;34m(self, func, iterable, chunksize)[0m
 [1;32m    362[0m [38;5;28;01mdef[39;00m [38;5;21mmap[39m([38;5;28mself[39m, func, iterable, chunksize[38;5;241m=[39m[38;5;28;01mNone[39;00m):
