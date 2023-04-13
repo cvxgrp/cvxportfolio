@@ -14,7 +14,7 @@
 # limitations under the License.
 
 __version__ = "0.1.1"
-from .data import FredRate, Yfinance
+from .data import FredRate, Yfinance, MissingValuesError
 from .simulator import MarketSimulator
 from .result import SimulationResult
 from .policies import *

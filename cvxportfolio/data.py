@@ -187,3 +187,12 @@ class FredRate(FredBase, RateBase, LocalDataStore):
     def update_and_load(self, symbol):
         """Update data for symbol and load it."""
         return super().update_and_load(symbol)
+        
+        
+class DataError(Exception):
+    """Base class for exception related to data."""
+    pass
+    
+class MissingValuesError(DataError):
+    """Cvxportfolio tried to access numpy.nan values."""
+    pass

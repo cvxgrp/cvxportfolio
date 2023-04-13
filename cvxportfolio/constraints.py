@@ -17,6 +17,7 @@ import cvxpy as cvx
 import numpy as np
 
 from .utils import values_in_time
+from .estimator import CvxpyExpressionEstimator
 
 
 __all__ = [
@@ -33,7 +34,7 @@ __all__ = [
 ]
 
 
-class BaseConstraint:
+class BaseConstraint(CvxpyExpressionEstimator):
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop("w_bench", 0.0)
 
