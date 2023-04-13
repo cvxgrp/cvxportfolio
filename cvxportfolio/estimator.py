@@ -20,18 +20,24 @@ from this.
 import numpy as np
 import pandas as pd
 from .data import MissingValuesError, DataError
+import cvxpy
 
 
 class Estimator:
     """Estimator base class.
 
-    Policies, costs, and constraints inherit from this.
+    Policies, costs, and constraints inherit from this. When overloading
+    methods defined here one should be careful on deciding whether to call
+    the `super()` corresponding method. It can make sense to call it before
+    some logic, after, or not calling it at all. Also, any subclass of this that uses
+    logic defined here should be careful to register classes contained inside
+    it in the `self.children` list.
     """
 
     children = []
 
-    def prescient_evaluation(self, returns, volumes, **kwargs):
-        """Cache computation with prescience recursively on its children.
+    def pre_evaluation(self, returns, volumes, start_time, end_time):
+        """Run computation on estimators before the simulation with full prescience.
 
         This function is called by Simulator classes before the
         start of a backtest with the full dataset available to the
@@ -46,13 +52,14 @@ class Estimator:
         check that at each point in time only past data
         (with respect to that point) is used and not future data.
 
-        Args:
+        Args:        
             returns (pandas.DataFrame): market returns
             volumes (pandas.DataFrame): market volumes
-            kwargs (dict): extra data available
+            start_time (pandas.Timestamp): start time of the simulation
+            end_time (pandas.Timestamp): end time of the simulation
         """
         for child in children:
-            child.prescient_evaluation(returns, volumes, **kwargs)
+            child.pre_evaluation(returns, volumes, start_time, end_time)
 
     def values_in_time(self, t, **kwargs):
         """Evaluates estimator at a point in time recursively on its children.
@@ -196,3 +203,23 @@ class DataEstimator(Estimator):
             
         return self.value_checker(self.data)
         
+
+class ParameterEstimator(DataEstimator, cvxpy.Parameter):
+    """Data estimator of point-in-time values that contains a Cvxpy Parameter.
+        
+    Attributes:
+        parameter (cvxpy.Parameter): the parameter object to use with cvxpy
+            expressions
+    Args:
+        same as cvxportfolio.DataEstimator
+    
+    """
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time):
+        """Use the start time of the simulation to initialize the Parameter."""
+        value = super().values_in_time(start_time)
+        self.parameter = cvxpy.Parameter(value.shape)
+        
+    def values_in_time(self, t, **kwargs):
+        """Update Cvxpy Parameter value."""
+        self.parameter.value = super().values_in_time(t, **kwargs)

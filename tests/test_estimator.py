@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.estimator import DataEstimator
+from cvxportfolio.estimator import DataEstimator, ParameterEstimator
 from cvxportfolio.data import MissingValuesError, DataError
 
 
@@ -138,6 +138,7 @@ def test_dataframe_multindex():
     estimator = DataEstimator(data)
     assert np.all(estimator.values_in_time('2022-01-05') == data.loc['2022-01-05'])
     
+    
     estimator = DataEstimator(data, use_last_available_time=True)
     assert np.all(estimator.values_in_time('2022-02-05') == data.loc['2022-01-30'])
     assert np.all(estimator.values_in_time('2022-01-05') == data.loc['2022-01-05'])
@@ -149,5 +150,19 @@ def test_dataframe_multindex():
     data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
     estimator = DataEstimator(data)
     assert np.all(estimator.values_in_time('2020-01-05') == data.values)
+    
+
+def test_parameter_estimator():
+    timeindex = pd.date_range('2022-01-01', '2022-01-30') 
+    second_level = ['hello', 'ciao', 'hola']
+    index = pd.MultiIndex.from_product([timeindex, second_level])
+    data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
+    estimator = ParameterEstimator(data)
+    assert not hasattr(estimator, 'value')
+    estimator.pre_evaluation(returns=None, volumes=None, start_time='2022-01-01', end_time=None)
+    assert hasattr(estimator, 'parameter')
+    assert hasattr(estimator.parameter, 'value')
+    estimator.values_in_time('2022-01-05')
+    assert np.all(estimator.parameter.value == data.loc['2022-01-05'])
     
     
