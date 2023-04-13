@@ -41,6 +41,14 @@ poetry install
 poetry run pytest --cov
 ```
 
+Releases
+------------
+With comments from the [git tags](https://github.com/cvxgrp/cvxportfolio/tags).
+
+- [0.1.1](https://pypi.org/project/cvxportfolio/0.1.1/) Last version before 2023 internals change. If you have built code in
+  2016-2023 that uses cvxportfolio versions 0.0.X and relies on internal methods you probably want this release. Subsequent ones will change the internal interfaces. User interfaces instead will mostly remain the same. In addition, this version adds a new module data.py (that here is not called by the rest of cvxportfolio) that simplifies getting data.
+- 0.0.X Not tagged in git but [distributed on PyPI](https://pypi.org/project/cvxportfolio/
+
 Examples
 ------------
 
