@@ -58,7 +58,7 @@ class Estimator:
             start_time (pandas.Timestamp): start time of the simulation
             end_time (pandas.Timestamp): end time of the simulation
         """
-        for child in children:
+        for child in self.children:
             child.pre_evaluation(returns, volumes, start_time, end_time)
 
     def values_in_time(self, t, **kwargs):
@@ -75,15 +75,15 @@ class Estimator:
             t (pd.TimeStamp): point in time of the simulation
             kwargs (dict): extra data used
         """
-        for child in children:
-            child.values_in_time(t, current_portfolio, **kwargs) 
+        for child in self.children:
+            child.values_in_time(t, **kwargs) 
         
 
 
 class CvxpyExpressionEstimator(Estimator):
     """Base class for estimators that are Cvxpy expressions."""
 
-    def compile_to_cvxpy(self, w_plus, z):
+    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Compile term to cvxpy expression.
 
         This is called by a Policy class on its terms before the start of the backtest
@@ -100,6 +100,7 @@ class CvxpyExpressionEstimator(Estimator):
         Args:
             w_plus (cvxpy.Variable): post-trade allocation weights vector
             z (cvxpy.Variable): trades weight vector
+            portfolio_value (cvxpy.Parameter): scalar Parameter that holds the value of the portfolio
 
         Returns:
             cvxpy.Expression
@@ -218,7 +219,7 @@ class ParameterEstimator(DataEstimator, cvxpy.Parameter):
     def pre_evaluation(self, returns, volumes, start_time, end_time):
         """Use the start time of the simulation to initialize the Parameter."""
         value = super().values_in_time(start_time)
-        self.parameter = cvxpy.Parameter(value.shape)
+        self.parameter = cvxpy.Parameter(value.shape if hasattr(value, 'shape') else ())
         
     def values_in_time(self, t, **kwargs):
         """Update Cvxpy Parameter value."""
