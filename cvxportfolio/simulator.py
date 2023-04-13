@@ -39,22 +39,38 @@ from .data import FredRate, Yfinance
 
 
 class MarketSimulator:
-    """This class implements an simulator of market performance for trading strategies.
+    """This class implements a simulator of market performance for trading strategies.
+    
+    We strive to make the parameters here as accurate as possible. The following is
+    accurate as of 2023Q2 using numbers obtained on the public website of a
+    [large US-based broker](https://www.interactivebrokers.com/).
     
     Attributes:
-        cash_keys (dict): register a cash_key name with a data reader and a symbol name.
+        cash_keys (dict): registers a cash_key name with a data reader and a symbol name.
             By default we provide the USDOLLAR cash account whose rate is the effective
             fund rate by the US-fed (fred). If you use MarketSimulator to simulate 
             performance of portfolios where the cash account is not in USD, say in EUR
             or something else, you'd have to build a datareader like we did for FRED
             and provide the right symbol to look up.
+    
+    Args:
+        spread_on_lending_cash_percent (float): the cash account will generate annualized
+            return equal to the cash return minus this number, expressed in percent annualized, or zero if 
+            the spread is larger than the cash return. For example with USDOLLAR cash,
+            if the USDOLLAR DFF annualized rate is 4.8%, spread_on_lending_cash_percent is 0.5 
+            (the default value), then the uninvested cash in the portfolio generates annualized 
+            return of 4.3%. (See https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php .)
+        spread_on_borrowing_cash_percent (float): if we instead borrow cash we pay the 
+             cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
+            (See https://www.interactivebrokers.com/en/trading/margin-rates.php .)
     """
     
     logger = None
     cash_keys = {'USDOLLAR': (FredRate, 'DFF')}
     
 
-    def __init__(self, market_returns, costs, market_volumes=None, cash_key='cash'):
+    def __init__(self, market_returns, costs, market_volumes=None, cash_key='cash',
+                spread_on_lending_cash_percent=0.5, spread_on_borrowing_cash_percent=0.5,):
         """Provide market returns object and cost objects."""
         self.market_returns = market_returns
         if market_volumes is not None:
