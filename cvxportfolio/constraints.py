@@ -68,14 +68,21 @@ class BaseConstraint(CvxpyExpressionEstimator):
     #
     # def _weight_expr(self, t, w_plus, z, v):
     #     raise NotImplementedError
+    
 
 class BaseTradeConstraint(BaseConstraint):
     """Base class for constraints that operate on trades."""
     pass
     
 class BaseWeightConstraint(BaseConstraint):
-    """Base class for constraints that operate on weights."""
+    """Base class for constraints that operate on weights.
+    
+    Here we can implement a method to pass benchmark weights 
+    and make the constraint relative to it rather than to the null
+    portfolio.
+    """
     pass
+    
 
 
 class ParticipationRateLimit(BaseTradeConstraint):
