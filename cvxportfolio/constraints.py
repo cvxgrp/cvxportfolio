@@ -44,18 +44,27 @@ class BaseConstraint(CvxpyExpressionEstimator):
     # def __init__(self, **kwargs):
     #     self.w_bench = kwargs.pop("w_bench", 0.0)
     #
-    # def weight_expr(self, t, w_plus, z, v):
-    #     """Returns a list of trade constraints.
-    #
-    #     Args:
-    #       t: time
-    #       w_plus: post-trade weights
-    #       z: trade weights
-    #       v: portfolio value
-    #     """
-    #     if w_plus is None:
-    #         return self._weight_expr(t, None, z, v)
-    #     return self._weight_expr(t, w_plus - self.w_bench, z, v)
+    
+    ## DEFINED TEMPORARILY TO INTERFACE WITH OLD CVXPORTFOLIO
+    def weight_expr(self, t, w_plus, z, v):
+        
+        self.pre_evaluation(None, None, t, None)
+        result = self.compile_to_cvxpy(wplus, z, v)
+        self.values_in_time(t)
+        return result
+        
+        
+        # """Returns a list of trade constraints.
+        #
+        # Args:
+        #   t: time
+        #   w_plus: post-trade weights
+        #   z: trade weights
+        #   v: portfolio value
+        # """
+        # if w_plus is None:
+        #     return self._weight_expr(t, None, z, v)
+        # return self._weight_expr(t, w_plus - self.w_bench, z, v)
     #
     # def _weight_expr(self, t, w_plus, z, v):
     #     raise NotImplementedError
