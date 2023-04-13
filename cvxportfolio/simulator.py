@@ -54,15 +54,66 @@ class MarketSimulator:
             and provide the right symbol to look up.
     
     Args:
+    
+        universe (list): list of [Yahoo Finance](https://finance.yahoo.com/) tickers on which to
+            simulate performance of the trading strategy. If left unspecified you should instead
+            pass returns. If you define a different market data access interface 
+            (look in cvxportfolio.data for how to do it, for example, bloomberg) you should use instead 
+            the symbol names of that data provider in universe.
+    
+        returns (pandas.DataFrame): historical open-to-open returns. Default is None, it is ignored
+            if universe is specified.
+    
+        volumes (pandas.DataFrame): historical market volumes expressed in value (e.g., US dollars). 
+            Default is None, it is ignored if universe is specified.
+    
+        prices (pandas.DataFrame): historical open prices. Default is None, it is ignored
+            if universe is specified. These are used to round the trades to integer number of stocks
+            if round_trades is True.
+    
+        spreads (pandas.DataFrame): historical bid-ask spreads expressed as (ask-bid)/bid. Default is zero,
+            practical spreads are negligible on US liquid stocks.
+    
+        round_trades (bool): round the trade weights provided by a policy so they correspond to an integer
+            number of stocks traded. Default is True using Yahoo Finance open prices.
+    
+        per_share_fixed_cost (float): transaction cost per share traded. Default value is 0.005 (USD), uses
+             Yahoo Finance open prices to simulate the number of stocks traded. See
+            https://www.interactivebrokers.com/en/pricing/commissions-home.php 
+    
+        transaction_cost_coefficient_b (float, pd.Series, or pd.DataFrame): coefficient that multiplies the non-linear
+            term of the transaction cost. Default value is 1, you can pass any other constant value, a per-stock Series,
+            or a per-day and per-stock DataFrame
+    
+        transaction_cost_exponent (float): exponent of the non-linear term of the transaction cost model. Default value 1.5,
+             this is applied to the trade volume (in US dollars) over the total market volume (in US dollars) 
+    
+        rolling_window_sigma_estimator (int): we use an historical rolling mean to estimate the average size of the
+            return on a stock on each day, and this multiplies the second term of the transaction cost model.
+             See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
+             default is 1000.
+    
+        spread_on_borrowing_stocks_percent (float): when shorting a stock, you will pay a rate on the value
+            of the position equal to the cash return plus this spread, expressed in percent annualized. These
+            values are hard to find historically, if you are unsure consider long-only portfolios or look 
+            at CFDs/futures instead. We set the default value to 0.5 (percent annualized) which is probably
+            OK for US large caps. See https://www.interactivebrokers.com/en/pricing/short-sale-cost.php
+    
+        spread_on_long_positions_percent (float or None): if you trade CFDs you will pay interest on your long positions
+            as well as your short positions, equal to the cash return plus this value (percent annualized). If
+             instead this is None, the default value, you pay nothing on your long positions (as you do if you trade
+            stocks).
+    
         spread_on_lending_cash_percent (float): the cash account will generate annualized
             return equal to the cash return minus this number, expressed in percent annualized, or zero if 
             the spread is larger than the cash return. For example with USDOLLAR cash,
             if the USDOLLAR DFF annualized rate is 4.8%, spread_on_lending_cash_percent is 0.5 
             (the default value), then the uninvested cash in the portfolio generates annualized 
-            return of 4.3%. (See https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php .)
+            return of 4.3%. See https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php 
+    
         spread_on_borrowing_cash_percent (float): if we instead borrow cash we pay the 
              cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
-            (See https://www.interactivebrokers.com/en/trading/margin-rates.php .)
+            See https://www.interactivebrokers.com/en/trading/margin-rates.php
     """
     
     logger = None
