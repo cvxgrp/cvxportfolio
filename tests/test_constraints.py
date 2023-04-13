@@ -28,7 +28,7 @@ from cvxportfolio.constraints import (
     LeverageLimit,
     LongCash,
     LongOnly,
-    MaxTrade,
+    ParticipationRateLimit,
     MaxWeights,
     MinWeights,
 )
@@ -124,6 +124,7 @@ def test_hold_constrs(returns):
     wplus.value = tmp
     assert not cons.value()
     
+    
     model = MaxWeights(7)
     model.pre_evaluation(None, None, pd.Timestamp('2022-01-01'), None)
     cons = model.compile_to_cvxpy(wplus, None, None)[0]
@@ -135,24 +136,32 @@ def test_hold_constrs(returns):
     wplus.value = tmp
     assert cons.value()
     
-    raise Exception
     
 
     limits = pd.Series(index=returns.index, data=2)
     limits.iloc[1] = 7
+    
     model = MaxWeights(limits)
-    cons = model.weight_expr(t, wplus, None, None)[0]
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    model.values_in_time(returns.index[1])
+    
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[-1] = -3
     wplus.value = tmp
     assert cons.value()
-    cons = model.weight_expr(returns.index[2], wplus, None, None)[0]
+    model.values_in_time(returns.index[2])
     assert not cons.value()
+    
+    
 
     # Min weights
     model = MinWeights(2)
-    cons = model.weight_expr(t, wplus, None, None)[0]
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    model.values_in_time(returns.index[1])
+    
     wplus.value = np.ones(n) / n
     assert not cons.value()
     tmp = np.zeros(n)
@@ -161,7 +170,10 @@ def test_hold_constrs(returns):
     wplus.value = tmp
     assert not cons.value()
     model = MinWeights(-3)
-    cons = model.weight_expr(t, wplus, None, None)[0]
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    model.values_in_time(returns.index[1])
+
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[-1] = -3
@@ -171,18 +183,24 @@ def test_hold_constrs(returns):
     limits = pd.Series(index=returns.index, data=2)
     limits.iloc[1] = -3
     model = MinWeights(limits)
-    cons = model.weight_expr(t, wplus, None, None)[0]
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    model.values_in_time(returns.index[1])
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[-1] = -3
     wplus.value = tmp
     assert cons.value()
-    cons = model.weight_expr(returns.index[2], wplus, None, None)[0]
+    model.values_in_time(returns.index[2])
     assert not cons.value()
+
 
     # Factor Max Limit
-    model = FactorMaxLimit(np.ones((n - 1, 2)), [0.5, 1])
-    cons = model.weight_expr(t, wplus, None, None)[0]
+    model = FactorMaxLimit(np.ones((n - 1, 2)), np.array([0.5, 1]))
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    model.values_in_time(returns.index[1])
+    
     wplus.value = np.ones(n) / n
     assert not cons.value()
     tmp = np.zeros(n)
@@ -190,17 +208,25 @@ def test_hold_constrs(returns):
     tmp[1] = -3
     wplus.value = tmp
     assert not cons.value()
-    model = FactorMaxLimit(np.ones((n - 1, 2)), [4, 4])
-    cons = model.weight_expr(t, wplus, None, None)[0]
+    
+    model = FactorMaxLimit(np.ones((n - 1, 2)), np.array([4, 4]))
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    model.values_in_time(returns.index[1])
+    
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[1] = -3
     wplus.value = tmp
     assert cons.value()
+    
 
     # Factor Min Limit
-    model = FactorMinLimit(np.ones((n - 1, 2)), [0.5, 1])
-    cons = model.weight_expr(t, wplus, None, None)[0]
+    model = FactorMinLimit(np.ones((n - 1, 2)), np.array([0.5, 1]))
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    model.values_in_time(returns.index[1])
+    #cons = model.weight_expr(t, wplus, None, None)[0]
     wplus.value = np.ones(n) / n
     assert not cons.value()
     tmp = np.zeros(n)
@@ -208,24 +234,31 @@ def test_hold_constrs(returns):
     tmp[1] = -3
     wplus.value = tmp
     assert cons.value()
-    model = FactorMinLimit(np.ones((n - 1, 2)), [-4, -4])
-    cons = model.weight_expr(t, wplus, None, None)[0]
+    model = FactorMinLimit(np.ones((n - 1, 2)), np.array([4, 4]))
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    model.values_in_time(returns.index[1])
+    #cons = model.weight_expr(t, wplus, None, None)[0]
     tmp = np.zeros(n)
     tmp[0] = 4
-    tmp[1] = -3
+    # tmp[1] = -3
     wplus.value = tmp
     assert cons.value()
+    
 
     # Fixed Alpha
-    model = FixedAlpha(np.ones((n - 1, 1)), 1)
-    cons = model.weight_expr(t, wplus, None, None)[0]
+    model = FixedFactorLoading(np.ones((n - 1, 1)), 1)
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    model.values_in_time(returns.index[1])
+    
     wplus.value = np.ones(n) / n
     assert not cons.value()
     tmp = np.zeros(n)
     tmp[0] = 4
     tmp[1] = -3
     wplus.value = tmp
-    assert cons.value()
+    assert cons.value()    
 
 
 def test_trade_constr(returns, volumes):
@@ -233,11 +266,15 @@ def test_trade_constr(returns, volumes):
     n = len(returns.columns)
     z = cvx.Variable(n)
     t = returns.index[1]
+    
 
     # avg daily value limits.
     value = 1e6
-    model = MaxTrade(volumes, max_fraction=0.1)
-    cons = model.weight_expr(t, None, z, value)[0]
+    model = ParticipationRateLimit(volumes, max_fraction_of_volumes=0.1)
+    model.pre_evaluation(None, None, returns.index[0], None)
+    cons = model.compile_to_cvxpy(None, z, value)[0]
+    model.values_in_time(t)
+    #cons = model.weight_expr(t, None, z, value)[0]
     tmp = np.zeros(n)
     tmp[:-1] = volumes.loc[t].values / value * 0.05
     z.value = tmp
