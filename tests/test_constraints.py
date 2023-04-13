@@ -36,7 +36,7 @@ from cvxportfolio.constraints import (
 def build_cons(model, wplus, t=None):
     model.pre_evaluation(None, None, pd.Timestamp('2022-01-01') if t is None else t, None)
     cons = model.compile_to_cvxpy(wplus, None, None)[0]
-    model.values_in_time(pd.Timestamp('2022-01-01') if t is None else t)
+    model.values_in_time(pd.Timestamp('2020-01-01') if t is None else t)
     return cons
     
 
