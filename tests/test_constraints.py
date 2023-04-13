@@ -245,7 +245,6 @@ def test_trade_constr(returns, volumes):
     n = len(returns.columns)
     z = cvx.Variable(n)
     t = returns.index[1]
-    
 
     # avg daily value limits.
     value = 1e6

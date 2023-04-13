@@ -11,6 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This module implements the MarketSimulator class, which strives to 
+simulate as accurately as possibly what would have been the realized
+performance of a trading policy if it had been run in the market in the past.
+In financial jargon this is called *backtesting*. 
+
+
+"""
 
 import copy
 import logging
@@ -25,15 +32,29 @@ from .returns import MultipleReturnsForecasts
 
 from .result import SimulationResult
 from .costs import BaseCost
+from .data import FredRate, Yfinance
 
 # TODO update benchmark weights (?)
 # Also could try jitting with numba.
 
 
 class MarketSimulator:
+    """This class implements an simulator of market performance for trading strategies.
+    
+    Attributes:
+        cash_keys (dict): register a cash_key name with a data reader and a symbol name.
+            By default we provide the USDOLLAR cash account whose rate is the effective
+            fund rate by the US-fed (fred). If you use MarketSimulator to simulate 
+            performance of portfolios where the cash account is not in USD, say in EUR
+            or something else, you'd have to build a datareader like we did for FRED
+            and provide the right symbol to look up.
+    """
+    
     logger = None
+    cash_keys = {'USDOLLAR': (FredRate, 'DFF')}
+    
 
-    def __init__(self, market_returns, costs, market_volumes=None, cash_key="cash"):
+    def __init__(self, market_returns, costs, market_volumes=None, cash_key='cash'):
         """Provide market returns object and cost objects."""
         self.market_returns = market_returns
         if market_volumes is not None:
