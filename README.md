@@ -18,7 +18,14 @@ and [`pandas`](https://github.com/pandas-dev/pandas).
 The documentation of the package is at [cvxportfolio.readthedocs.io](https://cvxportfolio.readthedocs.io/en/latest/).
 
 
+Roadmap
+------------
+Cvxportfolio is currently under fast development. (You can see the commit log.) We expect to have a working minimum viable product by end of Ramdan or, worst case, end of April 2023. In the meantime various things are not up to date. Please be patient. See the comment below for comments on the status of the examples. Regarding the documentation, docstrings in the code are currently the best way to see what is happening. Here are the main aspects that are being developed:
 
+- Data interface. Cvxportfolio versions 0.0.X had no logic to ingest and process data, and everything was done externally. We are building a modular interface that can be used with public or private data sources and databases. It is defined and documented in `cvxportfolio.data`. It is meant to also be used by `cvxportfolio` object to store data, *e.g.*, backtest results.
+- Problem compilation. Cvxportfolio is now using `cvxpy.Parameters` as placeholders for data objects, it compiles the optimization problem at the start of each backtest, and updates the parameters as the backtest progesses. This, in combination with warm-startable solvers like `osqp`, provides huge speedups on backtest computation with respect to existising methods. The new mechanism is defined and documented in `cvxportfolio.estimator` and is being adopted across the rest of the classes.
+- Simulator. It is being rewritten, with the goal of radical simplification of the user interface while keeping all existing features and adding new ones. More realistic costs are being added. Documentation is being written along with the new code in `cvxportfolio.simulator`
+- Project management and testing. We migrated to `poetry` and `pytest`, we are still iterating on the best workflow automation tools. **We haven't broken any testfile and we don't intend to.** Tests currently run at a coverage of around 85%, we plan to make it close to 100%.
 
 Installation
 ------------
