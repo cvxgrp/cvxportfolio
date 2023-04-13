@@ -31,25 +31,26 @@ class Estimator:
 
         This function is called by Simulator classes before the
         start of a backtest with the full dataset available to the
-        simulator. It should be used very carefully, if you
-        are not sure do not implement this method. If you do,
-        do check that at each point in time only past data
+        simulator. This is useful for estimators such as pandas.rolling_mean
+        which are faster (and easier) when vectorized rather than called separately
+        at each point in time.
+        
+        It should be used very carefully, if you
+        are not sure do not implement this method. You can use 
+        values_in_time to build lazily whatever you would 
+        build here beforehand. If you do implement this, double 
+        check that at each point in time only past data
         (with respect to that point) is used and not future data.
 
         Args:
             returns (pandas.DataFrame): market returns
             volumes (pandas.DataFrame): market volumes
             kwargs (dict): extra data available
-        
-        Returns:
-            children_result (list): result of recursive call on children
         """
+        for child in children:
+            child.prescient_evaluation(returns, volumes, **kwargs)
 
-        return [
-            child.prescient_evaluation(returns, volumes, **kwargs) for child in children
-        ]
-
-    def values_in_time(self, t, current_portfolio, **kwargs):
+    def values_in_time(self, t, **kwargs):
         """Evaluates estimator at a point in time recursively on its children.
 
         This function is called by Simulator classes on Policy classes
@@ -61,15 +62,11 @@ class Estimator:
 
         Args:
             t (pd.TimeStamp): point in time of the simulation
-            current_portfolio (pd.Series): current portfolio in value form (e.g., US dollars)
             kwargs (dict): extra data used
-        
-        Returns:
-            children_result (list): result of recursive call on children
         """
-        return [
-            child.values_in_time(t, current_portfolio, **kwargs) for child in children
-        ]
+        for child in children:
+            child.values_in_time(t, current_portfolio, **kwargs) 
+        
 
 
 class CvxpyExpression(Estimator):
