@@ -50,8 +50,7 @@ class BaseCost(CvxpyExpressionEstimator):
         return self.gamma * cost, constr
 
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
-        cost, constr = self._estimate_ahead(t, tau, w_plus, z, value)
-        return self.gamma * cost, constr
+        return self.weight_expr(t, w_plus, z, value)
 
     def __mul__(self, other):
         """Read the gamma parameter as a multiplication."""
@@ -63,10 +62,37 @@ class BaseCost(CvxpyExpressionEstimator):
         """Read the gamma parameter as a multiplication."""
         return self.__mul__(other)
         
-    def _estimate_ahead(self, t, tau, w_plus, z, value):
-        """Returns the estimate at time t of tcost at time tau."""
-        return self._estimate(t, w_plus, z, value)
+    def __add__(self, other):
+        """Add cost expression to another cost expression.
+        
+        Idea is to create a new CombinedCost class that
+        implements `compile_to_cvxpy` and values_in_time
+        by summing over costs. Also the logic of `self.gamma`
+        should be handled there.
+        
+        """
+        raise NotImplemetedError
+        
+    def __radd__(self, other):
+        """Add cost expression to another cost expression."""
+        return self.__add__(other)
+        
+    def __neg__(self, other):
+        """Take negative of cost expression."""
+        return self * -1.
+    
+    def __sub__(self, other):
+        """Subtract other expression."""
+        return self.__add__(-other)
+        
+    def __rsub__(self, other):
+        """Subtract from other expression."""
+        return other.__add__(-self)
 
+
+class CombinedCosts(BaseCost):
+    """Class obtained by summing Cost classes."""
+    pass
 
 class HcostModel(BaseCost):
     """A model for holding costs.
@@ -91,11 +117,7 @@ class HcostModel(BaseCost):
           wplus: holdings
           tau: time to estimate (default=t)
         """
-        try:
-            w_plus = w_plus[w_plus.index != self.cash_key]
-            w_plus = w_plus.values
-        except AttributeError:
-            w_plus = w_plus[:-1]  # TODO fix when cvxpy pandas ready
+        w_plus = w_plus[:-1]  
 
         try:
             self.expression = cvx.multiply(
@@ -169,11 +191,7 @@ class TcostModel(BaseCost):
           An expression for the tcosts.
         """
 
-        try:
-            z = z[z.index != self.cash_key]
-            z = z.values
-        except AttributeError:
-            z = z[:-1]  # TODO fix when cvxpy pandas ready
+        z = z[:-1] 
 
         constr = []
 
