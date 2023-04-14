@@ -53,13 +53,12 @@ class BaseCost(CvxpyExpressionEstimator):
         return self.weight_expr(t, w_plus, z, value)
 
     def __mul__(self, other):
-        """Read the gamma parameter as a multiplication."""
-        newobj = copy.copy(self)
-        newobj.gamma *= other
-        return newobj
+        """Multiply by constant."""
+        self.gamma *= other
+        return self
 
     def __rmul__(self, other):
-        """Read the gamma parameter as a multiplication."""
+        """Multiply by constant."""
         return self.__mul__(other)
         
     def __add__(self, other):
@@ -67,33 +66,62 @@ class BaseCost(CvxpyExpressionEstimator):
         
         Idea is to create a new CombinedCost class that
         implements `compile_to_cvxpy` and values_in_time
-        by summing over costs. Also the logic of `self.gamma`
-        should be handled there.
+        by summing over costs.
         
         """
-        raise NotImplemetedError
+        return CombinedCosts([self, other])
         
     def __radd__(self, other):
-        """Add cost expression to another cost expression."""
+        """Add cost expression to another cost."""
         return self.__add__(other)
         
     def __neg__(self, other):
-        """Take negative of cost expression."""
-        return self * -1.
+        """Take negative of cost."""
+        self.gamma *= -1
+        return self
     
     def __sub__(self, other):
-        """Subtract other expression."""
+        """Subtract other cost."""
         return self.__add__(-other)
         
     def __rsub__(self, other):
-        """Subtract from other expression."""
+        """Subtract from other cost."""
         return other.__add__(-self)
 
 
 class CombinedCosts(BaseCost):
-    """Class obtained by summing Cost classes."""
-    pass
-
+    """Class obtained by summing Cost classes.
+    
+    Attributes:
+        costs (list): a list of BaseCost instances
+    """
+    
+    def __init__(self, costs):
+        for cost in costs:
+            if not isinstance(cost, BaseCost):
+                raise SyntaxError('You can only sum `BaseCost` instances.')
+        self.costs = costs
+        
+    def pre_evaluation(self,  *args, **kwargs):
+        """Iterate over constituent costs."""
+        [el.pre_evaluation(*args, **kwargs) for el in self.costs]
+        
+    def values_in_time(self, *args, **kwargs):
+        """Iterate over constituent costs."""
+        return sum([el.values_in_time(*args, **kwargs) for el in self.costs])
+    
+    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+        """Iterate over constituent costs."""
+        return sum([el.compile_to_cvxpy(w_plus, z, portfolio_value) for el in self.costs])
+        
+    def __mul__(self, other):
+        """Multiply by constant."""
+        for el in self.costs
+            el.gamma *= other
+        return self
+    
+        
+    
 class HcostModel(BaseCost):
     """A model for holding costs.
 
