@@ -18,6 +18,23 @@ import numpy as np
 import pandas as pd
 import copy
 from .policies import MultiPeriodOpt
+from .estimator import Estimator
+
+
+class BacktestResult(Estimator):
+    """This will be the class returned by the simulator.
+    
+    It defines a bunch of metrics (Sharpe, ...) that are properties
+    computed from its attribytes. It uses the Estimator logic to update
+    its values by running its registered Simulator class.
+    
+    Attributes:
+        w (pd.DataFrame): pre-trade weights
+        z (pd.DataFrame): trade weights
+        v (pd.Series): value of the portfolio
+    
+    """
+    pass
 
 
 def getFiscalQuarter(dt):
@@ -27,7 +44,7 @@ def getFiscalQuarter(dt):
     return "Q%i %s" % (quarter, year)
 
 
-class SimulationResult:
+class SimulationResult(BacktestResult):
     """A container for the result of a simulation.
 
     Attributes:

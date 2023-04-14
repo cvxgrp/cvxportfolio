@@ -28,11 +28,21 @@ import numpy as np
 import copy
 from .expression import Expression
 from .utils import null_checker, values_in_time
-
+from .estimator import CvxpyExpressionEstimator
 
 __all__ = ["HcostModel", "TcostModel"]
 
 
+class NewBaseCost(CvxpyExpressionEstimator):
+    """Base class for cost objects.
+    
+    It uses the CvxpyExpressionEstimator to compile the cost object to
+    a cvxpy expression for optimization-based policies.
+    
+    It also overloads the values_in_time method to be used by simulator classes.
+    """
+    
+    
 class BaseCost(Expression):
     def __init__(self):
         self.gamma = 1.0  # it is changed by gamma * BaseCost()

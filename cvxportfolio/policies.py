@@ -22,7 +22,7 @@ from cvxportfolio.costs import BaseCost
 from cvxportfolio.returns import BaseReturnsModel
 from cvxportfolio.constraints import BaseConstraint
 from cvxportfolio.utils import values_in_time, null_checker
-
+from .estimator import Estimator
 
 __all__ = [
     "Hold",
@@ -36,7 +36,8 @@ __all__ = [
 ]
 
 
-class BasePolicy:
+    
+class BasePolicy(Estimator):
     """Base class for a trading policy."""
 
     def __init__(self):

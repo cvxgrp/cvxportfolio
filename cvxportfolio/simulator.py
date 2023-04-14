@@ -37,8 +37,16 @@ from .data import FredRate, Yfinance
 # TODO update benchmark weights (?)
 # Also could try jitting with numba.
 
+class BaseMarketSimulator:
+    """Base class for market simulators.
+    
+    Each derived class implements specific usecases, such as stock portfolio simualtors,
+    CFDs portfolios, or futures portfolios. One might also subclass this (or one of the derived classes)
+    to specialize the simulator to a specific regional market, or a specific asset class.
+    """
+    pass
 
-class MarketSimulator:
+class NewMarketSimulator(BaseMarketSimulator):
     """This class implements a simulator of market performance for trading strategies.
     
     We strive to make the parameters here as accurate as possible. The following is
@@ -120,13 +128,16 @@ class MarketSimulator:
         cash_key (str): name of the cash account, there must be a matching data reader and symbol in 
             MarketSimulator.cash_keys. Default is 'USDOLLAR'.
     """
-    
-    logger = None
     cash_keys = {'USDOLLAR': (FredRate, 'DFF')}
+    
+    
+class MarketSimulator(BaseMarketSimulator):
+    """Current market simulator, name will change soon."""
+    logger = None
     
 
     def __init__(self, market_returns, costs, market_volumes=None, cash_key='cash',
-                spread_on_lending_cash_percent=0.5, spread_on_borrowing_cash_percent=0.5,):
+                ):
         """Provide market returns object and cost objects."""
         self.market_returns = market_returns
         if market_volumes is not None:
