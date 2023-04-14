@@ -390,31 +390,6 @@ document.write(`
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
-
-  <span class="n">File</span> <span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">hostedtoolcache</span><span class="o">/</span><span class="n">Python</span><span class="o">/</span><span class="mf">3.10.11</span><span class="o">/</span><span class="n">x64</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">python3</span><span class="mf">.10</span><span class="o">/</span><span class="n">site</span><span class="o">-</span><span class="n">packages</span><span class="o">/</span><span class="n">IPython</span><span class="o">/</span><span class="n">core</span><span class="o">/</span><span class="n">interactiveshell</span><span class="o">.</span><span class="n">py</span><span class="p">:</span><span class="mi">3505</span> <span class="ow">in</span> <span class="n">run_code</span>
-    <span class="n">exec</span><span class="p">(</span><span class="n">code_obj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_global_ns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_ns</span><span class="p">)</span>
-
-  <span class="n">Cell</span> <span class="n">In</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">line</span> <span class="mi">3</span>
-    <span class="kn">import</span> <span class="nn">cvxportfolio</span> <span class="k">as</span> <span class="nn">cp</span>
-
-  <span class="n">File</span> <span class="o">~/</span><span class="n">work</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="fm">__init__</span><span class="o">.</span><span class="n">py</span><span class="p">:</span><span class="mi">18</span>
-    <span class="kn">from</span> <span class="nn">.simulator</span> <span class="kn">import</span> <span class="n">MarketSimulator</span>
-
-  <span class="n">File</span> <span class="o">~/</span><span class="n">work</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">simulator</span><span class="o">.</span><span class="n">py</span><span class="p">:</span><span class="mi">31</span>
-    <span class="kn">from</span> <span class="nn">.returns</span> <span class="kn">import</span> <span class="n">MultipleReturnsForecasts</span>
-
-  <span class="n">File</span> <span class="o">~/</span><span class="n">work</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">returns</span><span class="o">.</span><span class="n">py</span><span class="p">:</span><span class="mi">19</span>
-    <span class="kn">from</span> <span class="nn">.costs</span> <span class="kn">import</span> <span class="n">BaseCost</span>
-
-  <span class="n">File</span> <span class="o">~/</span><span class="n">work</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">cvxportfolio</span><span class="o">/</span><span class="n">costs</span><span class="o">.</span><span class="n">py</span><span class="p">:</span><span class="mi">119</span>
-    <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">costs</span>
-                        <span class="o">^</span>
-<span class="ne">SyntaxError</span>: expected &#39;:&#39;
-</pre></div>
-</div>
-</div>
 </div>
 <p>Download the problem data with <code class="docutils literal notranslate"><span class="pre">yfinance</span></code>. We select five liquid stocks.</p>
 <div class="cell docutils container">
@@ -441,10 +416,33 @@ document.write(`
 </div>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
-[*********************100%***********************]  1 of 1 completed
-[*********************100%***********************]  1 of 1 completed
-[*********************100%***********************]  1 of 1 completed
-[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[*********************100%***********************]  1 of 1 completed
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
 </pre></div>
 </div>
 </div>
@@ -484,27 +482,27 @@ document.write(`
   <tbody>
     <tr>
       <th>count</th>
-      <td>6516.000000</td>
-      <td>10668.000000</td>
-      <td>9342.000000</td>
-      <td>4690.000000</td>
-      <td>3215.000000</td>
+      <td>6520.000000</td>
+      <td>10672.000000</td>
+      <td>9346.000000</td>
+      <td>4694.000000</td>
+      <td>3219.000000</td>
     </tr>
     <tr>
       <th>mean</th>
       <td>0.001706</td>
       <td>0.001100</td>
-      <td>0.001136</td>
-      <td>0.000991</td>
-      <td>0.002130</td>
+      <td>0.001135</td>
+      <td>0.000988</td>
+      <td>0.002129</td>
     </tr>
     <tr>
       <th>std</th>
-      <td>0.036090</td>
-      <td>0.028219</td>
-      <td>0.021318</td>
-      <td>0.019436</td>
-      <td>0.036154</td>
+      <td>0.036085</td>
+      <td>0.028216</td>
+      <td>0.021317</td>
+      <td>0.019435</td>
+      <td>0.036141</td>
     </tr>
     <tr>
       <th>min</th>
@@ -516,10 +514,10 @@ document.write(`
     </tr>
     <tr>
       <th>25%</th>
-      <td>-0.013288</td>
+      <td>-0.013311</td>
       <td>-0.013062</td>
       <td>-0.009217</td>
-      <td>-0.007982</td>
+      <td>-0.007991</td>
       <td>-0.015604</td>
     </tr>
     <tr>
@@ -527,7 +525,7 @@ document.write(`
       <td>0.000402</td>
       <td>0.000000</td>
       <td>0.000352</td>
-      <td>0.000755</td>
+      <td>0.000748</td>
       <td>0.001221</td>
     </tr>
     <tr>
@@ -541,7 +539,7 @@ document.write(`
     <tr>
       <th>max</th>
       <td>0.344714</td>
-      <td>0.332281</td>
+      <td>0.332280</td>
       <td>0.195652</td>
       <td>0.199915</td>
       <td>0.243951</td>
@@ -600,48 +598,48 @@ document.write(`
   </thead>
   <tbody>
     <tr>
-      <th>2023-03-31</th>
-      <td>0.012647</td>
-      <td>0.015644</td>
-      <td>0.014962</td>
-      <td>0.028150</td>
-      <td>0.062372</td>
-      <td>0.000193</td>
-    </tr>
-    <tr>
-      <th>2023-04-03</th>
-      <td>-0.008520</td>
-      <td>0.007702</td>
-      <td>-0.003711</td>
-      <td>0.006073</td>
-      <td>-0.061168</td>
-      <td>0.000193</td>
-    </tr>
-    <tr>
-      <th>2023-04-04</th>
-      <td>0.015038</td>
-      <td>-0.003250</td>
-      <td>-0.000174</td>
-      <td>0.003450</td>
-      <td>-0.011244</td>
-      <td>0.000193</td>
-    </tr>
-    <tr>
-      <th>2023-04-05</th>
-      <td>-0.027417</td>
-      <td>-0.011290</td>
-      <td>-0.009889</td>
-      <td>-0.002387</td>
-      <td>-0.036660</td>
-      <td>0.000193</td>
-    </tr>
-    <tr>
       <th>2023-04-06</th>
       <td>0.009496</td>
       <td>0.005496</td>
       <td>0.025533</td>
       <td>0.037810</td>
       <td>-0.002480</td>
+      <td>0.000193</td>
+    </tr>
+    <tr>
+      <th>2023-04-10</th>
+      <td>0.001078</td>
+      <td>-0.015972</td>
+      <td>-0.007579</td>
+      <td>-0.018262</td>
+      <td>-0.002972</td>
+      <td>0.000193</td>
+    </tr>
+    <tr>
+      <th>2023-04-11</th>
+      <td>-0.022022</td>
+      <td>-0.007591</td>
+      <td>-0.022668</td>
+      <td>-0.010241</td>
+      <td>0.012357</td>
+      <td>0.000193</td>
+    </tr>
+    <tr>
+      <th>2023-04-12</th>
+      <td>-0.020917</td>
+      <td>-0.004353</td>
+      <td>0.002334</td>
+      <td>-0.006739</td>
+      <td>-0.033460</td>
+      <td>0.000193</td>
+    </tr>
+    <tr>
+      <th>2023-04-13</th>
+      <td>0.046714</td>
+      <td>0.034104</td>
+      <td>0.022399</td>
+      <td>0.026663</td>
+      <td>0.029689</td>
       <td>0.000193</td>
     </tr>
   </tbody>
@@ -750,42 +748,6 @@ document.write(`
       <td>...</td>
     </tr>
     <tr>
-      <th>2023-03-31</th>
-      <td>0.000361</td>
-      <td>0.001441</td>
-      <td>0.001107</td>
-      <td>0.000732</td>
-      <td>0.003286</td>
-      <td>0.000048</td>
-    </tr>
-    <tr>
-      <th>2023-04-03</th>
-      <td>0.000376</td>
-      <td>0.001465</td>
-      <td>0.001121</td>
-      <td>0.000758</td>
-      <td>0.003376</td>
-      <td>0.000048</td>
-    </tr>
-    <tr>
-      <th>2023-04-04</th>
-      <td>0.000368</td>
-      <td>0.001473</td>
-      <td>0.001112</td>
-      <td>0.000753</td>
-      <td>0.003317</td>
-      <td>0.000048</td>
-    </tr>
-    <tr>
-      <th>2023-04-05</th>
-      <td>0.000382</td>
-      <td>0.001468</td>
-      <td>0.001111</td>
-      <td>0.000753</td>
-      <td>0.003311</td>
-      <td>0.000048</td>
-    </tr>
-    <tr>
       <th>2023-04-06</th>
       <td>0.000345</td>
       <td>0.001456</td>
@@ -794,9 +756,45 @@ document.write(`
       <td>0.003248</td>
       <td>0.000048</td>
     </tr>
+    <tr>
+      <th>2023-04-10</th>
+      <td>0.000353</td>
+      <td>0.001442</td>
+      <td>0.001121</td>
+      <td>0.000778</td>
+      <td>0.003254</td>
+      <td>0.000048</td>
+    </tr>
+    <tr>
+      <th>2023-04-11</th>
+      <td>0.000356</td>
+      <td>0.001423</td>
+      <td>0.001100</td>
+      <td>0.000759</td>
+      <td>0.003243</td>
+      <td>0.000048</td>
+    </tr>
+    <tr>
+      <th>2023-04-12</th>
+      <td>0.000320</td>
+      <td>0.001412</td>
+      <td>0.001074</td>
+      <td>0.000738</td>
+      <td>0.003294</td>
+      <td>0.000048</td>
+    </tr>
+    <tr>
+      <th>2023-04-13</th>
+      <td>0.000280</td>
+      <td>0.001393</td>
+      <td>0.001063</td>
+      <td>0.000718</td>
+      <td>0.003256</td>
+      <td>0.000048</td>
+    </tr>
   </tbody>
 </table>
-<p>2215 rows × 6 columns</p>
+<p>2219 rows × 6 columns</p>
 </div></div></div>
 </div>
 <div class="cell docutils container">
@@ -848,35 +846,35 @@ document.write(`
       <th rowspan="5" valign="top">2014-06-20</th>
       <th>AMZN</th>
       <td>4.237160e-04</td>
-      <td>1.014460e-04</td>
-      <td>9.996438e-05</td>
+      <td>1.014461e-04</td>
+      <td>9.996442e-05</td>
       <td>1.531471e-04</td>
       <td>2.003648e-04</td>
       <td>9.720131e-10</td>
     </tr>
     <tr>
       <th>AAPL</th>
-      <td>1.014460e-04</td>
-      <td>2.841138e-04</td>
-      <td>7.152259e-05</td>
-      <td>1.037271e-04</td>
-      <td>1.220261e-04</td>
-      <td>-6.378240e-10</td>
+      <td>1.014461e-04</td>
+      <td>2.841142e-04</td>
+      <td>7.152279e-05</td>
+      <td>1.037273e-04</td>
+      <td>1.220258e-04</td>
+      <td>-6.378216e-10</td>
     </tr>
     <tr>
       <th>MSFT</th>
-      <td>9.996438e-05</td>
-      <td>7.152259e-05</td>
-      <td>1.983344e-04</td>
-      <td>8.818669e-05</td>
-      <td>1.074348e-04</td>
-      <td>-7.018998e-10</td>
+      <td>9.996442e-05</td>
+      <td>7.152279e-05</td>
+      <td>1.983346e-04</td>
+      <td>8.818679e-05</td>
+      <td>1.074351e-04</td>
+      <td>-7.019002e-10</td>
     </tr>
     <tr>
       <th>GOOGL</th>
       <td>1.531471e-04</td>
-      <td>1.037271e-04</td>
-      <td>8.818669e-05</td>
+      <td>1.037273e-04</td>
+      <td>8.818679e-05</td>
       <td>2.528908e-04</td>
       <td>1.364906e-04</td>
       <td>2.541239e-10</td>
@@ -884,8 +882,8 @@ document.write(`
     <tr>
       <th>TSLA</th>
       <td>2.003648e-04</td>
-      <td>1.220261e-04</td>
-      <td>1.074348e-04</td>
+      <td>1.220258e-04</td>
+      <td>1.074351e-04</td>
       <td>1.364906e-04</td>
       <td>1.424632e-03</td>
       <td>-6.411383e-10</td>
@@ -901,54 +899,54 @@ document.write(`
       <td>...</td>
     </tr>
     <tr>
-      <th rowspan="5" valign="top">2023-04-06</th>
+      <th rowspan="5" valign="top">2023-04-13</th>
       <th>AAPL</th>
-      <td>3.195570e-04</td>
-      <td>4.661099e-04</td>
-      <td>3.415261e-04</td>
-      <td>3.155696e-04</td>
-      <td>4.703272e-04</td>
-      <td>-1.379739e-08</td>
+      <td>3.196257e-04</td>
+      <td>4.660406e-04</td>
+      <td>3.416610e-04</td>
+      <td>3.159032e-04</td>
+      <td>4.707957e-04</td>
+      <td>-1.959728e-08</td>
     </tr>
     <tr>
       <th>MSFT</th>
-      <td>3.274856e-04</td>
-      <td>3.415261e-04</td>
-      <td>4.113642e-04</td>
-      <td>3.398829e-04</td>
-      <td>4.169269e-04</td>
-      <td>3.710386e-09</td>
+      <td>3.279619e-04</td>
+      <td>3.416610e-04</td>
+      <td>4.122460e-04</td>
+      <td>3.409818e-04</td>
+      <td>4.166793e-04</td>
+      <td>1.074475e-09</td>
     </tr>
     <tr>
       <th>GOOGL</th>
-      <td>3.208216e-04</td>
-      <td>3.155696e-04</td>
-      <td>3.398829e-04</td>
-      <td>4.366007e-04</td>
-      <td>3.822836e-04</td>
-      <td>-2.227037e-08</td>
+      <td>3.211840e-04</td>
+      <td>3.159032e-04</td>
+      <td>3.409818e-04</td>
+      <td>4.382335e-04</td>
+      <td>3.827966e-04</td>
+      <td>-2.370950e-08</td>
     </tr>
     <tr>
       <th>TSLA</th>
-      <td>4.526107e-04</td>
-      <td>4.703272e-04</td>
-      <td>4.169269e-04</td>
-      <td>3.822836e-04</td>
-      <td>1.854000e-03</td>
-      <td>-1.129021e-07</td>
+      <td>4.536855e-04</td>
+      <td>4.707957e-04</td>
+      <td>4.166793e-04</td>
+      <td>3.827966e-04</td>
+      <td>1.853621e-03</td>
+      <td>-1.163079e-07</td>
     </tr>
     <tr>
       <th>USDOLLAR</th>
-      <td>-2.052149e-08</td>
-      <td>-1.379739e-08</td>
-      <td>3.710386e-09</td>
-      <td>-2.227037e-08</td>
-      <td>-1.129021e-07</td>
-      <td>3.227362e-09</td>
+      <td>-2.693818e-08</td>
+      <td>-1.959728e-08</td>
+      <td>1.074475e-09</td>
+      <td>-2.370950e-08</td>
+      <td>-1.163079e-07</td>
+      <td>3.301883e-09</td>
     </tr>
   </tbody>
 </table>
-<p>13290 rows × 6 columns</p>
+<p>13314 rows × 6 columns</p>
 </div></div></div>
 </div>
 <p>For the cash return instead we simply use the previous day’s return.</p>
@@ -1015,17 +1013,63 @@ as</p>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Number of periods                               818
-Initial timestamp               2020-01-02 00:00:00
-Final timestamp                 2023-03-31 00:00:00
-Portfolio return (%)                         62.376
-Excess return (%)                            61.373
-Excess risk (%)                              64.411
-Sharpe ratio                                  0.953
-Max. drawdown                                70.894
-Turnover (%)                                 32.884
-Average policy time (sec)                     0.008
-Average simulator time (sec)                  0.001
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">RemoteTraceback</span><span class="g g-Whitespace">                           </span>Traceback (most recent call last)
+<span class="ne">Remote</span>Traceback: 
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Traceback (most recent call last):</span>
+<span class="sd">  File &quot;/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py&quot;, line 125, in worker</span>
+<span class="sd">    result = (True, func(*args, **kwds))</span>
+<span class="sd">  File &quot;/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py&quot;, line 48, in mapstar</span>
+<span class="sd">    return list(map(*args))</span>
+<span class="sd">  File &quot;/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py&quot;, line 265, in _run_backtest</span>
+<span class="sd">    return self.run_backtest(</span>
+<span class="sd">  File &quot;/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py&quot;, line 224, in run_backtest</span>
+<span class="sd">    u = policy.get_trades(h, t)</span>
+<span class="sd">  File &quot;/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/policies.py&quot;, line 273, in get_trades</span>
+<span class="sd">    constraints += constr.weight_expr(t, wplus, z, value)</span>
+<span class="sd">  File &quot;/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/constraints.py&quot;, line 52, in weight_expr</span>
+<span class="sd">    result = self.compile_to_cvxpy(wplus, z, v)</span>
+<span class="ne">NameError</span>: name &#39;wplus&#39; is not defined
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">The</span> <span class="n">above</span> <span class="n">exception</span> <span class="n">was</span> <span class="n">the</span> <span class="n">direct</span> <span class="n">cause</span> <span class="n">of</span> <span class="n">the</span> <span class="n">following</span> <span class="n">exception</span><span class="p">:</span>
+
+<span class="ne">NameError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
+<span class="n">Cell</span> <span class="n">In</span><span class="p">[</span><span class="mi">10</span><span class="p">],</span> <span class="n">line</span> <span class="mi">6</span>
+<span class="g g-Whitespace">      </span><span class="mi">4</span> <span class="n">init_portfolio</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">returns</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="mf">250000.0</span><span class="p">)</span>
+<span class="g g-Whitespace">      </span><span class="mi">5</span> <span class="n">init_portfolio</span><span class="o">.</span><span class="n">USDOLLAR</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="ne">----&gt; </span><span class="mi">6</span> <span class="n">results</span> <span class="o">=</span> <span class="n">market_sim</span><span class="o">.</span><span class="n">run_multiple_backtest</span><span class="p">(</span>
+<span class="g g-Whitespace">      </span><span class="mi">7</span>     <span class="n">init_portfolio</span><span class="p">,</span>
+<span class="g g-Whitespace">      </span><span class="mi">8</span>     <span class="n">start_time</span><span class="o">=</span><span class="s2">&quot;2020-01-01&quot;</span><span class="p">,</span>
+<span class="g g-Whitespace">      </span><span class="mi">9</span>     <span class="n">end_time</span><span class="o">=</span><span class="s2">&quot;2023-04-01&quot;</span><span class="p">,</span>
+<span class="g g-Whitespace">     </span><span class="mi">10</span>     <span class="n">policies</span><span class="o">=</span><span class="p">[</span><span class="n">spo_policy</span><span class="p">,</span> 
+<span class="g g-Whitespace">     </span><span class="mi">11</span>              <span class="n">cp</span><span class="o">.</span><span class="n">Hold</span><span class="p">()</span>
+<span class="g g-Whitespace">     </span><span class="mi">12</span>             <span class="p">],</span>
+<span class="g g-Whitespace">     </span><span class="mi">13</span> <span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">14</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+
+<span class="nn">File ~/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py:272,</span> in <span class="ni">MarketSimulator.run_multiple_backtest</span><span class="nt">(self, initial_portf, start_time, end_time, policies, loglevel, parallel)</span>
+<span class="g g-Whitespace">    </span><span class="mi">270</span> <span class="k">if</span> <span class="n">parallel</span><span class="p">:</span>
+<span class="g g-Whitespace">    </span><span class="mi">271</span>     <span class="n">workers</span> <span class="o">=</span> <span class="n">multiprocess</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="n">num_workers</span><span class="p">)</span>
+<span class="ne">--&gt; </span><span class="mi">272</span>     <span class="n">results</span> <span class="o">=</span> <span class="n">workers</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_run_backtest</span><span class="p">,</span> <span class="n">policies</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">273</span>     <span class="n">workers</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="g g-Whitespace">    </span><span class="mi">274</span>     <span class="k">return</span> <span class="n">results</span>
+
+<span class="nn">File /opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py:367,</span> in <span class="ni">Pool.map</span><span class="nt">(self, func, iterable, chunksize)</span>
+<span class="g g-Whitespace">    </span><span class="mi">362</span> <span class="k">def</span> <span class="nf">map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">iterable</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="g g-Whitespace">    </span><span class="mi">363</span><span class="w">     </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="g g-Whitespace">    </span><span class="mi">364</span><span class="sd">     Apply `func` to each element in `iterable`, collecting the results</span>
+<span class="g g-Whitespace">    </span><span class="mi">365</span><span class="sd">     in a list that is returned.</span>
+<span class="g g-Whitespace">    </span><span class="mi">366</span><span class="sd">     &#39;&#39;&#39;</span>
+<span class="ne">--&gt; </span><span class="mi">367</span>     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_map_async</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">iterable</span><span class="p">,</span> <span class="n">mapstar</span><span class="p">,</span> <span class="n">chunksize</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+<span class="nn">File /opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py:774,</span> in <span class="ni">ApplyResult.get</span><span class="nt">(self, timeout)</span>
+<span class="g g-Whitespace">    </span><span class="mi">772</span>     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+<span class="g g-Whitespace">    </span><span class="mi">773</span> <span class="k">else</span><span class="p">:</span>
+<span class="ne">--&gt; </span><span class="mi">774</span>     <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+
+<span class="ne">NameError</span>: name &#39;wplus&#39; is not defined
 </pre></div>
 </div>
 </div>

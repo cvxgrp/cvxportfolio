@@ -17,32 +17,78 @@ Traceback (most recent call last):
     raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
 nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
 ------------------
-%matplotlib inline
-import pandas as pd
-import cvxportfolio as cp
+market_sim = cp.MarketSimulator(
+    returns, [tcost_model, hcost_model], cash_key="USDOLLAR"
+)
+init_portfolio = pd.Series(index=returns.columns, data=250000.0)
+init_portfolio.USDOLLAR = 0
+results = market_sim.run_multiple_backtest(
+    init_portfolio,
+    start_time="2020-01-01",
+    end_time="2023-04-01",
+    policies=[spo_policy, 
+             cp.Hold()
+            ],
+)
+results[0].summary()
 ------------------
 
-Traceback [0;36m(most recent call last)[0m:
+[0;31m---------------------------------------------------------------------------[0m
+[0;31mRemoteTraceback[0m                           Traceback (most recent call last)
+[0;31mRemoteTraceback[0m: 
+"""
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+  File "/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py", line 48, in mapstar
+    return list(map(*args))
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 265, in _run_backtest
+    return self.run_backtest(
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 224, in run_backtest
+    u = policy.get_trades(h, t)
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/policies.py", line 273, in get_trades
+    constraints += constr.weight_expr(t, wplus, z, value)
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/constraints.py", line 52, in weight_expr
+    result = self.compile_to_cvxpy(wplus, z, v)
+NameError: name 'wplus' is not defined
+"""
 
-[0m  File [1;32m/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/IPython/core/interactiveshell.py:3505[0m in [1;35mrun_code[0m
-    exec(code_obj, self.user_global_ns, self.user_ns)[0m
+The above exception was the direct cause of the following exception:
 
-[0m  Cell [1;32mIn[1], line 3[0m
-    import cvxportfolio as cp[0m
+[0;31mNameError[0m                                 Traceback (most recent call last)
+Cell [0;32mIn[10], line 6[0m
+[1;32m      4[0m init_portfolio [38;5;241m=[39m pd[38;5;241m.[39mSeries(index[38;5;241m=[39mreturns[38;5;241m.[39mcolumns, data[38;5;241m=[39m[38;5;241m250000.0[39m)
+[1;32m      5[0m init_portfolio[38;5;241m.[39mUSDOLLAR [38;5;241m=[39m [38;5;241m0[39m
+[0;32m----> 6[0m results [38;5;241m=[39m [43mmarket_sim[49m[38;5;241;43m.[39;49m[43mrun_multiple_backtest[49m[43m([49m
+[1;32m      7[0m [43m    [49m[43minit_portfolio[49m[43m,[49m
+[1;32m      8[0m [43m    [49m[43mstart_time[49m[38;5;241;43m=[39;49m[38;5;124;43m"[39;49m[38;5;124;43m2020-01-01[39;49m[38;5;124;43m"[39;49m[43m,[49m
+[1;32m      9[0m [43m    [49m[43mend_time[49m[38;5;241;43m=[39;49m[38;5;124;43m"[39;49m[38;5;124;43m2023-04-01[39;49m[38;5;124;43m"[39;49m[43m,[49m
+[1;32m     10[0m [43m    [49m[43mpolicies[49m[38;5;241;43m=[39;49m[43m[[49m[43mspo_policy[49m[43m,[49m[43m [49m
+[1;32m     11[0m [43m             [49m[43mcp[49m[38;5;241;43m.[39;49m[43mHold[49m[43m([49m[43m)[49m
+[1;32m     12[0m [43m            [49m[43m][49m[43m,[49m
+[1;32m     13[0m [43m)[49m
+[1;32m     14[0m results[[38;5;241m0[39m][38;5;241m.[39msummary()
 
-[0m  File [1;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/__init__.py:18[0m
-    from .simulator import MarketSimulator[0m
+File [0;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py:272[0m, in [0;36mMarketSimulator.run_multiple_backtest[0;34m(self, initial_portf, start_time, end_time, policies, loglevel, parallel)[0m
+[1;32m    270[0m [38;5;28;01mif[39;00m parallel:
+[1;32m    271[0m     workers [38;5;241m=[39m multiprocess[38;5;241m.[39mPool(num_workers)
+[0;32m--> 272[0m     results [38;5;241m=[39m [43mworkers[49m[38;5;241;43m.[39;49m[43mmap[49m[43m([49m[43m_run_backtest[49m[43m,[49m[43m [49m[43mpolicies[49m[43m)[49m
+[1;32m    273[0m     workers[38;5;241m.[39mclose()
+[1;32m    274[0m     [38;5;28;01mreturn[39;00m results
 
-[0m  File [1;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py:31[0m
-    from .returns import MultipleReturnsForecasts[0m
+File [0;32m/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py:367[0m, in [0;36mPool.map[0;34m(self, func, iterable, chunksize)[0m
+[1;32m    362[0m [38;5;28;01mdef[39;00m [38;5;21mmap[39m([38;5;28mself[39m, func, iterable, chunksize[38;5;241m=[39m[38;5;28;01mNone[39;00m):
+[1;32m    363[0m [38;5;250m    [39m[38;5;124;03m'''[39;00m
+[1;32m    364[0m [38;5;124;03m    Apply `func` to each element in `iterable`, collecting the results[39;00m
+[1;32m    365[0m [38;5;124;03m    in a list that is returned.[39;00m
+[1;32m    366[0m [38;5;124;03m    '''[39;00m
+[0;32m--> 367[0m     [38;5;28;01mreturn[39;00m [38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43m_map_async[49m[43m([49m[43mfunc[49m[43m,[49m[43m [49m[43miterable[49m[43m,[49m[43m [49m[43mmapstar[49m[43m,[49m[43m [49m[43mchunksize[49m[43m)[49m[38;5;241;43m.[39;49m[43mget[49m[43m([49m[43m)[49m
 
-[0;36m  File [0;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/returns.py:19[0;36m
-[0;31m    from .costs import BaseCost[0;36m
+File [0;32m/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py:774[0m, in [0;36mApplyResult.get[0;34m(self, timeout)[0m
+[1;32m    772[0m     [38;5;28;01mreturn[39;00m [38;5;28mself[39m[38;5;241m.[39m_value
+[1;32m    773[0m [38;5;28;01melse[39;00m:
+[0;32m--> 774[0m     [38;5;28;01mraise[39;00m [38;5;28mself[39m[38;5;241m.[39m_value
 
-[0;36m  File [0;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/costs.py:119[0;36m[0m
-[0;31m    for el in self.costs[0m
-[0m                        ^[0m
-[0;31mSyntaxError[0m[0;31m:[0m expected ':'
-
-SyntaxError: expected ':' (costs.py, line 119)
+[0;31mNameError[0m: name 'wplus' is not defined
+NameError: name 'wplus' is not defined
 
