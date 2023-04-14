@@ -89,7 +89,10 @@ class FullSigma(BaseRiskModel):
 
 
 class EmpSigma(BaseRiskModel):
-    """Empirical Sigma matrix, built looking at *lookback* past returns."""
+    """Empirical Sigma matrix, built looking at *lookback* past returns.
+    
+    DEPRECATED: should get view of past returns from values_in_time and use those
+    """
 
     def __init__(self, returns, lookback, **kwargs):
         """returns is dataframe, lookback is int"""
@@ -123,20 +126,18 @@ class SqrtSigma(BaseRiskModel):
 class FactorModelSigma(BaseRiskModel):
     def __init__(self, exposures, factor_Sigma, idiosync, **kwargs):
         """Each is a pd.Panel (or ) or a vector/matrix"""
-        self.exposures = exposures
-        assert not exposures.isnull().values.any()
-        self.factor_Sigma = factor_Sigma
-        assert not factor_Sigma.isnull().values.any()
-        self.idiosync = idiosync
-        assert not idiosync.isnull().values.any()
+        
+        self.exposures = ParameterEstimator(exposures)
+        self.factor_Sigma = ParameterEstimator(factor_Sigma)
+        self.idiosync = ParameterEstimator(idiosync)
         super(FactorModelSigma, self).__init__(**kwargs)
-
-    def _estimate(self, t, wplus, z, value):
+        
+    def compile_to_cvxpy(self, w_plus, z, value):
         self.expression = cvx.sum_squares(
-            cvx.multiply(np.sqrt(values_in_time(self.idiosync, t)), wplus)
+            cvx.multiply(np.sqrt(self.idiosync.parameter), wplus)
         ) + cvx.quad_form(
-            (wplus.T @ values_in_time(self.exposures, t).values.T).T,
-            values_in_time(self.factor_Sigma, t).values,
+            (wplus.T @ self.exposures.parameter.T).T,
+            self.factor_Sigma.parameter,
         )
         return self.expression
 
