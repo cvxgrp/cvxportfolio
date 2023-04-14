@@ -60,8 +60,9 @@ class BaseRiskModel(BaseCost):
         #self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
 
     def weight_expr(self, t, w_plus, z, value):
-        self.expression = self._estimate(t, w_plus - self.w_bench, z, value)
-        return self.gamma * self.expression, []
+        """Temporary placeholder while migrating to new interface"""
+        self.expression, _ = self._estimate(t, w_plus - self.w_bench, z, value)
+        return self.expression, []
 
 
     def optimization_log(self, t):

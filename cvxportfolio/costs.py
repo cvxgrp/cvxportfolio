@@ -43,28 +43,32 @@ class BaseCost(CvxpyExpressionEstimator):
     It also overloads the values_in_time method to be used by simulator classes.
     """
     
-    gamma = 1.
+    #gamma = 1. # this will be removed
     
 
     ## PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
     def weight_expr(self, t, w_plus, z, value):
         cost, constr = self._estimate(t, w_plus, z, value)
-        return self.gamma * cost, constr
+        return cost, constr
         
     def _estimate(self, t, w_plus, z, value):
         """Temporary interface to old cvxportfolio."""
         self.pre_evaluation(None, None, t, None)
         cost = self.compile_to_cvxpy(w_plus, z, value)
         self.values_in_time(t)
-        return cost
+        return cost, []
 
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
         return self.weight_expr(t, w_plus, z, value)
 
     def __mul__(self, other):
         """Multiply by constant."""
-        self.gamma *= other
-        return self
+        if not np.isscalar(other):
+            raise SyntaxError('You can only multiply cost by a scalar.')
+        return CombinedCosts([self], [other])
+        # copied = copy.deepcopy(self)
+        # copied.gamma *= other
+        # return copied
 
     def __rmul__(self, other):
         """Multiply by constant."""
@@ -78,16 +82,15 @@ class BaseCost(CvxpyExpressionEstimator):
         by summing over costs.
         
         """
-        return CombinedCosts([self, other])
+        return CombinedCosts([self, other], [1., 1.])
         
     def __radd__(self, other):
         """Add cost expression to another cost."""
         return self.__add__(other)
         
-    def __neg__(self, other):
+    def __neg__(self):
         """Take negative of cost."""
-        self.gamma *= -1
-        return self
+        return CombinedCosts([self], [-1.])
     
     def __sub__(self, other):
         """Subtract other cost."""
@@ -99,17 +102,18 @@ class BaseCost(CvxpyExpressionEstimator):
 
 
 class CombinedCosts(BaseCost):
-    """Class obtained by summing Cost classes.
+    """Class obtained by algebraic combination of Cost classes.
     
     Attributes:
         costs (list): a list of BaseCost instances
     """
     
-    def __init__(self, costs):
+    def __init__(self, costs, multipliers):
         for cost in costs:
             if not isinstance(cost, BaseCost):
                 raise SyntaxError('You can only sum `BaseCost` instances to other `BaseCost` instances.')
         self.costs = costs
+        self.multipliers = multipliers
         
     def pre_evaluation(self,  *args, **kwargs):
         """Iterate over constituent costs."""
@@ -117,17 +121,21 @@ class CombinedCosts(BaseCost):
         
     def values_in_time(self, *args, **kwargs):
         """Iterate over constituent costs."""
-        return sum([el.values_in_time(*args, **kwargs) for el in self.costs])
+        [el.values_in_time(*args, **kwargs) for el in self.costs]
     
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Iterate over constituent costs."""
-        return sum([el.compile_to_cvxpy(w_plus, z, portfolio_value) for el in self.costs])
+        return sum([multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value) for multiplier, cost in zip(self.multipliers, self.costs)])
         
-    def __mul__(self, other):
-        """Multiply by constant."""
-        for el in self.costs:
-            el.gamma *= other
-        return self
+    ## TEMPORARY IN ORDER NOT TO BREAK TESTS
+    ## THESE METHODS ARE DEPRECATED
+        
+    def optimization_log(self, t):
+        return sum([multiplier * (cost.expression.value if hasattr(cost, 'expression') else 0.) for multiplier, cost in zip(self.multipliers, self.costs)])
+
+    def simulation_log(self, t):
+        return sum([multiplier * (cost.last_cost if hasattr(cost, 'last_cost') else 0.) for multiplier, cost in zip(self.multipliers, self.costs)])
+        
     
         
 class HcostModel(BaseCost):
@@ -148,7 +156,7 @@ class HcostModel(BaseCost):
         self.expression = cvx.multiply(self.borrow_costs.parameter, cvx.neg(w_plus[:-1]))
         self.expression -= cvx.multiply(self.dividends.parameter, w_plus[:-1])
         
-        return cvx.sum(self.expression), []
+        return cvx.sum(self.expression)
     
 
     def value_expr(self, t, h_plus, u):
