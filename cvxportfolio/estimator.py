@@ -130,7 +130,7 @@ class DataEstimator(Estimator):
     
     def __init__(self, data, use_last_available_time=False):
         self.data = data
-        self.use_last_available_time = use_last_available_time        
+        self.use_last_available_time = use_last_available_time    
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned.
@@ -215,11 +215,16 @@ class ParameterEstimator(DataEstimator, cvxpy.Parameter):
         same as cvxportfolio.DataEstimator
     
     """
+    
+    def __init__(self, data, positive_semi_definite=False, non_negative=False, use_last_available_time=False):
+        self.positive_semi_definite = positive_semi_definite
+        self.non_negative = non_negative
+        super().__init__(data, use_last_available_time)
         
     def pre_evaluation(self, returns, volumes, start_time, end_time):
         """Use the start time of the simulation to initialize the Parameter."""
         value = super().values_in_time(start_time)
-        self.parameter = cvxpy.Parameter(value.shape if hasattr(value, 'shape') else ())
+        self.parameter = cvxpy.Parameter(value.shape if hasattr(value, 'shape') else (), PSD=self.positive_semi_definite, nonneg=self.non_negative)
         
     def values_in_time(self, t, **kwargs):
         """Update Cvxpy Parameter value."""

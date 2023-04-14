@@ -23,6 +23,7 @@ from .utils import values_in_time
 
 logger = logging.getLogger(__name__)
 
+from .estimator import ParameterEstimator
 
 __all__ = [
     "FullSigma",
@@ -55,27 +56,13 @@ __all__ = [
 class BaseRiskModel(BaseCost):
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop("w_bench", 0.0)
-        super(BaseRiskModel, self).__init__()
-        self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
+        #super(BaseRiskModel, self).__init__()
+        #self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
 
     def weight_expr(self, t, w_plus, z, value):
         self.expression = self._estimate(t, w_plus - self.w_bench, z, value)
         return self.gamma * self.expression, []
 
-    def _estimate(self, t, w_plus, z, value):
-        pass
-
-    def weight_expr_ahead(self, t, tau, w_plus, z, value):
-        """Estimate risk model at time tau in the future."""
-        if self.gamma_half_life == np.inf:
-            gamma_multiplier = 1.0
-        else:
-            decay_factor = 2 ** (-1 / self.gamma_half_life)
-            # TODO not dependent on days
-            gamma_init = decay_factor ** ((tau - t).days)
-            gamma_multiplier = gamma_init * (1 - decay_factor) / (1 - decay_factor)
-
-        return gamma_multiplier * self.weight_expr(t, w_plus, z, value)[0], []
 
     def optimization_log(self, t):
         if self.expression.value:
@@ -88,25 +75,16 @@ class FullSigma(BaseRiskModel):
     """Quadratic risk model with full covariance matrix.
 
     Args:
-        Sigma (:obj:`pd.Panel`): Panel of Sigma matrices,
-            or single matrix.
+        Sigma: Sigma matrices as understood by `cvxportfolio.estimator.DataEstimator`
 
     """
 
     def __init__(self, Sigma, **kwargs):
-        self.Sigma = Sigma  # Sigma is either a matrix or a pd.Panel
-        try:
-            assert not pd.isnull(Sigma).values.any()
-        except AttributeError:
-            assert not pd.isnull(Sigma).any()
         super(FullSigma, self).__init__(**kwargs)
-
-    def _estimate(self, t, wplus, z, value):
-        try:
-            self.expression = cvx.quad_form(wplus, values_in_time(self.Sigma, t))
-        except TypeError:
-            self.expression = cvx.quad_form(wplus, values_in_time(self.Sigma, t).values)
-        return self.expression
+        self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
+        
+    def compile_to_cvxpy(self, w_plus, z, value):
+        return cvx.quad_form(w_plus, self.Sigma.parameter)
 
 
 class EmpSigma(BaseRiskModel):

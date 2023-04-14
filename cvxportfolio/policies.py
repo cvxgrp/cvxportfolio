@@ -46,6 +46,7 @@ class BasePolicy(Estimator):
         
     def values_in_time(self, t, portfolio):
         """This temporary method enables to use old-style policies with the new-style simulator."""
+        raise NotImplementedError
         return self.get_trades(portfolio=portfolio, t=t)
 
     def get_trades(self, portfolio, t=dt.datetime.today()):

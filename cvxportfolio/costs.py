@@ -1,4 +1,5 @@
 # Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+# Copyright 2023- The Cvxportfolio Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +29,7 @@ import numpy as np
 import copy
 # from .expression import Expression
 from .utils import null_checker, values_in_time
-from .estimator import CvxpyExpressionEstimator
+from .estimator import CvxpyExpressionEstimator, ParameterEstimator
 
 __all__ = ["HcostModel", "TcostModel"]
 
@@ -42,12 +43,20 @@ class BaseCost(CvxpyExpressionEstimator):
     It also overloads the values_in_time method to be used by simulator classes.
     """
     
-    def __init__(self, gamma = 1.0):
-        self.gamma = gamma  # it is changed by gamma * BaseCost()
+    gamma = 1.
+    
 
+    ## PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
     def weight_expr(self, t, w_plus, z, value):
         cost, constr = self._estimate(t, w_plus, z, value)
         return self.gamma * cost, constr
+        
+    def _estimate(self, t, w_plus, z, value):
+        """Temporary interface to old cvxportfolio."""
+        self.pre_evaluation(None, None, t, None)
+        cost = self.compile_to_cvxpy(w_plus, z, value)
+        self.values_in_time(t)
+        return cost
 
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
         return self.weight_expr(t, w_plus, z, value)
@@ -99,7 +108,7 @@ class CombinedCosts(BaseCost):
     def __init__(self, costs):
         for cost in costs:
             if not isinstance(cost, BaseCost):
-                raise SyntaxError('You can only sum `BaseCost` instances.')
+                raise SyntaxError('You can only sum `BaseCost` instances to other `BaseCost` instances.')
         self.costs = costs
         
     def pre_evaluation(self,  *args, **kwargs):
@@ -121,7 +130,6 @@ class CombinedCosts(BaseCost):
         return self
     
         
-    
 class HcostModel(BaseCost):
     """A model for holding costs.
 
@@ -131,45 +139,26 @@ class HcostModel(BaseCost):
     """
 
     def __init__(self, borrow_costs, dividends=0.0):
-        null_checker(borrow_costs)
-        self.borrow_costs = borrow_costs
-        null_checker(dividends)
-        self.dividends = dividends
-        super(HcostModel, self).__init__()
-
-    def _estimate(self, t, w_plus, z, value):
-        """Estimate holding costs.
-
-        Args:
-          t: time of estimate
-          wplus: holdings
-          tau: time to estimate (default=t)
-        """
-        w_plus = w_plus[:-1]  
-
-        try:
-            self.expression = cvx.multiply(
-                values_in_time(self.borrow_costs, t), cvx.neg(w_plus)
-            )
-        except TypeError:
-            self.expression = cvx.multiply(
-                values_in_time(self.borrow_costs, t).values, cvx.neg(w_plus)
-            )
-        try:
-            self.expression -= cvx.multiply(values_in_time(self.dividends, t), w_plus)
-        except TypeError:
-            self.expression -= cvx.multiply(
-                values_in_time(self.dividends, t).values, w_plus
-            )
-
+        self.borrow_costs = ParameterEstimator(borrow_costs, non_negative=True)
+        self.dividends = ParameterEstimator(dividends)
+        
+        
+    def compile_to_cvxpy(self, w_plus, z, value):
+        """Compile cost to cvxpy expression."""
+        self.expression = cvx.multiply(self.borrow_costs.parameter, cvx.neg(w_plus[:-1]))
+        self.expression -= cvx.multiply(self.dividends.parameter, w_plus[:-1])
+        
         return cvx.sum(self.expression), []
-
+    
 
     def value_expr(self, t, h_plus, u):
-        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * values_in_time(
-            self.borrow_costs, t
-        )
-        self.last_cost -= h_plus.iloc[:-1] * values_in_time(self.dividends, t)
+        """Placeholder method as we update the rest of the stack to new interface."""
+        
+        self.pre_evaluation(None, None, t, None)
+        self.values_in_time(t)
+        
+        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.parameter.value
+        self.last_cost -= h_plus.iloc[:-1] * self.dividends.parameter.value
 
         return sum(self.last_cost)
 
@@ -205,7 +194,6 @@ class TcostModel(BaseCost):
         self.nonlin_coeff = nonlin_coeff
         null_checker(power)
         self.power: float = power
-        super(TcostModel, self).__init__()
 
     def _estimate(self, t, w_plus, z, value):
         """Estimate tcosts given trades.
