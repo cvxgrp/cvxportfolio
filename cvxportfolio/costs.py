@@ -116,7 +116,7 @@ class CombinedCosts(BaseCost):
         
     def __mul__(self, other):
         """Multiply by constant."""
-        for el in self.costs
+        for el in self.costs:
             el.gamma *= other
         return self
     
