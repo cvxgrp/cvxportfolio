@@ -43,10 +43,14 @@ class BasePolicy(Estimator):
     def __init__(self):
         self.costs = []
         self.constraints = []
+        
+    def values_in_time(self, t, portfolio):
+        """This temporary method enables to use old-style policies with the new-style simulator."""
+        return self.get_trades(portfolio=portfolio, t=t)
 
     def get_trades(self, portfolio, t=dt.datetime.today()):
         """Trades list given current portfolio and time t."""
-        return NotImplementedError
+        raise NotImplementedError
 
     def _nulltrade(self, portfolio):
         return pd.Series(index=portfolio.index, data=0.0)

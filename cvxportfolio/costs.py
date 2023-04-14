@@ -26,26 +26,24 @@ provided in the class definitions.
 import cvxpy as cvx
 import numpy as np
 import copy
-from .expression import Expression
+# from .expression import Expression
 from .utils import null_checker, values_in_time
 from .estimator import CvxpyExpressionEstimator
 
 __all__ = ["HcostModel", "TcostModel"]
 
 
-class NewBaseCost(CvxpyExpressionEstimator):
+class BaseCost(CvxpyExpressionEstimator):
     """Base class for cost objects.
     
-    It uses the CvxpyExpressionEstimator to compile the cost object to
+    It will use the CvxpyExpressionEstimator to compile the cost object to
     a cvxpy expression for optimization-based policies.
     
     It also overloads the values_in_time method to be used by simulator classes.
     """
     
-    
-class BaseCost(Expression):
-    def __init__(self):
-        self.gamma = 1.0  # it is changed by gamma * BaseCost()
+    def __init__(self, gamma = 1.0):
+        self.gamma = gamma  # it is changed by gamma * BaseCost()
 
     def weight_expr(self, t, w_plus, z, value):
         cost, constr = self._estimate(t, w_plus, z, value)
@@ -64,6 +62,10 @@ class BaseCost(Expression):
     def __rmul__(self, other):
         """Read the gamma parameter as a multiplication."""
         return self.__mul__(other)
+        
+    def _estimate_ahead(self, t, tau, w_plus, z, value):
+        """Returns the estimate at time t of tcost at time tau."""
+        return self._estimate(t, w_plus, z, value)
 
 
 class HcostModel(BaseCost):
@@ -112,8 +114,6 @@ class HcostModel(BaseCost):
 
         return cvx.sum(self.expression), []
 
-    def _estimate_ahead(self, t, tau, w_plus, z, value):
-        return self._estimate(t, w_plus, z, value)
 
     def value_expr(self, t, h_plus, u):
         self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * values_in_time(
@@ -234,9 +234,7 @@ class TcostModel(BaseCost):
         # TODO find another way
         return self.tmp_tcosts
 
-    def _estimate_ahead(self, t, tau, w_plus, z, value):
-        """Returns the estimate at time t of tcost at time tau."""
-        return self._estimate(t, w_plus, z, value)
+
 
     def est_period(self, t, tau_start, tau_end, w_plus, z, value):
         """Returns the estimate at time t of tcost over given period."""

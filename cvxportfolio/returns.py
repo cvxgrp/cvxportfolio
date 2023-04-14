@@ -14,18 +14,22 @@
 
 
 import cvxpy as cvx
-from cvxportfolio.expression import Expression
+# from cvxportfolio.expression import Expression
 from .utils import values_in_time, null_checker
+from .costs import BaseCost
 
 __all__ = ["ReturnsForecast", "MPOReturnsForecast", "MultipleReturnsForecasts"]
 
 
-class BaseReturnsModel(Expression):
+class BaseReturnsModel(BaseCost):
     pass
 
 
 class ReturnsForecast(BaseReturnsModel):
     """A single return forecast.
+    
+    WARNING: WE ARE GOING TO MOVE THE delta PENALTY 
+    TO A DEDICATED RETURNS FORECAST ERROR CLASS
 
     Attributes:
       alpha_data: A dataframe of return estimates.
@@ -100,6 +104,9 @@ class MPOReturnsForecast(BaseReturnsModel):
 
 class MultipleReturnsForecasts(BaseReturnsModel):
     """A weighted combination of alpha sources.
+    
+    DEPRECATED: THIS SHOULD BE DONE BY MULTIPLYING BY HYPERPARAMETERS 
+    AND PASSING MULTIPLE RETURN MODELS LIKE WE DO FOR COSTS
 
     Attributes:
       alpha_sources: a list of alpha sources.
