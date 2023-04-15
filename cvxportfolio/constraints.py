@@ -104,7 +104,7 @@ class ParticipationRateLimit(BaseTradeConstraint):
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
         return [
-            cvx.multiply(cvx.abs(z[:-1]), portfolio_value) <= cvx.multiply(self.volumes.parameter, self.max_participation_rate.parameter)
+            cvx.multiply(cvx.abs(z[:-1]), portfolio_value) <= cvx.multiply(self.volumes, self.max_participation_rate)
         ]
         
     # def _weight_expr(self, t, w_plus, z, v):
@@ -146,7 +146,7 @@ class LeverageLimit(BaseWeightConstraint):
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
-        return [cvx.norm(w_plus[:-1], 1) <= self.limit.parameter]
+        return [cvx.norm(w_plus[:-1], 1) <= self.limit]
 
     # def _weight_expr(self, t, w_plus, z, v):
     #     """Returns a list of holding constraints.
@@ -213,7 +213,7 @@ class MaxWeights(BaseWeightConstraint):
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
-        return [w_plus[:-1] <= self.limit.parameter]
+        return [w_plus[:-1] <= self.limit]
 
     # def _weight_expr(self, t, w_plus, z, v):
     #     """Returns a list of holding constraints.
@@ -239,7 +239,7 @@ class MinWeights(BaseWeightConstraint):
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
-        return [w_plus[:-1] >= self.limit.parameter]
+        return [w_plus[:-1] >= self.limit]
 
     # def _weight_expr(self, t, w_plus, z, v):
     #     """Returns a list of holding constraints.
@@ -268,7 +268,7 @@ class FactorMaxLimit(BaseWeightConstraint):
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
-        return [self.factor_exposure.parameter.T @ w_plus[:-1] <= self.limit.parameter]
+        return [self.factor_exposure.T @ w_plus[:-1] <= self.limit]
 
     # def _weight_expr(self, t, w_plus, z, v):
     #     """Returns a list of holding constraints.
@@ -300,7 +300,7 @@ class FactorMinLimit(BaseWeightConstraint):
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
-        return [self.factor_exposure.parameter.T @ w_plus[:-1] >= self.limit.parameter]
+        return [self.factor_exposure.T @ w_plus[:-1] >= self.limit]
         
     # def __init__(self, factor_exposure, limit, **kwargs):
     #     super(FactorMinLimit, self).__init__(**kwargs)
@@ -339,7 +339,7 @@ class FixedFactorLoading(BaseWeightConstraint):
         
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a list of Cvxpy constraints."""
-        return [self.factor_exposure.parameter.T @ w_plus[:-1] == self.target.parameter]
+        return [self.factor_exposure.T @ w_plus[:-1] == self.target]
     
     #
     # def __init__(self, return_forecast, alpha_target, **kwargs):

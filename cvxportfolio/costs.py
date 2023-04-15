@@ -167,8 +167,8 @@ class HcostModel(BaseCost):
         
     def compile_to_cvxpy(self, w_plus, z, value):
         """Compile cost to cvxpy expression."""
-        self.expression = cvx.multiply(self.borrow_costs.parameter, cvx.neg(w_plus[:-1]))
-        self.expression -= cvx.multiply(self.dividends.parameter, w_plus[:-1])
+        self.expression = cvx.multiply(self.borrow_costs, cvx.neg(w_plus[:-1]))
+        self.expression -= cvx.multiply(self.dividends, w_plus[:-1])
         
         return cvx.sum(self.expression)
     
@@ -179,8 +179,8 @@ class HcostModel(BaseCost):
         self.pre_evaluation(None, None, t, None)
         self.values_in_time(t)
         
-        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.parameter.value
-        self.last_cost -= h_plus.iloc[:-1] * self.dividends.parameter.value
+        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.value
+        self.last_cost -= h_plus.iloc[:-1] * self.dividends.value
 
         return sum(self.last_cost)
 

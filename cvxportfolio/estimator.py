@@ -58,7 +58,7 @@ class Estimator:
             end_time (pandas.Timestamp): end time of the simulation
         """
         for _, subestimator in self.__dict__.items():
-            if isinstance(subestimator, Estimator):
+            if hasattr(subestimator, 'pre_evaluation'):
                 subestimator.pre_evaluation(returns, volumes, start_time, end_time)
 
     def values_in_time(self, t, **kwargs):
@@ -76,7 +76,7 @@ class Estimator:
             kwargs (dict): extra data used
         """
         for _, subestimator in self.__dict__.items():
-            if isinstance(subestimator, Estimator):
+            if hasattr(subestimator, 'values_in_time'):
                 subestimator.values_in_time(t, **kwargs) 
         
 
@@ -205,7 +205,7 @@ class DataEstimator(Estimator):
         return self.value_checker(self.data)
         
 
-class ParameterEstimator(DataEstimator, cvxpy.Parameter):
+class ParameterEstimator(cvxpy.Parameter, DataEstimator):
     """Data estimator of point-in-time values that contains a Cvxpy Parameter.
         
     Attributes:
@@ -219,13 +219,17 @@ class ParameterEstimator(DataEstimator, cvxpy.Parameter):
     def __init__(self, data, positive_semi_definite=False, non_negative=False, use_last_available_time=False):
         self.positive_semi_definite = positive_semi_definite
         self.non_negative = non_negative
-        super().__init__(data, use_last_available_time)
+        self.use_last_available_time = use_last_available_time
+        self.data = data
+        # super(DataEstimator).__init__(data, use_last_available_time)
         
     def pre_evaluation(self, returns, volumes, start_time, end_time):
         """Use the start time of the simulation to initialize the Parameter."""
         value = super().values_in_time(start_time)
-        self.parameter = cvxpy.Parameter(value.shape if hasattr(value, 'shape') else (), PSD=self.positive_semi_definite, nonneg=self.non_negative)
+        super().__init__(value.shape if hasattr(value, 'shape') else (), PSD=self.positive_semi_definite, nonneg=self.non_negative)
+        # self.parameter = self
+        #self.parameter = cvxpy.Parameter(value.shape if hasattr(value, 'shape') else (), PSD=self.positive_semi_definite, nonneg=self.non_negative)
         
     def values_in_time(self, t, **kwargs):
         """Update Cvxpy Parameter value."""
-        self.parameter.value = super().values_in_time(t, **kwargs)
+        self.value = super().values_in_time(t, **kwargs)

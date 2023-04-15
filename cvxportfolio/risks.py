@@ -85,7 +85,7 @@ class FullSigma(BaseRiskModel):
         self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
         
     def compile_to_cvxpy(self, w_plus, z, value):
-        return cvx.quad_form(w_plus, self.Sigma.parameter)
+        return cvx.quad_form(w_plus, self.Sigma)
 
 
 class EmpSigma(BaseRiskModel):
@@ -134,10 +134,10 @@ class FactorModelSigma(BaseRiskModel):
         
     def compile_to_cvxpy(self, w_plus, z, value):
         self.expression = cvx.sum_squares(
-            cvx.multiply(np.sqrt(self.idiosync.parameter), wplus)
+            cvx.multiply(np.sqrt(self.idiosync), wplus)
         ) + cvx.quad_form(
-            (wplus.T @ self.exposures.parameter.T).T,
-            self.factor_Sigma.parameter,
+            (wplus.T @ self.exposures.T).T,
+            self.factor_Sigma,
         )
         return self.expression
 

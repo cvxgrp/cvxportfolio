@@ -160,9 +160,9 @@ def test_parameter_estimator():
     estimator = ParameterEstimator(data)
     assert not hasattr(estimator, 'value')
     estimator.pre_evaluation(returns=None, volumes=None, start_time='2022-01-01', end_time=None)
-    assert hasattr(estimator, 'parameter')
-    assert hasattr(estimator.parameter, 'value')
+    # assert hasattr(estimator, 'parameter')
+    assert hasattr(estimator, 'value')
     estimator.values_in_time('2022-01-05')
-    assert np.all(estimator.parameter.value == data.loc['2022-01-05'])
+    assert np.all(estimator.value == data.loc['2022-01-05'])
     
     
