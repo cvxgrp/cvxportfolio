@@ -17,6 +17,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import pandas_datareader
+import sqlite3
 
 
 class BaseData:
@@ -39,11 +40,14 @@ class BaseData:
         raise NotImplementedError
 
     def update_and_load(self, symbol):
-        """Update current stored data for symbol and load it."""
+        """Update current stored data for symbol and load it.
+        
+        DEPRECATED: separate update and load functionalities.
+        """
         current = self.load_raw(symbol)
         updated = self.download(symbol, current)
         self.store(symbol, updated)
-        return self.preload(updated)
+        return self.load(symbol)
 
     def preload(self, data):
         """Prepare data to serve to the user."""
@@ -106,6 +110,49 @@ class YfinanceBase(BaseData):
         del data["Volume"]
         return data
 
+class SqliteDataStore(BaseData):
+    """Local sqlite3 database using python standard library.
+    
+    Args:
+        location (pathlib.Path or None): pathlib.Path base location of the databases 
+            directory or, if None, use ":memory:" for storing in RAM instead. Default
+            is ~/cvxportfolio/
+    """
+    
+    def __init__(self, base_location=Path.home() / "cvxportfolio"):
+        """Initialize sqlite connection and if necessary create database."""
+        if base_location is None:
+             self.connection = sqlite3.connect(":memory:")
+        else:
+            self.connection = sqlite3.connect((base_location / self.__class__.__name__).with_suffix('.sqlite'))
+        
+    def store(self, symbol, data):
+        """Store Pandas object to sqlite.
+        
+        We separately store dtypes for data consistency and safety.
+        """
+        exists = pd.read_sql_query(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{symbol}'", self.connection)
+        if len(exists):
+            res = self.connection.cursor().execute(f"DROP TABLE '{symbol}'")
+            res = self.connection.cursor().execute(f"DROP TABLE '{symbol}___dtypes'")
+            self.connection.commit()
+            
+        data.to_sql(f'{symbol}', self.connection)
+        pd.DataFrame(data).dtypes.astype("string").to_sql(f'{symbol}___dtypes', self.connection)
+                
+    def load_raw(self, symbol):
+        """Load Pandas object with datetime index from sqlite.
+        
+        If data is not present in in the database, return None.
+        """
+        try:
+            dtypes = pd.read_sql_query(f"SELECT * FROM {symbol}___dtypes", self.connection, index_col='index', dtype={'index':'str', '0':'str'})
+            tmp = pd.read_sql_query(f"SELECT * FROM {symbol}", self.connection, index_col='index', parse_dates='index', dtype=dict(dtypes['0']))
+            return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
+        except pd.errors.DatabaseError:
+            return None
+    
+    
 
 class LocalDataStore(BaseData):
     """Local data store for pandas Series and DataFrames.
@@ -124,8 +171,18 @@ class LocalDataStore(BaseData):
     def load_raw(self, symbol, **kwargs):
         """Load raw data from local store."""
         try:
+            dtypes = pd.read_csv(self.location / f"{symbol}___dtypes.csv", index_col=0, dtype={'index':'str', '0':'str'})
+            
+            dtypes = dict(dtypes['0'])
+            new_dtypes = {}
+            parse_dates = [0]
+            for i, el in enumerate(dtypes):
+                if dtypes[el] == 'datetime64[ns]':
+                    parse_dates += [i+1]
+                else:
+                    new_dtypes[el] = dtypes[el]
             tmp = pd.read_csv(
-                self.location / f"{symbol}.csv", index_col=0, parse_dates=True, **kwargs
+                self.location / f"{symbol}.csv", index_col=0, parse_dates=parse_dates, **kwargs, dtype=new_dtypes,
             )
             return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
         except FileNotFoundError:
@@ -134,6 +191,7 @@ class LocalDataStore(BaseData):
     def store(self, symbol, data, **kwargs):
         """Store data locally."""
         data.to_csv(self.location / f"{symbol}.csv", **kwargs)
+        pd.DataFrame(data).dtypes.astype("string").to_csv(self.location / f"{symbol}___dtypes.csv")
 
 
 class FredBase(BaseData):

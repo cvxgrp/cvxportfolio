@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.data import YfinanceBase, LocalDataStore, Yfinance, FredBase, FredRate
+from cvxportfolio.data import YfinanceBase, LocalDataStore, Yfinance, FredBase, FredRate, SqliteDataStore
 
 
 def test_yfinance_download():
@@ -34,21 +34,31 @@ def test_yfinance_download():
     assert np.isnan(data.iloc[-1]["Close"])
 
 
-def test_local_store_series(tmp_path):
+def base_test_series(storeclass, *args, **kwargs):
     """Test storing and retrieving of a Series with datetime index."""
-    store = LocalDataStore(tmp_path)
+    store = storeclass(*args, **kwargs)
     for data in [
         pd.Series(0.0, pd.date_range("2020-01-01", "2020-01-10"), name="prova1"),
         pd.Series(3, pd.date_range("2020-01-01", "2020-01-10"), name="prova2"),
         pd.Series(
             "ciao", pd.date_range("2020-01-01", "2020-01-02", freq="H"), name="prova3"
         ),
+        # test datetime conversion
+        pd.Series(
+            pd.date_range("2022-01-01", "2022-01-02", freq="H"), pd.date_range("2020-01-01", "2020-01-02", freq="H"), name="prova4"
+        ),
+        # test overwrite
+        pd.Series(
+            pd.date_range("2023-01-01", "2023-01-02", freq="H"), pd.date_range("2020-01-01", "2020-01-02", freq="H"), name="prova4"
+        )
+        ,
     ]:
         print(data)
         print(data.index.dtype)
         print(data.dtypes)
 
         store.store(data.name, data)
+        
         data1 = store.load(data.name)
         print(data1)
         print(data1.index.dtype)
@@ -62,9 +72,19 @@ def test_local_store_series(tmp_path):
     assert store.load("blahblah") is None
 
 
-def test_local_store_dataframe(tmp_path):
+def test_sqlite3_store_series(tmp_path):
+    """Test storing and retrieving of a Series with datetime index."""
+    base_test_series(SqliteDataStore, tmp_path)
+    
+    
+def test_local_store_series(tmp_path):
+    """Test storing and retrieving of a Series with datetime index."""
+    base_test_series(LocalDataStore, tmp_path)
+
+
+def base_test_dataframe(storeclass, *args, **kwargs):
     """Test storing and retrieving of a DataFrame with datetime index."""
-    store = LocalDataStore(tmp_path)
+    store = storeclass(*args, **kwargs)
     index = pd.date_range("2020-01-01", "2020-01-02", freq="H")
     data = {
         "one": range(len(index)),
@@ -72,6 +92,8 @@ def test_local_store_dataframe(tmp_path):
         "three": ["hello"] * len(index),
         "four": [np.nan] * len(index),
     }
+    
+    data["two"][2] = np.nan
     data = pd.DataFrame(data, index=index)
     print(data)
     print(data.index.dtype)
@@ -87,6 +109,15 @@ def test_local_store_dataframe(tmp_path):
     assert all(data.index == data1.index)
     assert all(data.dtypes == data1.dtypes)
 
+def test_sqlite3_store_dataframe(tmp_path):
+    """Test storing and retrieving of a DataFrame with datetime index."""
+    base_test_dataframe(SqliteDataStore, tmp_path)
+    
+    
+def test_local_store_dataframe(tmp_path):
+    """Test storing and retrieving of a DataFrame with datetime index."""
+    base_test_dataframe(LocalDataStore, tmp_path)
+    
 
 def test_yfinance(tmp_path):
     """Test yfinance ability to store and retrieve."""
