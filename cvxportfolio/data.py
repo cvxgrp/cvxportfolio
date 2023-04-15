@@ -21,7 +21,48 @@ import sqlite3
 
 
 class BaseData:
-    """Base class for Cvxportfolio database interface."""
+    """Base class for Cvxportfolio database interface.
+    
+    Provides a back-end independent way to load and store
+    pandas Series and DataFrames where the first index is a 
+    pandas Timestamp (or numpy datetime64). It also provides
+    a systematic way to access external data sources via
+    the network. We specialize it to storing data locally
+    and downloading public time series of financial data.
+    By emulating some of these classes you can interface 
+    cvxportfolio with other databases or other data sources.
+    
+    This interface is also used by cvxportfolio to store the
+    data it generates, such as Backtest classes data, or
+    estimators such as factor risk models.
+    
+    Cvxportfolio uses in-memory data whenever possible, and
+    in particular never uses BaseData methods during a backtest.
+    This ensures thread safety and allows us to use simple
+    local databases such as sqlite (or even flat csv files!).
+    Cvxportfolio loads data from the database before (possibly parallel)
+    backtesting, and stores it after backtesting. So, only one process 
+    at a time accesses this class methods. If you write custom callbacks
+    that are invoked during backtests, such as callables inside 
+    DataEstimator, you should most probably not use cvxportfolio.data methods 
+    inside them.
+    
+    LIMITATIONS:
+        - columns names should be strings in order to work with all current
+          data storage backends. If you create a DataFrame from a numpy array
+          without specifying column names they will default to integers (0, 1, ...).
+          If you store and load it back you will may get string column names ('0', '1', ...),
+          depending on the backend.
+        - the first level of the index should be a pandas Timestamp or equivalently
+          numpy datetime64
+        - you can only store sql-friendly data: integers, floats (including `np.nan`), 
+          datetime (including `np.datetime64('NaT')`), and simple alphanumeric strings 
+          (i.e., without commas or quote marks).
+          If you need to store more complex python objects, such as the string 
+            "{'parameter1':3.0, 'parameter2': pd.Timestamp('2022-01-01')}",
+          you may have to check that it works with the backend you use 
+         (it probably would not not with csv).
+    """
 
     def load_raw(self, symbol):
         """Load raw data from database."""
@@ -42,7 +83,7 @@ class BaseData:
     def update_and_load(self, symbol):
         """Update current stored data for symbol and load it.
         
-        DEPRECATED: separate update and load functionalities.
+        DEPRECATED: update and load functionalities have been separated.
         """
         current = self.load_raw(symbol)
         updated = self.download(symbol, current)
@@ -152,7 +193,6 @@ class SqliteDataStore(BaseData):
         except pd.errors.DatabaseError:
             return None
     
-    
 
 class LocalDataStore(BaseData):
     """Local data store for pandas Series and DataFrames.
@@ -171,27 +211,35 @@ class LocalDataStore(BaseData):
     def load_raw(self, symbol, **kwargs):
         """Load raw data from local store."""
         try:
+            try:
+                multiindex_types = pd.read_csv(self.location / f"{symbol}___multiindex_dtypes.csv", index_col=0)['0']
+            except FileNotFoundError:
+                multiindex_types = ['datetime64[ns]']
             dtypes = pd.read_csv(self.location / f"{symbol}___dtypes.csv", index_col=0, dtype={'index':'str', '0':'str'})
-            
             dtypes = dict(dtypes['0'])
             new_dtypes = {}
-            parse_dates = [0]
+            parse_dates = []
+            for i, level in enumerate(multiindex_types):
+                if level == 'datetime64[ns]':
+                    parse_dates.append(i)
             for i, el in enumerate(dtypes):
                 if dtypes[el] == 'datetime64[ns]':
-                    parse_dates += [i+1]
+                    parse_dates += [i+len(multiindex_types)]
                 else:
                     new_dtypes[el] = dtypes[el]
-            tmp = pd.read_csv(
-                self.location / f"{symbol}.csv", index_col=0, parse_dates=parse_dates, **kwargs, dtype=new_dtypes,
-            )
+            
+            # raise Exception
+            tmp = pd.read_csv(self.location / f"{symbol}.csv", index_col=list(range(len(multiindex_types))), parse_dates=parse_dates, **kwargs, dtype=new_dtypes)
             return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
         except FileNotFoundError:
             return None
 
     def store(self, symbol, data, **kwargs):
         """Store data locally."""
-        data.to_csv(self.location / f"{symbol}.csv", **kwargs)
+        if hasattr(data.index, 'levels'):
+            pd.DataFrame(data.index.dtypes).astype("string").to_csv(self.location / f"{symbol}___multiindex_dtypes.csv")
         pd.DataFrame(data).dtypes.astype("string").to_csv(self.location / f"{symbol}___dtypes.csv")
+        data.to_csv(self.location / f"{symbol}.csv", **kwargs)        
 
 
 class FredBase(BaseData):

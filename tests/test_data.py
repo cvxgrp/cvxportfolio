@@ -108,6 +108,7 @@ def base_test_dataframe(storeclass, *args, **kwargs):
     assert all(data == data1)
     assert all(data.index == data1.index)
     assert all(data.dtypes == data1.dtypes)
+    
 
 def test_sqlite3_store_dataframe(tmp_path):
     """Test storing and retrieving of a DataFrame with datetime index."""
@@ -118,6 +119,67 @@ def test_local_store_dataframe(tmp_path):
     """Test storing and retrieving of a DataFrame with datetime index."""
     base_test_dataframe(LocalDataStore, tmp_path)
     
+
+def base_test_multiindex(storeclass, *args, **kwargs):
+    """Test storing and retrieving of a Series or DataFrame with multi-index."""
+    store = storeclass(*args, **kwargs)
+    
+    # second level is object
+    timeindex = pd.date_range('2022-01-01', '2022-01-30') 
+    second_level = ['hello', 'ciao', 'hola']
+    index = pd.MultiIndex.from_product([timeindex, second_level])
+    data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
+    data.columns = ['one', 'two', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto', 'nove', 'dieci']
+    
+    print(data.index)
+    print(data)
+    print(data.index.dtype)
+    print(data.dtypes)
+
+    store.store("example", data)
+    data1 = store.load("example")
+    
+    print(data1.index)
+    print(data1)
+    print(data1.index.dtype)
+    print(data1.dtypes)
+    
+    assert all(data == data1)
+    assert all(data.index == data1.index)
+    assert all(data.index.dtypes == data1.index.dtypes)
+    assert all(data.dtypes == data1.dtypes)
+    
+    # second level is timestamp
+    timeindex = pd.date_range('2022-01-01', '2022-01-30') 
+    second_level = pd.date_range('2022-01-01', '2022-01-03') 
+    index = pd.MultiIndex.from_product([timeindex, second_level])
+    data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
+    data.columns = ['one', 'two', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto', 'nove', 'dieci']
+    
+    print(data.index)
+    print(data)
+    print(data.index.dtype)
+    print(data.dtypes)
+
+    store.store("example", data)
+    data1 = store.load("example")
+    
+    print(data1.index)
+    print(data1)
+    print(data1.index.dtype)
+    print(data1.dtypes)
+    
+    assert all(data == data1)
+    assert all(data.index == data1.index)
+    assert all(data.index.dtypes == data1.index.dtypes)
+    assert all(data.dtypes == data1.dtypes)
+    
+    
+    #raise Exception
+    
+def test_local_store_multiindex(tmp_path):
+    """Test storing and retrieving of a DataFrame with datetime index."""
+    base_test_multiindex(LocalDataStore, tmp_path)
 
 def test_yfinance(tmp_path):
     """Test yfinance ability to store and retrieve."""
