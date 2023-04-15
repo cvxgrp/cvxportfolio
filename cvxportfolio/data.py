@@ -179,10 +179,8 @@ class SqliteDataStore(BaseData):
             self.connection.commit()
             
         if hasattr(data.index, 'levels'):
-            data.index = data.index.set_names(['index' if data.index.levels[0].name is None else data.index.levels[0].name] + \
-                [f'___level{i}' # if data.index.levels[i].name is None else data.index.levels[i].name
-                    for i in range(1, len(data.index.levels))
-                ])
+            data.index = data.index.set_names(['index'] +
+                [f'___level{i}' for i in range(1, len(data.index.levels))])
             data = data.reset_index().set_index('index')
             
         data.to_sql(f'{symbol}', self.connection)

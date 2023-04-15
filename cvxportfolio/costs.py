@@ -66,13 +66,6 @@ class BaseCost(CvxpyExpressionEstimator):
         if not np.isscalar(other):
             raise SyntaxError('You can only multiply cost by a scalar.')
         return CombinedCosts([self], [other])
-        # copied = copy.deepcopy(self)
-        # copied.gamma *= other
-        # return copied
-
-    def __rmul__(self, other):
-        """Multiply by constant."""
-        return self.__mul__(other)
         
     def __add__(self, other):
         """Add cost expression to another cost expression.
@@ -82,15 +75,21 @@ class BaseCost(CvxpyExpressionEstimator):
         by summing over costs.
         
         """
+        if isinstance(other, CombinedCosts):
+            return other + self
         return CombinedCosts([self, other], [1., 1.])
+        
+    def __rmul__(self, other):
+        """Multiply by constant."""
+        return self * other
         
     def __radd__(self, other):
         """Add cost expression to another cost."""
-        return self.__add__(other)
+        return self + other
         
     def __neg__(self):
         """Take negative of cost."""
-        return CombinedCosts([self], [-1.])
+        return self * -1
     
     def __sub__(self, other):
         """Subtract other cost."""
@@ -114,6 +113,21 @@ class CombinedCosts(BaseCost):
                 raise SyntaxError('You can only sum `BaseCost` instances to other `BaseCost` instances.')
         self.costs = costs
         self.multipliers = multipliers
+        
+    def __add__(self, other):
+        """Add other (combined) cost to self."""
+        if isinstance(other, CombinedCosts):
+            self.costs += other.costs
+            self.multipliers += other.multipliers
+        else:
+            self.costs += [other]
+            self.multipliers += [1.]
+        return self
+    
+    def __mul__(self, other):
+        """Multiply by constant."""
+        self.multipliers = [el * other for el in self.multipliers]
+        return self
         
     def pre_evaluation(self,  *args, **kwargs):
         """Iterate over constituent costs."""
