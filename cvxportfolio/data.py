@@ -60,7 +60,7 @@ class BaseData:
           (i.e., without commas or quote marks).
           If you need to store more complex python objects, such as the string 
             "{'parameter1':3.0, 'parameter2': pd.Timestamp('2022-01-01')}",
-          you may have to check that it works with the backend you use 
+          you will have to check that it works with the backend you use 
          (it probably would not not with csv).
     """
 
@@ -178,6 +178,13 @@ class SqliteDataStore(BaseData):
             res = self.connection.cursor().execute(f"DROP TABLE '{symbol}___dtypes'")
             self.connection.commit()
             
+        if hasattr(data.index, 'levels'):
+            data.index = data.index.set_names(['index' if data.index.levels[0].name is None else data.index.levels[0].name] + \
+                [f'___level{i}' # if data.index.levels[i].name is None else data.index.levels[i].name
+                    for i in range(1, len(data.index.levels))
+                ])
+            data = data.reset_index().set_index('index')
+            
         data.to_sql(f'{symbol}', self.connection)
         pd.DataFrame(data).dtypes.astype("string").to_sql(f'{symbol}___dtypes', self.connection)
                 
@@ -189,6 +196,15 @@ class SqliteDataStore(BaseData):
         try:
             dtypes = pd.read_sql_query(f"SELECT * FROM {symbol}___dtypes", self.connection, index_col='index', dtype={'index':'str', '0':'str'})
             tmp = pd.read_sql_query(f"SELECT * FROM {symbol}", self.connection, index_col='index', parse_dates='index', dtype=dict(dtypes['0']))
+            multiindex = []
+            for col in tmp.columns:
+                if col[:8] == '___level':
+                    multiindex.append(col)
+                else:
+                    break
+            if len(multiindex):
+                multiindex = [tmp.index.name] + multiindex
+                tmp = tmp.reset_index().set_index(multiindex)
             return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
         except pd.errors.DatabaseError:
             return None

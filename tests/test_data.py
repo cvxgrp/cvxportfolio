@@ -180,6 +180,10 @@ def base_test_multiindex(storeclass, *args, **kwargs):
 def test_local_store_multiindex(tmp_path):
     """Test storing and retrieving of a DataFrame with datetime index."""
     base_test_multiindex(LocalDataStore, tmp_path)
+    
+def test_sqlite3_store_multiindex(tmp_path):
+    """Test storing and retrieving of a DataFrame with datetime index."""
+    base_test_multiindex(SqliteDataStore, tmp_path)
 
 def test_yfinance(tmp_path):
     """Test yfinance ability to store and retrieve."""
