@@ -19,6 +19,8 @@ import numpy as np
 import pandas_datareader
 import sqlite3
 
+from .estimator import DataEstimator
+
 
 class BaseData:
     """Base class for Cvxportfolio database interface.
@@ -79,7 +81,13 @@ class BaseData:
     def download(self, symbol, current):
         """Download data from external source."""
         raise NotImplementedError
-
+        
+    def update(self, symbol):
+        """Update current stored data for symbol."""
+        current = self.load_raw(symbol)
+        updated = self.download(symbol, current)
+        self.store(symbol, updated)
+        
     def update_and_load(self, symbol):
         """Update current stored data for symbol and load it.
         
@@ -88,6 +96,7 @@ class BaseData:
         current = self.load_raw(symbol)
         updated = self.download(symbol, current)
         self.store(symbol, updated)
+        # return self.preload(updated) 
         return self.load(symbol)
 
     def preload(self, data):
@@ -100,8 +109,9 @@ class YfinanceBase(BaseData):
 
     This should not be used directly unless you know what you're doing.
     """
-
-    def internal_process(self, data):
+    
+    @staticmethod
+    def internal_process(data):
         """Manipulate yfinance data for better storing."""
         intraday_logreturn = np.log(data["Close"]) - np.log(data["Open"])
         close_to_close_logreturn = np.log(data["Adj Close"]).diff().shift(-1)
@@ -114,7 +124,8 @@ class YfinanceBase(BaseData):
         data.loc[data.index[-1], ["High", "Low", "Close", "Return", "Volume"]] = np.nan
         return data
 
-    def download(self, symbol, current=None, overlap=5, **kwargs):
+    @classmethod
+    def download(cls, symbol, current=None, overlap=5, **kwargs):
         """Download single stock from Yahoo Finance.
 
         If data was already downloaded we only download
@@ -133,13 +144,14 @@ class YfinanceBase(BaseData):
         """
         if (current is None) or (len(current) < overlap):
             updated = yf.download(symbol, **kwargs)
-            return self.internal_process(updated)
+            return cls.internal_process(updated)
         else:
             new = yf.download(symbol, start=current.index[-overlap], **kwargs)
-            new = self.internal_process(new)
+            new = cls.internal_process(new)
             return pd.concat([current.iloc[:-overlap], new])
 
-    def preload(self, data):
+    @staticmethod
+    def preload(data):
         """Prepare data for use by Cvxportfolio.
 
         We drop the 'Volume' column expressed in number of stocks
@@ -150,8 +162,19 @@ class YfinanceBase(BaseData):
         data["ValueVolume"] = data["Volume"] * data["Open"]
         del data["Volume"]
         return data
+        
+        
+class BaseDataStore(BaseData):
+    """Base class for data storage systems.
+    
+    Attributes:
+        base_location (str or None): location of storage.
+    """
+    
+    base_location = None
+    
 
-class SqliteDataStore(BaseData):
+class SqliteDataStore(BaseDataStore):
     """Local sqlite3 database using python standard library.
     
     Args:
@@ -159,32 +182,44 @@ class SqliteDataStore(BaseData):
             directory or, if None, use ":memory:" for storing in RAM instead. Default
             is ~/cvxportfolio/
     """
-    
+        
     def __init__(self, base_location=Path.home() / "cvxportfolio"):
         """Initialize sqlite connection and if necessary create database."""
-        if base_location is None:
-             self.connection = sqlite3.connect(":memory:")
+        self.base_location = base_location
+            
+    def __open__(self):
+        """Open database connection."""
+        if self.base_location is None:
+            self.connection = sqlite3.connect(":memory:")
         else:
-            self.connection = sqlite3.connect((base_location / self.__class__.__name__).with_suffix('.sqlite'))
+            self.connection = sqlite3.connect((self.base_location / self.__class__.__name__).with_suffix('.sqlite'))
+        
+    def __close__(self):
+        """Close database connection."""
+        self.connection.close()
         
     def store(self, symbol, data):
         """Store Pandas object to sqlite.
         
         We separately store dtypes for data consistency and safety.
         """
+        self.__open__()
         exists = pd.read_sql_query(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{symbol}'", self.connection)
         if len(exists):
             res = self.connection.cursor().execute(f"DROP TABLE '{symbol}'")
             res = self.connection.cursor().execute(f"DROP TABLE '{symbol}___dtypes'")
             self.connection.commit()
-            
+        
         if hasattr(data.index, 'levels'):
             data.index = data.index.set_names(['index'] +
                 [f'___level{i}' for i in range(1, len(data.index.levels))])
             data = data.reset_index().set_index('index')
+        else:
+            data.index.name = 'index'
             
         data.to_sql(f'{symbol}', self.connection)
         pd.DataFrame(data).dtypes.astype("string").to_sql(f'{symbol}___dtypes', self.connection)
+        self.__close__()
                 
     def load_raw(self, symbol):
         """Load Pandas object with datetime index from sqlite.
@@ -192,8 +227,10 @@ class SqliteDataStore(BaseData):
         If data is not present in in the database, return None.
         """
         try:
+            self.__open__()
             dtypes = pd.read_sql_query(f"SELECT * FROM {symbol}___dtypes", self.connection, index_col='index', dtype={'index':'str', '0':'str'})
             tmp = pd.read_sql_query(f"SELECT * FROM {symbol}", self.connection, index_col='index', parse_dates='index', dtype=dict(dtypes['0']))
+            self.__close__()
             multiindex = []
             for col in tmp.columns:
                 if col[:8] == '___level':
@@ -208,16 +245,25 @@ class SqliteDataStore(BaseData):
             return None
     
 
-class LocalDataStore(BaseData):
+class LocalDataStore(BaseDataStore):
     """Local data store for pandas Series and DataFrames.
 
     Args:
         base_location (pathlib.Path): filesystem directory where to store files.
 
     """
+    
+    base_location = Path.home() / "cvxportfolio"
+    
+    @property
+    def location(self):
+        return self.base_location / self.__class__.__name__
 
     def __init__(self, base_location=Path.home() / "cvxportfolio"):
-        self.location = base_location / self.__class__.__name__
+        self.base_location = base_location
+
+            
+    def __create_if_not_existent(self):
         if not self.location.is_dir():
             self.location.mkdir(parents=True)
             print(f"Created folder at {self.location}")
@@ -250,6 +296,7 @@ class LocalDataStore(BaseData):
 
     def store(self, symbol, data, **kwargs):
         """Store data locally."""
+        self.__create_if_not_existent()
         if hasattr(data.index, 'levels'):
             pd.DataFrame(data.index.dtypes).astype("string").to_csv(self.location / f"{symbol}___multiindex_dtypes.csv")
         pd.DataFrame(data).dtypes.astype("string").to_csv(self.location / f"{symbol}___dtypes.csv")
@@ -259,7 +306,8 @@ class LocalDataStore(BaseData):
 class FredBase(BaseData):
     """Base class for FRED data access."""
 
-    def download(self, symbol="DFF", current=None):
+    @staticmethod
+    def download(symbol="DFF", current=None):
         if current is None:
             end = pd.Timestamp.today()
             return pandas_datareader.get_data_fred(
@@ -278,8 +326,9 @@ class RateBase(BaseData):
 
     trading_days = 250
 
-    def preload(self, data):
-        return np.exp(np.log(1 + data / 100) / self.trading_days) - 1
+    @classmethod
+    def preload(cls, data):
+        return np.exp(np.log(1 + data / 100) / cls.trading_days) - 1
 
 
 class Yfinance(YfinanceBase, LocalDataStore):
@@ -308,11 +357,59 @@ class FredRate(FredBase, RateBase, LocalDataStore):
         """Update data for symbol and load it."""
         return super().update_and_load(symbol)
         
-        
-class DataError(Exception):
-    """Base class for exception related to data."""
-    pass
+
+class TimeSeries(DataEstimator):
+    """Class for time series data managed by Cvxportfolio.
     
-class MissingValuesError(DataError):
-    """Cvxportfolio tried to access numpy.nan values."""
-    pass
+    Args:
+        symbol (str): name of the time series, such as 'AAPL',
+            '^VIX', or 'DFF'.
+        source (str or BaseData): data source to use. Currently we 
+            support 'yahoo', equivalent to `cvxportfolio.YfinanceBase`,
+            and 'fred', equivalent to `cvxportfolio.FredBase`. If you
+            implement your own you should define the `download` and
+            optionally `preload` methods. Default is 'yahoo'.
+        storage (str or BaseData): storage backend to use. Currently we 
+            support 'sqlite', equivalent to `cvxportfolio.SqliteDataStore`,
+            and 'csv', equivalent to `cvxportfolio.LocalDataStore`. If you
+            implement your own you should define the `store` and
+            `load_raw` methods. Default is 'sqlite'.
+        base_location (pathlib.Path or None): base location for the data storage.
+        
+    """
+    
+    def __init__(self, symbol, source='yahoo', storage='sqlite', base_location=None):
+        
+        if isinstance(source, str) and source == 'yahoo':
+            source = YfinanceBase
+        if isinstance(source, str) and source == 'fred':
+            source = FredBase
+                
+        # from https://stackoverflow.com/questions/11042424/adding-base-class-to-existing-object-in-python
+        cls = self.__class__
+        self.__class__ = cls.__class__(cls.__name__ + 'With' + source.__name__, (cls, source), {})
+        
+        if isinstance(storage, str) and storage == 'sqlite':
+            storage = SqliteDataStore
+        if isinstance(storage, str) and storage == 'csv':
+            storage = LocalDataStore
+           
+        # we make the storage class first in the MRO to use its __init__
+        cls = self.__class__ 
+        self.__class__ = cls.__class__(cls.__name__ + 'With' + storage.__name__, (cls, storage), {})
+        
+        self.base_location = base_location
+        
+        self.data = self.update_and_load(symbol)
+        raise Exception
+        # print(data)
+        
+        # raise Exception
+        
+        # super(storage).__init__(**kwargs)
+        # raise Exception
+            
+
+            
+
+    

@@ -57,38 +57,42 @@ class BaseTradingPolicy(Estimator):
 
 
 class Hold(BaseTradingPolicy):
-    """Hold initial portfolio."""
+    """Hold initial portfolio, don't trade."""
 
     def values_in_time(self, t, portfolio, *args, **kwargs):
+        """Update sub-estimators and produce current estimate."""
         return pd.Series(0.0, index=portfolio.index)
 
 
 class RankAndLongShort(BaseTradingPolicy):
-    """Rank assets by signal long highest and short lowest.
+    """Rank assets by signal; long highest and short lowest.
     
     Args:
         signal (pd.DataFrame): time-indexed DataFrame of signal for all symbols
             excluding cash. At each point in time the num_long assets with
-            highest signal will equal positive weight, and the num_short assets with
+            highest signal will have equal positive weight, and the num_short assets with
             lower signal will have equal negative weight. If two or more assets have the same
             signal value and they are on the boundary of either the top or bottom set,
             alphanumerical ranking will prevail.
-        num_long (int): number of assets to long, default 1.
-        num_short (int): number of assets to short, default 1.
-        target_leverage (float): leverage of the resulting portfolio, default 1.
+        num_long (int or pd.Series): number of assets to long, default 1; if specified as Series
+            it must be indexed by time.
+        num_short (int or pd.Series): number of assets to short, default 1; if specified as Series
+            it must be indexed by time.
+        target_leverage (float or pd.Series): leverage of the resulting portfolio, default 1; 
+            if specified as Series it must be indexed by time.
     """
 
     def __init__(self, signal, num_long=1, num_short=1, target_leverage=1.):
-        # self.target_turnover = DataEstimator(target_turnover)
+        """Define sub-estimators at class attribute level."""
         self.num_long = DataEstimator(num_long)
         self.num_short = DataEstimator(num_short)
         self.signal = DataEstimator(signal)
         self.target_leverage = DataEstimator(target_leverage)
 
     def values_in_time(self, t, portfolio, *args, **kwargs):
-        # update values of all sub-estimators
+        """Update sub-estimators and produce current estimate."""
         super().values_in_time(t, portfolio, *args, **kwargs)
-                
+    
         sorted_ret = pd.Series(self.signal.current_value, portfolio.index[:-1]).sort_values()
         short_positions = sorted_ret.index[: self.num_short.current_value]
         long_positions = sorted_ret.index[-self.num_long.current_value:]
@@ -105,22 +109,6 @@ class RankAndLongShort(BaseTradingPolicy):
         
         return target_weights - portfolio
 
-        # u = pd.Series(0.0, index=prediction.index)
-        # u[short_trades] = -1.0
-        # u[long_trades] = 1.0
-        # u /= sum(abs(u))
-        # u = sum(portfolio) * u * self.target_turnover
-
-        # import pdb; pdb.set_trace()
-        #
-        # # ex-post cash neutrality
-        # old_cash = portfolio[-1]
-        # if old_cash > 0:
-        #     u[short] = u[short] + old_cash/self.num_short
-        # else:
-        #     u[long] = u[long] + old_cash/self.num_long
-
-        # return u
 
 
 class ProportionalTrade(BaseTradingPolicy):

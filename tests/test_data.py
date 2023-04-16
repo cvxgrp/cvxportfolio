@@ -17,8 +17,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.data import YfinanceBase, LocalDataStore, Yfinance, FredBase, FredRate, SqliteDataStore
+from cvxportfolio.data import YfinanceBase, LocalDataStore, Yfinance, FredBase, FredRate, SqliteDataStore, TimeSeries
 
+
+def test_time_series(tmp_path):
+    ts = TimeSeries('AAPL', base_location=tmp_path)
 
 def test_yfinance_download():
     """Test YfinanceBase."""

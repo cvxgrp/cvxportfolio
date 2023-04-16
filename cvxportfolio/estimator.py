@@ -19,7 +19,7 @@ from this.
 
 import numpy as np
 import pandas as pd
-from .data import MissingValuesError, DataError
+from .errors import MissingValuesError, DataError
 import cvxpy
 
 

@@ -1,4 +1,3 @@
-# Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
 # Copyright 2023- The Cvxportfolio Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,21 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.1.1"
-from .data import FredRate, Yfinance
-from .simulator import MarketSimulator
-from .result import SimulationResult
-from .policies import *
-from .constraints import *
-from .utils import *
-from .costs import TcostModel, HcostModel
-from .returns import *
-from .risks import (
-    FullSigma,
-    EmpSigma,
-    SqrtSigma,
-    FactorModelSigma,
-    RobustFactorModelSigma,
-    RobustSigma,
-    WorstCaseRisk,
-)
+class DataError(Exception):
+    """Base class for exception related to data."""
+    pass
+    
+class MissingValuesError(DataError):
+    """Cvxportfolio tried to access numpy.nan values."""
+    pass
