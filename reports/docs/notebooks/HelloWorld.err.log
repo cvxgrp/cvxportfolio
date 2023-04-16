@@ -44,26 +44,14 @@ Traceback (most recent call last):
     return list(map(*args))
   File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 265, in _run_backtest
     return self.run_backtest(
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 224, in run_backtest
-    u = policy.get_trades(h, t)
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/policies.py", line 269, in get_trades
-    cost_expr, const_expr = cost.weight_expr(t, wplus, z, value)
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/costs.py", line 51, in weight_expr
-    cost, constr = self._estimate(t, w_plus, z, value)
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/costs.py", line 57, in _estimate
-    cost = self.compile_to_cvxpy(w_plus, z, value)
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/costs.py", line 142, in compile_to_cvxpy
-    return sum([multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value) for multiplier, cost in zip(self.multipliers, self.costs)])
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/costs.py", line 142, in <listcomp>
-    return sum([multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value) for multiplier, cost in zip(self.multipliers, self.costs)])
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/estimator.py", line 109, in compile_to_cvxpy
-    raise NotImplementedError
-NotImplementedError
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 231, in run_backtest
+    assert not pd.isnull(u).any()
+AttributeError: 'bool' object has no attribute 'any'
 """
 
 The above exception was the direct cause of the following exception:
 
-[0;31mNotImplementedError[0m                       Traceback (most recent call last)
+[0;31mAttributeError[0m                            Traceback (most recent call last)
 Cell [0;32mIn[10], line 6[0m
 [1;32m      4[0m init_portfolio [38;5;241m=[39m pd[38;5;241m.[39mSeries(index[38;5;241m=[39mreturns[38;5;241m.[39mcolumns, data[38;5;241m=[39m[38;5;241m250000.0[39m)
 [1;32m      5[0m init_portfolio[38;5;241m.[39mUSDOLLAR [38;5;241m=[39m [38;5;241m0[39m
@@ -97,6 +85,6 @@ File [0;32m/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages
 [1;32m    773[0m [38;5;28;01melse[39;00m:
 [0;32m--> 774[0m     [38;5;28;01mraise[39;00m [38;5;28mself[39m[38;5;241m.[39m_value
 
-[0;31mNotImplementedError[0m: 
-NotImplementedError: 
+[0;31mAttributeError[0m: 'bool' object has no attribute 'any'
+AttributeError: 'bool' object has no attribute 'any'
 
