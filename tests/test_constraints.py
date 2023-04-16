@@ -35,7 +35,7 @@ from cvxportfolio.constraints import (
 
 def build_cons(model, wplus, t=None):
     model.pre_evaluation(None, None, pd.Timestamp('2022-01-01') if t is None else t, None)
-    cons = model.compile_to_cvxpy(wplus, None, None)[0]
+    cons = model.compile_to_cvxpy(wplus, None, None)
     model.values_in_time(pd.Timestamp('2020-01-01') if t is None else t)
     return cons
     
@@ -70,9 +70,13 @@ def test_hold_constrs(returns):
     # dollar neutral
     model = DollarNeutral()
     cons = build_cons(model, wplus)
-    wplus.value = np.zeros(n)
+    tmpvalue = np.zeros(n)
+    tmpvalue[-1] = 1 - sum(tmpvalue[:-1])
+    wplus.value = tmpvalue
     assert cons.value()
-    wplus.value = np.ones(n)
+    tmpvalue = np.ones(n)
+    tmpvalue[-1] = 1 - sum(tmpvalue[:-1])
+    wplus.value = tmpvalue
     assert not cons.value()
     
 
@@ -250,7 +254,7 @@ def test_trade_constr(returns, volumes):
     value = 1e6
     model = ParticipationRateLimit(volumes, max_fraction_of_volumes=0.1)
     model.pre_evaluation(None, None, returns.index[0], None)
-    cons = model.compile_to_cvxpy(None, z, value)[0]
+    cons = model.compile_to_cvxpy(None, z, value)
     model.values_in_time(t)
     #cons = model.weight_expr(t, None, z, value)[0]
     tmp = np.zeros(n)

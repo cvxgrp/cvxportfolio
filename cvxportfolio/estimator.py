@@ -61,7 +61,7 @@ class Estimator:
             if hasattr(subestimator, 'pre_evaluation'):
                 subestimator.pre_evaluation(returns, volumes, start_time, end_time)
 
-    def values_in_time(self, t, **kwargs):
+    def values_in_time(self, t, *args, **kwargs):
         """Evaluates estimator at a point in time recursively on its sub-estimators.
 
         This function is called by Simulator classes on Policy classes
@@ -77,7 +77,7 @@ class Estimator:
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, 'values_in_time'):
-                subestimator.values_in_time(t, **kwargs) 
+                subestimator.values_in_time(t, *args, **kwargs) 
         
 
 
@@ -161,21 +161,11 @@ class DataEstimator(Estimator):
         raise DataError(f"{self.__class__.__name__}.values_in_time result is not a scalar or array.")
         
               
-    def values_in_time(self, t, **kwargs):
-        """Obtain value of `self.data` at time t or right before.
-        
-        Args:
-            t (pandas.TimeStamp): time at which we evaluate the estimator 
-        
-        Returns:
-            result (float, numpy.array): if you use a callable object make
-                sure that it returns a float or numpy array (and not,
-                for example, a pandas object)
-
-        """
+    def internal_values_in_time(self, t, *args, **kwargs):
+        """Internal method called by `self.values_in_time`."""
 
         if hasattr(self.data, "__call__"):
-            return self.value_checker(self.data(t, **kwargs))
+            return self.value_checker(self.data(t,  *args, **kwargs))
             
         if hasattr(self.data, 'loc') and hasattr(self.data, 'index') and (
         isinstance(self.data.index, pd.DatetimeIndex) or
@@ -203,6 +193,22 @@ class DataEstimator(Estimator):
             return self.value_checker(self.data.values)
             
         return self.value_checker(self.data)
+        
+    def values_in_time(self, t, *args, **kwargs):
+        """Obtain value of `self.data` at time t or right before.
+        
+        Args:
+            t (pandas.TimeStamp): time at which we evaluate the estimator 
+        
+        Returns:
+            result (float, numpy.array): if you use a callable object make
+                sure that it returns a float or numpy array (and not,
+                for example, a pandas object)
+
+        """
+        self.current_value = self.internal_values_in_time(t, *args, **kwargs)
+        return self.current_value
+        
         
 
 class ParameterEstimator(cvxpy.Parameter, DataEstimator):

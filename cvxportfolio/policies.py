@@ -22,7 +22,7 @@ from cvxportfolio.costs import BaseCost
 from cvxportfolio.returns import BaseReturnsModel
 from cvxportfolio.constraints import BaseConstraint
 from cvxportfolio.utils import values_in_time, null_checker
-from .estimator import Estimator
+from .estimator import Estimator, DataEstimator
 
 __all__ = [
     "Hold",
@@ -37,21 +37,16 @@ __all__ = [
 
 
     
-class BasePolicy(Estimator):
+class BaseTradingPolicy(Estimator):
     """Base class for a trading policy."""
 
-    def __init__(self):
-        self.costs = []
-        self.constraints = []
-        
-    def values_in_time(self, t, portfolio):
-        """This temporary method enables to use old-style policies with the new-style simulator."""
-        raise NotImplementedError
-        return self.get_trades(portfolio=portfolio, t=t)
-
+    costs = []
+    constraints = []
+            
+    ## TEMPORARY INTERFACE OLD NEW
     def get_trades(self, portfolio, t=dt.datetime.today()):
         """Trades list given current portfolio and time t."""
-        raise NotImplementedError
+        return values_in_time(self, t, portfolio)
 
     def _nulltrade(self, portfolio):
         return pd.Series(index=portfolio.index, data=0.0)
@@ -61,35 +56,60 @@ class BasePolicy(Estimator):
         return np.round(self.get_trades(portfolio, t) / values_in_time(prices, t))[:-1]
 
 
-class Hold(BasePolicy):
+class Hold(BaseTradingPolicy):
     """Hold initial portfolio."""
 
-    def get_trades(self, portfolio, t=dt.datetime.today()):
-        return self._nulltrade(portfolio)
+    def values_in_time(self, t, portfolio, *args, **kwargs):
+        return pd.Series(0.0, index=portfolio.index)
 
 
-class RankAndLongShort(BasePolicy):
-    """Rank assets, long the best and short the worst (cash neutral)."""
+class RankAndLongShort(BaseTradingPolicy):
+    """Rank assets by signal long highest and short lowest.
+    
+    Args:
+        signal (pd.DataFrame): time-indexed DataFrame of signal for all symbols
+            excluding cash. At each point in time the num_long assets with
+            highest signal will equal positive weight, and the num_short assets with
+            lower signal will have equal negative weight. If two or more assets have the same
+            signal value and they are on the boundary of either the top or bottom set,
+            alphanumerical ranking will prevail.
+        num_long (int): number of assets to long, default 1.
+        num_short (int): number of assets to short, default 1.
+        target_leverage (float): leverage of the resulting portfolio, default 1.
+    """
 
-    def __init__(self, return_forecast, num_long, num_short, target_turnover):
-        self.target_turnover = target_turnover
-        self.num_long = num_long
-        self.num_short = num_short
-        self.return_forecast = return_forecast
-        super(RankAndLongShort, self).__init__()
+    def __init__(self, signal, num_long=1, num_short=1, target_leverage=1.):
+        # self.target_turnover = DataEstimator(target_turnover)
+        self.num_long = DataEstimator(num_long)
+        self.num_short = DataEstimator(num_short)
+        self.signal = DataEstimator(signal)
+        self.target_leverage = DataEstimator(target_leverage)
 
-    def get_trades(self, portfolio, t=dt.datetime.today()):
-        prediction = values_in_time(self.return_forecast, t)
-        sorted_ret = prediction.sort_values()
+    def values_in_time(self, t, portfolio, *args, **kwargs):
+        # update values of all sub-estimators
+        super().values_in_time(t, portfolio, *args, **kwargs)
+                
+        sorted_ret = pd.Series(self.signal.current_value, portfolio.index[:-1]).sort_values()
+        short_positions = sorted_ret.index[: self.num_short.current_value]
+        long_positions = sorted_ret.index[-self.num_long.current_value:]
+        
+        target_weights = pd.Series(0.0, index=portfolio.index)
+        target_weights[short_positions] = -1.
+        target_weights[long_positions] = 1.
+        
+        target_weights /= sum(abs(target_weights))
+        target_weights *= self.target_leverage.current_value
+        
+        # cash is always 1.
+        target_weights[portfolio.index[-1]] = 1.
+        
+        return target_weights - portfolio
 
-        short_trades = sorted_ret.index[: self.num_short]
-        long_trades = sorted_ret.index[-self.num_long :]
-
-        u = pd.Series(0.0, index=prediction.index)
-        u[short_trades] = -1.0
-        u[long_trades] = 1.0
-        u /= sum(abs(u))
-        u = sum(portfolio) * u * self.target_turnover
+        # u = pd.Series(0.0, index=prediction.index)
+        # u[short_trades] = -1.0
+        # u[long_trades] = 1.0
+        # u /= sum(abs(u))
+        # u = sum(portfolio) * u * self.target_turnover
 
         # import pdb; pdb.set_trace()
         #
@@ -100,10 +120,10 @@ class RankAndLongShort(BasePolicy):
         # else:
         #     u[long] = u[long] + old_cash/self.num_long
 
-        return u
+        # return u
 
 
-class ProportionalTrade(BasePolicy):
+class ProportionalTrade(BaseTradingPolicy):
     """Gets to target in given time steps."""
 
     def __init__(self, targetweight, time_steps):
@@ -122,7 +142,7 @@ class ProportionalTrade(BasePolicy):
         return sum(portfolio) * deviation / missing_time_steps
 
 
-class SellAll(BasePolicy):
+class SellAll(BaseTradingPolicy):
     """Sell all non-cash assets."""
 
     def get_trades(self, portfolio, t=dt.datetime.today()):
@@ -131,7 +151,7 @@ class SellAll(BasePolicy):
         return trade
 
 
-class FixedTrade(BasePolicy):
+class FixedTrade(BaseTradingPolicy):
     """Trade a fixed trade vector."""
 
     def __init__(self, tradevec=None, tradeweight=None):
@@ -152,7 +172,7 @@ class FixedTrade(BasePolicy):
         return sum(portfolio) * self.tradeweight
 
 
-class BaseRebalance(BasePolicy):
+class BaseRebalance(BaseTradingPolicy):
     def _rebalance(self, portfolio):
         return sum(portfolio) * self.target - portfolio
 
@@ -207,7 +227,7 @@ class AdaptiveRebalance(BaseRebalance):
             return self._nulltrade(portfolio)
 
 
-class SinglePeriodOpt(BasePolicy):
+class SinglePeriodOpt(BaseTradingPolicy):
     """Single-period optimization policy.
 
     Implements the model developed in chapter 4 of our paper
