@@ -394,20 +394,12 @@ class TimeSeries(DataEstimator):
         if isinstance(storage, str) and storage == 'csv':
             storage = LocalDataStore
            
-        # we make the storage class first in the MRO to use its __init__
         cls = self.__class__ 
         self.__class__ = cls.__class__(cls.__name__ + 'With' + storage.__name__, (cls, storage), {})
         
         self.base_location = base_location
         
         self.data = self.update_and_load(symbol)
-        raise Exception
-        # print(data)
-        
-        # raise Exception
-        
-        # super(storage).__init__(**kwargs)
-        # raise Exception
             
 
             
