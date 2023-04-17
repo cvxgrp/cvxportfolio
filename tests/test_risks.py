@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.risks import FullCovariance, RollingWindowFullCovariance, ExponentialWindowFullCovariance
+from cvxportfolio.risks import FullCovariance, RollingWindowFullCovariance, ExponentialWindowFullCovariance, DiagonalCovariance
 
 
 def test_benchmark(returns):
@@ -95,4 +95,22 @@ def test_exponential_window_sigma(returns):
     risk_model.values_in_time(t)
     
     assert np.isclose(cvxpy_expression.value, w_plus.value @ should_be @ w_plus.value)
+    
+def test_diagonal_covariance(returns):
+    N = 10
+    
+    historical_variances = returns.iloc[:, :N].rolling(50).var().shift(1).dropna()
+    risk_model = DiagonalCovariance(np.sqrt(historical_variances))
+        
+    w_plus = cvx.Variable(N)
+    
+    risk_model.pre_evaluation(None, None, start_time=historical_variances.index[0], end_time=None)
+    cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    
+    t = historical_variances.index[123]
+    w_plus.value = np.random.randn(N)
+    
+    risk_model.values_in_time(t)
+    
+    assert cvxpy_expression.value == w_plus.value @ np.diag(historical_variances.loc[t]) @ w_plus.value
     
