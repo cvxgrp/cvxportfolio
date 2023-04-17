@@ -36,8 +36,6 @@ __all__ = [
     "LowRankRollingRisk",
     "RollingWindowFactorModelRisk",
     "WorstCaseRisk",
-    # "RobustFactorModelRisk",
-    # "RobustSigma",
     "FactorModelRisk",
 ]
 
@@ -365,64 +363,34 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
         super().values_in_time(t, past_returns=past_returns, *args, **kwargs)
 
 
-# class RobustSigma(BaseRiskModel):
-#     """Implements covariance forecast error risk."""
-#
-#     def __init__(self, Sigma, epsilon, **kwargs):
-#         self.Sigma = Sigma  # pd.Panel or matrix
-#         self.epsilon = epsilon  # pd.Series or scalar
-#         super(RobustSigma, self).__init__(**kwargs)
-#
-#     def _estimate(self, t, w_plus, z, value):
-#         self.expression = (
-#             cvx.quad_form(wplus, values_in_time(self.Sigma, t))
-#             + values_in_time(self.epsilon, t)
-#             * (cvx.abs(w_plus).T * np.diag(values_in_time(self.Sigma, t))) ** 2
-#         )
-#
-#         return self.expression
-
-
-# class RobustFactorModelRisk(BaseRiskModel):
-#     """Implements covariance forecast error risk."""
-#
-#     def __init__(self, exposures, factor_Sigma, idyosync, epsilon, **kwargs):
-#         """Each is a pd.Panel (or ) or a vector/matrix"""
-#         self.exposures = exposures
-#         assert not exposures.isnull().values.any()
-#         self.factor_Sigma = factor_Sigma
-#         assert not factor_Sigma.isnull().values.any()
-#         self.idyosync = idyosync
-#         assert not idyosync.isnull().values.any()
-#         self.epsilon = epsilon
-#         super(RobustFactorModelRisk, self).__init__(**kwargs)
-#
-#     def _estimate(self, t, wplus, z, value):
-#         F = values_in_time(self.exposures, t)
-#         f = (wplus.T * F.T).T
-#         Sigma_F = values_in_time(self.factor_Sigma, t)
-#         D = values_in_time(self.idyosync, t)
-#         self.expression = (
-#             cvx.sum_squares(cvx.multiply(np.sqrt(D), wplus))
-#             + cvx.quad_form(f, Sigma_F)
-#             + self.epsilon * (cvx.abs(f).T * np.sqrt(np.diag(Sigma_F))) ** 2
-#         )
-#
-#         return self.expression
-
-
 class WorstCaseRisk(BaseRiskModel):
-    def __init__(self, riskmodels, **kwargs):
+    """Select the most restrictive risk model for each value of the allocation vector.
+    
+    Given a list of risk models, penalize the portfolio allocation by the
+    one with highest risk value at the solution point. If uncertain about
+    which risk model to use this procedure can be an easy solution.
+    
+        Args:
+            riskmodels (BaseRiskModel): list of BaseRiskModel classes. If using
+                non-cash benchmarks, they should be set to each risk model
+                individually. Calling set_benchmark on this class has no effect.
+    """
+    def __init__(self, riskmodels):
         self.riskmodels = riskmodels
-        super(WorstCaseRisk, self).__init__(**kwargs)
-
-    def _estimate(self, t, wplus, z, value):
-        self.risks = [risk.weight_expr(t, wplus, z, value) for risk in self.riskmodels]
-        return cvx.max_elemwise(*self.risks)
-
-    def optimization_log(self, t):
-        """Return data to log in the result object."""
-        return pd.Series(
-            index=[model.__class__.__name__ for model in self.riskmodels],
-            data=[risk.value[0, 0] for risk in self.risks],
-        )
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time):
+        """Initialize objects."""
+        for risk in self.riskmodels:
+            risk.pre_evaluation(returns, volumes, start_time, end_time)
+        super().pre_evaluation(returns, volumes, start_time, end_time)
+        
+    def values_in_time(self, t, past_returns, *args, **kwargs):
+        """Update parameters."""
+        for risk in self.riskmodels:
+            risk.values_in_time(t, past_returns=past_returns, *args, **kwargs)
+        super().values_in_time(t, past_returns=past_returns, *args, **kwargs)
+        
+    def compile_to_cvxpy(self, w_plus, z, value):
+        risks = [risk.compile_to_cvxpy(w_plus, z, value) for risk in self.riskmodels]
+        return cvx.max(cvx.hstack(risks))
+    

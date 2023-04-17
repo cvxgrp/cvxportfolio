@@ -216,5 +216,38 @@ def test_RollingWindowFactorModelRisk(returns):
     risk_model.values_in_time(t, past_returns=returns.loc[returns.index<t])
 
     assert np.isclose(cvxpy_expression.value, w_plus.value @  should_be @ w_plus.value)
+    
+def test_worst_case_risk(returns):
+    PAST = 30
+    t = pd.Timestamp('2014-06-02')
+    N = returns.shape[1]
+    returns.iloc[:, -1] = 0.
+    
+    risk_model0 = RollingWindowFactorModelRisk(lookback = PAST, num_factors = 2, forecast_error_kappa = 0.)
+    risk_model1 = RollingWindowFactorModelRisk(lookback = PAST, num_factors = 2, forecast_error_kappa = .5)
+    
+    worst_case = WorstCaseRisk([risk_model0, risk_model1])
+    
+    w_plus = cvx.Variable(N)
+    worst_case.pre_evaluation(returns, None, start_time=returns.index[0], end_time=None)
+    cvxpy_expression = worst_case.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
+    
+    cvxpy_expression0 = risk_model0.compile_to_cvxpy(w_plus, None, None)
+    cvxpy_expression1 = risk_model1.compile_to_cvxpy(w_plus, None, None)
+    
+    w_plus.value = np.random.randn(N)
+    
+    worst_case.values_in_time(t, past_returns=returns.loc[returns.index<t])
+    
+    assert (cvxpy_expression.value == cvxpy_expression1.value)
+    assert (cvxpy_expression.value > cvxpy_expression0.value)
+    
+    
+    
+    
+    
+    
+    
 
     
