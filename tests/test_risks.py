@@ -24,7 +24,9 @@ from cvxportfolio.risks import *
 
 def test_benchmark(returns):
     
-    N = 10
+    N = returns.shape[1]
+    returns.iloc[:, -1] = 0.
+
     w_benchmark = np.random.uniform(size=N)
     w_benchmark /= sum(w_benchmark)
     
@@ -66,9 +68,11 @@ def test_rolling_window_sigma(returns):
     
     risk_model = RollingWindowFullCovariance(lookback_period=50)
     
-    N = 20
+    N = returns.shape[1]
+    returns.iloc[:, -1] = 0.
+    
     w_plus = cvx.Variable(N)
-    risk_model.pre_evaluation(returns.iloc[:, :N+1], None, start_time=returns.index[50], end_time=None)
+    risk_model.pre_evaluation(returns.iloc[:, :N], None, start_time=returns.index[50], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
     
     t = pd.Timestamp('2014-06-02')
@@ -84,9 +88,10 @@ def test_exponential_window_sigma(returns):
     
     risk_model = ExponentialWindowFullCovariance(half_life=HL)
     
-    N = 20
+    N = returns.shape[1]
+    returns.iloc[:, -1] = 0.
     w_plus = cvx.Variable(N)
-    risk_model.pre_evaluation(returns.iloc[:, :N+1], None, start_time=returns.index[2], end_time=None)
+    risk_model.pre_evaluation(returns.iloc[:, :N], None, start_time=returns.index[2], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
     
     t = pd.Timestamp('2014-06-02')
@@ -97,14 +102,16 @@ def test_exponential_window_sigma(returns):
     assert np.isclose(cvxpy_expression.value, w_plus.value @ should_be @ w_plus.value)
     
 def test_diagonal_covariance(returns):
-    N = 10
+    
+    N = returns.shape[1]
+    returns.iloc[:, -1] = 0.
     
     historical_variances = returns.iloc[:, :N].rolling(50).var().shift(1).dropna()
     risk_model = DiagonalCovariance(np.sqrt(historical_variances))
         
     w_plus = cvx.Variable(N)
     
-    risk_model.pre_evaluation(None, None, start_time=historical_variances.index[0], end_time=None)
+    risk_model.pre_evaluation(returns, None, start_time=historical_variances.index[0], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
     
     t = historical_variances.index[123]
@@ -118,9 +125,11 @@ def test_rolling_window_diagonal_covariance(returns):
     
     risk_model = RollingWindowDiagonalCovariance(lookback_period=50)
     
-    N = 20
+    N = returns.shape[1]
+    returns.iloc[:, -1] = 0.
+    
     w_plus = cvx.Variable(N)
-    risk_model.pre_evaluation(returns.iloc[:, :N+1], None, start_time=returns.index[51], end_time=None)
+    risk_model.pre_evaluation(returns.iloc[:, :N], None, start_time=returns.index[51], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
     
     t = pd.Timestamp('2014-06-02')
@@ -136,9 +145,11 @@ def test_exponential_window_diagonal_covariance(returns):
     
     risk_model = ExponentialWindowDiagonalCovariance(half_life=HL)
     
-    N = 20
+    N = returns.shape[1]
+    returns.iloc[:, -1] = 0.
+    
     w_plus = cvx.Variable(N)
-    risk_model.pre_evaluation(returns.iloc[:, :N+1], None, start_time=returns.index[2], end_time=None)
+    risk_model.pre_evaluation(returns.iloc[:, :N], None, start_time=returns.index[2], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
     
     t = pd.Timestamp('2014-06-02')
@@ -151,7 +162,9 @@ def test_exponential_window_diagonal_covariance(returns):
 def test_low_rank_rolling_risk(returns):
     
     PAST = 30
-    N = returns.shape[1]-1
+    N = returns.shape[1]
+    returns.iloc[:, -1] = 0.
+    
     risk_model = LowRankRollingRisk(lookback = PAST)
     
     w_plus = cvx.Variable(N)

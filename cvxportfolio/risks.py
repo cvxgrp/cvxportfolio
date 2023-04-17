@@ -43,13 +43,21 @@ __all__ = [
 
 class BaseRiskModel(BaseCost):
 
-    benchmark_weights = 0.0
+    benchmark_weights = None
     
     ## DEPRECATED,BENCHMARK WEIGHTS ARE NOW PASSED BY set_benchmark
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop("w_bench", 0.0)
+        self.benchmark_weights = self.w_bench
         # super(BaseRiskModel, self).__init__()
         # self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time):
+        if self.benchmark_weights is None:
+            bw = pd.Series(0., returns.columns)
+            bw[-1] = 1.
+            self.benchmark_weights = ParameterEstimator(bw)
+        super().pre_evaluation(returns, volumes, start_time, end_time)
         
     def set_benchmark(self, benchmark_weights):
         self.benchmark_weights = ParameterEstimator(benchmark_weights)
@@ -65,6 +73,7 @@ class BaseRiskModel(BaseCost):
             return self.expression.value
         else:
             return np.NaN
+            
 
 
 class FullCovariance(BaseRiskModel):
@@ -96,20 +105,23 @@ class RollingWindowFullCovariance(FullCovariance):
         loockback_period (int): how many past returns are used each
             trading day to compute the historical covariance.
     """
-    def __init__(self, lookback_period=250):
+    def __init__(self, lookback_period=250, zero_cash_covariance=True):
         self.lookback_period = lookback_period
+        self.zero_cash_covariance = zero_cash_covariance
         
     def pre_evaluation(self, returns, volumes, start_time, end_time):
         """Function to initialize object with full prescience."""
         # drop cash return
-        returns = returns.iloc[:, :-1]
+        if self.zero_cash_covariance:
+            returns = returns.copy(deep=True)
+            returns.iloc[:, -1] = 0.
         self.Sigma = ParameterEstimator(
             # shift forward so only past returns are used
             returns.rolling(window=self.lookback_period).cov().shift(returns.shape[1]), 
             positive_semi_definite=True
         )
         # initialize cvxpy Parameter(s)
-        super().pre_evaluation(None, None, start_time, None)
+        super().pre_evaluation(returns, volumes, start_time, end_time)
         
 
 class ExponentialWindowFullCovariance(FullCovariance):
@@ -123,21 +135,23 @@ class ExponentialWindowFullCovariance(FullCovariance):
         half_life (int): the half life of exponential decay used by pandas
             exponential moving window
     """
-    def __init__(self, half_life=250):
+    def __init__(self, half_life=250, zero_cash_covariance=True):
         self.half_life = half_life
+        self.zero_cash_covariance = zero_cash_covariance
         
     def pre_evaluation(self, returns, volumes, start_time, end_time):
         """Function to initialize object with full prescience."""
 
-        # drop cash return
-        returns = returns.iloc[:, :-1]
+        if self.zero_cash_covariance:
+            returns = returns.copy(deep=True)
+            returns.iloc[:, -1] = 0.
         self.Sigma = ParameterEstimator(
              # shift forward so only past returns are used
             returns.ewm(halflife=self.half_life).cov().shift(returns.shape[1]),
             positive_semi_definite=True
         )
         # initialize cvxpy Parameter(s)
-        super().pre_evaluation(None, None, start_time, None)
+        super().pre_evaluation(returns, volumes, start_time, end_time)
     
         
 class DiagonalCovariance(BaseRiskModel):
@@ -167,19 +181,22 @@ class RollingWindowDiagonalCovariance(DiagonalCovariance):
         loockback_period (int): how many past returns are used each
             trading day to compute the historical covariance.
     """
-    def __init__(self, lookback_period=250):
+    def __init__(self, lookback_period=250, zero_cash_covariance=True):
         self.lookback_period = lookback_period
+        self.zero_cash_covariance = zero_cash_covariance
         
     def pre_evaluation(self, returns, volumes, start_time, end_time):
         """Function to initialize object with full prescience."""
         # drop cash return
-        returns = returns.iloc[:, :-1]
+        if self.zero_cash_covariance:
+            returns = returns.copy(deep=True)
+            returns.iloc[:, -1] = 0.
         self.standard_deviations = ParameterEstimator(
             # shift forward so only past returns are used
             np.sqrt(returns.rolling(window=self.lookback_period).var().shift(1), 
         ))
         # initialize cvxpy Parameter(s)
-        super().pre_evaluation(None, None, start_time, None)
+        super().pre_evaluation(returns, volumes, start_time, end_time)
         
 
 class ExponentialWindowDiagonalCovariance(DiagonalCovariance):
@@ -193,20 +210,23 @@ class ExponentialWindowDiagonalCovariance(DiagonalCovariance):
         half_life (int): the half life of exponential decay used by pandas
             exponential moving window
     """
-    def __init__(self, half_life=250):
+    def __init__(self, half_life=250, zero_cash_covariance=True):
         self.half_life = half_life
+        self.zero_cash_covariance = zero_cash_covariance
         
     def pre_evaluation(self, returns, volumes, start_time, end_time):
         """Function to initialize object with full prescience."""
 
         # drop cash return
-        returns = returns.iloc[:, :-1]
+        if self.zero_cash_covariance:
+            returns = returns.copy(deep=True)
+            returns.iloc[:, -1] = 0.
         self.standard_deviations = ParameterEstimator(
              # shift forward so only past returns are used
             np.sqrt(returns.ewm(halflife=self.half_life).var().shift(1),
         ))
         # initialize cvxpy Parameter(s)
-        super().pre_evaluation(None, None, start_time, None)
+        super().pre_evaluation(returns, volumes, start_time, end_time)
         
         
 class FactorModelSigma(BaseRiskModel):
@@ -217,7 +237,7 @@ class FactorModelSigma(BaseRiskModel):
         self.factor_Sigma = ParameterEstimator(factor_Sigma)
         self.idiosync = ParameterEstimator(idiosync)
         # DEPRECATED BUT USED BY OLD CVXPORTFOLIO
-        super(FactorModelSigma, self).__init__(**kwargs)
+        # super(FactorModelSigma, self).__init__(**kwargs)
 
     def compile_to_cvxpy(self, w_plus, z, value):
         self.expression = cvx.sum_squares(
@@ -241,18 +261,22 @@ class LowRankRollingRisk(BaseRiskModel):
             Default 250.
     """
 
-    def __init__(self, lookback):
+    def __init__(self, lookback, zero_cash_risk=True):
         self.lookback = lookback
+        self.zero_cash_risk = zero_cash_risk
         
     def pre_evaluation(self, returns, volumes, start_time, end_time):
         """Function to initialize object with full prescience."""
-        self.recent_returns = cvx.Parameter(shape=(self.lookback, returns.shape[1]-1))
+        self.recent_returns = cvx.Parameter(shape=(self.lookback, returns.shape[1]))
         super().pre_evaluation(returns, volumes, start_time, end_time)
         
     def values_in_time(self, t, past_returns, *args, **kwargs):
-        self.recent_returns.value = past_returns.iloc[-self.lookback:, :-1].values
+        val = past_returns.iloc[-self.lookback:].copy(deep=True)
+        if self.zero_cash_risk:
+            val.iloc[:, -1] = 0.
+        self.recent_returns.value = val.values
         # update attributes
-        super().values_in_time(t, past_returns, *args, **kwargs)
+        super().values_in_time(t, past_returns=past_returns, *args, **kwargs)
     
     def compile_to_cvxpy(self, w_plus, z, value):
         return cvx.sum_squares(self.recent_returns @ (w_plus - self.benchmark_weights)) / self.lookback
