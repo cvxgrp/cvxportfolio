@@ -42,16 +42,18 @@ Traceback (most recent call last):
     result = (True, func(*args, **kwds))
   File "/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py", line 48, in mapstar
     return list(map(*args))
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 265, in _run_backtest
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 272, in _run_backtest
     return self.run_backtest(
   File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 231, in run_backtest
-    assert not pd.isnull(u).any()
-AttributeError: 'bool' object has no attribute 'any'
+    u = policy.get_trades(h, t)
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/policies.py", line 50, in get_trades
+    return values_in_time(self, t, w) * value
+TypeError: unsupported operand type(s) for *: 'Hold' and 'float'
 """
 
 The above exception was the direct cause of the following exception:
 
-[0;31mAttributeError[0m                            Traceback (most recent call last)
+[0;31mTypeError[0m                                 Traceback (most recent call last)
 Cell [0;32mIn[10], line 6[0m
 [1;32m      4[0m init_portfolio [38;5;241m=[39m pd[38;5;241m.[39mSeries(index[38;5;241m=[39mreturns[38;5;241m.[39mcolumns, data[38;5;241m=[39m[38;5;241m250000.0[39m)
 [1;32m      5[0m init_portfolio[38;5;241m.[39mUSDOLLAR [38;5;241m=[39m [38;5;241m0[39m
@@ -65,12 +67,12 @@ Cell [0;32mIn[10], line 6[0m
 [1;32m     13[0m [43m)[49m
 [1;32m     14[0m results[[38;5;241m0[39m][38;5;241m.[39msummary()
 
-File [0;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py:272[0m, in [0;36mMarketSimulator.run_multiple_backtest[0;34m(self, initial_portf, start_time, end_time, policies, loglevel, parallel)[0m
-[1;32m    270[0m [38;5;28;01mif[39;00m parallel:
-[1;32m    271[0m     workers [38;5;241m=[39m multiprocess[38;5;241m.[39mPool(num_workers)
-[0;32m--> 272[0m     results [38;5;241m=[39m [43mworkers[49m[38;5;241;43m.[39;49m[43mmap[49m[43m([49m[43m_run_backtest[49m[43m,[49m[43m [49m[43mpolicies[49m[43m)[49m
-[1;32m    273[0m     workers[38;5;241m.[39mclose()
-[1;32m    274[0m     [38;5;28;01mreturn[39;00m results
+File [0;32m~/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py:279[0m, in [0;36mMarketSimulator.run_multiple_backtest[0;34m(self, initial_portf, start_time, end_time, policies, loglevel, parallel)[0m
+[1;32m    277[0m [38;5;28;01mif[39;00m parallel:
+[1;32m    278[0m     workers [38;5;241m=[39m multiprocess[38;5;241m.[39mPool(num_workers)
+[0;32m--> 279[0m     results [38;5;241m=[39m [43mworkers[49m[38;5;241;43m.[39;49m[43mmap[49m[43m([49m[43m_run_backtest[49m[43m,[49m[43m [49m[43mpolicies[49m[43m)[49m
+[1;32m    280[0m     workers[38;5;241m.[39mclose()
+[1;32m    281[0m     [38;5;28;01mreturn[39;00m results
 
 File [0;32m/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages/multiprocess/pool.py:367[0m, in [0;36mPool.map[0;34m(self, func, iterable, chunksize)[0m
 [1;32m    362[0m [38;5;28;01mdef[39;00m [38;5;21mmap[39m([38;5;28mself[39m, func, iterable, chunksize[38;5;241m=[39m[38;5;28;01mNone[39;00m):
@@ -85,6 +87,6 @@ File [0;32m/opt/hostedtoolcache/Python/3.10.11/x64/lib/python3.10/site-packages
 [1;32m    773[0m [38;5;28;01melse[39;00m:
 [0;32m--> 774[0m     [38;5;28;01mraise[39;00m [38;5;28mself[39m[38;5;241m.[39m_value
 
-[0;31mAttributeError[0m: 'bool' object has no attribute 'any'
-AttributeError: 'bool' object has no attribute 'any'
+[0;31mTypeError[0m: unsupported operand type(s) for *: 'Hold' and 'float'
+TypeError: unsupported operand type(s) for *: 'Hold' and 'float'
 
