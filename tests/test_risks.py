@@ -148,3 +148,24 @@ def test_exponential_window_diagonal_covariance(returns):
     
     assert np.isclose(cvxpy_expression.value, w_plus.value @  np.diag(np.diag(should_be)) @ w_plus.value)
     
+def test_low_rank_rolling_risk(returns):
+    
+    PAST = 30
+    N = returns.shape[1]-1
+    risk_model = LowRankRollingRisk(lookback = PAST)
+    
+    w_plus = cvx.Variable(N)
+    risk_model.pre_evaluation(returns, None, start_time=returns.index[0], end_time=None)
+    cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    
+    t = pd.Timestamp('2014-06-02')
+    should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-PAST:]
+    should_be = should_be.T @ should_be / PAST
+    
+    w_plus.value = np.random.randn(N)
+    risk_model.values_in_time(t, past_returns=returns.loc[returns.index<t])
+    
+    assert np.isclose(cvxpy_expression.value, w_plus.value @  should_be @ w_plus.value)
+    
+    
+    
