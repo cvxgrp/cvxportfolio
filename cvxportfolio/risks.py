@@ -34,10 +34,11 @@ __all__ = [
     "RollingWindowDiagonalCovariance",
     "ExponentialWindowDiagonalCovariance",
     "LowRankRollingRisk",
+    "RollingWindowFactorModelRisk",
     "WorstCaseRisk",
-    "RobustFactorModelSigma",
+    "RobustFactorModelRisk",
     "RobustSigma",
-    "FactorModelSigma",
+    "FactorModelRisk",
 ]
 
 
@@ -229,25 +230,45 @@ class ExponentialWindowDiagonalCovariance(DiagonalCovariance):
         super().pre_evaluation(returns, volumes, start_time, end_time)
         
         
-class FactorModelSigma(BaseRiskModel):
-    def __init__(self, exposures, factor_Sigma, idiosync, **kwargs):
+class FactorModelRisk(BaseRiskModel):
+    """Factor model covariance.
+    
+    Args:
+        exposures (pd.DataFrame): constant factor exposure matrix or a dataframe
+            where the first index is time.
+        idyosync (pd.DataFrame or pd.Series): idyosyncratic variances for the symbol,
+            either fixed (pd.Series) or through time (pd.DataFrame).
+        factor_Sigma (pd.DataFrame or None): a constant factor covariance matrix
+            or a DataFrame with multiindex where the first index is time. If None,
+            the default, it is understood that the factor covariance is the identity.
+    """
+    
+    factor_Sigma = None
+    
+    def __init__(self, exposures, idyosync, factor_Sigma=None, **kwargs):
         """Each is a pd.Panel (or ) or a vector/matrix"""
 
         self.exposures = ParameterEstimator(exposures)
-        self.factor_Sigma = ParameterEstimator(factor_Sigma)
-        self.idiosync = ParameterEstimator(idiosync)
+        if not (factor_Sigma is None):
+            self.factor_Sigma = ParameterEstimator(factor_Sigma)
+        self.idyosync_sqrt = ParameterEstimator(np.sqrt(idyosync))
         # DEPRECATED BUT USED BY OLD CVXPORTFOLIO
-        # super(FactorModelSigma, self).__init__(**kwargs)
+        # super(FactorModelRisk, self).__init__(**kwargs)
 
     def compile_to_cvxpy(self, w_plus, z, value):
         self.expression = cvx.sum_squares(
-            cvx.multiply(np.sqrt(self.idiosync), wplus)
-        ) + cvx.quad_form(
-            (wplus.T @ self.exposures.T).T,
+            cvx.multiply(self.idyosync_sqrt, w_plus)
+        ) 
+        if not (self.factor_Sigma is None):
+            self.expression += cvx.quad_form(
+            (w_plus.T @ self.exposures.T).T,
             self.factor_Sigma,
-        )
+            )
+        else:
+            self.expression += cvx.sum_squares(self.exposures @ w_plus)
         return self.expression
-
+        
+        
         
 class LowRankRollingRisk(BaseRiskModel):
     """Use `lookback` past returns to build low-rank structured risk model.
@@ -261,7 +282,7 @@ class LowRankRollingRisk(BaseRiskModel):
             Default 250.
     """
 
-    def __init__(self, lookback, zero_cash_risk=True):
+    def __init__(self, lookback=250, zero_cash_risk=True):
         self.lookback = lookback
         self.zero_cash_risk = zero_cash_risk
         
@@ -281,13 +302,50 @@ class LowRankRollingRisk(BaseRiskModel):
     def compile_to_cvxpy(self, w_plus, z, value):
         return cvx.sum_squares(self.recent_returns @ (w_plus - self.benchmark_weights)) / self.lookback
 
-    # def _estimate(self, t, wplus, z, value):
-    #     idx = self.returns.index.get_loc(t)
-    #     # TODO make sure pandas + cvxpy works
-    #     R = self.returns.iloc[max(idx - 1 - self.lookback, 0) : idx - 1]
-    #     assert R.shape[0] > 0
-    #     self.expression = cvx.sum_squares(R.values * wplus) / self.lookback
-    #     return self.expression
+
+        
+class RollingWindowFactorModelRisk(FactorModelRisk):
+    """Build FactorModelRisk model automatically with rolling window and svd.
+    
+    Procedure is detailed in the paper, pages 59-60, although here it is simplified.
+    
+    Eventually this will also have logic to store the computed exposures
+    and idyosyncratic variances. 
+    
+    Args:
+        lookback (int): how many past returns are used at each point in time
+            to estimate the risk model. Default 250.
+        num_factors (int): how many factors in the risk model. Default is 1.
+        zero_cash_risk (bool): whether to set the column and row of the (implied)
+            resulting covariance matrix to zero. Default True.
+    """
+    def __init__(self, lookback=250, num_factors = 1, zero_cash_risk=True):
+        self.lookback = lookback
+        self.num_factors = num_factors
+        self.zero_cash_risk = zero_cash_risk
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time):
+        """Function to initialize object with full prescience."""
+        
+        self.idyosync_sqrt = cvx.Parameter(returns.shape[1])
+        self.exposures = cvx.Parameter((self.num_factors, returns.shape[1]))
+        super().pre_evaluation(returns, volumes, start_time, end_time)
+        
+        
+    def values_in_time(self, t, past_returns, *args, **kwargs):
+        val = past_returns.iloc[-self.lookback:].copy(deep=True)
+        if self.zero_cash_risk:
+            val.iloc[:, -1] = 0.
+            
+        total_variances = np.sum(val**2, axis=0)/self.lookback
+        u,s,v = np.linalg.svd(val, full_matrices=False)
+                
+        self.exposures.value = (v[:self.num_factors].T * s[:self.num_factors]).T / np.sqrt(self.lookback)
+        
+        self.idyosync_sqrt.value = np.sqrt(total_variances - np.sum(self.exposures.value**2, axis=0)).values
+        assert np.all(self.idyosync_sqrt.value >= 0.)
+        
+        super().values_in_time(t, past_returns=past_returns, *args, **kwargs)
 
 
 class RobustSigma(BaseRiskModel):
@@ -308,25 +366,25 @@ class RobustSigma(BaseRiskModel):
         return self.expression
 
 
-class RobustFactorModelSigma(BaseRiskModel):
+class RobustFactorModelRisk(BaseRiskModel):
     """Implements covariance forecast error risk."""
 
-    def __init__(self, exposures, factor_Sigma, idiosync, epsilon, **kwargs):
+    def __init__(self, exposures, factor_Sigma, idyosync, epsilon, **kwargs):
         """Each is a pd.Panel (or ) or a vector/matrix"""
         self.exposures = exposures
         assert not exposures.isnull().values.any()
         self.factor_Sigma = factor_Sigma
         assert not factor_Sigma.isnull().values.any()
-        self.idiosync = idiosync
-        assert not idiosync.isnull().values.any()
+        self.idyosync = idyosync
+        assert not idyosync.isnull().values.any()
         self.epsilon = epsilon
-        super(RobustFactorModelSigma, self).__init__(**kwargs)
+        super(RobustFactorModelRisk, self).__init__(**kwargs)
 
     def _estimate(self, t, wplus, z, value):
         F = values_in_time(self.exposures, t)
         f = (wplus.T * F.T).T
         Sigma_F = values_in_time(self.factor_Sigma, t)
-        D = values_in_time(self.idiosync, t)
+        D = values_in_time(self.idyosync, t)
         self.expression = (
             cvx.sum_squares(cvx.multiply(np.sqrt(D), wplus))
             + cvx.quad_form(f, Sigma_F)
