@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.risks import FullCovariance, RollingWindowFullCovariance, ExponentialWindowFullCovariance, DiagonalCovariance
+from cvxportfolio.risks import *
 
 
 def test_benchmark(returns):
@@ -112,5 +112,39 @@ def test_diagonal_covariance(returns):
     
     risk_model.values_in_time(t)
     
-    assert cvxpy_expression.value == w_plus.value @ np.diag(historical_variances.loc[t]) @ w_plus.value
+    assert np.isclose(cvxpy_expression.value, w_plus.value @ np.diag(historical_variances.loc[t]) @ w_plus.value)
+    
+def test_rolling_window_diagonal_covariance(returns):
+    
+    risk_model = RollingWindowDiagonalCovariance(lookback_period=50)
+    
+    N = 20
+    w_plus = cvx.Variable(N)
+    risk_model.pre_evaluation(returns.iloc[:, :N+1], None, start_time=returns.index[51], end_time=None)
+    cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    
+    t = pd.Timestamp('2014-06-02')
+    should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-50:].cov()
+    w_plus.value = np.random.randn(N)
+    risk_model.values_in_time(t)
+    assert np.isclose(cvxpy_expression.value, w_plus.value @ np.diag(np.diag(should_be)) @ w_plus.value)
+    
+
+def test_exponential_window_diagonal_covariance(returns):
+    
+    HL = 50
+    
+    risk_model = ExponentialWindowDiagonalCovariance(half_life=HL)
+    
+    N = 20
+    w_plus = cvx.Variable(N)
+    risk_model.pre_evaluation(returns.iloc[:, :N+1], None, start_time=returns.index[2], end_time=None)
+    cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    
+    t = pd.Timestamp('2014-06-02')
+    should_be = returns.iloc[:,:N].loc[returns.index < t].ewm(halflife=HL).cov().iloc[-N:]
+    w_plus.value = np.random.randn(N)
+    risk_model.values_in_time(t)
+    
+    assert np.isclose(cvxpy_expression.value, w_plus.value @  np.diag(np.diag(should_be)) @ w_plus.value)
     

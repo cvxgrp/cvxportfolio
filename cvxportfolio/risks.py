@@ -28,8 +28,12 @@ from .estimator import ParameterEstimator
 
 __all__ = [
     "FullCovariance",
+    "RollingWindowFullCovariance",
+    "ExponentialWindowFullCovariance",
+    "DiagonalCovariance",
+    "RollingWindowDiagonalCovariance",
+    "ExponentialWindowDiagonalCovariance",
     "EmpSigma",
-    "SqrtSigma",
     "WorstCaseRisk",
     "RobustFactorModelSigma",
     "RobustSigma",
@@ -37,27 +41,8 @@ __all__ = [
 ]
 
 
-# def locator(obj, t):
-#     """Picks last element before t."""
-#     try:
-#         if isinstance(obj, pd.Panel):
-#             return obj.iloc[obj.axes[0].get_loc(t, method='pad')]
-
-#         elif isinstance(obj.index, pd.MultiIndex):
-#             prev_t = obj.loc[:t, :].index.values[-1][0]
-#         else:
-#             prev_t = obj.loc[:t, :].index.values[-1]
-
-#         return obj.loc[prev_t, :]
-
-#     except AttributeError:  # obj not pandas
-#         return obj
-
-
 class BaseRiskModel(BaseCost):
-    
-    
-    
+
     benchmark_weights = 0.0
     
     ## DEPRECATED,BENCHMARK WEIGHTS ARE NOW PASSED BY set_benchmark
@@ -92,6 +77,7 @@ class FullCovariance(BaseRiskModel):
     """
 
     def __init__(self, Sigma = None, **kwargs):
+        ## DEPRECATED, IT'S USED BY SOME OLD CVXPORTFOLIO PIECES
         super(FullCovariance, self).__init__(**kwargs)
         self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
 
@@ -152,9 +138,76 @@ class ExponentialWindowFullCovariance(FullCovariance):
         )
         # initialize cvxpy Parameter(s)
         super().pre_evaluation(None, None, start_time, None)
+    
+        
+class DiagonalCovariance(BaseRiskModel):
+    """Risk model using diagonal covariance matrix.
+    
+    Args:
+        standard_deviations (pd.DataFrame or pd.Series): per-stock standard
+            deviations, defined as square roots of covariances. 
+            Indexed by time if DataFrame.
+    """
+    
+    def __init__(self, standard_deviations = None):
+        self.standard_deviations = ParameterEstimator(standard_deviations)
+
+    def compile_to_cvxpy(self, w_plus, z, value):        
+        return cvx.sum_squares(cvx.multiply(w_plus, self.standard_deviations))
+        
+        
+class RollingWindowDiagonalCovariance(DiagonalCovariance):
+    """Build DiagonalCovariance model automatically with pandas rolling window.
+    
+    At the start of a backtest receives a view of asset returns
+    (excluding cash) and computes the rolling window variances
+    for given lookback_period (default 250).
+    
+    Args:
+        loockback_period (int): how many past returns are used each
+            trading day to compute the historical covariance.
+    """
+    def __init__(self, lookback_period=250):
+        self.lookback_period = lookback_period
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time):
+        """Function to initialize object with full prescience."""
+        # drop cash return
+        returns = returns.iloc[:, :-1]
+        self.standard_deviations = ParameterEstimator(
+            # shift forward so only past returns are used
+            np.sqrt(returns.rolling(window=self.lookback_period).var().shift(1), 
+        ))
+        # initialize cvxpy Parameter(s)
+        super().pre_evaluation(None, None, start_time, None)
         
 
+class ExponentialWindowDiagonalCovariance(DiagonalCovariance):
+    """Build DiagonalCovariance model automatically with pandas exponential window.
+    
+    At the start of a backtest receives a view of asset returns
+    (excluding cash) and computes the exponential window variances
+    for given half_life (default 250).
+    
+    Args:
+        half_life (int): the half life of exponential decay used by pandas
+            exponential moving window
+    """
+    def __init__(self, half_life=250):
+        self.half_life = half_life
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time):
+        """Function to initialize object with full prescience."""
 
+        # drop cash return
+        returns = returns.iloc[:, :-1]
+        self.standard_deviations = ParameterEstimator(
+             # shift forward so only past returns are used
+            np.sqrt(returns.ewm(halflife=self.half_life).var().shift(1),
+        ))
+        # initialize cvxpy Parameter(s)
+        super().pre_evaluation(None, None, start_time, None)
+        
 class EmpSigma(BaseRiskModel):
     """Empirical Sigma matrix, built looking at *lookback* past returns.
 
@@ -176,18 +229,6 @@ class EmpSigma(BaseRiskModel):
         self.expression = cvx.sum_squares(R.values * wplus) / self.lookback
         return self.expression
 
-
-class SqrtSigma(BaseRiskModel):
-    def __init__(self, sigma_sqrt, **kwargs):
-        """returns is dataframe, lookback is int"""
-        self.sigma_sqrt = sigma_sqrt
-        assert not np.any(pd.isnull(sigma_sqrt))
-        super(SqrtSigma, self).__init__(**kwargs)
-
-    def _estimate(self, t, wplus, z, value):
-        # TODO make sure pandas + cvxpy works
-        self.expression = cvx.sum_squares(wplus.T * self.sigma_sqrt.values)
-        return self.expression
 
 
 class FactorModelSigma(BaseRiskModel):
