@@ -20,7 +20,7 @@ import pandas as pd
 import pytest
 
 from cvxportfolio import (
-    FullSigma,
+    FullCovariance,
     HcostModel,
     MultipleReturnsForecasts,
     ReturnsForecast,
@@ -47,7 +47,7 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     emp_Sigma = np.cov(returns.to_numpy().T)
-    risk_model = FullSigma(emp_Sigma, gamma=100.0)
+    risk_model = FullCovariance(emp_Sigma, gamma=100.0)
 
     pol = SinglePeriodOpt(
         alpha_model, [risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS
@@ -91,7 +91,7 @@ def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     emp_Sigma = np.cov(returns.to_numpy().T)
-    risk_model = FullSigma(emp_Sigma, gamma=100.0)
+    risk_model = FullCovariance(emp_Sigma, gamma=100.0)
     # tcost_model = TcostModel(self.a, self.b, sigma, volumes)
     # hcost_model = HcostModel(self.s, self.s * 0)
     pol = SinglePeriodOpt(
@@ -146,7 +146,7 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     emp_Sigma = np.cov(returns.to_numpy().T)
-    risk_model = FullSigma(emp_Sigma)
+    risk_model = FullCovariance(emp_Sigma)
     tcost_model = TcostModel(0.0005, 1.0, sigma, volumes)
 
     # tcost = TcostModel(volumes, sigma, self.a, self.b)

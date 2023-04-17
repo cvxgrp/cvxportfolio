@@ -20,7 +20,7 @@ import pytest
 from cvxportfolio.costs import HcostModel, TcostModel
 from cvxportfolio.policies import SinglePeriodOpt
 from cvxportfolio.returns import ReturnsForecast
-from cvxportfolio.risks import FullSigma
+from cvxportfolio.risks import FullCovariance
 
 
 @pytest.fixture()
@@ -43,7 +43,7 @@ def test_single_period_opt(returns, sigma, volumes, tcost_model, hcost_model):
     n = len(universe)
     alpha_model = ReturnsForecast(returns)
     emp_Sigma = np.cov(returns.to_numpy().T) + np.eye(n) * 1e-3
-    risk_model = FullSigma(emp_Sigma)
+    risk_model = FullCovariance(emp_Sigma)
     pol = SinglePeriodOpt(
         alpha_model, [gamma * risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS
     )

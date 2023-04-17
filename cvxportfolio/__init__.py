@@ -24,7 +24,7 @@ from .costs import TcostModel, HcostModel
 from .returns import *
 from .estimator import DataEstimator
 from .risks import (
-    FullSigma,
+    FullCovariance,
     EmpSigma,
     SqrtSigma,
     FactorModelSigma,

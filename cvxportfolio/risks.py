@@ -1,4 +1,5 @@
 # Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+# Copyright 2023- The Cvxportfolio Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 from .estimator import ParameterEstimator
 
 __all__ = [
-    "FullSigma",
+    "FullCovariance",
     "EmpSigma",
     "SqrtSigma",
     "WorstCaseRisk",
@@ -54,16 +55,26 @@ __all__ = [
 
 
 class BaseRiskModel(BaseCost):
+    
+    
+    
+    benchmark_weights = 0.0
+    
+    ## DEPRECATED,BENCHMARK WEIGHTS ARE NOW PASSED BY with_respect_to_benchmark
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop("w_bench", 0.0)
         # super(BaseRiskModel, self).__init__()
         # self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
+        
+    def with_respect_to_benchmark(self, benchmark_weights):
+        self.benchmark_weights = ParameterEstimator(benchmark_weights)
 
     def weight_expr(self, t, w_plus, z, value):
         """Temporary placeholder while migrating to new interface"""
         self.expression, _ = self._estimate(t, w_plus - self.w_bench, z, value)
         return self.expression, []
 
+    ## DEPRECATED, MAYBE INCLUDE ITS LOGIC AT BASECOST LEVEL
     def optimization_log(self, t):
         if self.expression.value:
             return self.expression.value
@@ -71,20 +82,77 @@ class BaseRiskModel(BaseCost):
             return np.NaN
 
 
-class FullSigma(BaseRiskModel):
+class FullCovariance(BaseRiskModel):
     """Quadratic risk model with full covariance matrix.
 
     Args:
-        Sigma: Sigma matrices as understood by `cvxportfolio.estimator.DataEstimator`
+        Sigma (pd.DataFrame): DataFrame of Sigma matrices as understood 
+        by `cvxportfolio.estimator.DataEstimator`.
 
     """
 
-    def __init__(self, Sigma, **kwargs):
-        super(FullSigma, self).__init__(**kwargs)
+    def __init__(self, Sigma = None, **kwargs):
+        super(FullCovariance, self).__init__(**kwargs)
         self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        return cvx.quad_form(w_plus, self.Sigma)
+        return cvx.quad_form(w_plus - self.benchmark_weights, self.Sigma)
+    
+        
+class RollingWindowFullCovariance(FullCovariance):
+    """Build FullCovariance model automatically with pandas rolling window.
+    
+    At the start of a backtest receives a view of asset returns
+    (excluding cash) and computes the rolling window covariance
+    for given lookback_period (default 250).
+    
+    Args:
+        loockback_period (int): how many past returns are used each
+            trading day to compute the historical covariance.
+    """
+    def __init__(self, lookback_period=250):
+        self.lookback_period = lookback_period
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time):
+        """Function to initialize object with full prescience."""
+        # drop cash return
+        returns = returns.iloc[:, :-1]
+        self.Sigma = ParameterEstimator(
+            # shift forward so only past returns are used
+            returns.rolling(window=self.lookback_period).cov().shift(returns.shape[1]), 
+            positive_semi_definite=True
+        )
+        # initialize cvxpy Parameter
+        self.Sigma.pre_evaluation(None, None, start_time, None)
+        
+
+class ExponentialWindowFullCovariance(FullCovariance):
+    """Build FullCovariance model automatically with pandas exponential window.
+    
+    At the start of a backtest receives a view of asset returns
+    (excluding cash) and computes the exponential window covariance
+    for given half_life (default 250).
+    
+    Args:
+        half_life (int): the half life of exponential decay used by pandas
+            exponential moving window
+    """
+    def __init__(self, half_life=250):
+        self.half_life = half_life
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time):
+        """Function to initialize object with full prescience."""
+
+        # drop cash return
+        returns = returns.iloc[:, :-1]
+        self.Sigma = ParameterEstimator(
+             # shift forward so only past returns are used
+            returns.ewm(half_life=self.lookback_period).cov().shift(returns.shape[1]),
+            positive_semi_definite=True
+        )
+        # initialize cvxpy Parameter
+        self.Sigma.pre_evaluation(None, None, start_time, None)
+        
 
 
 class EmpSigma(BaseRiskModel):

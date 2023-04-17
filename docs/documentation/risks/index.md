@@ -13,7 +13,7 @@ WORK IN PROGRESS
 ```
 
 ```{eval-rst}
-.. autoclass:: FullSigma
+.. autoclass:: FullCovariance
 ```
 
 ```{eval-rst}
