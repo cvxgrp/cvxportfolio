@@ -22,6 +22,27 @@ import pytest
 from cvxportfolio.risks import FullCovariance, RollingWindowFullCovariance, ExponentialWindowFullCovariance
 
 
+def test_benchmark(returns):
+    
+    N = 10
+    w_benchmark = np.random.uniform(size=N)
+    w_benchmark /= sum(w_benchmark)
+    
+    risk_model = RollingWindowFullCovariance(lookback_period=50)
+    risk_model.set_benchmark(w_benchmark)
+    
+    w_plus = cvx.Variable(N)
+    risk_model.pre_evaluation(returns.iloc[:, :N+1], None, start_time=returns.index[50], end_time=None)
+    cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    
+    t = pd.Timestamp('2014-06-02')
+    should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-50:].cov()
+    w_plus.value = np.random.randn(N)
+    risk_model.values_in_time(t)
+    assert np.isclose(cvxpy_expression.value, (w_plus.value - w_benchmark) @ should_be @ (w_plus.value - w_benchmark))
+    
+    
+
 
 def test_full_sigma(returns):
     N = 10
@@ -56,4 +77,22 @@ def test_rolling_window_sigma(returns):
     risk_model.values_in_time(t)
     assert np.isclose(cvxpy_expression.value, w_plus.value @ should_be @ w_plus.value)
     
+
+def test_exponential_window_sigma(returns):
+    
+    HL = 50
+    
+    risk_model = ExponentialWindowFullCovariance(half_life=HL)
+    
+    N = 20
+    w_plus = cvx.Variable(N)
+    risk_model.pre_evaluation(returns.iloc[:, :N+1], None, start_time=returns.index[2], end_time=None)
+    cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    
+    t = pd.Timestamp('2014-06-02')
+    should_be = returns.iloc[:,:N].loc[returns.index < t].ewm(halflife=HL).cov().iloc[-N:]
+    w_plus.value = np.random.randn(N)
+    risk_model.values_in_time(t)
+    
+    assert np.isclose(cvxpy_expression.value, w_plus.value @ should_be @ w_plus.value)
     

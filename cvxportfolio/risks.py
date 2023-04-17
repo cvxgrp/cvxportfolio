@@ -60,13 +60,13 @@ class BaseRiskModel(BaseCost):
     
     benchmark_weights = 0.0
     
-    ## DEPRECATED,BENCHMARK WEIGHTS ARE NOW PASSED BY with_respect_to_benchmark
+    ## DEPRECATED,BENCHMARK WEIGHTS ARE NOW PASSED BY set_benchmark
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop("w_bench", 0.0)
         # super(BaseRiskModel, self).__init__()
         # self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
         
-    def with_respect_to_benchmark(self, benchmark_weights):
+    def set_benchmark(self, benchmark_weights):
         self.benchmark_weights = ParameterEstimator(benchmark_weights)
 
     def weight_expr(self, t, w_plus, z, value):
@@ -122,8 +122,8 @@ class RollingWindowFullCovariance(FullCovariance):
             returns.rolling(window=self.lookback_period).cov().shift(returns.shape[1]), 
             positive_semi_definite=True
         )
-        # initialize cvxpy Parameter
-        self.Sigma.pre_evaluation(None, None, start_time, None)
+        # initialize cvxpy Parameter(s)
+        super().pre_evaluation(None, None, start_time, None)
         
 
 class ExponentialWindowFullCovariance(FullCovariance):
@@ -147,11 +147,11 @@ class ExponentialWindowFullCovariance(FullCovariance):
         returns = returns.iloc[:, :-1]
         self.Sigma = ParameterEstimator(
              # shift forward so only past returns are used
-            returns.ewm(half_life=self.lookback_period).cov().shift(returns.shape[1]),
+            returns.ewm(halflife=self.half_life).cov().shift(returns.shape[1]),
             positive_semi_definite=True
         )
-        # initialize cvxpy Parameter
-        self.Sigma.pre_evaluation(None, None, start_time, None)
+        # initialize cvxpy Parameter(s)
+        super().pre_evaluation(None, None, start_time, None)
         
 
 
