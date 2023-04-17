@@ -23,6 +23,7 @@ from cvxportfolio.costs import HcostModel, TcostModel
 from cvxportfolio.returns import MultipleReturnsForecasts, ReturnsForecast
 from cvxportfolio.risks import FullSigma
 
+
 def test_alpha(returns):
     """Test alpha models."""
 
@@ -179,46 +180,44 @@ def test_tcost(returns, volumes, sigma):
     tcost_t, _ = model.weight_expr(t, None, z_var / 10, value)
     tcost_t *= 10
     assert tcost_tau.value == pytest.approx(tcost_t.value)
-    
-    
+
+
 def test_cost_algebra(returns):
-    
     n = len(returns.columns)
     wplus = cvx.Variable(n)
     wplus.value = np.arange(n) - n / 2
     t = returns.index[1]
-    
-    
-    cost1 = HcostModel(1,2)
+
+    cost1 = HcostModel(1, 2)
     cost2 = FullSigma(returns.T @ returns / len(returns))
     cost3 = cost1 + cost2
-    
+
     cost3.pre_evaluation(None, None, t, None)
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1E6)
-    expr1 = cost1.compile_to_cvxpy(wplus, None, 1E6)
-    expr2 = cost2.compile_to_cvxpy(wplus, None, 1E6)
+    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
+    expr1 = cost1.compile_to_cvxpy(wplus, None, 1e6)
+    expr2 = cost2.compile_to_cvxpy(wplus, None, 1e6)
     cost3.values_in_time(t)
     assert expr3.value == expr1.value + expr2.value
-    
+
     cost4 = cost1 * 2
-    expr4 = cost4.compile_to_cvxpy(wplus, None, 1E6)
+    expr4 = cost4.compile_to_cvxpy(wplus, None, 1e6)
     assert expr4.value == expr1.value * 2
-    
+
     cost3 = cost1 - cost2
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1E6)
+    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
     assert expr3.value == expr1.value - expr2.value
-    
+
     cost3 = -cost1 + 2 * cost2
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1E6)
-    assert expr3.value == -expr1.value + 2* expr2.value
-    
-    cost3 = -cost1 + 2*(cost2 +cost1)
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1E6)
-    assert expr3.value == -expr1.value + 2*(expr2.value + expr1.value)
-    
-    cost3 = cost1 - 2*(cost2 +cost1)
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1E6)
-    assert expr3.value == expr1.value - 2*(expr2.value + expr1.value)
+    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
+    assert expr3.value == -expr1.value + 2 * expr2.value
+
+    cost3 = -cost1 + 2 * (cost2 + cost1)
+    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
+    assert expr3.value == -expr1.value + 2 * (expr2.value + expr1.value)
+
+    cost3 = cost1 - 2 * (cost2 + cost1)
+    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
+    assert expr3.value == expr1.value - 2 * (expr2.value + expr1.value)
 
 
 def test_hcost(returns):

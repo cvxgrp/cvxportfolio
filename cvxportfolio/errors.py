@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 class DataError(Exception):
     """Base class for exception related to data."""
+
     pass
-    
+
+
 class MissingValuesError(DataError):
     """Cvxportfolio tried to access numpy.nan values."""
+
     pass

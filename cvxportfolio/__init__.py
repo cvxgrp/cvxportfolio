@@ -22,6 +22,7 @@ from .constraints import *
 from .utils import *
 from .costs import TcostModel, HcostModel
 from .returns import *
+from .estimator import DataEstimator
 from .risks import (
     FullSigma,
     EmpSigma,

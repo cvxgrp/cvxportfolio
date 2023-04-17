@@ -37,107 +37,114 @@ from .data import FredRate, Yfinance
 # TODO update benchmark weights (?)
 # Also could try jitting with numba.
 
+
 class BaseMarketSimulator:
     """Base class for market simulators.
-    
+
     Each derived class implements specific usecases, such as stock portfolio simualtors,
     CFDs portfolios, or futures portfolios. One might also subclass this (or one of the derived classes)
     to specialize the simulator to a specific regional market, or a specific asset class.
     """
-    pass
+
 
 class NewMarketSimulator(BaseMarketSimulator):
     """This class implements a simulator of market performance for trading strategies.
-    
+
     We strive to make the parameters here as accurate as possible. The following is
     accurate as of 2023Q2 using numbers obtained on the public website of a
     [large US-based broker](https://www.interactivebrokers.com/).
-    
+
     Attributes:
         cash_keys (dict): registers a cash_key name with a data reader and a symbol name.
             By default we provide the USDOLLAR cash account whose rate is the effective
-            fund rate by the US-fed (fred). If you use MarketSimulator to simulate 
+            fund rate by the US-fed (fred). If you use MarketSimulator to simulate
             performance of portfolios where the cash account is not in USD, say in EUR
             or something else, you'd have to build a datareader like we did for FRED
             and provide the right symbol to look up.
-    
+
     Args:
-    
+
         universe (list): list of [Yahoo Finance](https://finance.yahoo.com/) tickers on which to
             simulate performance of the trading strategy. If left unspecified you should at least
-            pass `returns`. If you define a different market data access interface 
-            (look in cvxportfolio.data for how to do it) you should pass instead 
+            pass `returns`. If you define a different market data access interface
+            (look in cvxportfolio.data for how to do it) you should pass instead
             the symbol names for that data provider. Default is empty list.
-    
+
         returns (pandas.DataFrame): historical open-to-open returns. Default is None, it is ignored
             if universe is specified.
-    
-        volumes (pandas.DataFrame): historical market volumes expressed in value (e.g., US dollars). 
+
+        volumes (pandas.DataFrame): historical market volumes expressed in value (e.g., US dollars).
             Default is None, it is ignored if universe is specified.
-    
+
         prices (pandas.DataFrame): historical open prices. Default is None, it is ignored
             if universe is specified. These are used to round the trades to integer number of stocks
-            if round_trades is True, and compute per-share transaction costs. 
-    
+            if round_trades is True, and compute per-share transaction costs.
+
         spreads (pandas.DataFrame): historical bid-ask spreads expressed as (ask-bid)/bid. Default is zero,
             practical spreads are negligible on US liquid stocks.
-    
+
         round_trades (bool): round the trade weights provided by a policy so they correspond to an integer
             number of stocks traded. Default is True using Yahoo Finance open prices.
-    
+
         per_share_fixed_cost (float): transaction cost per share traded. Default value is 0.005 (USD), uses
              Yahoo Finance open prices to simulate the number of stocks traded. See
-            https://www.interactivebrokers.com/en/pricing/commissions-home.php 
-    
+            https://www.interactivebrokers.com/en/pricing/commissions-home.php
+
         transaction_cost_coefficient_b (float, pd.Series, or pd.DataFrame): coefficient that multiplies the non-linear
             term of the transaction cost. Default value is 1, you can pass any other constant value, a per-stock Series,
             or a per-day and per-stock DataFrame
-    
+
         transaction_cost_exponent (float): exponent of the non-linear term of the transaction cost model. Default value 1.5,
              this is applied to the trade volume (in US dollars) over the total market volume (in US dollars). See the
             paper for more details; this model is supported by a long tradition of research in market microstructure.
-    
-        rolling_window_sigma_estimator (int): we use an historical rolling standard deviation to estimate the average 
+
+        rolling_window_sigma_estimator (int): we use an historical rolling standard deviation to estimate the average
             size of the return on a stock on each day, and this multiplies the second term of the transaction cost model.
              See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
              default is 1000.
-    
+
         spread_on_borrowing_stocks_percent (float): when shorting a stock, you will pay a rate on the value
             of the position equal to the cash return plus this spread, expressed in percent annualized. These
-            values are hard to find historically, if you are unsure consider long-only portfolios or look 
+            values are hard to find historically, if you are unsure consider long-only portfolios or look
             at CFDs/futures instead. We set the default value to 0.5 (percent annualized) which is probably
             OK for US large caps. See https://www.interactivebrokers.com/en/pricing/short-sale-cost.php
-    
+
         spread_on_long_positions_percent (float or None): if you trade CFDs you will pay interest on your long positions
             as well as your short positions, equal to the cash return plus this value (percent annualized). If
              instead this is None, the default value, you pay nothing on your long positions (as you do if you trade
             stocks). We don't consider dividend payments because those are already incorporated in the
             open-to-open returns as we compute them from the Yahoo Finance data. See cvxportfolio.data for details.
-    
+
         spread_on_lending_cash_percent (float): the cash account will generate annualized
-            return equal to the cash return minus this number, expressed in percent annualized, or zero if 
+            return equal to the cash return minus this number, expressed in percent annualized, or zero if
             the spread is larger than the cash return. For example with USDOLLAR cash,
-            if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5 
-            (the default value), then the uninvested cash in the portfolio generates annualized 
-            return of 4.3%. See https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php 
-    
-        spread_on_borrowing_cash_percent (float): if we instead borrow cash we pay the 
+            if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5
+            (the default value), then the uninvested cash in the portfolio generates annualized
+            return of 4.3%. See https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php
+
+        spread_on_borrowing_cash_percent (float): if we instead borrow cash we pay the
             cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
             See https://www.interactivebrokers.com/en/trading/margin-rates.php
-    
-        cash_key (str): name of the cash account, there must be a matching data reader and symbol in 
+
+        cash_key (str): name of the cash account, there must be a matching data reader and symbol in
             MarketSimulator.cash_keys. Default is 'USDOLLAR'.
     """
-    cash_keys = {'USDOLLAR': (FredRate, 'DFF')}
-    
-    
+
+    cash_keys = {"USDOLLAR": (FredRate, "DFF")}
+
+
 class MarketSimulator(BaseMarketSimulator):
     """Current market simulator, name will change soon."""
-    logger = None
-    
 
-    def __init__(self, market_returns, costs, market_volumes=None, cash_key='cash',
-                ):
+    logger = None
+
+    def __init__(
+        self,
+        market_returns,
+        costs,
+        market_volumes=None,
+        cash_key="cash",
+    ):
         """Provide market returns object and cost objects."""
         self.market_returns = market_returns
         if market_volumes is not None:

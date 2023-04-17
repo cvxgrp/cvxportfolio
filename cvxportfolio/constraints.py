@@ -43,39 +43,40 @@ class BaseConstraint(CvxpyExpressionEstimator):
 
     ## DEFINED TEMPORARILY TO INTERFACE WITH OLD CVXPORTFOLIO
     def weight_expr(self, t, w_plus, z, v):
-        
         self.pre_evaluation(None, None, t, None)
         result = self.compile_to_cvxpy(wplus, z, v)
         self.values_in_time(t)
-        if hasattr(result, '__iter__'):
+        if hasattr(result, "__iter__"):
             return result
         else:
             return [result]
-        
+
 
 class BaseTradeConstraint(BaseConstraint):
     """Base class for constraints that operate on trades."""
+
     pass
-    
+
+
 class BaseWeightConstraint(BaseConstraint):
     """Base class for constraints that operate on weights.
-    
-    Here we can implement a method to pass benchmark weights 
+
+    Here we can implement a method to pass benchmark weights
     and make the constraint relative to it rather than to the null
     portfolio.
     """
+
     pass
-    
 
 
 class ParticipationRateLimit(BaseTradeConstraint):
     """A limit on maximum trades size as a fraction of market volumes.
-    
+
     Attributes:
         self.volumes (ParameterEstimator): ParameterEstimator with point-in-time market volumes estimations
         self.max_fraction_of_volumes (ParameterEstimator): ParameterEstimator with point-in-time,
              and also possibly per-stock, requirements of maximum participation rate
-        
+
     """
 
     def __init__(self, volumes, max_fraction_of_volumes=0.05):
@@ -84,8 +85,10 @@ class ParticipationRateLimit(BaseTradeConstraint):
 
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""
-        return cvx.multiply(cvx.abs(z[:-1]), portfolio_value) <= cvx.multiply(self.volumes, self.max_participation_rate)
-        
+        return cvx.multiply(cvx.abs(z[:-1]), portfolio_value) <= cvx.multiply(
+            self.volumes, self.max_participation_rate
+        )
+
 
 class LongOnly(BaseWeightConstraint):
     """A long only constraint."""
@@ -104,7 +107,7 @@ class LeverageLimit(BaseWeightConstraint):
 
     def __init__(self, limit):
         self.limit = ParameterEstimator(limit)
-        
+
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""
         return cvx.norm(w_plus[:-1], 1) <= self.limit
@@ -112,7 +115,7 @@ class LeverageLimit(BaseWeightConstraint):
 
 class LongCash(BaseWeightConstraint):
     """Requires that cash be non-negative."""
-    
+
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""
         return w_plus[-1] >= 0
@@ -120,10 +123,11 @@ class LongCash(BaseWeightConstraint):
 
 class DollarNeutral(BaseWeightConstraint):
     """Long-short dollar neutral strategy."""
-    
+
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""
         return w_plus[-1] == 1
+
 
 class MaxWeights(BaseWeightConstraint):
     """A max limit on weights.
@@ -134,7 +138,7 @@ class MaxWeights(BaseWeightConstraint):
 
     def __init__(self, limit):
         self.limit = ParameterEstimator(limit)
-        
+
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] <= self.limit
@@ -149,11 +153,10 @@ class MinWeights(BaseWeightConstraint):
 
     def __init__(self, limit):
         self.limit = ParameterEstimator(limit)
-        
+
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] >= self.limit
-
 
 
 class FactorMaxLimit(BaseWeightConstraint):
@@ -168,7 +171,7 @@ class FactorMaxLimit(BaseWeightConstraint):
     def __init__(self, factor_exposure, limit):
         self.factor_exposure = ParameterEstimator(factor_exposure)
         self.limit = ParameterEstimator(limit)
-        
+
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""
         return self.factor_exposure.T @ w_plus[:-1] <= self.limit
@@ -186,15 +189,15 @@ class FactorMinLimit(BaseWeightConstraint):
     def __init__(self, factor_exposure, limit):
         self.factor_exposure = ParameterEstimator(factor_exposure)
         self.limit = ParameterEstimator(limit)
-        
+
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""
         return self.factor_exposure.T @ w_plus[:-1] >= self.limit
-        
+
 
 class FixedFactorLoading(BaseWeightConstraint):
-    """A constraint to fix portfolio loadings to a set of factors. 
-    
+    """A constraint to fix portfolio loadings to a set of factors.
+
     This can be used to impose market neutrality, a certain portfolio-wide alpha, ....
 
     Attributes:
@@ -202,11 +205,11 @@ class FixedFactorLoading(BaseWeightConstraint):
         factor
         target: A series or number giving the targeted factor loading
     """
-    
+
     def __init__(self, factor_exposure, target):
         self.factor_exposure = ParameterEstimator(factor_exposure)
         self.target = ParameterEstimator(target)
-        
+
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""
         return self.factor_exposure.T @ w_plus[:-1] == self.target

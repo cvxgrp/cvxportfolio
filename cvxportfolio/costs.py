@@ -27,6 +27,7 @@ provided in the class definitions.
 import cvxpy as cvx
 import numpy as np
 import copy
+
 # from .expression import Expression
 from .utils import null_checker, values_in_time
 from .estimator import CvxpyExpressionEstimator, ParameterEstimator
@@ -36,21 +37,20 @@ __all__ = ["HcostModel", "TcostModel"]
 
 class BaseCost(CvxpyExpressionEstimator):
     """Base class for cost objects.
-    
+
     It will use the CvxpyExpressionEstimator to compile the cost object to
     a cvxpy expression for optimization-based policies.
-    
+
     It also overloads the values_in_time method to be used by simulator classes.
     """
-    
-    #gamma = 1. # this will be removed
-    
+
+    # gamma = 1. # this will be removed
 
     ## PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
     def weight_expr(self, t, w_plus, z, value):
         cost, constr = self._estimate(t, w_plus, z, value)
         return cost, constr
-        
+
     def _estimate(self, t, w_plus, z, value):
         """Temporary interface to old cvxportfolio."""
         self.pre_evaluation(None, None, t, None)
@@ -64,37 +64,37 @@ class BaseCost(CvxpyExpressionEstimator):
     def __mul__(self, other):
         """Multiply by constant."""
         if not np.isscalar(other):
-            raise SyntaxError('You can only multiply cost by a scalar.')
+            raise SyntaxError("You can only multiply cost by a scalar.")
         return CombinedCosts([self], [other])
-        
+
     def __add__(self, other):
         """Add cost expression to another cost expression.
-        
+
         Idea is to create a new CombinedCost class that
         implements `compile_to_cvxpy` and values_in_time
         by summing over costs.
-        
+
         """
         if isinstance(other, CombinedCosts):
             return other + self
-        return CombinedCosts([self, other], [1., 1.])
-        
+        return CombinedCosts([self, other], [1.0, 1.0])
+
     def __rmul__(self, other):
         """Multiply by constant."""
         return self * other
-        
+
     def __radd__(self, other):
         """Add cost expression to another cost."""
         return self + other
-        
+
     def __neg__(self):
         """Take negative of cost."""
         return self * -1
-    
+
     def __sub__(self, other):
         """Subtract other cost."""
         return self.__add__(-other)
-        
+
     def __rsub__(self, other):
         """Subtract from other cost."""
         return other.__add__(-self)
@@ -102,18 +102,20 @@ class BaseCost(CvxpyExpressionEstimator):
 
 class CombinedCosts(BaseCost):
     """Class obtained by algebraic combination of Cost classes.
-    
+
     Attributes:
         costs (list): a list of BaseCost instances
     """
-    
+
     def __init__(self, costs, multipliers):
         for cost in costs:
             if not isinstance(cost, BaseCost):
-                raise SyntaxError('You can only sum `BaseCost` instances to other `BaseCost` instances.')
+                raise SyntaxError(
+                    "You can only sum `BaseCost` instances to other `BaseCost` instances."
+                )
         self.costs = costs
         self.multipliers = multipliers
-        
+
     def __add__(self, other):
         """Add other (combined) cost to self."""
         if isinstance(other, CombinedCosts):
@@ -121,37 +123,52 @@ class CombinedCosts(BaseCost):
             self.multipliers += other.multipliers
         else:
             self.costs += [other]
-            self.multipliers += [1.]
+            self.multipliers += [1.0]
         return self
-    
+
     def __mul__(self, other):
         """Multiply by constant."""
         self.multipliers = [el * other for el in self.multipliers]
         return self
-        
-    def pre_evaluation(self,  *args, **kwargs):
+
+    def pre_evaluation(self, *args, **kwargs):
         """Iterate over constituent costs."""
         [el.pre_evaluation(*args, **kwargs) for el in self.costs]
-        
+
     def values_in_time(self, *args, **kwargs):
         """Iterate over constituent costs."""
         [el.values_in_time(*args, **kwargs) for el in self.costs]
-    
+
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Iterate over constituent costs."""
-        return sum([multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value) for multiplier, cost in zip(self.multipliers, self.costs)])
-        
+        return sum(
+            [
+                multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value)
+                for multiplier, cost in zip(self.multipliers, self.costs)
+            ]
+        )
+
     ## TEMPORARY IN ORDER NOT TO BREAK TESTS
     ## THESE METHODS ARE DEPRECATED
-        
+
     def optimization_log(self, t):
-        return sum([multiplier * (cost.expression.value if hasattr(cost, 'expression') else 0.) for multiplier, cost in zip(self.multipliers, self.costs)])
+        return sum(
+            [
+                multiplier
+                * (cost.expression.value if hasattr(cost, "expression") else 0.0)
+                for multiplier, cost in zip(self.multipliers, self.costs)
+            ]
+        )
 
     def simulation_log(self, t):
-        return sum([multiplier * (cost.last_cost if hasattr(cost, 'last_cost') else 0.) for multiplier, cost in zip(self.multipliers, self.costs)])
-        
-    
-        
+        return sum(
+            [
+                multiplier * (cost.last_cost if hasattr(cost, "last_cost") else 0.0)
+                for multiplier, cost in zip(self.multipliers, self.costs)
+            ]
+        )
+
+
 class HcostModel(BaseCost):
     """A model for holding costs.
 
@@ -163,22 +180,20 @@ class HcostModel(BaseCost):
     def __init__(self, borrow_costs, dividends=0.0):
         self.borrow_costs = ParameterEstimator(borrow_costs, non_negative=True)
         self.dividends = ParameterEstimator(dividends)
-        
-        
+
     def compile_to_cvxpy(self, w_plus, z, value):
         """Compile cost to cvxpy expression."""
         self.expression = cvx.multiply(self.borrow_costs, cvx.neg(w_plus[:-1]))
         self.expression -= cvx.multiply(self.dividends, w_plus[:-1])
-        
+
         return cvx.sum(self.expression)
-    
 
     def value_expr(self, t, h_plus, u):
         """Placeholder method as we update the rest of the stack to new interface."""
-        
+
         self.pre_evaluation(None, None, t, None)
         self.values_in_time(t)
-        
+
         self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.value
         self.last_cost -= h_plus.iloc[:-1] * self.dividends.value
 
@@ -229,7 +244,7 @@ class TcostModel(BaseCost):
           An expression for the tcosts.
         """
 
-        z = z[:-1] 
+        z = z[:-1]
 
         constr = []
 
@@ -289,8 +304,6 @@ class TcostModel(BaseCost):
     def simulation_log(self, t):
         # TODO find another way
         return self.tmp_tcosts
-
-
 
     def est_period(self, t, tau_start, tau_end, w_plus, z, value):
         """Returns the estimate at time t of tcost over given period."""

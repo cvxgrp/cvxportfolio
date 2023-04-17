@@ -36,17 +36,18 @@ __all__ = [
 ]
 
 
-    
 class BaseTradingPolicy(Estimator):
     """Base class for a trading policy."""
 
     costs = []
     constraints = []
-            
+
     ## TEMPORARY INTERFACE OLD NEW
     def get_trades(self, portfolio, t=dt.datetime.today()):
         """Trades list given current portfolio and time t."""
-        return values_in_time(self, t, portfolio)
+        value = sum(portfolio)
+        w = portfolio / value
+        return values_in_time(self, t, w) * value
 
     def _nulltrade(self, portfolio):
         return pd.Series(index=portfolio.index, data=0.0)
@@ -66,7 +67,7 @@ class Hold(BaseTradingPolicy):
 
 class RankAndLongShort(BaseTradingPolicy):
     """Rank assets by signal; long highest and short lowest.
-    
+
     Args:
         signal (pd.DataFrame): time-indexed DataFrame of signal for all symbols
             excluding cash. At each point in time the num_long assets with
@@ -78,11 +79,11 @@ class RankAndLongShort(BaseTradingPolicy):
             it must be indexed by time.
         num_short (int or pd.Series): number of assets to short, default 1; if specified as Series
             it must be indexed by time.
-        target_leverage (float or pd.Series): leverage of the resulting portfolio, default 1; 
+        target_leverage (float or pd.Series): leverage of the resulting portfolio, default 1;
             if specified as Series it must be indexed by time.
     """
 
-    def __init__(self, signal, num_long=1, num_short=1, target_leverage=1.):
+    def __init__(self, signal, num_long=1, num_short=1, target_leverage=1.0):
         """Define sub-estimators at class attribute level."""
         self.num_long = DataEstimator(num_long)
         self.num_short = DataEstimator(num_short)
@@ -92,23 +93,24 @@ class RankAndLongShort(BaseTradingPolicy):
     def values_in_time(self, t, portfolio, *args, **kwargs):
         """Update sub-estimators and produce current estimate."""
         super().values_in_time(t, portfolio, *args, **kwargs)
-    
-        sorted_ret = pd.Series(self.signal.current_value, portfolio.index[:-1]).sort_values()
+
+        sorted_ret = pd.Series(
+            self.signal.current_value, portfolio.index[:-1]
+        ).sort_values()
         short_positions = sorted_ret.index[: self.num_short.current_value]
-        long_positions = sorted_ret.index[-self.num_long.current_value:]
-        
+        long_positions = sorted_ret.index[-self.num_long.current_value :]
+
         target_weights = pd.Series(0.0, index=portfolio.index)
-        target_weights[short_positions] = -1.
-        target_weights[long_positions] = 1.
-        
+        target_weights[short_positions] = -1.0
+        target_weights[long_positions] = 1.0
+
         target_weights /= sum(abs(target_weights))
         target_weights *= self.target_leverage.current_value
-        
-        # cash is always 1.
-        target_weights[portfolio.index[-1]] = 1.
-        
-        return target_weights - portfolio
 
+        # cash is always 1.
+        target_weights[portfolio.index[-1]] = 1.0
+
+        return target_weights - portfolio
 
 
 class ProportionalTrade(BaseTradingPolicy):

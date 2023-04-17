@@ -24,31 +24,31 @@ from .estimator import DataEstimator
 
 class BaseData:
     """Base class for Cvxportfolio database interface.
-    
+
     Provides a back-end independent way to load and store
-    pandas Series and DataFrames where the first index is a 
+    pandas Series and DataFrames where the first index is a
     pandas Timestamp (or numpy datetime64). It also provides
     a systematic way to access external data sources via
     the network. We specialize it to storing data locally
     and downloading public time series of financial data.
-    By emulating some of these classes you can interface 
+    By emulating some of these classes you can interface
     cvxportfolio with other databases or other data sources.
-    
+
     This interface is also used by cvxportfolio to store the
     data it generates, such as Backtest classes data, or
     estimators such as factor risk models.
-    
+
     Cvxportfolio uses in-memory data whenever possible, and
     in particular never uses BaseData methods during a backtest.
     This ensures thread safety and allows us to use simple
     local databases such as sqlite (or even flat csv files!).
     Cvxportfolio loads data from the database before (possibly parallel)
-    backtesting, and stores it after backtesting. So, only one process 
+    backtesting, and stores it after backtesting. So, only one process
     at a time accesses this class methods. If you write custom callbacks
-    that are invoked during backtests, such as callables inside 
-    DataEstimator, you should most probably not use cvxportfolio.data methods 
+    that are invoked during backtests, such as callables inside
+    DataEstimator, you should most probably not use cvxportfolio.data methods
     inside them.
-    
+
     LIMITATIONS:
         - columns names should be strings in order to work with all current
           data storage backends. If you create a DataFrame from a numpy array
@@ -57,12 +57,12 @@ class BaseData:
           depending on the backend.
         - the first level of the index should be a pandas Timestamp or equivalently
           numpy datetime64
-        - you can only store sql-friendly data: integers, floats (including `np.nan`), 
-          datetime (including `np.datetime64('NaT')`), and simple alphanumeric strings 
+        - you can only store sql-friendly data: integers, floats (including `np.nan`),
+          datetime (including `np.datetime64('NaT')`), and simple alphanumeric strings
           (i.e., without commas or quote marks).
-          If you need to store more complex python objects, such as the string 
+          If you need to store more complex python objects, such as the string
             "{'parameter1':3.0, 'parameter2': pd.Timestamp('2022-01-01')}",
-          you will have to check that it works with the backend you use 
+          you will have to check that it works with the backend you use
          (it probably would not not with csv).
     """
 
@@ -81,22 +81,22 @@ class BaseData:
     def download(self, symbol, current):
         """Download data from external source."""
         raise NotImplementedError
-        
+
     def update(self, symbol):
         """Update current stored data for symbol."""
         current = self.load_raw(symbol)
         updated = self.download(symbol, current)
         self.store(symbol, updated)
-        
+
     def update_and_load(self, symbol):
         """Update current stored data for symbol and load it.
-        
+
         DEPRECATED: update and load functionalities have been separated.
         """
         current = self.load_raw(symbol)
         updated = self.download(symbol, current)
         self.store(symbol, updated)
-        # return self.preload(updated) 
+        # return self.preload(updated)
         return self.load(symbol)
 
     def preload(self, data):
@@ -109,7 +109,7 @@ class YfinanceBase(BaseData):
 
     This should not be used directly unless you know what you're doing.
     """
-    
+
     @staticmethod
     def internal_process(data):
         """Manipulate yfinance data for better storing."""
@@ -162,78 +162,97 @@ class YfinanceBase(BaseData):
         data["ValueVolume"] = data["Volume"] * data["Open"]
         del data["Volume"]
         return data
-        
-        
+
+
 class BaseDataStore(BaseData):
     """Base class for data storage systems.
-    
+
     Attributes:
         base_location (str or None): location of storage.
     """
-    
+
     base_location = None
-    
+
 
 class SqliteDataStore(BaseDataStore):
     """Local sqlite3 database using python standard library.
-    
+
     Args:
-        location (pathlib.Path or None): pathlib.Path base location of the databases 
+        location (pathlib.Path or None): pathlib.Path base location of the databases
             directory or, if None, use ":memory:" for storing in RAM instead. Default
             is ~/cvxportfolio/
     """
-        
+
     def __init__(self, base_location=Path.home() / "cvxportfolio"):
         """Initialize sqlite connection and if necessary create database."""
         self.base_location = base_location
-            
+
     def __open__(self):
         """Open database connection."""
         if self.base_location is None:
             self.connection = sqlite3.connect(":memory:")
         else:
-            self.connection = sqlite3.connect((self.base_location / self.__class__.__name__).with_suffix('.sqlite'))
-        
+            self.connection = sqlite3.connect(
+                (self.base_location / self.__class__.__name__).with_suffix(".sqlite")
+            )
+
     def __close__(self):
         """Close database connection."""
         self.connection.close()
-        
+
     def store(self, symbol, data):
         """Store Pandas object to sqlite.
-        
+
         We separately store dtypes for data consistency and safety.
         """
         self.__open__()
-        exists = pd.read_sql_query(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{symbol}'", self.connection)
+        exists = pd.read_sql_query(
+            f"SELECT name FROM sqlite_master WHERE type='table' AND name='{symbol}'",
+            self.connection,
+        )
         if len(exists):
             res = self.connection.cursor().execute(f"DROP TABLE '{symbol}'")
             res = self.connection.cursor().execute(f"DROP TABLE '{symbol}___dtypes'")
             self.connection.commit()
-        
-        if hasattr(data.index, 'levels'):
-            data.index = data.index.set_names(['index'] +
-                [f'___level{i}' for i in range(1, len(data.index.levels))])
-            data = data.reset_index().set_index('index')
+
+        if hasattr(data.index, "levels"):
+            data.index = data.index.set_names(
+                ["index"] + [f"___level{i}" for i in range(1, len(data.index.levels))]
+            )
+            data = data.reset_index().set_index("index")
         else:
-            data.index.name = 'index'
-            
-        data.to_sql(f'{symbol}', self.connection)
-        pd.DataFrame(data).dtypes.astype("string").to_sql(f'{symbol}___dtypes', self.connection)
+            data.index.name = "index"
+
+        data.to_sql(f"{symbol}", self.connection)
+        pd.DataFrame(data).dtypes.astype("string").to_sql(
+            f"{symbol}___dtypes", self.connection
+        )
         self.__close__()
-                
+
     def load_raw(self, symbol):
         """Load Pandas object with datetime index from sqlite.
-        
+
         If data is not present in in the database, return None.
         """
         try:
             self.__open__()
-            dtypes = pd.read_sql_query(f"SELECT * FROM {symbol}___dtypes", self.connection, index_col='index', dtype={'index':'str', '0':'str'})
-            tmp = pd.read_sql_query(f"SELECT * FROM {symbol}", self.connection, index_col='index', parse_dates='index', dtype=dict(dtypes['0']))
+            dtypes = pd.read_sql_query(
+                f"SELECT * FROM {symbol}___dtypes",
+                self.connection,
+                index_col="index",
+                dtype={"index": "str", "0": "str"},
+            )
+            tmp = pd.read_sql_query(
+                f"SELECT * FROM {symbol}",
+                self.connection,
+                index_col="index",
+                parse_dates="index",
+                dtype=dict(dtypes["0"]),
+            )
             self.__close__()
             multiindex = []
             for col in tmp.columns:
-                if col[:8] == '___level':
+                if col[:8] == "___level":
                     multiindex.append(col)
                 else:
                     break
@@ -243,7 +262,7 @@ class SqliteDataStore(BaseDataStore):
             return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
         except pd.errors.DatabaseError:
             return None
-    
+
 
 class LocalDataStore(BaseDataStore):
     """Local data store for pandas Series and DataFrames.
@@ -252,9 +271,9 @@ class LocalDataStore(BaseDataStore):
         base_location (pathlib.Path): filesystem directory where to store files.
 
     """
-    
+
     base_location = Path.home() / "cvxportfolio"
-    
+
     @property
     def location(self):
         return self.base_location / self.__class__.__name__
@@ -262,7 +281,6 @@ class LocalDataStore(BaseDataStore):
     def __init__(self, base_location=Path.home() / "cvxportfolio"):
         self.base_location = base_location
 
-            
     def __create_if_not_existent(self):
         if not self.location.is_dir():
             self.location.mkdir(parents=True)
@@ -272,24 +290,36 @@ class LocalDataStore(BaseDataStore):
         """Load raw data from local store."""
         try:
             try:
-                multiindex_types = pd.read_csv(self.location / f"{symbol}___multiindex_dtypes.csv", index_col=0)['0']
+                multiindex_types = pd.read_csv(
+                    self.location / f"{symbol}___multiindex_dtypes.csv", index_col=0
+                )["0"]
             except FileNotFoundError:
-                multiindex_types = ['datetime64[ns]']
-            dtypes = pd.read_csv(self.location / f"{symbol}___dtypes.csv", index_col=0, dtype={'index':'str', '0':'str'})
-            dtypes = dict(dtypes['0'])
+                multiindex_types = ["datetime64[ns]"]
+            dtypes = pd.read_csv(
+                self.location / f"{symbol}___dtypes.csv",
+                index_col=0,
+                dtype={"index": "str", "0": "str"},
+            )
+            dtypes = dict(dtypes["0"])
             new_dtypes = {}
             parse_dates = []
             for i, level in enumerate(multiindex_types):
-                if level == 'datetime64[ns]':
+                if level == "datetime64[ns]":
                     parse_dates.append(i)
             for i, el in enumerate(dtypes):
-                if dtypes[el] == 'datetime64[ns]':
-                    parse_dates += [i+len(multiindex_types)]
+                if dtypes[el] == "datetime64[ns]":
+                    parse_dates += [i + len(multiindex_types)]
                 else:
                     new_dtypes[el] = dtypes[el]
-            
+
             # raise Exception
-            tmp = pd.read_csv(self.location / f"{symbol}.csv", index_col=list(range(len(multiindex_types))), parse_dates=parse_dates, **kwargs, dtype=new_dtypes)
+            tmp = pd.read_csv(
+                self.location / f"{symbol}.csv",
+                index_col=list(range(len(multiindex_types))),
+                parse_dates=parse_dates,
+                **kwargs,
+                dtype=new_dtypes,
+            )
             return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
         except FileNotFoundError:
             return None
@@ -297,10 +327,14 @@ class LocalDataStore(BaseDataStore):
     def store(self, symbol, data, **kwargs):
         """Store data locally."""
         self.__create_if_not_existent()
-        if hasattr(data.index, 'levels'):
-            pd.DataFrame(data.index.dtypes).astype("string").to_csv(self.location / f"{symbol}___multiindex_dtypes.csv")
-        pd.DataFrame(data).dtypes.astype("string").to_csv(self.location / f"{symbol}___dtypes.csv")
-        data.to_csv(self.location / f"{symbol}.csv", **kwargs)        
+        if hasattr(data.index, "levels"):
+            pd.DataFrame(data.index.dtypes).astype("string").to_csv(
+                self.location / f"{symbol}___multiindex_dtypes.csv"
+            )
+        pd.DataFrame(data).dtypes.astype("string").to_csv(
+            self.location / f"{symbol}___dtypes.csv"
+        )
+        data.to_csv(self.location / f"{symbol}.csv", **kwargs)
 
 
 class FredBase(BaseData):
@@ -356,52 +390,62 @@ class FredRate(FredBase, RateBase, LocalDataStore):
     def update_and_load(self, symbol):
         """Update data for symbol and load it."""
         return super().update_and_load(symbol)
-        
+
 
 class TimeSeries(DataEstimator):
     """Class for time series data managed by Cvxportfolio.
-    
+
     Args:
         symbol (str): name of the time series, such as 'AAPL',
             '^VIX', or 'DFF'.
-        source (str or BaseData): data source to use. Currently we 
+        source (str or BaseData): data source to use. Currently we
             support 'yahoo', equivalent to `cvxportfolio.YfinanceBase`,
             and 'fred', equivalent to `cvxportfolio.FredBase`. If you
             implement your own you should define the `download` and
             optionally `preload` methods. Default is 'yahoo'.
-        storage (str or BaseData): storage backend to use. Currently we 
+        storage (str or BaseData): storage backend to use. Currently we
             support 'sqlite', equivalent to `cvxportfolio.SqliteDataStore`,
             and 'csv', equivalent to `cvxportfolio.LocalDataStore`. If you
             implement your own you should define the `store` and
             `load_raw` methods. Default is 'sqlite'.
+        use_last_available_time (bool): as in `cvxportfolio.DataEstimator`
         base_location (pathlib.Path or None): base location for the data storage.
-        
+
+
     """
-    
-    def __init__(self, symbol, source='yahoo', storage='sqlite', base_location=None):
-        
-        if isinstance(source, str) and source == 'yahoo':
+
+    def __init__(
+        self,
+        symbol,
+        source="yahoo",
+        storage="sqlite",
+        use_last_available_time=False,
+        base_location=None,
+    ):
+        self.symbol = symbol
+        if isinstance(source, str) and source == "yahoo":
             source = YfinanceBase
-        if isinstance(source, str) and source == 'fred':
+        if isinstance(source, str) and source == "fred":
             source = FredBase
-                
+
         # from https://stackoverflow.com/questions/11042424/adding-base-class-to-existing-object-in-python
         cls = self.__class__
-        self.__class__ = cls.__class__(cls.__name__ + 'With' + source.__name__, (cls, source), {})
-        
-        if isinstance(storage, str) and storage == 'sqlite':
+        self.__class__ = cls.__class__(
+            cls.__name__ + "With" + source.__name__, (cls, source), {}
+        )
+
+        if isinstance(storage, str) and storage == "sqlite":
             storage = SqliteDataStore
-        if isinstance(storage, str) and storage == 'csv':
+        if isinstance(storage, str) and storage == "csv":
             storage = LocalDataStore
-           
-        cls = self.__class__ 
-        self.__class__ = cls.__class__(cls.__name__ + 'With' + storage.__name__, (cls, storage), {})
-        
+
+        cls = self.__class__
+        self.__class__ = cls.__class__(
+            cls.__name__ + "With" + storage.__name__, (cls, storage), {}
+        )
+
         self.base_location = base_location
-        
-        self.data = self.update_and_load(symbol)
-            
+        self.use_last_available_time = use_last_available_time
 
-            
-
-    
+    def pre_evaluation(self, *args, **kwargs):
+        self.data = self.update_and_load(self.symbol)

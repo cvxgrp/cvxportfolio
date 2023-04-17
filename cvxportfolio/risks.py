@@ -56,14 +56,13 @@ __all__ = [
 class BaseRiskModel(BaseCost):
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop("w_bench", 0.0)
-        #super(BaseRiskModel, self).__init__()
-        #self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
+        # super(BaseRiskModel, self).__init__()
+        # self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
 
     def weight_expr(self, t, w_plus, z, value):
         """Temporary placeholder while migrating to new interface"""
         self.expression, _ = self._estimate(t, w_plus - self.w_bench, z, value)
         return self.expression, []
-
 
     def optimization_log(self, t):
         if self.expression.value:
@@ -83,14 +82,14 @@ class FullSigma(BaseRiskModel):
     def __init__(self, Sigma, **kwargs):
         super(FullSigma, self).__init__(**kwargs)
         self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
-        
+
     def compile_to_cvxpy(self, w_plus, z, value):
         return cvx.quad_form(w_plus, self.Sigma)
 
 
 class EmpSigma(BaseRiskModel):
     """Empirical Sigma matrix, built looking at *lookback* past returns.
-    
+
     DEPRECATED: should get view of past returns from values_in_time and use those
     """
 
@@ -126,12 +125,12 @@ class SqrtSigma(BaseRiskModel):
 class FactorModelSigma(BaseRiskModel):
     def __init__(self, exposures, factor_Sigma, idiosync, **kwargs):
         """Each is a pd.Panel (or ) or a vector/matrix"""
-        
+
         self.exposures = ParameterEstimator(exposures)
         self.factor_Sigma = ParameterEstimator(factor_Sigma)
         self.idiosync = ParameterEstimator(idiosync)
         super(FactorModelSigma, self).__init__(**kwargs)
-        
+
     def compile_to_cvxpy(self, w_plus, z, value):
         self.expression = cvx.sum_squares(
             cvx.multiply(np.sqrt(self.idiosync), wplus)
