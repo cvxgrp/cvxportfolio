@@ -36,6 +36,7 @@ def test_benchmark(returns):
     w_plus = cvx.Variable(N)
     risk_model.pre_evaluation(returns.iloc[:, :N+1], None, start_time=returns.index[50], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
     
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-50:].cov()
@@ -55,6 +56,7 @@ def test_full_sigma(returns):
     
     risk_model.pre_evaluation(None, None, start_time=historical_covariances.index[0][0], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
     
     t = historical_covariances.index[123][0]
     w_plus.value = np.random.randn(N)
@@ -74,6 +76,7 @@ def test_rolling_window_sigma(returns):
     w_plus = cvx.Variable(N)
     risk_model.pre_evaluation(returns.iloc[:, :N], None, start_time=returns.index[50], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
     
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-50:].cov()
@@ -93,6 +96,7 @@ def test_exponential_window_sigma(returns):
     w_plus = cvx.Variable(N)
     risk_model.pre_evaluation(returns.iloc[:, :N], None, start_time=returns.index[2], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
     
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].ewm(halflife=HL).cov().iloc[-N:]
@@ -113,6 +117,7 @@ def test_diagonal_covariance(returns):
     
     risk_model.pre_evaluation(returns, None, start_time=historical_variances.index[0], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
     
     t = historical_variances.index[123]
     w_plus.value = np.random.randn(N)
@@ -131,6 +136,7 @@ def test_rolling_window_diagonal_covariance(returns):
     w_plus = cvx.Variable(N)
     risk_model.pre_evaluation(returns.iloc[:, :N], None, start_time=returns.index[51], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
     
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-50:].cov()
@@ -151,6 +157,7 @@ def test_exponential_window_diagonal_covariance(returns):
     w_plus = cvx.Variable(N)
     risk_model.pre_evaluation(returns.iloc[:, :N], None, start_time=returns.index[2], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
     
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].ewm(halflife=HL).cov().iloc[-N:]
@@ -170,6 +177,7 @@ def test_low_rank_rolling_risk(returns):
     w_plus = cvx.Variable(N)
     risk_model.pre_evaluation(returns, None, start_time=returns.index[0], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
     
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-PAST:]
@@ -192,7 +200,8 @@ def test_RollingWindowFactorModelRisk(returns):
     w_plus = cvx.Variable(N)
     risk_model.pre_evaluation(returns, None, start_time=returns.index[0], end_time=None)
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
-
+    assert cvxpy_expression.is_convex()
+    
     t = pd.Timestamp('2014-06-02')
 
     # raise Exception

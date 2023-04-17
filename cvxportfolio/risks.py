@@ -278,7 +278,10 @@ class FactorModelRisk(BaseRiskModel):
             self.expression += cvx.sum_squares(self.exposures @ (w_plus - self.benchmark_weights))
             
         # forecast error risk, assuming factor_Sigma is the identity
-        self.expression += self.forecast_error_kappa * cvx.square(cvx.abs(w_plus - self.benchmark_weights).T @ cvx.sqrt(cvx.sum(cvx.square(self.exposures), axis=0) +  self.idyosync))
+        self.expression += self.forecast_error_kappa * \
+            cvx.square(
+                cvx.abs(w_plus - self.benchmark_weights).T @ cvx.sqrt(cvx.sum(cvx.square(self.exposures), axis=0) +  self.idyosync)
+            )
         return self.expression
         
         
