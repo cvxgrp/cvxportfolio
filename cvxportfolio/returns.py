@@ -76,7 +76,8 @@ class RollingWindowReturnsForecast(ReturnsForecast):
         self.use_last_for_cash = use_last_for_cash
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        forecasts = returns.rolling(window=self.lookback_period).mean().shift(1)
+        forecasts = returns.rolling(
+            window=self.lookback_period).mean().shift(1)
         if self.use_last_for_cash:
             forecasts.iloc[:, -1] = returns.iloc[:, -1].shift(1)
         self.expected_returns = ParameterEstimator(forecasts)
@@ -146,9 +147,8 @@ class RollingWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
         self.zero_for_cash = zero_for_cash
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        tmp = returns.rolling(window=self.lookback_period).std().shift(1) / np.sqrt(
-            self.lookback_period
-        )
+        tmp = returns.rolling(window=self.lookback_period).std().shift(
+            1) / np.sqrt(self.lookback_period)
         if self.zero_for_cash:
             tmp.iloc[:, -1] = 0.0
         self.deltas_errors = ParameterEstimator(tmp)
@@ -166,7 +166,7 @@ class ExponentialWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
         raise NotImplementedError
 
 
-### LEGACY CLASSES USED BY OLD TESTS. WILL BE REMOVED AS WE FINISH TRANSLATION
+# LEGACY CLASSES USED BY OLD TESTS. WILL BE REMOVED AS WE FINISH TRANSLATION
 
 
 class LegacyReturnsForecast(BaseReturnsModel):
@@ -289,5 +289,6 @@ class MultipleReturnsForecasts(BaseReturnsModel):
         """
         alpha = 0
         for idx, source in enumerate(self.alpha_sources):
-            alpha += source.weight_expr_ahead(t, tau, wplus) * self.weights[idx]
+            alpha += source.weight_expr_ahead(t,
+                                              tau, wplus) * self.weights[idx]
         return alpha

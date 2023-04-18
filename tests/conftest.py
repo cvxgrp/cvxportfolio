@@ -27,19 +27,32 @@ def resource_fixture():
 
 @pytest.fixture()
 def sigma(resource_dir):
-    return pd.read_csv(resource_dir / "sigmas.csv", index_col=0, parse_dates=[0])
+    return pd.read_csv(
+        resource_dir /
+        "sigmas.csv",
+        index_col=0,
+        parse_dates=[0])
 
 
 @pytest.fixture()
 def returns(resource_dir):
-    return pd.read_csv(resource_dir / "returns.csv", index_col=0, parse_dates=[0])
+    return pd.read_csv(
+        resource_dir /
+        "returns.csv",
+        index_col=0,
+        parse_dates=[0])
 
 
 @pytest.fixture()
 def volumes(resource_dir):
-    return pd.read_csv(resource_dir / "volumes.csv", index_col=0, parse_dates=[0])
-  
-    
+    return pd.read_csv(
+        resource_dir /
+        "volumes.csv",
+        index_col=0,
+        parse_dates=[0])
+
+
 # @pytest.fixture()
 # def prices(resource_dir):
-#     return pd.read_csv(resource_dir / "prices.csv", index_col=0, parse_dates=[0])
+# return pd.read_csv(resource_dir / "prices.csv", index_col=0,
+# parse_dates=[0])

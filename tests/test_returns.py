@@ -23,87 +23,81 @@ from cvxportfolio.returns import *
 
 
 def test_returns_forecast(returns):
-    
+
     N = returns.shape[1]
     alpha_model = ReturnsForecast(returns)
     alpha_model.pre_evaluation(None, None, returns.index[0], None)
-    w_plus = cvx.Variable(N) 
+    w_plus = cvx.Variable(N)
     cvxpy_expression = alpha_model.compile_to_cvxpy(w_plus, None, None)
     alpha_model.values_in_time(returns.index[123], None, None, None, None)
     w_plus.value = np.random.randn(N)
     assert np.isclose(cvxpy_expression.value, w_plus.value @ returns.iloc[123])
-    
-    
+
+
 def test_rolling_mean_returns_forecast(returns):
-    
+
     N = returns.shape[1]
-    alpha_model = RollingWindowReturnsForecast(lookback_period=50, 
+    alpha_model = RollingWindowReturnsForecast(lookback_period=50,
                                                )
     alpha_model.pre_evaluation(returns, None, returns.index[50], None)
-    w_plus = cvx.Variable(N) 
-    
+    w_plus = cvx.Variable(N)
+
     t = returns.index[123]
     cvxpy_expression = alpha_model.compile_to_cvxpy(w_plus, None, None)
     alpha_model.values_in_time(t, None, None, None, None)
     w_plus.value = np.random.randn(N)
-    myforecast = returns.loc[returns.index<t].iloc[-50:].mean()
-    myforecast.iloc[-1] = returns.iloc[122,-1]
-    
+    myforecast = returns.loc[returns.index < t].iloc[-50:].mean()
+    myforecast.iloc[-1] = returns.iloc[122, -1]
+
     assert np.isclose(cvxpy_expression.value, w_plus.value @ myforecast)
-    
+
 
 def test_exponential_mean_returns_forecast(returns):
-    
+
     N = returns.shape[1]
-    alpha_model = ExponentialWindowReturnsForecast(half_life=25, 
-                                               )
+    alpha_model = ExponentialWindowReturnsForecast(half_life=25,
+                                                   )
     alpha_model.pre_evaluation(returns, None, returns.index[50], None)
-    w_plus = cvx.Variable(N) 
-    
+    w_plus = cvx.Variable(N)
+
     t = returns.index[123]
     cvxpy_expression = alpha_model.compile_to_cvxpy(w_plus, None, None)
     alpha_model.values_in_time(t, None, None, None, None)
     w_plus.value = np.random.randn(N)
-    myforecast = returns.loc[returns.index<t].ewm(halflife=25).mean().iloc[-1]
-    myforecast.iloc[-1] = returns.iloc[122,-1]
-    
+    myforecast = returns.loc[returns.index < t].ewm(
+        halflife=25).mean().iloc[-1]
+    myforecast.iloc[-1] = returns.iloc[122, -1]
+
     assert np.isclose(cvxpy_expression.value, w_plus.value @ myforecast)
-    
-    
+
+
 def test_returns_forecast_error(returns):
-    
-    delta = returns.std()/np.sqrt(len(returns))
+
+    delta = returns.std() / np.sqrt(len(returns))
     N = returns.shape[1]
-    
+
     error_risk = ReturnsForecastErrorRisk(delta)
     error_risk.pre_evaluation(returns, None, returns.index[0], None)
-    w_plus = cvx.Variable(N) 
+    w_plus = cvx.Variable(N)
     cvxpy_expression = error_risk.compile_to_cvxpy(w_plus, None, None)
     error_risk.values_in_time(0, None, None, None, None)
-    
+
     w_plus.value = np.random.randn(N)
     assert np.isclose(cvxpy_expression.value, np.abs(w_plus.value) @ delta)
-    
+
+
 def test_rolwin_returns_forecast_error(returns):
-    
+
     N = returns.shape[1]
     error_risk = RollingWindowReturnsForecastErrorRisk(lookback_period=20)
     error_risk.pre_evaluation(returns, None, returns.index[50], None)
-    w_plus = cvx.Variable(N) 
-    
+    w_plus = cvx.Variable(N)
+
     t = returns.index[123]
     cvxpy_expression = error_risk.compile_to_cvxpy(w_plus, None, None)
     error_risk.values_in_time(t, None, None, None, None)
     w_plus.value = np.random.randn(N)
-    delta = returns.loc[returns.index<t].iloc[-20:].std() / np.sqrt(20)
+    delta = returns.loc[returns.index < t].iloc[-20:].std() / np.sqrt(20)
     delta.iloc[-1] = 0.
-    
+
     assert np.isclose(cvxpy_expression.value, np.abs(w_plus.value) @ delta)
-        
-
-
-
-    
-    
-    
-    

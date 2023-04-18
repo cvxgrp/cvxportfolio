@@ -47,23 +47,21 @@ We suggest to start with our basic "[HelloWorld]" example. It sets up
 a portfolio optimization problem and simulates a backtest with 5 years
 of real market data. It then presents the results.
 
-To run it clone the repository, create the environment and the `cvxportfolio` kernel, then start `jupyter`
+To run it clone the repository, 
 
 ```
 git clone https://github.com/cvxgrp/cvxportfolio.git
 cd cvxportfolio
 poetry install
-bash create_kernel.sh
 cd examples
-jupyter notebook
+poetry run python hello_world.py
 ```
 
 Continue by looking at the other examples,
 also in jupyter notebook format,
 or go straight to the {ref}`documentation <documentation>`.
 
-[helloworld]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/HelloWorld.ipynb
-[jupyter]: https://jupyter.org/
+[helloworld]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/Hello_World.py
 
 
 ## Releases
@@ -76,12 +74,12 @@ With comments from the [git tags](https://github.com/cvxgrp/cvxportfolio/tags).
 ## Examples
 
 We present a few example applications built with CVXPortfolio.
-Some of these have been developed for our [paper](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html) (number 3 to 7).
+Some of these have been developed for our [our book](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html) (number 3 to 8).
 
 > 1. [HelloWorld]: basic usage of the simulation and (single period) optimization objects.
 > 1. [MultiPeriodTCostOptimization]: basic usage of the multi period optimization framework.
 
-The following notebooks are currently (2023-04-11) broken and are being restored. They were used to generate the plots and results in [the paper](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
+The following scripts are currently being restored. They were used to generate the plots and results in [the book](https://web.stanford.edu/~boyd/papers/cvx_portfolio.html).
 > 3. [DataEstimatesRiskModel]: download and clean the data used for the examples in our paper. (Its output files are available in the [data](https://github.com/cvxgrp/cvxportfolio/blob/master/data) folder of the repo.)
 > 4. [PortfolioSimulation]: simple simulation of a portfolio rebalanced periodically to a target benchmark.
 > 5. [SinglePeriodOptimization]: example of the single period optimization framework, with search of optimal hyper-parameters.
@@ -89,14 +87,14 @@ The following notebooks are currently (2023-04-11) broken and are being restored
 > 7. [SolutionTime]: analysis of execution time of the simulation and optimization code.
 > 8. [RealTimeOptimization]: get a vector of trades to execute in real time (exports to Excel format).
 
-[dataestimatesriskmodel]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/DataEstimatesRiskModel.ipynb
-[helloworld]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/HelloWorld.ipynb
-[multiperiodoptimization]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodOptimization.ipynb
-[MultiPeriodTCostOptimization]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodTCostOptimization.ipynb
-[portfoliosimulation]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/PortfolioSimulation.ipynb
-[realtimeoptimization]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/RealTimeOptimization.ipynb
-[singleperiodoptimization]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/SinglePeriodOptimization.ipynb
-[solutiontime]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/SolutionTime.ipynb
+[dataestimatesriskmodel]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/DataEstimatesRiskModel.py
+[helloworld]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/hello_world.py
+[multiperiodoptimization]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/MultiPeriodOptimization.py
+[MultiPeriodTCostOptimization]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/multi_period_tcost_optimization.py
+[portfoliosimulation]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/PortfolioSimulation.py
+[realtimeoptimization]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/RealTimeOptimization.py
+[singleperiodoptimization]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/SinglePeriodOptimization.py
+[solutiontime]: https://github.com/cvxgrp/cvxportfolio/blob/master/examples/SolutionTime.py
 
 
 

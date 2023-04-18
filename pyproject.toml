@@ -23,9 +23,8 @@ pytest-cov = "*"
 matplotlib = "*" 
 sphinx = "*"
 numpydoc = "*" # for sphinx
-myst-parser = "*"
-jupyter = "*"
-black = "*"
+myst-parser = "*" # for sphinx
+autopep8 = "*"
 
 [build-system]
 requires = ["poetry>=1.0.2"]

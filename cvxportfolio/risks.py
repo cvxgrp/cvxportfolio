@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .estimator import ParameterEstimator  # , ConstantEstimator
 import logging
 
 import cvxpy as cvx
@@ -24,7 +25,6 @@ from .utils import values_in_time
 
 logger = logging.getLogger(__name__)
 
-from .estimator import ParameterEstimator  # , ConstantEstimator
 
 __all__ = [
     "FullCovariance",
@@ -61,7 +61,7 @@ __all__ = [
 class BaseRiskModel(BaseCost):
     benchmark_weights = None
 
-    ## DEPRECATED,BENCHMARK WEIGHTS ARE NOW PASSED BY set_benchmark
+    # DEPRECATED,BENCHMARK WEIGHTS ARE NOW PASSED BY set_benchmark
     def __init__(self, **kwargs):
         self.w_bench = kwargs.pop("w_bench", 0.0)
         self.benchmark_weights = self.w_bench
@@ -83,7 +83,7 @@ class BaseRiskModel(BaseCost):
         self.expression, _ = self._estimate(t, w_plus - self.w_bench, z, value)
         return self.expression, []
 
-    ## DEPRECATED, MAYBE INCLUDE ITS LOGIC AT BASECOST LEVEL
+    # DEPRECATED, MAYBE INCLUDE ITS LOGIC AT BASECOST LEVEL
     def optimization_log(self, t):
         if self.expression.value:
             return self.expression.value
@@ -103,7 +103,7 @@ class FullCovariance(BaseRiskModel):
     """
 
     def __init__(self, Sigma=None, forecast_error_kappa=0.0, **kwargs):
-        ## DEPRECATED, IT'S USED BY SOME OLD CVXPORTFOLIO PIECES
+        # DEPRECATED, IT'S USED BY SOME OLD CVXPORTFOLIO PIECES
         super(FullCovariance, self).__init__(**kwargs)
         self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
         self.forecast_error_kappa = ParameterEstimator(
@@ -131,8 +131,10 @@ class RollingWindowFullCovariance(FullCovariance):
     """
 
     def __init__(
-        self, lookback_period=250, zero_cash_covariance=True, forecast_error_kappa=0.0
-    ):
+            self,
+            lookback_period=250,
+            zero_cash_covariance=True,
+            forecast_error_kappa=0.0):
         self.lookback_period = lookback_period
         self.zero_cash_covariance = zero_cash_covariance
         self.forecast_error_kappa = forecast_error_kappa
@@ -145,7 +147,9 @@ class RollingWindowFullCovariance(FullCovariance):
             returns.iloc[:, -1] = 0.0
         self.Sigma = ParameterEstimator(
             # shift forward so only past returns are used
-            returns.rolling(window=self.lookback_period).cov().shift(returns.shape[1]),
+            returns.rolling(
+                window=self.lookback_period).cov().shift(
+                returns.shape[1]),
             positive_semi_definite=True,
         )
         # initialize cvxpy Parameter(s)
@@ -166,8 +170,10 @@ class ExponentialWindowFullCovariance(FullCovariance):
     """
 
     def __init__(
-        self, half_life=250, zero_cash_covariance=True, forecast_error_kappa=0.0
-    ):
+            self,
+            half_life=250,
+            zero_cash_covariance=True,
+            forecast_error_kappa=0.0):
         self.half_life = half_life
         self.zero_cash_covariance = zero_cash_covariance
         self.forecast_error_kappa = forecast_error_kappa
@@ -287,8 +293,12 @@ class FactorModelRisk(BaseRiskModel):
     factor_Sigma = None
 
     def __init__(
-        self, exposures, idyosync, factor_Sigma=None, forecast_error_kappa=0.0, **kwargs
-    ):
+            self,
+            exposures,
+            idyosync,
+            factor_Sigma=None,
+            forecast_error_kappa=0.0,
+            **kwargs):
         self.exposures = ParameterEstimator(exposures)
         if not (factor_Sigma is None):
             self.factor_Sigma = ParameterEstimator(factor_Sigma)
@@ -297,15 +307,17 @@ class FactorModelRisk(BaseRiskModel):
         if (
             (np.isscalar(forecast_error_kappa) and forecast_error_kappa > 0)
             or (np.any(forecast_error_kappa > 0))
-        ) and not factor_Sigma is None:
+        ) and factor_Sigma is not None:
             raise NotImplementedError(
                 "You should do a Cholesky decomposition of the factor_Sigmas and apply them to the exposures."
             )
 
     def compile_to_cvxpy(self, w_plus, z, value):
         self.expression = cvx.sum_squares(
-            cvx.multiply(cvx.sqrt(self.idyosync), (w_plus - self.benchmark_weights))
-        )
+            cvx.multiply(
+                cvx.sqrt(
+                    self.idyosync),
+                (w_plus - self.benchmark_weights)))
         if not (self.factor_Sigma is None):
             self.expression += cvx.quad_form(
                 (w_plus.T @ self.exposures.T).T,
@@ -342,7 +354,8 @@ class LowRankRollingRisk(BaseRiskModel):
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
-        self.recent_returns = cvx.Parameter(shape=(self.lookback, returns.shape[1]))
+        self.recent_returns = cvx.Parameter(
+            shape=(self.lookback, returns.shape[1]))
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
     def values_in_time(
@@ -354,7 +367,7 @@ class LowRankRollingRisk(BaseRiskModel):
         past_volumes,
         **kwargs
     ):
-        val = past_returns.iloc[-self.lookback :].copy(deep=True)
+        val = past_returns.iloc[-self.lookback:].copy(deep=True)
         if self.zero_cash_risk:
             val.iloc[:, -1] = 0.0
         self.recent_returns.value = val.values
@@ -369,10 +382,8 @@ class LowRankRollingRisk(BaseRiskModel):
         )
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        return (
-            cvx.sum_squares(self.recent_returns @ (w_plus - self.benchmark_weights))
-            / self.lookback
-        )
+        return (cvx.sum_squares(self.recent_returns @
+                                (w_plus - self.benchmark_weights)) / self.lookback)
 
 
 class RollingWindowFactorModelRisk(FactorModelRisk):
@@ -392,8 +403,11 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
     """
 
     def __init__(
-        self, lookback=250, num_factors=1, zero_cash_risk=True, forecast_error_kappa=0.0
-    ):
+            self,
+            lookback=250,
+            num_factors=1,
+            zero_cash_risk=True,
+            forecast_error_kappa=0.0):
         self.lookback = lookback
         self.num_factors = num_factors
         self.zero_cash_risk = zero_cash_risk
@@ -415,7 +429,7 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
         past_volumes,
         **kwargs
     ):
-        val = past_returns.iloc[-self.lookback :].copy(deep=True)
+        val = past_returns.iloc[-self.lookback:].copy(deep=True)
         if self.zero_cash_risk:
             val.iloc[:, -1] = 0.0
 
@@ -460,7 +474,12 @@ class WorstCaseRisk(BaseRiskModel):
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Initialize objects."""
         for risk in self.riskmodels:
-            risk.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+            risk.pre_evaluation(
+                returns,
+                volumes,
+                start_time,
+                end_time,
+                **kwargs)
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
     def values_in_time(
@@ -492,5 +511,6 @@ class WorstCaseRisk(BaseRiskModel):
         )
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        risks = [risk.compile_to_cvxpy(w_plus, z, value) for risk in self.riskmodels]
+        risks = [risk.compile_to_cvxpy(w_plus, z, value)
+                 for risk in self.riskmodels]
         return cvx.max(cvx.hstack(risks))

@@ -22,7 +22,11 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["null_checker", "non_null_data_args", "values_in_time", "plot_what_if"]
+__all__ = [
+    "null_checker",
+    "non_null_data_args",
+    "values_in_time",
+    "plot_what_if"]
 
 
 def values_in_time(obj, t, tau=None):

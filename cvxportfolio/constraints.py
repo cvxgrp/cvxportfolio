@@ -41,11 +41,11 @@ __all__ = [
 class BaseConstraint(CvxpyExpressionEstimator):
     """Base cvxpy constraint class."""
 
-    ## DEFINED TEMPORARILY TO INTERFACE WITH OLD CVXPORTFOLIO
+    # DEFINED TEMPORARILY TO INTERFACE WITH OLD CVXPORTFOLIO
     def weight_expr(self, t, w_plus, z, v):
         self.pre_evaluation(None, None, t, None)
-        result = self.compile_to_cvxpy(wplus, z, v)
-        self.values_in_time(t)
+        result = self.compile_to_cvxpy(w_plus, z, v)
+        self.values_in_time(t, None, None, None, None)
         if hasattr(result, "__iter__"):
             return result
         else:
@@ -81,7 +81,8 @@ class ParticipationRateLimit(BaseTradeConstraint):
 
     def __init__(self, volumes, max_fraction_of_volumes=0.05):
         self.volumes = ParameterEstimator(volumes)
-        self.max_participation_rate = ParameterEstimator(max_fraction_of_volumes)
+        self.max_participation_rate = ParameterEstimator(
+            max_fraction_of_volumes)
 
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Return a Cvxpy constraint."""

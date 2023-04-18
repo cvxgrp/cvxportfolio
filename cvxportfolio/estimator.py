@@ -196,7 +196,9 @@ class DataEstimator(Estimator):
         """Internal method called by `self.values_in_time`."""
 
         if hasattr(self.data, "values_in_time"):
-            return self.value_checker(self.data.values_in_time(t, *args, **kwargs))
+            return self.value_checker(
+                self.data.values_in_time(
+                    t, *args, **kwargs))
 
         if (
             hasattr(self.data, "loc")

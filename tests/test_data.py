@@ -56,7 +56,12 @@ def base_test_series(storeclass, *args, **kwargs):
     """Test storing and retrieving of a Series with datetime index."""
     store = storeclass(*args, **kwargs)
     for data in [
-        pd.Series(0.0, pd.date_range("2020-01-01", "2020-01-10"), name="prova1"),
+        pd.Series(
+            0.0,
+            pd.date_range(
+                "2020-01-01",
+                "2020-01-10"),
+            name="prova1"),
         pd.Series(3, pd.date_range("2020-01-01", "2020-01-10"), name="prova2"),
         pd.Series(
             "ciao", pd.date_range("2020-01-01", "2020-01-02", freq="H"), name="prova3"
@@ -248,9 +253,11 @@ def test_yfinance(tmp_path):
 
     assert np.isnan(data1.iloc[-1]["Close"])
 
-    print((data1.iloc[: len(data) - 1].Return - data.iloc[:-1].Return).describe().T)
+    print((data1.iloc[: len(data) - 1].Return -
+          data.iloc[:-1].Return).describe().T)
 
-    assert np.allclose(data1.loc[data.index[:-1]].Return, data.iloc[:-1].Return)
+    assert np.allclose(
+        data1.loc[data.index[:-1]].Return, data.iloc[:-1].Return)
 
 
 def test_fred_base():
@@ -267,4 +274,5 @@ def test_fred(tmp_path):
     store = FredRate(tmp_path)
     data = store.update_and_load("DFF")
     print(data)
-    assert np.isclose((1 + data["2023-04-10"]) ** store.trading_days, 1 + 4.83 / 100)
+    assert np.isclose((1 + data["2023-04-10"]) **
+                      store.trading_days, 1 + 4.83 / 100)

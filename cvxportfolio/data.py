@@ -123,7 +123,8 @@ class YfinanceBase(BaseData):
         data["Return"] = np.exp(open_to_open_logreturn) - 1
         del data["Adj Close"]
         # eliminate intraday data
-        data.loc[data.index[-1], ["High", "Low", "Close", "Return", "Volume"]] = np.nan
+        data.loc[data.index[-1], ["High", "Low",
+                                  "Close", "Return", "Volume"]] = np.nan
         return data
 
     @classmethod
@@ -195,8 +196,7 @@ class SqliteDataStore(BaseDataStore):
             self.connection = sqlite3.connect(":memory:")
         else:
             self.connection = sqlite3.connect(
-                (self.base_location / self.__class__.__name__).with_suffix(".sqlite")
-            )
+                (self.base_location / self.__class__.__name__).with_suffix(".sqlite"))
 
     def __close__(self):
         """Close database connection."""
@@ -217,7 +217,8 @@ class SqliteDataStore(BaseDataStore):
         )
         if len(exists):
             res = self.connection.cursor().execute(f"DROP TABLE '{symbol}'")
-            res = self.connection.cursor().execute(f"DROP TABLE '{symbol}___dtypes'")
+            res = self.connection.cursor().execute(
+                f"DROP TABLE '{symbol}___dtypes'")
             self.connection.commit()
 
         if hasattr(data.index, "levels"):
@@ -296,8 +297,9 @@ class LocalDataStore(BaseDataStore):
         try:
             try:
                 multiindex_types = pd.read_csv(
-                    self.location / f"{symbol}___multiindex_dtypes.csv", index_col=0
-                )["0"]
+                    self.location /
+                    f"{symbol}___multiindex_dtypes.csv",
+                    index_col=0)["0"]
             except FileNotFoundError:
                 multiindex_types = ["datetime64[ns]"]
             dtypes = pd.read_csv(
@@ -433,7 +435,8 @@ class TimeSeries(DataEstimator):
         if isinstance(source, str) and source == "fred":
             source = FredBase
 
-        # from https://stackoverflow.com/questions/11042424/adding-base-class-to-existing-object-in-python
+        # from
+        # https://stackoverflow.com/questions/11042424/adding-base-class-to-existing-object-in-python
         cls = self.__class__
         self.__class__ = cls.__class__(
             cls.__name__ + "With" + source.__name__, (cls, source), {}

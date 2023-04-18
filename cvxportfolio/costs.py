@@ -13,15 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This module implements cost functions used by optimization-based policies. 
+"""This module implements cost functions used by optimization-based policies.
 
-Currently these are two: TransactionCostModel and HoldingCostModel. 
+Currently these are two: TransactionCostModel and HoldingCostModel.
 
 (In previous versions of Cvxportfolio these were used in the simulator as well,
 but now instead we include their logic in the simulator itself.)
 
 We do our best to include parameters that are accurate for the real market.
-It should be easy to adjust these to other settings by following the description 
+It should be easy to adjust these to other settings by following the description
 provided in the class definitions.
 """
 
@@ -47,7 +47,7 @@ class BaseCost(CvxpyExpressionEstimator):
 
     # gamma = 1. # this will be removed
 
-    ## PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
+    # PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
     def weight_expr(self, t, w_plus, z, value):
         cost, constr = self._estimate(t, w_plus, z, value)
         return cost, constr
@@ -149,8 +149,8 @@ class CombinedCosts(BaseCost):
             ]
         )
 
-    ## TEMPORARY IN ORDER NOT TO BREAK TESTS
-    ## THESE METHODS ARE DEPRECATED
+    # TEMPORARY IN ORDER NOT TO BREAK TESTS
+    # THESE METHODS ARE DEPRECATED
 
     def optimization_log(self, t):
         return sum(
@@ -186,8 +186,8 @@ class HcostModel(BaseCost):
         """Compile cost to cvxpy expression."""
         self.expression = cvx.multiply(self.borrow_costs, cvx.neg(w_plus[:-1]))
         self.expression -= cvx.multiply(self.dividends, w_plus[:-1])
-
-        return cvx.sum(self.expression)
+        self.expression = cvx.sum(self.expression)
+        return self.expression
 
     def value_expr(self, t, h_plus, u):
         """Placeholder method as we update the rest of the stack to new interface."""
@@ -195,7 +195,8 @@ class HcostModel(BaseCost):
         self.pre_evaluation(None, None, t, None)
         self.values_in_time(t, None, None, None, None)
 
-        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.value
+        self.last_cost = -np.minimum(0,
+                                     h_plus.iloc[:-1]) * self.borrow_costs.value
         self.last_cost -= h_plus.iloc[:-1] * self.dividends.value
 
         return sum(self.last_cost)
@@ -229,9 +230,14 @@ class TcostModel(BaseCost):
     """
 
     def __init__(
-        self, half_spread=0.0, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5
-    ):
-        self.compile_first_term = not np.isscalar(half_spread) or half_spread > 0.0
+            self,
+            half_spread=0.0,
+            nonlin_coeff=0.0,
+            sigma=0.0,
+            volume=1.0,
+            power=1.5):
+        self.compile_first_term = not np.isscalar(
+            half_spread) or half_spread > 0.0
         self.compile_second_term = (
             not np.isscalar(nonlin_coeff) or nonlin_coeff > 0.0
         ) and (not np.isscalar(sigma) or sigma > 0.0)
@@ -253,14 +259,15 @@ class TcostModel(BaseCost):
             second_term = cvx.multiply(
                 second_term, (value / self.volume) ** (self.power - 1)
             )
-            second_term = cvx.multiply(second_term, cvx.abs(z[:-1]) ** self.power)
+            second_term = cvx.multiply(
+                second_term, cvx.abs(z[:-1]) ** self.power)
         else:
             second_term = 0.0
         assert cvx.sum(second_term).is_convex()
         self.expression = first_term + second_term
-        result = cvx.sum(self.expression)
-        assert result.is_convex()
-        return result
+        self.expression = cvx.sum(self.expression)
+        assert self.expression.is_convex()
+        return self.expression
 
     # def _estimate(self, t, w_plus, z, value):
     #     """Estimate tcosts given trades.
@@ -311,7 +318,7 @@ class TcostModel(BaseCost):
     #
     #     return cvx.sum(self.expression), constr
 
-    ### THESE METHODS ARE DEPRECATED AND WILL BE REMOVED AS WE FINISH
+    # THESE METHODS ARE DEPRECATED AND WILL BE REMOVED AS WE FINISH
     # TRANSLATING TO NEW INTERFACE
     def value_expr(self, t, h_plus, u):
         """Temporary placeholder, new simulators implement their own tcost."""

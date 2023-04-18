@@ -45,8 +45,8 @@ def test_single_period_opt(returns, sigma, volumes, tcost_model, hcost_model):
     emp_Sigma = np.cov(returns.to_numpy().T) + np.eye(n) * 1e-3
     risk_model = FullCovariance(emp_Sigma)
     pol = SinglePeriodOpt(
-        alpha_model, [gamma * risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS
-    )
+        alpha_model, [
+            gamma * risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS)
     t = times[1]
     p_0 = pd.Series(index=universe, data=1e6)
     z = pol.get_trades(p_0, t)

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module implements the MarketSimulator class, which strives to 
+"""This module implements the MarketSimulator class, which strives to
 simulate as accurately as possibly what would have been the realized
 performance of a trading policy if it had been run in the market in the past.
-In financial jargon this is called *backtesting*. 
+In financial jargon this is called *backtesting*.
 
 
 """
@@ -202,8 +202,12 @@ class MarketSimulator(BaseMarketSimulator):
         return h_next, u
 
     def run_backtest(
-        self, initial_portfolio, start_time, end_time, policy, loglevel=logging.WARNING
-    ):
+            self,
+            initial_portfolio,
+            start_time,
+            end_time,
+            policy,
+            loglevel=logging.WARNING):
         """Backtest a single policy."""
         logging.basicConfig(level=loglevel)
 
@@ -298,7 +302,8 @@ class MarketSimulator(BaseMarketSimulator):
     @staticmethod
     def reduce_signal_perturb(initial_weights, delta):
         """Compute matrix of perturbed weights given initial weights."""
-        perturb_weights_matrix = np.zeros((len(initial_weights), len(initial_weights)))
+        perturb_weights_matrix = np.zeros(
+            (len(initial_weights), len(initial_weights)))
         for i in range(len(initial_weights)):
             perturb_weights_matrix[i, :] = initial_weights / (
                 1 - delta * initial_weights[i]
@@ -307,8 +312,13 @@ class MarketSimulator(BaseMarketSimulator):
         return perturb_weights_matrix
 
     def attribute(
-        self, true_results, policy, selector=None, delta=1, fit="linear", parallel=True
-    ):
+            self,
+            true_results,
+            policy,
+            selector=None,
+            delta=1,
+            fit="linear",
+            parallel=True):
         """Attributes returns over a period to individual alpha sources.
 
         Args:
@@ -359,7 +369,9 @@ class MarketSimulator(BaseMarketSimulator):
             prob.solve()
         elif fit == "least-squares":
             error = cvx.sum_squares(Wmat @ Pmat - Rmat)
-            prob = cvx.Problem(cvx.Minimize(error), [Pmat.T @ weights == true_arr])
+            prob = cvx.Problem(
+                cvx.Minimize(error), [
+                    Pmat.T @ weights == true_arr])
             prob.solve()
         else:
             raise Exception("Unknown fitting method.")
@@ -370,7 +382,8 @@ class MarketSimulator(BaseMarketSimulator):
             index=attr_times,
             data=Pmat.value.T * wmask,
         )
-        data["residual"] = true_arr - np.asarray((weights @ Pmat).value).ravel()
+        data["residual"] = true_arr - \
+            np.asarray((weights @ Pmat).value).ravel()
         data["RMS error"] = np.asarray(
             cvx.norm(Wmat @ Pmat - Rmat, 2, axis=0).value
         ).ravel()

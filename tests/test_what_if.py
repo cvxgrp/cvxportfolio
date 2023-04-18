@@ -50,8 +50,8 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
     risk_model = FullCovariance(emp_Sigma, gamma=100.0)
 
     pol = SinglePeriodOpt(
-        alpha_model, [risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS
-    )
+        alpha_model, [
+            risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS)
 
     tcost = TcostModel(0.0005, 1.0, sigma, volumes)
     hcost = HcostModel(0.0)
@@ -60,31 +60,46 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
     )
 
     p_0 = pd.Series(index=returns.columns, data=1e6)
-    noisy = market_sim.run_backtest(p_0, returns.index[1], returns.index[10], pol)
+    noisy = market_sim.run_backtest(
+        p_0, returns.index[1], returns.index[10], pol)
     # linear fit attribution
     attr = market_sim.attribute(noisy, pol, parallel=False, fit="linear")
     base_line = noisy.v - sum(p_0)
     for i in range(3):
-        assert np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
+        assert np.allclose(
+            attr[i] / weights[i] / sum(p_0),
+            base_line / sum(p_0))
 
     assert np.allclose(attr["RMS error"], np.zeros(len(noisy.v)))
 
     # least-squares fit attribution
-    attr = market_sim.attribute(noisy, pol, parallel=False, fit="least-squares")
+    attr = market_sim.attribute(
+        noisy, pol, parallel=False, fit="least-squares")
     base_line = noisy.v - sum(p_0)
     for i in range(3):
-        assert np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
+        assert np.allclose(
+            attr[i] / weights[i] / sum(p_0),
+            base_line / sum(p_0))
 
     # Residual always 0.
-    alpha_sources = [LegacyReturnsForecast(returns * 0, name=i) for i in range(3)]
+    alpha_sources = [
+        LegacyReturnsForecast(
+            returns * 0,
+            name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     pol.alpha_model = alpha_model
-    attr = market_sim.attribute(noisy, pol, parallel=False, fit="least-squares")
+    attr = market_sim.attribute(
+        noisy, pol, parallel=False, fit="least-squares")
     assert np.allclose(attr["residual"], np.zeros(len(noisy.v)))
 
 
-def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost_model):
+def test_attribute_non_profit_series(
+        returns,
+        sigma,
+        volumes,
+        tcost_model,
+        hcost_model):
     """Test attributing series quantities besides profit."""
     # Alpha source
     alpha_sources = [LegacyReturnsForecast(returns, name=i) for i in range(3)]
@@ -95,8 +110,8 @@ def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost
     # tcost_model = TcostModel(self.a, self.b, sigma, volumes)
     # hcost_model = HcostModel(self.s, self.s * 0)
     pol = SinglePeriodOpt(
-        alpha_model, [risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS
-    )
+        alpha_model, [
+            risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS)
 
     tcost = TcostModel(0.0005, 1.0, sigma, volumes)
 
@@ -107,14 +122,20 @@ def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost
     )
 
     p_0 = pd.Series(index=returns.columns, data=1e6)
-    noisy = market_sim.run_backtest(p_0, returns.index[1], returns.index[10], pol)
+    noisy = market_sim.run_backtest(
+        p_0, returns.index[1], returns.index[10], pol)
     # Select tcosts.
 
     def selector(result):
         return result.leverage
 
     # linear fit attribution
-    attr = market_sim.attribute(noisy, pol, selector, parallel=False, fit="linear")
+    attr = market_sim.attribute(
+        noisy,
+        pol,
+        selector,
+        parallel=False,
+        fit="linear")
     base_line = noisy.leverage
     for i in range(3):
         np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
@@ -128,7 +149,10 @@ def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost
     for i in range(3):
         np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
     # Residual always 0.
-    alpha_sources = [LegacyReturnsForecast(returns * 0, name=i) for i in range(3)]
+    alpha_sources = [
+        LegacyReturnsForecast(
+            returns * 0,
+            name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     pol = copy.copy(pol)
@@ -151,22 +175,33 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
 
     # tcost = TcostModel(volumes, sigma, self.a, self.b)
     hcost_model = HcostModel(0.0)
-    pol = SinglePeriodOpt(alpha_model, [100 * risk_model, tcost_model, hcost_model], [])
+    pol = SinglePeriodOpt(
+        alpha_model, [
+            100 * risk_model, tcost_model, hcost_model], [])
 
-    market_sim = simulator.MarketSimulator(returns, costs=[tcost_model, hcost_model])
+    market_sim = simulator.MarketSimulator(
+        returns, costs=[tcost_model, hcost_model])
 
     p_0 = pd.Series(index=returns.columns, data=1e6)
-    noisy = market_sim.run_backtest(p_0, returns.index[1], returns.index[10], pol)
+    noisy = market_sim.run_backtest(
+        p_0, returns.index[1], returns.index[10], pol)
     # Select tcosts.
 
     def selector(result):
         return pd.Series(index=[noisy.h.index[-1]], data=result.volatility)
 
     # linear fit attribution
-    attr = market_sim.attribute(noisy, pol, selector, parallel=False, fit="linear")
+    attr = market_sim.attribute(
+        noisy,
+        pol,
+        selector,
+        parallel=False,
+        fit="linear")
     base_line = noisy.volatility
     for i in range(3):
-        assert np.allclose(attr[i][0] / weights[i] / sum(p_0), base_line / sum(p_0))
+        assert np.allclose(
+            attr[i][0] / weights[i] / sum(p_0),
+            base_line / sum(p_0))
     assert np.allclose(attr["RMS error"], np.zeros(len(noisy.v)))
 
     # least-squares fit attribution
@@ -174,9 +209,14 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
         noisy, pol, selector, parallel=False, fit="least-squares"
     )
     for i in range(3):
-        assert np.allclose(attr[i][0] / weights[i] / sum(p_0), base_line / sum(p_0))
+        assert np.allclose(
+            attr[i][0] / weights[i] / sum(p_0),
+            base_line / sum(p_0))
     # Residual always 0.
-    alpha_sources = [LegacyReturnsForecast(returns * 0, name=i) for i in range(3)]
+    alpha_sources = [
+        LegacyReturnsForecast(
+            returns * 0,
+            name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
 

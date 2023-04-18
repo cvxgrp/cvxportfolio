@@ -38,7 +38,12 @@ def build_cons(model, wplus, t=None):
         None, None, pd.Timestamp("2022-01-01") if t is None else t, None
     )
     cons = model.compile_to_cvxpy(wplus, None, None)
-    model.values_in_time(pd.Timestamp("2020-01-01") if t is None else t, None, None, None, None)
+    model.values_in_time(
+        pd.Timestamp("2020-01-01") if t is None else t,
+        None,
+        None,
+        None,
+        None)
     return cons
 
 

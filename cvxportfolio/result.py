@@ -123,8 +123,10 @@ class SimulationResult(BacktestResult):
         if not isinstance(self.policy, MultiPeriodOpt):
             for cost in self.policy.costs:
                 self.log_data(
-                    "policy_" + cost.__class__.__name__, t, cost.optimization_log(t)
-                )
+                    "policy_" +
+                    cost.__class__.__name__,
+                    t,
+                    cost.optimization_log(t))
 
     def log_simulation(self, t, u, h_next, risk_free_return, exec_time):
         self.log_data("simulation_time", t, exec_time)
@@ -133,8 +135,10 @@ class SimulationResult(BacktestResult):
         self.log_data("risk_free_returns", t, risk_free_return)
         for cost in self.simulator.costs:
             self.log_data(
-                "simulator_" + cost.__class__.__name__, t, cost.simulation_log(t)
-            )
+                "simulator_" +
+                cost.__class__.__name__,
+                t,
+                cost.simulation_log(t))
 
     @property
     def h(self):
