@@ -310,12 +310,7 @@ class SinglePeriodOptimization(BaseTradingPolicy):
         assert self.cvxpy_objective.is_concave()
         self.cvxpy_constraints = [constr.compile_to_cvxpy(w_plus, z, value) 
             for constr in self.constraints]
-            
-        self.cvxpy_constraints += [
-            cvx.sum(self.z) == 0, 
-            self.w_current + self.z == self.w_plus
-            ]
-            
+        self.cvxpy_constraints += [cvx.sum(self.z) == 0]
         self.problem = cvx.Problem(cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints)
         assert self.problem.is_dcp()
             
@@ -328,8 +323,8 @@ class SinglePeriodOptimization(BaseTradingPolicy):
         ## initialize the problem
         self.portfolio_value = cvx.Parameter(nonneg=True)
         self.w_current = cvx.Parameter(returns.shape[1])
-        self.w_plus = cvx.Variable(returns.shape[1])
         self.z = cvx.Variable(returns.shape[1])
+        self.w_plus = self.w_current + self.z
         
         self.compile_to_cvxpy(self.w_plus, self.z, self.portfolio_value)
             
