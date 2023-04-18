@@ -20,7 +20,7 @@ import pandas as pd
 import pytest
 
 from cvxportfolio.costs import HcostModel, TcostModel
-from cvxportfolio.returns import MultipleReturnsForecasts, ReturnsForecast
+from cvxportfolio.returns import *
 from cvxportfolio.risks import FullCovariance
 
 
@@ -32,14 +32,14 @@ def test_alpha(returns):
 
     # Alpha source
     w = cvx.Variable(len(universe))
-    source = ReturnsForecast(returns)
+    source = LegacyReturnsForecast(returns)
     t = times[1]
     alpha = source.weight_expr(t, w)
     w.value = np.ones(len(universe))
     assert alpha.value == pytest.approx(returns.loc[t].sum())
 
     # with delta
-    source = ReturnsForecast(returns, returns / 10)
+    source = LegacyReturnsForecast(returns, returns / 10)
     alpha = source.weight_expr(t, w)
     tmp = np.ones(len(universe))
     tmp[0] = -1
@@ -50,8 +50,8 @@ def test_alpha(returns):
     assert alpha.value == pytest.approx(value)
 
     # alpha stream
-    source1 = ReturnsForecast(returns)
-    source2 = ReturnsForecast(-returns)
+    source1 = LegacyReturnsForecast(returns)
+    source2 = LegacyReturnsForecast(-returns)
     stream = MultipleReturnsForecasts([source1, source2], [1, 1])
     alpha = stream.weight_expr(t, w)
     assert alpha.value == 0
@@ -64,7 +64,7 @@ def test_alpha(returns):
 
     # with exp decay
     w = cvx.Variable(len(universe))
-    source = ReturnsForecast(returns, gamma_decay=2)
+    source = LegacyReturnsForecast(returns, gamma_decay=2)
     t = times[1]
     tau = times[3]
     diff = (tau - t).days

@@ -21,6 +21,8 @@ import sqlite3
 
 from .estimator import DataEstimator
 
+__all__ = ['TimeSeries']
+
 
 class BaseData:
     """Base class for Cvxportfolio database interface.
@@ -44,7 +46,7 @@ class BaseData:
     local databases such as sqlite (or even flat csv files!).
     Cvxportfolio loads data from the database before (possibly parallel)
     backtesting, and stores it after backtesting. So, only one process
-    at a time accesses this class methods. If you write custom callbacks
+    at a time accesses this class' methods. If you write custom callbacks
     that are invoked during backtests, such as callables inside
     DataEstimator, you should most probably not use cvxportfolio.data methods
     inside them.
@@ -204,6 +206,9 @@ class SqliteDataStore(BaseDataStore):
         """Store Pandas object to sqlite.
 
         We separately store dtypes for data consistency and safety.
+        
+        Limitations: if your pandas object's index has a name it will be lost,
+            the index is renamed 'index'.
         """
         self.__open__()
         exists = pd.read_sql_query(

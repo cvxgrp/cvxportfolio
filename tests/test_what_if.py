@@ -23,7 +23,7 @@ from cvxportfolio import (
     FullCovariance,
     HcostModel,
     MultipleReturnsForecasts,
-    ReturnsForecast,
+    LegacyReturnsForecast,
     SinglePeriodOpt,
     TcostModel,
     simulator,
@@ -43,7 +43,7 @@ def hcost_model():
 def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
     """Test attribution."""
     # Alpha source
-    alpha_sources = [ReturnsForecast(returns, name=i) for i in range(3)]
+    alpha_sources = [LegacyReturnsForecast(returns, name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     emp_Sigma = np.cov(returns.to_numpy().T)
@@ -76,7 +76,7 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
         assert np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
 
     # Residual always 0.
-    alpha_sources = [ReturnsForecast(returns * 0, name=i) for i in range(3)]
+    alpha_sources = [LegacyReturnsForecast(returns * 0, name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     pol.alpha_model = alpha_model
@@ -87,7 +87,7 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
 def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost_model):
     """Test attributing series quantities besides profit."""
     # Alpha source
-    alpha_sources = [ReturnsForecast(returns, name=i) for i in range(3)]
+    alpha_sources = [LegacyReturnsForecast(returns, name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     emp_Sigma = np.cov(returns.to_numpy().T)
@@ -128,7 +128,7 @@ def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost
     for i in range(3):
         np.allclose(attr[i] / weights[i] / sum(p_0), base_line / sum(p_0))
     # Residual always 0.
-    alpha_sources = [ReturnsForecast(returns * 0, name=i) for i in range(3)]
+    alpha_sources = [LegacyReturnsForecast(returns * 0, name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     pol = copy.copy(pol)
@@ -142,7 +142,7 @@ def test_attribute_non_profit_series(returns, sigma, volumes, tcost_model, hcost
 def test_attribute_non_profit_scalar(returns, sigma, volumes):
     """Test attributing scalar quantities besides profit."""
     # Alpha source
-    alpha_sources = [ReturnsForecast(returns, name=i) for i in range(3)]
+    alpha_sources = [LegacyReturnsForecast(returns, name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     emp_Sigma = np.cov(returns.to_numpy().T)
@@ -176,7 +176,7 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
     for i in range(3):
         assert np.allclose(attr[i][0] / weights[i] / sum(p_0), base_line / sum(p_0))
     # Residual always 0.
-    alpha_sources = [ReturnsForecast(returns * 0, name=i) for i in range(3)]
+    alpha_sources = [LegacyReturnsForecast(returns * 0, name=i) for i in range(3)]
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
 
