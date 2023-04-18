@@ -46,7 +46,7 @@ Traceback (most recent call last):
     return self.run_backtest(
   File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/simulator.py", line 231, in run_backtest
     u = policy.get_trades(h, t)
-  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/policies.py", line 430, in get_trades
+  File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/policies.py", line 493, in get_trades
     constraints += constr.weight_expr(t, wplus, z, value)
   File "/home/runner/work/cvxportfolio/cvxportfolio/cvxportfolio/constraints.py", line 47, in weight_expr
     result = self.compile_to_cvxpy(wplus, z, v)
