@@ -33,6 +33,7 @@ __all__ = [
     "PeriodicRebalance",
     "ProportionalRebalance",
     "AdaptiveRebalance",
+    "SinglePeriodOptimization",
     "SinglePeriodOpt",
     "MultiPeriodOpt",
     "ProportionalTradeToTargets",
@@ -57,6 +58,7 @@ class BaseTradingPolicy(Estimator):
     def _nulltrade(self, portfolio):
         return pd.Series(index=portfolio.index, data=0.0)
 
+    ## DEPRECATED, WE INCLUDE THIS LOGIC IN THE SIMULATOR
     def get_rounded_trades(self, portfolio, prices, t):
         """Get trades vector as number of shares, rounded to integers."""
         return np.round(self.get_trades(portfolio, t) / values_in_time(prices, t))[:-1]
@@ -122,7 +124,7 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
     """Given a DataFrame of target weights in time, trade in equal proportions to reach those.
 
     Initially, it loads the list of trading days and so at each day it knows
-    how many are missing before the next target day, and trades in equal proportions
+    how many are missing before the next target's day, and trades in equal proportions
     to reach those targets. If there are no targets remaining it defaults to
     not trading.
     
@@ -278,7 +280,78 @@ class AdaptiveRebalance(BaseTradingPolicy):
             return self.target.current_value - current_weights
         else:
             return pd.Series(0., current_weights.index)
+
+
+class SinglePeriodOptimization(BaseTradingPolicy):
+    """Single Period Optimization policy.
+    
+    Implements the model developed in Chapter 4, in particular
+    at page 43, of the paper. You specify the objective term
+    using classes such as ReturnsForecast and TcostModel, each
+    multiplied by its multiplier. You also specify a list
+    of constraints.
+    
+    Args:
+        objective (algebra of BaseCost): this will be maximized.
+        constraints (list of BaseConstraints): these will be
+            imposed on the optimization. Default [].
+        **kwargs: these will be passed to cvxpy.Problem.solve,
+            so you can choose your own solver and pass
+            parameters to it.
+    """
+    def __init__(self, objective, constraints=[], **kwargs):
+        self.objective = objective
+        self.constraints = constraints
+        self.cvxpy_kwargs = kwargs
         
+    def compile_to_cvxpy(self, w_plus, z, value):
+        """Compile all cvxpy expressions and the problem."""
+        self.cvxpy_objective = self.objective.compile_to_cvxpy(w_plus, z, value)
+        assert self.cvxpy_objective.is_concave()
+        self.cvxpy_constraints = [constr.compile_to_cvxpy(w_plus, z, value) 
+            for constr in self.constraints]
+            
+        self.cvxpy_constraints += [
+            cvx.sum(self.z) == 0, 
+            self.w_current + self.z == self.w_plus
+            ]
+            
+        self.problem = cvx.Problem(cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints)
+        assert self.problem.is_dcp()
+            
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+        """Pass a full view of the data to initialize objects that need it."""
+        self.objective.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        for constr in self.constraints:
+            constr.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+            
+        ## initialize the problem
+        self.portfolio_value = cvx.Parameter(nonneg=True)
+        self.w_current = cvx.Parameter(returns.shape[1])
+        self.w_plus = cvx.Variable(returns.shape[1])
+        self.z = cvx.Variable(returns.shape[1])
+        
+        self.compile_to_cvxpy(self.w_plus, self.z, self.portfolio_value)
+            
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+        """Update all cvxpy parameters and solve."""
+        self.objective.values_in_time(t, current_weights, current_portfolio_value, 
+            past_returns, past_volumes, **kwargs)
+        for constr in self.constraints:
+            constr.values_in_time(t, current_weights, current_portfolio_value, 
+            past_returns, past_volumes, **kwargs)
+        
+        self.portfolio_value.value = current_portfolio_value
+        self.w_current.value = current_weights.values
+        
+        self.problem.solve(**self.cvxpy_kwargs)
+        
+        return self.z.value
+            
+        
+    
+    
+### LEGACY CLASSES USED BY OLD TESTS, REPLACEMENT ONES ARE ABOVE
 
 class SinglePeriodOpt(BaseTradingPolicy):
     """Single-period optimization policy.

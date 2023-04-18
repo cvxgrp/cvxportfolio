@@ -18,6 +18,10 @@ import pandas as pd
 import pytest
 
 from cvxportfolio.policies import *
+from cvxportfolio.returns import *
+from cvxportfolio.risks import *
+from cvxportfolio.costs import *
+from cvxportfolio.constraints import *
 
 
 def test_hold():
@@ -205,6 +209,52 @@ def test_adaptive_rebalance(returns):
         assert np.allclose(trade, 0.)
     
         
+def test_single_period_optimization(returns, volumes):
+    
+    N = returns.shape[1]
+    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    policy = SinglePeriodOptimization(
+        return_forecast
+        - 2 * risk_forecast
+        - TcostModel(half_spread=5*1E-4)#, power=2)
+        ,
+         constraints = [LongOnly(), LeverageLimit(1)],
+         #verbose=True,
+        solver='ECOS')
+    
+    policy.pre_evaluation(returns, volumes, start_time=returns.index[50], end_time=returns.index[-1])
+    
+    curw = np.zeros(N)
+    curw[-1] = 1.
+    
+    result = policy.values_in_time(t = returns.index[51], 
+        current_weights = pd.Series(curw, returns.columns),
+        current_portfolio_value = 1000, past_returns=None, past_volumes=None)
+        
+    cvxportfolio_result = pd.Series(result, returns.columns)
+    
+    print(cvxportfolio_result)
+    
+    ## REPLICATE WITH CVXPY
+    w = cvx.Variable(N)
+    cvx.Problem(cvx.Maximize(w.T @ return_forecast.expected_returns.value - 
+            2 * cvx.quad_form(w, risk_forecast.Sigma.value) - 
+            5*1E-4 * cvx.sum(cvx.abs(w - curw)[:-1])
+            ),
+            [w >= 0, w <= 1, sum(w) == 1]
+            ).solve(solver='ECOS')
+            
+    cvxpy_result = pd.Series(w.value - curw, returns.columns)
+    
+    print(cvxpy_result)
+    
+    assert np.allclose(cvxportfolio_result - cvxpy_result, 0., atol=1e-6)
+    
+    
+    
+    
+    
     
 
     

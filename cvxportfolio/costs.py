@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """This module implements cost functions used by optimization-based policies. 
 
 Currently these are two: TransactionCostModel and HoldingCostModel. 
@@ -212,7 +213,8 @@ class TcostModel(BaseCost):
     (See section pages 10-11 in the paper
     https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
     We don't include the short-term alpha term `c` here because it
-    can be expressed with a separate `ReturnsForecast` object.
+    can be expressed with a separate `ReturnsForecast` object. If
+    any term that appears in 
 
     Args:
       half_spread (float or pd.Series or pd.DataFrame): Half the bid ask spread, either
@@ -222,28 +224,33 @@ class TcostModel(BaseCost):
             It can be constant, constant per-stock, or varying in time and stocks. Default 0.
       sigma (floar or pd.Series or pd.DataFrame): Daily volatilities. Default 0.
       volume (float or pd.Series or pd.DataFrame): Market volumes expressed in value (e.g., dollars).
-            Default 0.
+            Default 1 to avoid NaN.
       power (float): The nonlinear tcost exponent. Default 1.5.
     """
 
-    def __init__(self, half_spread=0.0, nonlin_coeff=0.0, sigma=0.0, volume=0.0, power=1.5):
-        # null_checker(half_spread)
+    def __init__(self, half_spread=0.0, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5):
+        self.compile_first_term = not np.isscalar(half_spread) or half_spread > 0.
+        self.compile_second_term = (not np.isscalar(nonlin_coeff) or nonlin_coeff > 0.) and (not np.isscalar(sigma) or sigma > 0.) 
         self.half_spread = ParameterEstimator(half_spread, non_negative=True)
-        # null_checker(sigma)
         self.sigma = ParameterEstimator(sigma, non_negative=True)
-        # null_checker(volume)
         self.volume = ParameterEstimator(volume, non_negative=True)
-        # null_checker(nonlin_coeff)
         self.nonlin_coeff = ParameterEstimator(nonlin_coeff, non_negative=True)
-        # null_checker(power)
         self.power: float = power
         
     def compile_to_cvxpy(self, w_plus, z, value):
-        self.expression = cvx.multiply(self.half_spread, cvx.abs(z[:-1]))
-        second_term = cvx.multiply(self.nonlin_coeff, self.sigma)
-        second_term = cvx.multiply(second_term, (value / self.volume) ** (self.power - 1))        
-        self.expression += cvx.multiply(second_term, cvx.abs(z[:-1]) ** self.power)
-        return cvx.sum(self.expression)
+        first_term = cvx.multiply(self.half_spread, cvx.abs(z[:-1])) if self.compile_first_term else 0.
+        assert cvx.sum(first_term).is_convex()
+        if self.compile_second_term:
+            second_term = cvx.multiply(self.nonlin_coeff, self.sigma)
+            second_term = cvx.multiply(second_term, (value / self.volume) ** (self.power - 1))        
+            second_term = cvx.multiply(second_term, cvx.abs(z[:-1]) ** self.power)
+        else:
+            second_term = 0.
+        assert cvx.sum(second_term).is_convex()
+        self.expression = first_term + second_term
+        result = cvx.sum(self.expression)
+        assert result.is_convex()
+        return result
         
     
     # def _estimate(self, t, w_plus, z, value):
@@ -295,6 +302,9 @@ class TcostModel(BaseCost):
     #
     #     return cvx.sum(self.expression), constr
 
+    
+    ### THESE METHODS ARE DEPRECATED AND WILL BE REMOVED AS WE FINISH
+    # TRANSLATING TO NEW INTERFACE
     def value_expr(self, t, h_plus, u):
         """Temporary placeholder, new simulators implement their own tcost."""
         
