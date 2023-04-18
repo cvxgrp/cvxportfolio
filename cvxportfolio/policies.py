@@ -53,7 +53,8 @@ class BaseTradingPolicy(Estimator):
         """Trades list given current portfolio and time t."""
         value = sum(portfolio)
         w = portfolio / value
-        return values_in_time(self, t, w) * value
+        self.pre_evaluation(returns=pd.DataFrame(0., index=[t], columns=portfolio.index), volumes=None, start_time=t, end_time=None)
+        return self.values_in_time(t, current_weights=w, current_portfolio_value=value, past_returns=None, past_volumes=None) * value
 
     def _nulltrade(self, portfolio):
         return pd.Series(index=portfolio.index, data=0.0)
@@ -338,11 +339,25 @@ class SinglePeriodOptimization(BaseTradingPolicy):
         
         self.portfolio_value.value = current_portfolio_value
         self.w_current.value = current_weights.values
-        
         self.problem.solve(**self.cvxpy_kwargs)
-        
-        return self.z.value
+        return pd.Series(self.z.value, current_weights.index)
             
+        
+class SinglePeriodOptOLDTONEW(SinglePeriodOptimization):
+    """Placeholder class while we translate tests to new interface.
+    """
+    def __init__(
+        self, return_forecast, costs, constraints, solver=None, solver_opts={}
+    ):
+        if np.isscalar(return_forecast):
+            raise Exception
+        if hasattr(return_forecast, 'index'):
+            return_forecast = ReturnsForecast(return_forecast)
+        objective =  -sum(costs, start=-return_forecast)
+        kwargs = solver_opts
+        if not (solver is None):
+            kwargs['solver'] = solver
+        super().__init__(objective, constraints, **kwargs)
         
     
     
