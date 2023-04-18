@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.policies import Hold, RankAndLongShort
+from cvxportfolio.policies import *
 
 
 def test_hold():
@@ -86,3 +86,23 @@ def test_rank_and_long_short():
     print(z3)
 
     # raise Exception
+
+
+def test_proportional_trade(returns):
+    
+    targets = pd.DataFrame({returns.index[3]: pd.Series(1., returns.columns),
+                            returns.index[15]: pd.Series(-1., returns.columns)
+                        }).T
+    policy = ProportionalTradeToTargets(targets)
+    
+    policy.pre_evaluation(returns, None, None, None)
+    start_portfolio = pd.Series(np.random.randn(returns.shape[1]), returns.columns)
+    for t in returns.index[:17]:
+        print(t)
+        print(start_portfolio)
+        if t in targets.index:
+            assert np.all(start_portfolio == targets.loc[t])
+        trade = policy.values_in_time(t, start_portfolio, None, None, None)
+        start_portfolio += trade
+
+    assert np.all(trade == 0.)

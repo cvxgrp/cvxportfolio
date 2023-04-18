@@ -31,7 +31,7 @@ __all__ = [
     "AdaptiveRebalance",
     "SinglePeriodOpt",
     "MultiPeriodOpt",
-    "ProportionalTrade",
+    "ProportionalTradeToTargets",
     "RankAndLongShort",
 ]
 
@@ -90,17 +90,17 @@ class RankAndLongShort(BaseTradingPolicy):
         self.signal = DataEstimator(signal)
         self.target_leverage = DataEstimator(target_leverage)
 
-    def values_in_time(self, t, portfolio, *args, **kwargs):
+    def values_in_time(self, t, current_weights, *args, **kwargs):
         """Update sub-estimators and produce current estimate."""
-        super().values_in_time(t, portfolio, *args, **kwargs)
+        super().values_in_time(t, current_weights, *args, **kwargs)
 
         sorted_ret = pd.Series(
-            self.signal.current_value, portfolio.index[:-1]
+            self.signal.current_value, current_weights.index[:-1]
         ).sort_values()
         short_positions = sorted_ret.index[: self.num_short.current_value]
         long_positions = sorted_ret.index[-self.num_long.current_value :]
 
-        target_weights = pd.Series(0.0, index=portfolio.index)
+        target_weights = pd.Series(0.0, index=current_weights.index)
         target_weights[short_positions] = -1.0
         target_weights[long_positions] = 1.0
 
@@ -108,28 +108,43 @@ class RankAndLongShort(BaseTradingPolicy):
         target_weights *= self.target_leverage.current_value
 
         # cash is always 1.
-        target_weights[portfolio.index[-1]] = 1.0
+        target_weights[current_weights.index[-1]] = 1.0
 
-        return target_weights - portfolio
+        return target_weights - current_weights
 
 
-class ProportionalTrade(BaseTradingPolicy):
-    """Gets to target in given time steps."""
+class ProportionalTradeToTargets(BaseTradingPolicy):
+    """Given a DataFrame of target weights in time, trade in equal proportions to reach those.
 
-    def __init__(self, targetweight, time_steps):
-        self.targetweight = targetweight
-        self.time_steps = time_steps
-        super(ProportionalTrade, self).__init__()
-
-    def get_trades(self, portfolio, t=dt.datetime.today()):
-        try:
-            missing_time_steps = len(self.time_steps) - next(
-                i for (i, x) in enumerate(self.time_steps) if x == t
-            )
-        except StopIteration:
-            raise Exception("ProportionalTrade can only trade on the given time steps")
-        deviation = self.targetweight - portfolio / sum(portfolio)
-        return sum(portfolio) * deviation / missing_time_steps
+    Initially, it loads the list of trading days and so at each day it knows
+    how many are missing before the next target day, and trades in equal proportions
+    to reach those targets. If there are no targets remaining it defaults to
+    not trading. 
+    
+    Args:
+        targets (pd.DataFrame): time-indexed DataFrame of target weight vectors at
+            given points in time (e.g., start of each month). 
+        
+    """    
+    def __init__(self, targets):
+        self.targets = targets
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+        """Get list of trading days."""
+        self.trading_days = returns.index
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)   
+         
+    def values_in_time(self, t, current_weights, *args, **kwargs):
+        """Get current trade weights."""
+        next_targets = self.targets.loc[self.targets.index > t]
+        if not len(next_targets):
+            return pd.Series(0.0, index=current_weights.index)
+        next_target = next_targets.iloc[0]
+        next_target_day = next_targets.index[0]
+        trading_days_to_target = len(self.trading_days[(self.trading_days>=t) & 
+            (self.trading_days<next_target_day)])
+        return (next_target - current_weights) / trading_days_to_target
+        
 
 
 class SellAll(BaseTradingPolicy):
