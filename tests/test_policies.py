@@ -148,3 +148,64 @@ def test_fixed_weights(returns):
     t = pd.Timestamp('1900-01-01')
     trade = policy.values_in_time(t, trade, None, None, None)
     assert np.all(trade == 0.) 
+    
+def test_periodic_rebalance(returns):
+    
+    target = pd.Series(np.random.uniform(size=returns.shape[1]), returns.columns)
+    target /= sum(target)
+    rebalancing_times=pd.date_range(
+            start = returns.index[0], 
+            end = returns.index[-1],
+            freq = '7d',
+            )
+    
+    policy = PeriodicRebalance(target, rebalancing_times=rebalancing_times)
+    init = pd.Series(np.random.randn(returns.shape[1]), returns.columns)
+    
+    trade = policy.values_in_time(rebalancing_times[0], init, None, None, None)
+    assert np.allclose(trade + init, target)
+    
+    trade = policy.values_in_time(rebalancing_times[0] + pd.Timedelta('1d'), init, None, None, None)
+    assert np.allclose(trade, 0)
+
+def test_proportional_rebalance(returns):
+    
+    target = pd.Series(np.random.uniform(size=returns.shape[1]), returns.columns)
+    target /= sum(target)
+    target_matching_times=returns.index[::3]
+    
+    policy = ProportionalRebalance(target, target_matching_times=target_matching_times)
+    policy.pre_evaluation( returns, None, None, None)
+
+    init = pd.Series(np.random.randn(returns.shape[1]), returns.columns)
+    
+    trade = policy.values_in_time(returns.index[1], init, None, None, None)
+    init += trade
+    trade2 = policy.values_in_time(returns.index[2], init, None, None, None)
+    assert np.allclose(trade, trade2)
+    assert np.allclose(trade2 + init, target)
+    
+def test_adaptive_rebalance(returns):
+    np.random.seed(0)
+    target = pd.Series(np.random.uniform(size=returns.shape[1]), returns.columns)
+    target /= sum(target)
+    target = pd.DataFrame({ind:target for ind in returns.index}).T
+    
+    init = pd.Series(np.random.uniform(size=returns.shape[1]), returns.columns)
+    init /= sum(init)
+    
+    for tracking_error in [0.01, .02, .05, .1]:
+        policy = AdaptiveRebalance(target, tracking_error=tracking_error)
+        trade = policy.values_in_time(returns.index[1], init, None, None, None)
+        assert np.allclose(init + trade, target.iloc[0])
+        
+    for tracking_error in [.2, .5]:
+        policy = AdaptiveRebalance(target, tracking_error=tracking_error)
+        trade = policy.values_in_time(returns.index[1], init, None, None, None)
+        assert np.allclose(trade, 0.)
+    
+        
+    
+
+    
+    

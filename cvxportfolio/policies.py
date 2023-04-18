@@ -30,6 +30,7 @@ __all__ = [
     "SellAll",
     "FixedTrades",
     "PeriodicRebalance",
+    "ProportionalRebalance",
     "AdaptiveRebalance",
     "SinglePeriodOpt",
     "MultiPeriodOpt",
@@ -214,73 +215,69 @@ class FixedWeights(BaseTradingPolicy):
             return pd.Series(0., current_weights.index)
             
         
-# class PeriodicRebalance(BaseRebalance):
-#     """Track a target portfolio, rebalancing at given times.
-#
-#
-#     Args:
-#         target (pd.Series): portfolio weights to rebalance to
-#
-#     """
-#
-#     pass
-#
-#
-
-class BaseRebalance(BaseTradingPolicy):
-    def _rebalance(self, portfolio):
-        return sum(portfolio) * self.target - portfolio
+class PeriodicRebalance(FixedWeights):
+    """Track a target weight vector rebalancing at given times.
+    
+    This calls `FixedWeights`. If you want to change the target in time
+    use that policy directly.
 
 
-class PeriodicRebalance(BaseRebalance):
-    """Track a target portfolio, rebalancing at given times."""
+    Args:
+        target (pd.Series): portfolio weights to rebalance to.
+        rebalancing_times (pd.DateTimeIndex): after the open trading on these days
+            portfolio is equal to target.
+    """
 
-    def __init__(self, target, period, **kwargs):
-        """
-        Args:
-            target: target weights, n+1 vector
-            period: supported options are "day", "week", "month", "quarter",
-                "year".
-                rebalance on the first day of each new period
-        """
-        self.target = target
-        self.period = period
-        super(PeriodicRebalance, self).__init__()
-
-    def is_start_period(self, t):
-        result = (
-            not getattr(t, self.period) == getattr(self.last_t, self.period)
-            if hasattr(self, "last_t")
-            else True
-        )
-        self.last_t = t
-        return result
-
-    def get_trades(self, portfolio, t=dt.datetime.today()):
-        return (
-            self._rebalance(portfolio)
-            if self.is_start_period(t)
-            else self._nulltrade(portfolio)
-        )
+    def __init__(self, target, rebalancing_times):
+        target_weights = pd.DataFrame({el:target for el in rebalancing_times}).T
+        super().__init__(target_weights)
 
 
-class AdaptiveRebalance(BaseRebalance):
-    """Rebalance portfolio when deviates too far from target."""
+class ProportionalRebalance(ProportionalTradeToTargets):
+    """Track a target weight exactly at given times, trading proportionally to it each period.
+    
+    This calls `ProportionalTradeToTargets`. If you want to change the target in time
+    use that policy directly.
+
+    Args:
+        target (pd.Series): portfolio weights to rebalance to.
+        target_matching_times (pd.DateTimeIndex): after the open trading on these days
+            portfolio is equal to target.
+    """
+    def __init__(self, target, target_matching_times):
+        targets = pd.DataFrame({el:target for el in target_matching_times}).T
+        super().__init__(targets)
+
+
+class AdaptiveRebalance(BaseTradingPolicy):
+    """Rebalance portfolio when deviates too far from target.
+    
+    We use the 2-norm as trigger for rebalance. You may want to
+    calibrate the `max_tracking_error` for your application 
+    by backtesting this policy, e.g., to get your desired turnover.
+    
+    Args:
+        target (pd.Series or pd.DataFrame): target weights to rebalance to.
+            It is assumed a constant if it is a Series. If it varies in 
+            time (you must specify it for every trading day) pass a 
+            DataFrame indexed by time.
+        tracking_error (float or pd.Series): we trade to match the target
+            weights whenever the 2-norm of our weights minus the
+            target is larger than this. Pass a Series if you want to vary it in
+            time.
+    """
 
     def __init__(self, target, tracking_error):
-        self.target = target
-        self.tracking_error = tracking_error
-        super(AdaptiveRebalance, self).__init__()
-
-    def get_trades(self, portfolio, t=dt.datetime.today()):
-        weights = portfolio / sum(portfolio)
-        diff = (weights - self.target).values
-
-        if np.linalg.norm(diff, 2) > self.tracking_error:
-            return self._rebalance(portfolio)
+        self.target = DataEstimator(target)
+        self.tracking_error = DataEstimator(tracking_error)
+        
+    def values_in_time(self, t, current_weights, *args, **kwargs):
+        super().values_in_time(t, current_weights, *args, **kwargs)
+        if np.linalg.norm(current_weights - self.target.current_value) > self.tracking_error.current_value:
+            return self.target.current_value - current_weights
         else:
-            return self._nulltrade(portfolio)
-
+            return pd.Series(0., current_weights.index)
+        
 
 class SinglePeriodOpt(BaseTradingPolicy):
     """Single-period optimization policy.
