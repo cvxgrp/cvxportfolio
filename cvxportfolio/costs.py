@@ -209,89 +209,102 @@ class HcostModel(BaseCost):
 class TcostModel(BaseCost):
     """A model for transaction costs.
 
-    (See figure 2.3 in the paper
-    https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf)
+    (See section pages 10-11 in the paper
+    https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
+    We don't include the short-term alpha term `c` here because it
+    can be expressed with a separate `ReturnsForecast` object.
 
-    Attributes:
-      volume: A dataframe of volumes.
-      sigma: A dataframe of daily volatilities.
-      half_spread: A dataframe of bid-ask spreads divided by 2.
-      nonlin_coeff: A dataframe of coefficients for the nonlinear cost.
-      power (float): The nonlinear tcost power.
+    Args:
+      half_spread (float or pd.Series or pd.DataFrame): Half the bid ask spread, either
+        fixed per (non-cash) assets, or varying in time.
+      nonlin_coeff (float or pd.Series or pd.DataFrame): Coefficients 
+            for the nonlinear cost term. This is the coefficient `b` in the paper.
+            It can be constant, constant per-stock, or varying in time and stocks. Default 0.
+      sigma (floar or pd.Series or pd.DataFrame): Daily volatilities. Default 0.
+      volume (float or pd.Series or pd.DataFrame): Market volumes expressed in value (e.g., dollars).
+            Default 0.
+      power (float): The nonlinear tcost exponent. Default 1.5.
     """
 
-    def __init__(self, half_spread, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5):
-        null_checker(half_spread)
-        self.half_spread = half_spread
-        null_checker(sigma)
-        self.sigma = sigma
-        null_checker(volume)
-        self.volume = volume
-        null_checker(nonlin_coeff)
-        self.nonlin_coeff = nonlin_coeff
-        null_checker(power)
+    def __init__(self, half_spread=0.0, nonlin_coeff=0.0, sigma=0.0, volume=0.0, power=1.5):
+        # null_checker(half_spread)
+        self.half_spread = ParameterEstimator(half_spread, non_negative=True)
+        # null_checker(sigma)
+        self.sigma = ParameterEstimator(sigma, non_negative=True)
+        # null_checker(volume)
+        self.volume = ParameterEstimator(volume, non_negative=True)
+        # null_checker(nonlin_coeff)
+        self.nonlin_coeff = ParameterEstimator(nonlin_coeff, non_negative=True)
+        # null_checker(power)
         self.power: float = power
-
-    def _estimate(self, t, w_plus, z, value):
-        """Estimate tcosts given trades.
-
-        Args:
-          t: time of estimate
-          z: trades
-          value: portfolio value
-
-        Returns:
-          An expression for the tcosts.
-        """
-
-        z = z[:-1]
-
-        constr = []
-
-        second_term = (
-            values_in_time(self.nonlin_coeff, t)
-            * values_in_time(self.sigma, t)
-            * (value / values_in_time(self.volume, t)) ** (self.power - 1)
-        )
-
-        # no trade conditions
-        if np.isscalar(second_term):
-            if np.isnan(second_term):
-                constr += [z == 0]
-                second_term = 0
-        else:  # it is a pd series
-            no_trade = second_term.index[second_term.isnull()]
-            second_term[no_trade] = 0
-            constr += [z[second_term.index.get_loc(tick)] == 0 for tick in no_trade]
-
-        try:
-            self.expression = cvx.multiply(
-                values_in_time(self.half_spread, t), cvx.abs(z)
-            )
-        except TypeError:
-            self.expression = cvx.multiply(
-                values_in_time(self.half_spread, t).values, cvx.abs(z)
-            )
-        try:
-            self.expression += cvx.multiply(second_term, cvx.abs(z) ** self.power)
-        except TypeError:
-            self.expression += cvx.multiply(
-                second_term.values, cvx.abs(z) ** self.power
-            )
-
-        return cvx.sum(self.expression), constr
+        
+    def compile_to_cvxpy(self, w_plus, z, value):
+        self.expression = cvx.multiply(self.half_spread, cvx.abs(z[:-1]))
+        second_term = cvx.multiply(self.nonlin_coeff, self.sigma)
+        second_term = cvx.multiply(second_term, (value / self.volume) ** (self.power - 1))        
+        self.expression += cvx.multiply(second_term, cvx.abs(z[:-1]) ** self.power)
+        return cvx.sum(self.expression)
+        
+    
+    # def _estimate(self, t, w_plus, z, value):
+    #     """Estimate tcosts given trades.
+    #
+    #     Args:
+    #       t: time of estimate
+    #       z: trades
+    #       value: portfolio value
+    #
+    #     Returns:
+    #       An expression for the tcosts.
+    #     """
+    #
+    #     z = z[:-1]
+    #
+    #     constr = []
+    #
+    #     second_term = (
+    #         values_in_time(self.nonlin_coeff, t)
+    #         * values_in_time(self.sigma, t)
+    #         * (value / values_in_time(self.volume, t)) ** (self.power - 1)
+    #     )
+    #
+    #     # # no trade conditions
+    #     # if np.isscalar(second_term):
+    #     #     if np.isnan(second_term):
+    #     #         constr += [z == 0]
+    #     #         second_term = 0
+    #     # else:  # it is a pd series
+    #     #     no_trade = second_term.index[second_term.isnull()]
+    #     #     second_term[no_trade] = 0
+    #     #     constr += [z[second_term.index.get_loc(tick)] == 0 for tick in no_trade]
+    #
+    #     try:
+    #         self.expression = cvx.multiply(
+    #             values_in_time(self.half_spread, t), cvx.abs(z)
+    #         )
+    #     except TypeError:
+    #         self.expression = cvx.multiply(
+    #             values_in_time(self.half_spread, t).values, cvx.abs(z)
+    #         )
+    #     try:
+    #         self.expression += cvx.multiply(second_term, cvx.abs(z) ** self.power)
+    #     except TypeError:
+    #         self.expression += cvx.multiply(
+    #             second_term.values, cvx.abs(z) ** self.power
+    #         )
+    #
+    #     return cvx.sum(self.expression), constr
 
     def value_expr(self, t, h_plus, u):
+        """Temporary placeholder, new simulators implement their own tcost."""
+        
+        self.pre_evaluation(None, None, t, None)
+        self.values_in_time(t, None, None, None, None)
+        
+        
         u_nc = u.iloc[:-1]
-        self.tmp_tcosts = np.abs(u_nc) * values_in_time(
-            self.half_spread, t
-        ) + values_in_time(self.nonlin_coeff, t) * values_in_time(
-            self.sigma, t
-        ) * np.abs(
-            u_nc
-        ) ** self.power / (
-            values_in_time(self.volume, t) ** (self.power - 1)
-        )
+        self.tmp_tcosts = np.abs(u_nc) * self.half_spread.value
+        self.tmp_tcosts += self.nonlin_coeff.value * self.sigma.value * np.abs(u_nc) ** self.power / (self.volume.value ** (self.power - 1))
 
         return self.tmp_tcosts.sum()
 

@@ -156,12 +156,14 @@ class RollingWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
 class ExponentialWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
     """Compute returns forecast errors with exponential window of past returns.
     
-    Currently not implemented, we need to work out the math. (It's probably
-    as simple as ewm(...).std() / np.sqrt(half_life)).
+    Currently not implemented; we need to work out the math. It's probably
+    as simple as ewm(...).std() / np.sqrt(half_life).
     """
     def __init__(self):
         raise NotImplementedError
 
+
+### LEGACY CLASSES USED BY OLD TESTS. WILL BE REMOVED AS WE FINISH TRANSLATION
 
 class LegacyReturnsForecast(BaseReturnsModel):
     """A single return forecast.
