@@ -60,9 +60,9 @@ class BaseTradingPolicy(Estimator):
 class Hold(BaseTradingPolicy):
     """Hold initial portfolio, don't trade."""
 
-    def values_in_time(self, t, portfolio, *args, **kwargs):
+    def values_in_time(self, t, current_weights, *args, **kwargs):        
         """Update sub-estimators and produce current estimate."""
-        return pd.Series(0.0, index=portfolio.index)
+        return pd.Series(0.0, index=current_weights.index)
 
 
 class RankAndLongShort(BaseTradingPolicy):

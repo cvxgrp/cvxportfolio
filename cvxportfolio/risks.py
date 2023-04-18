@@ -24,7 +24,7 @@ from .utils import values_in_time
 
 logger = logging.getLogger(__name__)
 
-from .estimator import ParameterEstimator
+from .estimator import ParameterEstimator #, ConstantEstimator
 
 __all__ = [
     "FullCovariance",
@@ -37,8 +37,25 @@ __all__ = [
     "RollingWindowFactorModelRisk",
     "WorstCaseRisk",
     "FactorModelRisk",
+    #"CashBenchMark",
 ]
 
+
+# class CashBenchMark(ConstantEstimator):
+#     """Default benchmark weights for cvxportfolio risk models.
+#     """
+#
+#     def __init__(self):
+#         pass
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         """Initialize it using the size of the returns.
+#         """
+#         size = returns.shape[1]
+#         value = np.zeros(size)
+#         value[-1] = 1.
+#         super().__init__(value)
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
 class BaseRiskModel(BaseCost):
 
@@ -125,6 +142,7 @@ class RollingWindowFullCovariance(FullCovariance):
             positive_semi_definite=True
         )
         # initialize cvxpy Parameter(s)
+        
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
 

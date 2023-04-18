@@ -55,7 +55,7 @@ class BaseCost(CvxpyExpressionEstimator):
         """Temporary interface to old cvxportfolio."""
         self.pre_evaluation(None, None, t, None)
         cost = self.compile_to_cvxpy(w_plus, z, value)
-        self.values_in_time(t)
+        self.values_in_time(t, None, None, None, None)
         return cost, []
 
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
@@ -192,7 +192,7 @@ class HcostModel(BaseCost):
         """Placeholder method as we update the rest of the stack to new interface."""
 
         self.pre_evaluation(None, None, t, None)
-        self.values_in_time(t)
+        self.values_in_time(t, None, None, None, None)
 
         self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.value
         self.last_cost -= h_plus.iloc[:-1] * self.dividends.value

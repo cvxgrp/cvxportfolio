@@ -35,7 +35,7 @@ class Estimator:
     on them.
     """
 
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Run computation on estimators before the simulation with full prescience.
 
         This function is called by Simulator classes before the
@@ -52,32 +52,38 @@ class Estimator:
         (with respect to that point) is used and not future data.
 
         Args:
-            returns (pandas.DataFrame): market returns
-            volumes (pandas.DataFrame): market volumes
-            start_time (pandas.Timestamp): start time of the simulation
-            end_time (pandas.Timestamp): end time of the simulation
+            returns (pandas.DataFrame): market returns.
+            volumes (pandas.DataFrame): market volumes.
+            start_time (pandas.Timestamp): start time of the backtest.
+            end_time (pandas.Timestamp): end time of the backtest.
+            **kwargs: extra arguments for future development.
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "pre_evaluation"):
-                subestimator.pre_evaluation(returns, volumes, start_time, end_time)
+                subestimator.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
-    def values_in_time(self, t, *args, **kwargs):
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
         """Evaluates estimator at a point in time recursively on its sub-estimators.
 
         This function is called by Simulator classes on Policy classes
         returning the current trades list. Policy classes, if
-        they contain internal estimators, should register them
-        in `self.children`  and call this base function before
+        they contain internal estimators, should declare them as attributes
+        and call this base function (via `super()`) before
         they do their internal computation. CvxpyExpression estimators
         should instead define this method to update their Cvxpy parameters.
 
         Args:
-            t (pd.TimeStamp): point in time of the simulation
-            kwargs (dict): extra data used
+            t (pd.TimeStamp): point in time of the simulation.
+            current_weights (pd.Series): current portfolio weights.
+            current_portfolio_value (float): current total value of the portfolio. 
+            past_returns (pd.DataFrame): view of the market returns up to today (i.e., the
+                last row are equal to today's open prices divided by yesterday's, minus 1).
+            past_volumes (pd.DataFrame): view of the market volumes up to yesterday's.
+            kwargs (dict): extra arguments for future development.
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "values_in_time"):
-                subestimator.values_in_time(t, *args, **kwargs)
+                subestimator.values_in_time(t,  current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
 
 class CvxpyExpressionEstimator(Estimator):
@@ -224,6 +230,14 @@ class DataEstimator(Estimator):
         return self.current_value
 
 
+# class ConstantEstimator(cvxpy.Constant, DataEstimator):
+#     """Cvxpy constant that uses the pre_evalution method to be initialized."""
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         """You should call super().__init__ it here."""
+#         raise NotImplementedError
+    
+    
 class ParameterEstimator(cvxpy.Parameter, DataEstimator):
     """Data estimator of point-in-time values that contains a Cvxpy Parameter.
 
@@ -248,9 +262,10 @@ class ParameterEstimator(cvxpy.Parameter, DataEstimator):
         self.data = data
         # super(DataEstimator).__init__(data, use_last_available_time)
 
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Use the start time of the simulation to initialize the Parameter."""
-        value = super().values_in_time(start_time)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        value = super().values_in_time(start_time, None, None, None, None)
         super().__init__(
             value.shape if hasattr(value, "shape") else (),
             PSD=self.positive_semi_definite,
@@ -259,6 +274,6 @@ class ParameterEstimator(cvxpy.Parameter, DataEstimator):
         # self.parameter = self
         # self.parameter = cvxpy.Parameter(value.shape if hasattr(value, 'shape') else (), PSD=self.positive_semi_definite, nonneg=self.non_negative)
 
-    def values_in_time(self, t, **kwargs):
+    def values_in_time(self, t, *args, **kwargs):
         """Update Cvxpy Parameter value."""
-        self.value = super().values_in_time(t, **kwargs)
+        self.value = super().values_in_time(t, *args, **kwargs)
