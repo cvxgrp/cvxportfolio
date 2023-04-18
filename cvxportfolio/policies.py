@@ -23,16 +23,19 @@ from cvxportfolio.returns import BaseReturnsModel
 from cvxportfolio.constraints import BaseConstraint
 from cvxportfolio.utils import values_in_time, null_checker
 from .estimator import Estimator, DataEstimator
+from .errors import MissingValuesError
 
 __all__ = [
     "Hold",
-    "FixedTrade",
+    "SellAll",
+    "FixedTrades",
     "PeriodicRebalance",
     "AdaptiveRebalance",
     "SinglePeriodOpt",
     "MultiPeriodOpt",
     "ProportionalTradeToTargets",
     "RankAndLongShort",
+    "FixedWeights"
 ]
 
 
@@ -119,7 +122,7 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
     Initially, it loads the list of trading days and so at each day it knows
     how many are missing before the next target day, and trades in equal proportions
     to reach those targets. If there are no targets remaining it defaults to
-    not trading. 
+    not trading.
     
     Args:
         targets (pd.DataFrame): time-indexed DataFrame of target weight vectors at
@@ -136,6 +139,7 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
          
     def values_in_time(self, t, current_weights, *args, **kwargs):
         """Get current trade weights."""
+        super().values_in_time(t, current_weights, *args, **kwargs) 
         next_targets = self.targets.loc[self.targets.index > t]
         if not len(next_targets):
             return pd.Series(0.0, index=current_weights.index)
@@ -148,34 +152,80 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
 
 
 class SellAll(BaseTradingPolicy):
-    """Sell all non-cash assets."""
+    """Sell all assets to cash.
+    
+    This is useful to check the tcost model in the simulator,
+    or as an element in a (currently not implemented) composite policy.
+    """
+    
+    def values_in_time(self, t, current_weights, *args, **kwargs):
+        """Get current trade weights."""
+        super().values_in_time(t, current_weights, *args, **kwargs)
+        target = np.zeros(len(current_weights))
+        target[-1] = 1.
+        return target - current_weights
 
-    def get_trades(self, portfolio, t=dt.datetime.today()):
-        trade = -pd.Series(portfolio, copy=True)
-        trade.ix[-1] = 0.0
-        return trade
 
+class FixedTrades(BaseTradingPolicy):
+    """Each day trade the provided trade weights vector.
+    
+    If there are no weights defined for the given day, default to no 
+    trades.
+    
+    Args:
+        trades_weights (pd.Series or pd.DataFrame): Series of weights 
+            (if constant in time) or DataFrame of trade weights
+            indexed by time. It trades each day the corresponding vector.
+    """
 
-class FixedTrade(BaseTradingPolicy):
-    """Trade a fixed trade vector."""
-
-    def __init__(self, tradevec=None, tradeweight=None):
+    def __init__(self, trades_weights):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
-        if tradevec is not None and tradeweight is not None:
-            raise Exception
-        if tradevec is None and tradeweight is None:
-            raise Exception
-        self.tradevec = tradevec
-        self.tradeweight = tradeweight
-        assert self.tradevec is None or sum(self.tradevec) == 0.0
-        assert self.tradeweight is None or sum(self.tradeweight) == 0.0
-        super(FixedTrade, self).__init__()
+        self.trades_weights = DataEstimator(trades_weights)
 
-    def get_trades(self, portfolio, t=dt.datetime.today()):
-        if self.tradevec is not None:
-            return self.tradevec
-        return sum(portfolio) * self.tradeweight
+    def values_in_time(self, t, current_weights, *args, **kwargs):
+        try:
+            super().values_in_time(t, current_weights, *args, **kwargs)
+            return pd.Series(self.trades_weights.current_value, current_weights.index)
+        except MissingValuesError:
+            return pd.Series(0., current_weights.index)
+        
+        
+class FixedWeights(BaseTradingPolicy):
+    """Each day trade to the provided trade weights vector.
+    
+    If there are no weights defined for the given day, default to no 
+    trades.
+    
+    Args:
+        target_weights (pd.Series or pd.DataFrame): Series of weights 
+            (if constant in time) or DataFrame of trade weights
+            indexed by time. It trades each day to the corresponding vector.
+    """
 
+    def __init__(self, target_weights):
+        """Trade the tradevec vector (dollars) or tradeweight weights."""
+        self.target_weights = DataEstimator(target_weights)
+
+    def values_in_time(self, t, current_weights, *args, **kwargs):
+        try:
+            super().values_in_time(t, current_weights, *args, **kwargs)
+            return pd.Series(self.target_weights.current_value, current_weights.index) - current_weights
+        except MissingValuesError:
+            return pd.Series(0., current_weights.index)
+            
+        
+# class PeriodicRebalance(BaseRebalance):
+#     """Track a target portfolio, rebalancing at given times.
+#
+#
+#     Args:
+#         target (pd.Series): portfolio weights to rebalance to
+#
+#     """
+#
+#     pass
+#
+#
 
 class BaseRebalance(BaseTradingPolicy):
     def _rebalance(self, portfolio):

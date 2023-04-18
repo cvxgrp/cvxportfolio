@@ -116,15 +116,19 @@ class CvxpyExpressionEstimator(Estimator):
 
 class DataEstimator(Estimator):
     """Estimator of point-in-time values from internal `self.data`.
+    
+    It also implements logic to check that no `np.nan` are returned
+    by its `values_in_time` method, which is the way `cvxportfolio`
+    objects use this class to get data.
 
     Args:
         data (object, pandas.Series, pandas.DataFrame): Data expressed
             preferably as pandas Series or DataFrame where the first
             index is a pandas.DateTimeIndex. Otherwise you can
-            set it as a callable object which takes a pandas.TimeStamp
-            and returns the corresponding value in time, or a constant
-            float, numpy.array, or even pandas Series or DataFrame not indexed
-            by time (e.g., a covariance matrix where both index and columns
+            pass a callable object which implements the values_in_time method 
+            (with the standard signature) and returns the corresponding value in time,
+             or a constant float, numpy.array, or even pandas Series or DataFrame not 
+            indexed by time (e.g., a covariance matrix where both index and columns
             are the stock symbols).
         use_last_available_time (bool): if the pandas index exists
             and is a pandas.DateTimeIndex you can instruct self.values_in_time
@@ -174,8 +178,8 @@ class DataEstimator(Estimator):
     def internal_values_in_time(self, t, *args, **kwargs):
         """Internal method called by `self.values_in_time`."""
 
-        if hasattr(self.data, "__call__"):
-            return self.value_checker(self.data(t, *args, **kwargs))
+        if hasattr(self.data, "values_in_time"):
+            return self.value_checker(self.data.values_in_time(t, *args, **kwargs))
 
         if (
             hasattr(self.data, "loc")

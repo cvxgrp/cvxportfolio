@@ -106,3 +106,45 @@ def test_proportional_trade(returns):
         start_portfolio += trade
 
     assert np.all(trade == 0.)
+    
+    
+def test_sell_all(returns):
+    
+    start_portfolio = pd.Series(np.random.randn(returns.shape[1]), returns.columns)
+    policy  = SellAll()
+    t = pd.Timestamp('2022-01-01')
+    trade = policy.values_in_time(t, start_portfolio, None, None, None)
+    allcash = np.zeros(len(start_portfolio))
+    allcash[-1] = 1
+    assert isinstance(trade, pd.Series)
+    assert np.allclose( allcash, start_portfolio + trade)
+    
+    
+def test_fixed_trade(returns):
+    fixed_trades = pd.DataFrame(np.random.randn(len(returns), returns.shape[1]), index=returns.index, columns=returns.columns)
+    
+    policy = FixedTrades(fixed_trades)
+    t = returns.index[123]
+    trade = policy.values_in_time(t, pd.Series(0., returns.columns), None, None, None)
+    assert np.all(trade == fixed_trades.loc[t])
+    
+    t = pd.Timestamp('1900-01-01')
+    trade = policy.values_in_time(t, trade, None, None, None)
+    assert np.all(trade == 0.) 
+    
+    
+def test_fixed_weights(returns):
+    fixed_weights = pd.DataFrame(np.random.randn(len(returns), returns.shape[1]), index=returns.index, columns=returns.columns)
+    
+    policy = FixedWeights(fixed_weights)
+    t = returns.index[123]
+    trade = policy.values_in_time(t, pd.Series(0., returns.columns), None, None, None)
+    assert np.all(trade == fixed_weights.loc[t])
+    
+    t = returns.index[111]
+    trade = policy.values_in_time(t, fixed_weights.iloc[110], None, None, None)
+    assert np.allclose(trade + fixed_weights.iloc[110], fixed_weights.loc[t])
+    
+    t = pd.Timestamp('1900-01-01')
+    trade = policy.values_in_time(t, trade, None, None, None)
+    assert np.all(trade == 0.) 

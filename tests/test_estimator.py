@@ -25,7 +25,7 @@ class PlaceholderCallable:
     def __init__(self, value):
         self.value = value
 
-    def __call__(self, t):
+    def values_in_time(self, t, *args, **kwargs):
         return self.value
 
 
