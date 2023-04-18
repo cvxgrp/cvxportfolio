@@ -41,7 +41,7 @@ def test_benchmark(returns):
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-50:].cov()
     w_plus.value = np.random.randn(N)
-    risk_model.values_in_time(t)
+    risk_model.values_in_time(t, None, None, None, None)
     assert np.isclose(cvxpy_expression.value, (w_plus.value - w_benchmark) @ should_be @ (w_plus.value - w_benchmark))
     
     
@@ -61,7 +61,7 @@ def test_full_sigma(returns):
     t = historical_covariances.index[123][0]
     w_plus.value = np.random.randn(N)
     
-    risk_model.values_in_time(t)
+    risk_model.values_in_time(t, None, None, None, None)
     
     assert cvxpy_expression.value == w_plus.value @ historical_covariances.loc[t] @ w_plus.value
     
@@ -81,7 +81,7 @@ def test_rolling_window_sigma(returns):
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-50:].cov()
     w_plus.value = np.random.randn(N)
-    risk_model.values_in_time(t)
+    risk_model.values_in_time(t, None, None, None, None)
     assert np.isclose(cvxpy_expression.value, w_plus.value @ should_be @ w_plus.value)
     
 
@@ -101,7 +101,7 @@ def test_exponential_window_sigma(returns):
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].ewm(halflife=HL).cov().iloc[-N:]
     w_plus.value = np.random.randn(N)
-    risk_model.values_in_time(t)
+    risk_model.values_in_time(t, None, None, None, None)
     
     assert np.isclose(cvxpy_expression.value, w_plus.value @ should_be @ w_plus.value)
     
@@ -122,7 +122,7 @@ def test_diagonal_covariance(returns):
     t = historical_variances.index[123]
     w_plus.value = np.random.randn(N)
     
-    risk_model.values_in_time(t)
+    risk_model.values_in_time(t, None, None, None, None)
     
     assert np.isclose(cvxpy_expression.value, w_plus.value @ np.diag(historical_variances.loc[t]) @ w_plus.value)
     
@@ -141,7 +141,7 @@ def test_rolling_window_diagonal_covariance(returns):
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].iloc[-50:].cov()
     w_plus.value = np.random.randn(N)
-    risk_model.values_in_time(t)
+    risk_model.values_in_time(t, None, None, None, None)
     assert np.isclose(cvxpy_expression.value, w_plus.value @ np.diag(np.diag(should_be)) @ w_plus.value)
     
 
@@ -162,7 +162,7 @@ def test_exponential_window_diagonal_covariance(returns):
     t = pd.Timestamp('2014-06-02')
     should_be = returns.iloc[:,:N].loc[returns.index < t].ewm(halflife=HL).cov().iloc[-N:]
     w_plus.value = np.random.randn(N)
-    risk_model.values_in_time(t)
+    risk_model.values_in_time(t, None, None, None, None)
     
     assert np.isclose(cvxpy_expression.value, w_plus.value @  np.diag(np.diag(should_be)) @ w_plus.value)
     
@@ -184,7 +184,7 @@ def test_low_rank_rolling_risk(returns):
     should_be = should_be.T @ should_be / PAST
     
     w_plus.value = np.random.randn(N)
-    risk_model.values_in_time(t, past_returns=returns.loc[returns.index<t])
+    risk_model.values_in_time(t, current_weights=None, current_portfolio_value=None, past_returns=returns.loc[returns.index<t], past_volumes=None)
     
     assert np.isclose(cvxpy_expression.value, w_plus.value @  should_be @ w_plus.value)
     
@@ -213,7 +213,7 @@ def test_RollingWindowFactorModelRisk(returns):
     should_be += np.diag(np.diag(orig) - np.diag(should_be))
     
     w_plus.value = np.random.randn(N)
-    risk_model.values_in_time(t, past_returns=returns.loc[returns.index<t])
+    risk_model.values_in_time(t, current_weights=None, current_portfolio_value=None, past_returns=returns.loc[returns.index<t], past_volumes=None)
 
     assert np.isclose(cvxpy_expression.value, w_plus.value @  should_be @ w_plus.value)
     
@@ -238,7 +238,7 @@ def test_worst_case_risk(returns):
     
     w_plus.value = np.random.randn(N)
     
-    worst_case.values_in_time(t, past_returns=returns.loc[returns.index<t])
+    worst_case.values_in_time(t, current_weights=None, current_portfolio_value=None, past_returns=returns.loc[returns.index<t], past_volumes=None)
     
     assert (cvxpy_expression.value == cvxpy_expression1.value)
     assert (cvxpy_expression.value > cvxpy_expression0.value)

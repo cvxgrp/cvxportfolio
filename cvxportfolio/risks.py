@@ -51,12 +51,12 @@ class BaseRiskModel(BaseCost):
         # super(BaseRiskModel, self).__init__()
         # self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         if self.benchmark_weights is None:
             bw = pd.Series(0., returns.columns)
             bw[-1] = 1.
             self.benchmark_weights = ParameterEstimator(bw)
-        super().pre_evaluation(returns, volumes, start_time, end_time)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
     def set_benchmark(self, benchmark_weights):
         self.benchmark_weights = ParameterEstimator(benchmark_weights)
@@ -113,7 +113,7 @@ class RollingWindowFullCovariance(FullCovariance):
         self.zero_cash_covariance = zero_cash_covariance
         self.forecast_error_kappa = forecast_error_kappa
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
         # drop cash return
         if self.zero_cash_covariance:
@@ -125,7 +125,7 @@ class RollingWindowFullCovariance(FullCovariance):
             positive_semi_definite=True
         )
         # initialize cvxpy Parameter(s)
-        super().pre_evaluation(returns, volumes, start_time, end_time)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
 
 class ExponentialWindowFullCovariance(FullCovariance):
@@ -144,7 +144,7 @@ class ExponentialWindowFullCovariance(FullCovariance):
         self.zero_cash_covariance = zero_cash_covariance
         self.forecast_error_kappa = forecast_error_kappa
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
 
         if self.zero_cash_covariance:
@@ -156,7 +156,7 @@ class ExponentialWindowFullCovariance(FullCovariance):
             positive_semi_definite=True
         )
         # initialize cvxpy Parameter(s)
-        super().pre_evaluation(returns, volumes, start_time, end_time)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
     
         
 class DiagonalCovariance(BaseRiskModel):
@@ -190,7 +190,7 @@ class RollingWindowDiagonalCovariance(DiagonalCovariance):
         self.lookback_period = lookback_period
         self.zero_cash_covariance = zero_cash_covariance
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
         # drop cash return
         if self.zero_cash_covariance:
@@ -201,7 +201,7 @@ class RollingWindowDiagonalCovariance(DiagonalCovariance):
             np.sqrt(returns.rolling(window=self.lookback_period).var().shift(1), 
         ))
         # initialize cvxpy Parameter(s)
-        super().pre_evaluation(returns, volumes, start_time, end_time)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
 
 class ExponentialWindowDiagonalCovariance(DiagonalCovariance):
@@ -219,7 +219,7 @@ class ExponentialWindowDiagonalCovariance(DiagonalCovariance):
         self.half_life = half_life
         self.zero_cash_covariance = zero_cash_covariance
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
 
         # drop cash return
@@ -231,7 +231,7 @@ class ExponentialWindowDiagonalCovariance(DiagonalCovariance):
             np.sqrt(returns.ewm(halflife=self.half_life).var().shift(1),
         ))
         # initialize cvxpy Parameter(s)
-        super().pre_evaluation(returns, volumes, start_time, end_time)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
         
 class FactorModelRisk(BaseRiskModel):
@@ -300,18 +300,18 @@ class LowRankRollingRisk(BaseRiskModel):
         self.lookback = lookback
         self.zero_cash_risk = zero_cash_risk
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
         self.recent_returns = cvx.Parameter(shape=(self.lookback, returns.shape[1]))
-        super().pre_evaluation(returns, volumes, start_time, end_time)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
-    def values_in_time(self, t, past_returns, *args, **kwargs):
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
         val = past_returns.iloc[-self.lookback:].copy(deep=True)
         if self.zero_cash_risk:
             val.iloc[:, -1] = 0.
         self.recent_returns.value = val.values
         # update attributes
-        super().values_in_time(t, past_returns=past_returns, *args, **kwargs)
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
     
     def compile_to_cvxpy(self, w_plus, z, value):
         return cvx.sum_squares(self.recent_returns @ (w_plus - self.benchmark_weights)) / self.lookback
@@ -339,15 +339,15 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
         self.zero_cash_risk = zero_cash_risk
         self.forecast_error_kappa = forecast_error_kappa
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
         
         self.idyosync = cvx.Parameter(returns.shape[1])
         self.exposures = cvx.Parameter((self.num_factors, returns.shape[1]))
-        super().pre_evaluation(returns, volumes, start_time, end_time)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
         
-    def values_in_time(self, t, past_returns, *args, **kwargs):
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
         val = past_returns.iloc[-self.lookback:].copy(deep=True)
         if self.zero_cash_risk:
             val.iloc[:, -1] = 0.
@@ -360,7 +360,7 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
         self.idyosync.value = (total_variances - np.sum(self.exposures.value**2, axis=0)).values
         assert np.all(self.idyosync.value >= 0.)
         
-        super().values_in_time(t, past_returns=past_returns, *args, **kwargs)
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
 
 class WorstCaseRisk(BaseRiskModel):
@@ -378,17 +378,17 @@ class WorstCaseRisk(BaseRiskModel):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time):
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Initialize objects."""
         for risk in self.riskmodels:
-            risk.pre_evaluation(returns, volumes, start_time, end_time)
-        super().pre_evaluation(returns, volumes, start_time, end_time)
+            risk.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
-    def values_in_time(self, t, past_returns, *args, **kwargs):
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
         """Update parameters."""
         for risk in self.riskmodels:
-            risk.values_in_time(t, past_returns=past_returns, *args, **kwargs)
-        super().values_in_time(t, past_returns=past_returns, *args, **kwargs)
+            risk.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
         
     def compile_to_cvxpy(self, w_plus, z, value):
         risks = [risk.compile_to_cvxpy(w_plus, z, value) for risk in self.riskmodels]

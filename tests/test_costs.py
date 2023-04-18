@@ -196,7 +196,7 @@ def test_cost_algebra(returns):
     expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
     expr1 = cost1.compile_to_cvxpy(wplus, None, 1e6)
     expr2 = cost2.compile_to_cvxpy(wplus, None, 1e6)
-    cost3.values_in_time(t)
+    cost3.values_in_time(t, None, None, None, None)
     assert expr3.value == expr1.value + expr2.value
 
     cost4 = cost1 * 2

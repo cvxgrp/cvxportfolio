@@ -38,7 +38,7 @@ def build_cons(model, wplus, t=None):
         None, None, pd.Timestamp("2022-01-01") if t is None else t, None
     )
     cons = model.compile_to_cvxpy(wplus, None, None)
-    model.values_in_time(pd.Timestamp("2020-01-01") if t is None else t)
+    model.values_in_time(pd.Timestamp("2020-01-01") if t is None else t, None, None, None, None)
     return cons
 
 
@@ -108,7 +108,7 @@ def test_hold_constrs(returns):
     tmp[-1] = -3
     wplus.value = tmp
     assert cons.value()
-    model.values_in_time(returns.index[2])
+    model.values_in_time(returns.index[2], None, None, None, None)
     assert not cons.value()
 
     # Max weights
@@ -143,7 +143,7 @@ def test_hold_constrs(returns):
     tmp[-1] = -3
     wplus.value = tmp
     assert cons.value()
-    model.values_in_time(returns.index[2])
+    model.values_in_time(returns.index[2], None, None, None, None)
     assert not cons.value()
 
     # Min weights
@@ -175,7 +175,7 @@ def test_hold_constrs(returns):
     tmp[-1] = -3
     wplus.value = tmp
     assert cons.value()
-    model.values_in_time(returns.index[2])
+    model.values_in_time(returns.index[2], None, None, None, None)
     assert not cons.value()
 
     # Factor Max Limit
@@ -243,7 +243,7 @@ def test_trade_constr(returns, volumes):
     model = ParticipationRateLimit(volumes, max_fraction_of_volumes=0.1)
     model.pre_evaluation(None, None, returns.index[0], None)
     cons = model.compile_to_cvxpy(None, z, value)
-    model.values_in_time(t)
+    model.values_in_time(t, None, None, None, None)
     # cons = model.weight_expr(t, None, z, value)[0]
     tmp = np.zeros(n)
     tmp[:-1] = volumes.loc[t].values / value * 0.05

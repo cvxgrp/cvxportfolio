@@ -41,7 +41,7 @@ def test_rank_and_long_short():
         num_short=num_short,
         target_leverage=target_leverage,
     )
-    z = rls.values_in_time(None, w, "extra_arg", hello="ciao")
+    z = rls.values_in_time(None, w, None, None, None)
     print(z)
     wplus = w + z
     assert wplus["CASH"] == 1
@@ -63,21 +63,21 @@ def test_rank_and_long_short():
         num_short=num_short,
         target_leverage=target_leverage,
     )
-    z1 = rls.values_in_time(index[0], w, "extra_arg", hello="ciao")
+    z1 = rls.values_in_time(index[0], w,  None, None, None)
     print(z1)
     wplus = w + z1
     assert wplus["CASH"] == 1
     assert wplus["TSLA"] == 0
     assert wplus["AAPL"] == -wplus["GOOGL"]
     assert np.abs(wplus[:-1]).sum() == 3
-    z2 = rls.values_in_time(index[1], w, "extra_arg", 321, hello="ciao")
+    z2 = rls.values_in_time(index[1], w, None, None, None)
     print(z2)
     wplus = w + z2
     assert wplus["CASH"] == 1
     assert wplus["TSLA"] == 0
     assert wplus["AAPL"] == -wplus["GOOGL"]
     assert np.abs(wplus[:-1]).sum() == 3
-    z3 = rls.values_in_time(index[2], w, "extra_arg", hola=42, hello="ciao")
+    z3 = rls.values_in_time(index[2], w, None, None, None)
     wplus = w + z3
     assert wplus["CASH"] == 1
     assert wplus["AAPL"] == 0
