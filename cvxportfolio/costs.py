@@ -214,12 +214,12 @@ class TcostModel(BaseCost):
     https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
     We don't include the short-term alpha term `c` here because it
     can be expressed with a separate `ReturnsForecast` object. If
-    any term that appears in 
+    any term that appears in
 
     Args:
       half_spread (float or pd.Series or pd.DataFrame): Half the bid ask spread, either
         fixed per (non-cash) assets, or varying in time.
-      nonlin_coeff (float or pd.Series or pd.DataFrame): Coefficients 
+      nonlin_coeff (float or pd.Series or pd.DataFrame): Coefficients
             for the nonlinear cost term. This is the coefficient `b` in the paper.
             It can be constant, constant per-stock, or varying in time and stocks. Default 0.
       sigma (floar or pd.Series or pd.DataFrame): Daily volatilities. Default 0.
@@ -228,31 +228,40 @@ class TcostModel(BaseCost):
       power (float): The nonlinear tcost exponent. Default 1.5.
     """
 
-    def __init__(self, half_spread=0.0, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5):
-        self.compile_first_term = not np.isscalar(half_spread) or half_spread > 0.
-        self.compile_second_term = (not np.isscalar(nonlin_coeff) or nonlin_coeff > 0.) and (not np.isscalar(sigma) or sigma > 0.) 
+    def __init__(
+        self, half_spread=0.0, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5
+    ):
+        self.compile_first_term = not np.isscalar(half_spread) or half_spread > 0.0
+        self.compile_second_term = (
+            not np.isscalar(nonlin_coeff) or nonlin_coeff > 0.0
+        ) and (not np.isscalar(sigma) or sigma > 0.0)
         self.half_spread = ParameterEstimator(half_spread, non_negative=True)
         self.sigma = ParameterEstimator(sigma, non_negative=True)
         self.volume = ParameterEstimator(volume, non_negative=True)
         self.nonlin_coeff = ParameterEstimator(nonlin_coeff, non_negative=True)
         self.power: float = power
-        
+
     def compile_to_cvxpy(self, w_plus, z, value):
-        first_term = cvx.multiply(self.half_spread, cvx.abs(z[:-1])) if self.compile_first_term else 0.
+        first_term = (
+            cvx.multiply(self.half_spread, cvx.abs(z[:-1]))
+            if self.compile_first_term
+            else 0.0
+        )
         assert cvx.sum(first_term).is_convex()
         if self.compile_second_term:
             second_term = cvx.multiply(self.nonlin_coeff, self.sigma)
-            second_term = cvx.multiply(second_term, (value / self.volume) ** (self.power - 1))        
+            second_term = cvx.multiply(
+                second_term, (value / self.volume) ** (self.power - 1)
+            )
             second_term = cvx.multiply(second_term, cvx.abs(z[:-1]) ** self.power)
         else:
-            second_term = 0.
+            second_term = 0.0
         assert cvx.sum(second_term).is_convex()
         self.expression = first_term + second_term
         result = cvx.sum(self.expression)
         assert result.is_convex()
         return result
-        
-    
+
     # def _estimate(self, t, w_plus, z, value):
     #     """Estimate tcosts given trades.
     #
@@ -302,19 +311,22 @@ class TcostModel(BaseCost):
     #
     #     return cvx.sum(self.expression), constr
 
-    
     ### THESE METHODS ARE DEPRECATED AND WILL BE REMOVED AS WE FINISH
     # TRANSLATING TO NEW INTERFACE
     def value_expr(self, t, h_plus, u):
         """Temporary placeholder, new simulators implement their own tcost."""
-        
+
         self.pre_evaluation(None, None, t, None)
         self.values_in_time(t, None, None, None, None)
-        
-        
+
         u_nc = u.iloc[:-1]
         self.tmp_tcosts = np.abs(u_nc) * self.half_spread.value
-        self.tmp_tcosts += self.nonlin_coeff.value * self.sigma.value * np.abs(u_nc) ** self.power / (self.volume.value ** (self.power - 1))
+        self.tmp_tcosts += (
+            self.nonlin_coeff.value
+            * self.sigma.value
+            * np.abs(u_nc) ** self.power
+            / (self.volume.value ** (self.power - 1))
+        )
 
         return self.tmp_tcosts.sum()
 

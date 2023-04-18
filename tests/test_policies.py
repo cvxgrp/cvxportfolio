@@ -22,7 +22,7 @@ from cvxportfolio.returns import *
 from cvxportfolio.risks import *
 from cvxportfolio.costs import *
 from cvxportfolio.constraints import *
-
+from cvxportfolio.errors import *
 
 def test_hold():
     hold = Hold()
@@ -253,8 +253,56 @@ def test_single_period_optimization(returns, volumes):
     
     
     
+def test_single_period_optimization_infeasible(returns, volumes):
+    
+    N = returns.shape[1]
+    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    policy = SinglePeriodOptimization(
+        return_forecast
+        - 2 * risk_forecast
+        - TcostModel(half_spread=5*1E-4)#, power=2)
+        ,
+         constraints = [LongOnly(), LeverageLimit(1), MaxWeights(-1)],
+         #verbose=True,
+        solver='ECOS')
+    
+    policy.pre_evaluation(returns, volumes, start_time=returns.index[50], end_time=returns.index[-1])
+    
+    curw = np.zeros(N)
+    curw[-1] = 1.
+    
+    with pytest.raises(PortfolioOptimizationError):
+        result = policy.values_in_time(t = returns.index[51], 
+            current_weights = pd.Series(curw, returns.columns),
+            current_portfolio_value = 1000, past_returns=None, past_volumes=None)
     
     
+    
+    
+def test_single_period_optimization_unbounded(returns, volumes):
+    
+    N = returns.shape[1]
+    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    policy = SinglePeriodOptimization(
+        return_forecast
+        #- 2 * risk_forecast
+        #- TcostModel(half_spread=5*1E-4)#, power=2)
+        ,
+         constraints = [LongOnly()],
+         #verbose=True,
+        solver='ECOS')
+    
+    policy.pre_evaluation(returns, volumes, start_time=returns.index[50], end_time=returns.index[-1])
+    
+    curw = np.zeros(N)
+    curw[-1] = 1.
+    
+    with pytest.raises(PortfolioOptimizationError) as e:
+        result = policy.values_in_time(t = returns.index[51], 
+            current_weights = pd.Series(curw, returns.columns),
+            current_portfolio_value = 1000, past_returns=None, past_volumes=None)
     
 
     

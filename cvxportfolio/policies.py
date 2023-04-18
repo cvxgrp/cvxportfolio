@@ -24,7 +24,7 @@ from cvxportfolio.returns import BaseReturnsModel
 from cvxportfolio.constraints import BaseConstraint
 from cvxportfolio.utils import values_in_time, null_checker
 from .estimator import Estimator, DataEstimator
-from .errors import MissingValuesError
+from .errors import MissingValuesError, PortfolioOptimizationError
 
 __all__ = [
     "Hold",
@@ -38,7 +38,7 @@ __all__ = [
     "MultiPeriodOpt",
     "ProportionalTradeToTargets",
     "RankAndLongShort",
-    "FixedWeights"
+    "FixedWeights",
 ]
 
 
@@ -53,8 +53,22 @@ class BaseTradingPolicy(Estimator):
         """Trades list given current portfolio and time t."""
         value = sum(portfolio)
         w = portfolio / value
-        self.pre_evaluation(returns=pd.DataFrame(0., index=[t], columns=portfolio.index), volumes=None, start_time=t, end_time=None)
-        return self.values_in_time(t, current_weights=w, current_portfolio_value=value, past_returns=None, past_volumes=None) * value
+        self.pre_evaluation(
+            returns=pd.DataFrame(0.0, index=[t], columns=portfolio.index),
+            volumes=None,
+            start_time=t,
+            end_time=None,
+        )
+        return (
+            self.values_in_time(
+                t,
+                current_weights=w,
+                current_portfolio_value=value,
+                past_returns=None,
+                past_volumes=None,
+            )
+            * value
+        )
 
     def _nulltrade(self, portfolio):
         return pd.Series(index=portfolio.index, data=0.0)
@@ -68,7 +82,7 @@ class BaseTradingPolicy(Estimator):
 class Hold(BaseTradingPolicy):
     """Hold initial portfolio, don't trade."""
 
-    def values_in_time(self, t, current_weights, *args, **kwargs):        
+    def values_in_time(self, t, current_weights, *args, **kwargs):
         """Update sub-estimators and produce current estimate."""
         return pd.Series(0.0, index=current_weights.index)
 
@@ -128,57 +142,60 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
     how many are missing before the next target's day, and trades in equal proportions
     to reach those targets. If there are no targets remaining it defaults to
     not trading.
-    
+
     Args:
         targets (pd.DataFrame): time-indexed DataFrame of target weight vectors at
-            given points in time (e.g., start of each month). 
-        
-    """    
+            given points in time (e.g., start of each month).
+
+    """
+
     def __init__(self, targets):
         self.targets = targets
-        
+
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Get list of trading days."""
         self.trading_days = returns.index
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)   
-         
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+
     def values_in_time(self, t, current_weights, *args, **kwargs):
         """Get current trade weights."""
-        super().values_in_time(t, current_weights, *args, **kwargs) 
+        super().values_in_time(t, current_weights, *args, **kwargs)
         next_targets = self.targets.loc[self.targets.index > t]
         if not len(next_targets):
             return pd.Series(0.0, index=current_weights.index)
         next_target = next_targets.iloc[0]
         next_target_day = next_targets.index[0]
-        trading_days_to_target = len(self.trading_days[(self.trading_days>=t) & 
-            (self.trading_days<next_target_day)])
+        trading_days_to_target = len(
+            self.trading_days[
+                (self.trading_days >= t) & (self.trading_days < next_target_day)
+            ]
+        )
         return (next_target - current_weights) / trading_days_to_target
-        
 
 
 class SellAll(BaseTradingPolicy):
     """Sell all assets to cash.
-    
+
     This is useful to check the tcost model in the simulator,
     or as an element in a (currently not implemented) composite policy.
     """
-    
+
     def values_in_time(self, t, current_weights, *args, **kwargs):
         """Get current trade weights."""
         super().values_in_time(t, current_weights, *args, **kwargs)
         target = np.zeros(len(current_weights))
-        target[-1] = 1.
+        target[-1] = 1.0
         return target - current_weights
 
 
 class FixedTrades(BaseTradingPolicy):
     """Each day trade the provided trade weights vector.
-    
-    If there are no weights defined for the given day, default to no 
+
+    If there are no weights defined for the given day, default to no
     trades.
-    
+
     Args:
-        trades_weights (pd.Series or pd.DataFrame): Series of weights 
+        trades_weights (pd.Series or pd.DataFrame): Series of weights
             (if constant in time) or DataFrame of trade weights
             indexed by time. It trades each day the corresponding vector.
     """
@@ -192,17 +209,17 @@ class FixedTrades(BaseTradingPolicy):
             super().values_in_time(t, current_weights, *args, **kwargs)
             return pd.Series(self.trades_weights.current_value, current_weights.index)
         except MissingValuesError:
-            return pd.Series(0., current_weights.index)
-        
-        
+            return pd.Series(0.0, current_weights.index)
+
+
 class FixedWeights(BaseTradingPolicy):
     """Each day trade to the provided trade weights vector.
-    
-    If there are no weights defined for the given day, default to no 
+
+    If there are no weights defined for the given day, default to no
     trades.
-    
+
     Args:
-        target_weights (pd.Series or pd.DataFrame): Series of weights 
+        target_weights (pd.Series or pd.DataFrame): Series of weights
             (if constant in time) or DataFrame of trade weights
             indexed by time. It trades each day to the corresponding vector.
     """
@@ -214,14 +231,17 @@ class FixedWeights(BaseTradingPolicy):
     def values_in_time(self, t, current_weights, *args, **kwargs):
         try:
             super().values_in_time(t, current_weights, *args, **kwargs)
-            return pd.Series(self.target_weights.current_value, current_weights.index) - current_weights
+            return (
+                pd.Series(self.target_weights.current_value, current_weights.index)
+                - current_weights
+            )
         except MissingValuesError:
-            return pd.Series(0., current_weights.index)
-            
-        
+            return pd.Series(0.0, current_weights.index)
+
+
 class PeriodicRebalance(FixedWeights):
     """Track a target weight vector rebalancing at given times.
-    
+
     This calls `FixedWeights`. If you want to change the target in time
     use that policy directly.
 
@@ -233,13 +253,13 @@ class PeriodicRebalance(FixedWeights):
     """
 
     def __init__(self, target, rebalancing_times):
-        target_weights = pd.DataFrame({el:target for el in rebalancing_times}).T
+        target_weights = pd.DataFrame({el: target for el in rebalancing_times}).T
         super().__init__(target_weights)
 
 
 class ProportionalRebalance(ProportionalTradeToTargets):
     """Track a target weight exactly at given times, trading proportionally to it each period.
-    
+
     This calls `ProportionalTradeToTargets`. If you want to change the target in time
     use that policy directly.
 
@@ -248,22 +268,23 @@ class ProportionalRebalance(ProportionalTradeToTargets):
         target_matching_times (pd.DateTimeIndex): after the open trading on these days
             portfolio is equal to target.
     """
+
     def __init__(self, target, target_matching_times):
-        targets = pd.DataFrame({el:target for el in target_matching_times}).T
+        targets = pd.DataFrame({el: target for el in target_matching_times}).T
         super().__init__(targets)
 
 
 class AdaptiveRebalance(BaseTradingPolicy):
     """Rebalance portfolio when deviates too far from target.
-    
+
     We use the 2-norm as trigger for rebalance. You may want to
-    calibrate the `max_tracking_error` for your application 
+    calibrate the `max_tracking_error` for your application
     by backtesting this policy, e.g., to get your desired turnover.
-    
+
     Args:
         target (pd.Series or pd.DataFrame): target weights to rebalance to.
-            It is assumed a constant if it is a Series. If it varies in 
-            time (you must specify it for every trading day) pass a 
+            It is assumed a constant if it is a Series. If it varies in
+            time (you must specify it for every trading day) pass a
             DataFrame indexed by time.
         tracking_error (float or pd.Series): we trade to match the target
             weights whenever the 2-norm of our weights minus the
@@ -274,24 +295,27 @@ class AdaptiveRebalance(BaseTradingPolicy):
     def __init__(self, target, tracking_error):
         self.target = DataEstimator(target)
         self.tracking_error = DataEstimator(tracking_error)
-        
+
     def values_in_time(self, t, current_weights, *args, **kwargs):
         super().values_in_time(t, current_weights, *args, **kwargs)
-        if np.linalg.norm(current_weights - self.target.current_value) > self.tracking_error.current_value:
+        if (
+            np.linalg.norm(current_weights - self.target.current_value)
+            > self.tracking_error.current_value
+        ):
             return self.target.current_value - current_weights
         else:
-            return pd.Series(0., current_weights.index)
+            return pd.Series(0.0, current_weights.index)
 
 
 class SinglePeriodOptimization(BaseTradingPolicy):
     """Single Period Optimization policy.
-    
+
     Implements the model developed in Chapter 4, in particular
     at page 43, of the paper. You specify the objective term
     using classes such as ReturnsForecast and TcostModel, each
     multiplied by its multiplier. You also specify a list
     of constraints.
-    
+
     Args:
         objective (algebra of BaseCost): this will be maximized.
         constraints (list of BaseConstraints): these will be
@@ -300,68 +324,107 @@ class SinglePeriodOptimization(BaseTradingPolicy):
             so you can choose your own solver and pass
             parameters to it.
     """
+
     def __init__(self, objective, constraints=[], **kwargs):
         self.objective = objective
         self.constraints = constraints
         self.cvxpy_kwargs = kwargs
-        
+
     def compile_to_cvxpy(self, w_plus, z, value):
         """Compile all cvxpy expressions and the problem."""
         self.cvxpy_objective = self.objective.compile_to_cvxpy(w_plus, z, value)
         assert self.cvxpy_objective.is_concave()
-        self.cvxpy_constraints = [constr.compile_to_cvxpy(w_plus, z, value) 
-            for constr in self.constraints]
+        self.cvxpy_constraints = [
+            constr.compile_to_cvxpy(w_plus, z, value) for constr in self.constraints
+        ]
         self.cvxpy_constraints += [cvx.sum(self.z) == 0]
-        self.problem = cvx.Problem(cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints)
+        self.problem = cvx.Problem(
+            cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints
+        )
         assert self.problem.is_dcp()
-            
+
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Pass a full view of the data to initialize objects that need it."""
         self.objective.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         for constr in self.constraints:
             constr.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-            
+
         ## initialize the problem
         self.portfolio_value = cvx.Parameter(nonneg=True)
         self.w_current = cvx.Parameter(returns.shape[1])
         self.z = cvx.Variable(returns.shape[1])
         self.w_plus = self.w_current + self.z
-        
+
         self.compile_to_cvxpy(self.w_plus, self.z, self.portfolio_value)
-            
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+
+    def values_in_time(
+        self,
+        t,
+        current_weights,
+        current_portfolio_value,
+        past_returns,
+        past_volumes,
+        **kwargs,
+    ):
         """Update all cvxpy parameters and solve."""
-        self.objective.values_in_time(t, current_weights, current_portfolio_value, 
-            past_returns, past_volumes, **kwargs)
+        self.objective.values_in_time(
+            t,
+            current_weights,
+            current_portfolio_value,
+            past_returns,
+            past_volumes,
+            **kwargs,
+        )
         for constr in self.constraints:
-            constr.values_in_time(t, current_weights, current_portfolio_value, 
-            past_returns, past_volumes, **kwargs)
-        
+            constr.values_in_time(
+                t,
+                current_weights,
+                current_portfolio_value,
+                past_returns,
+                past_volumes,
+                **kwargs,
+            )
+
         self.portfolio_value.value = current_portfolio_value
         self.w_current.value = current_weights.values
-        self.problem.solve(**self.cvxpy_kwargs)
+        try:
+            self.problem.solve(**self.cvxpy_kwargs)
+        except cvx.SolverError:
+            raise PortfolioOptimizationError(
+                f"Numerical solver for policy {self.__class__.__name__} at time {t} failed;"
+                "try changing it, relaxing some constraints, or dropping some costs."
+            )
+        if self.problem.status == "unbounded":
+            raise PortfolioOptimizationError(
+                f"Policy {self.__class__.__name__} at time {t} resulted in an unbounded problem."
+            )
+        if self.problem.status == "infeasible":
+            raise PortfolioOptimizationError(
+                f"Policy {self.__class__.__name__} at time {t} resulted in an infeasible problem."
+            )
+
         return pd.Series(self.z.value, current_weights.index)
-            
-        
+
+
 class SinglePeriodOptOLDTONEW(SinglePeriodOptimization):
-    """Placeholder class while we translate tests to new interface.
-    """
+    """Placeholder class while we translate tests to new interface."""
+
     def __init__(
         self, return_forecast, costs, constraints, solver=None, solver_opts={}
     ):
         if np.isscalar(return_forecast):
             raise Exception
-        if hasattr(return_forecast, 'index'):
+        if hasattr(return_forecast, "index"):
             return_forecast = ReturnsForecast(return_forecast)
-        objective =  -sum(costs, start=-return_forecast)
+        objective = -sum(costs, start=-return_forecast)
         kwargs = solver_opts
         if not (solver is None):
-            kwargs['solver'] = solver
+            kwargs["solver"] = solver
         super().__init__(objective, constraints, **kwargs)
-        
-    
-    
+
+
 ### LEGACY CLASSES USED BY OLD TESTS, REPLACEMENT ONES ARE ABOVE
+
 
 class SinglePeriodOpt(BaseTradingPolicy):
     """Single-period optimization policy.

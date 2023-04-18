@@ -60,9 +60,19 @@ class Estimator:
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "pre_evaluation"):
-                subestimator.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+                subestimator.pre_evaluation(
+                    returns, volumes, start_time, end_time, **kwargs
+                )
 
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+    def values_in_time(
+        self,
+        t,
+        current_weights,
+        current_portfolio_value,
+        past_returns,
+        past_volumes,
+        **kwargs,
+    ):
         """Evaluates estimator at a point in time recursively on its sub-estimators.
 
         This function is called by Simulator classes on Policy classes
@@ -75,7 +85,7 @@ class Estimator:
         Args:
             t (pd.TimeStamp): point in time of the simulation.
             current_weights (pd.Series): current portfolio weights.
-            current_portfolio_value (float): current total value of the portfolio. 
+            current_portfolio_value (float): current total value of the portfolio.
             past_returns (pd.DataFrame): view of the market returns up to today (i.e., the
                 last row are equal to today's open prices divided by yesterday's, minus 1).
             past_volumes (pd.DataFrame): view of the market volumes up to yesterday's.
@@ -83,7 +93,14 @@ class Estimator:
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "values_in_time"):
-                subestimator.values_in_time(t,  current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+                subestimator.values_in_time(
+                    t,
+                    current_weights,
+                    current_portfolio_value,
+                    past_returns,
+                    past_volumes,
+                    **kwargs,
+                )
 
 
 class CvxpyExpressionEstimator(Estimator):
@@ -116,7 +133,7 @@ class CvxpyExpressionEstimator(Estimator):
 
 class DataEstimator(Estimator):
     """Estimator of point-in-time values from internal `self.data`.
-    
+
     It also implements logic to check that no `np.nan` are returned
     by its `values_in_time` method, which is the way `cvxportfolio`
     objects use this class to get data.
@@ -125,9 +142,9 @@ class DataEstimator(Estimator):
         data (object, pandas.Series, pandas.DataFrame): Data expressed
             preferably as pandas Series or DataFrame where the first
             index is a pandas.DateTimeIndex. Otherwise you can
-            pass a callable object which implements the values_in_time method 
+            pass a callable object which implements the values_in_time method
             (with the standard signature) and returns the corresponding value in time,
-             or a constant float, numpy.array, or even pandas Series or DataFrame not 
+             or a constant float, numpy.array, or even pandas Series or DataFrame not
             indexed by time (e.g., a covariance matrix where both index and columns
             are the stock symbols).
         use_last_available_time (bool): if the pandas index exists
@@ -240,8 +257,8 @@ class DataEstimator(Estimator):
 #     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
 #         """You should call super().__init__ it here."""
 #         raise NotImplementedError
-    
-    
+
+
 class ParameterEstimator(cvxpy.Parameter, DataEstimator):
     """Data estimator of point-in-time values that contains a Cvxpy Parameter.
 

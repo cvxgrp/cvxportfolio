@@ -21,7 +21,7 @@ import sqlite3
 
 from .estimator import DataEstimator
 
-__all__ = ['TimeSeries']
+__all__ = ["TimeSeries"]
 
 
 class BaseData:
@@ -206,7 +206,7 @@ class SqliteDataStore(BaseDataStore):
         """Store Pandas object to sqlite.
 
         We separately store dtypes for data consistency and safety.
-        
+
         Limitations: if your pandas object's index has a name it will be lost,
             the index is renamed 'index'.
         """

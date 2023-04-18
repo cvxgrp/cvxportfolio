@@ -23,3 +23,7 @@ class MissingValuesError(DataError):
     """Cvxportfolio tried to access numpy.nan values."""
 
     pass
+
+
+class PortfolioOptimizationError(Exception):
+    """Errors with portfolio optimization problems."""
