@@ -32,41 +32,24 @@ from .returns import MultipleReturnsForecasts
 
 from .result import SimulationResult
 from .costs import BaseCost
-from .data import FredRate, Yfinance
+from .data import FredRate, Yfinance, TimeSeries
 
-# TODO update benchmark weights (?)
-# Also could try jitting with numba.
-
-
-class BaseMarketSimulator:
-    """Base class for market simulators.
-
-    Each derived class implements specific usecases, such as stock portfolio simualtors,
-    CFDs portfolios, or futures portfolios. One might also subclass this (or one of the derived classes)
-    to specialize the simulator to a specific regional market, or a specific asset class.
-    """
+from .estimator import Estimator, DataEstimator
 
 
-class NewMarketSimulator(BaseMarketSimulator):
+class NewMarketSimulator(Estimator):
     """This class implements a simulator of market performance for trading strategies.
 
     We strive to make the parameters here as accurate as possible. The following is
-    accurate as of 2023Q2 using numbers obtained on the public website of a
+    accurate as of 2023 using numbers obtained on the public website of a
     [large US-based broker](https://www.interactivebrokers.com/).
 
-    Attributes:
-        cash_keys (dict): registers a cash_key name with a data reader and a symbol name.
-            By default we provide the USDOLLAR cash account whose rate is the effective
-            fund rate by the US-fed (fred). If you use MarketSimulator to simulate
-            performance of portfolios where the cash account is not in USD, say in EUR
-            or something else, you'd have to build a datareader like we did for FRED
-            and provide the right symbol to look up.
 
     Args:
 
         universe (list): list of [Yahoo Finance](https://finance.yahoo.com/) tickers on which to
             simulate performance of the trading strategy. If left unspecified you should at least
-            pass `returns`. If you define a different market data access interface
+            pass `returns` and `volumes`. If you define a different market data access interface
             (look in cvxportfolio.data for how to do it) you should pass instead
             the symbol names for that data provider. Default is empty list.
 
@@ -78,10 +61,11 @@ class NewMarketSimulator(BaseMarketSimulator):
 
         prices (pandas.DataFrame): historical open prices. Default is None, it is ignored
             if universe is specified. These are used to round the trades to integer number of stocks
-            if round_trades is True, and compute per-share transaction costs.
+            if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
+            is greater than zero).
 
-        spreads (pandas.DataFrame): historical bid-ask spreads expressed as (ask-bid)/bid. Default is zero,
-            practical spreads are negligible on US liquid stocks.
+        spreads (pandas.DataFrame): historical bid-ask spreads expressed as (ask-bid)/bid. Default is None,
+            equivalent to 0.0. Practical spreads are negligible on US liquid stocks.
 
         round_trades (bool): round the trade weights provided by a policy so they correspond to an integer
             number of stocks traded. Default is True using Yahoo Finance open prices.
@@ -103,37 +87,240 @@ class NewMarketSimulator(BaseMarketSimulator):
              See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
              default is 1000.
 
-        spread_on_borrowing_stocks_percent (float): when shorting a stock, you will pay a rate on the value
+        spread_on_borrowing_stocks_percent (float, pd.Series, pd.DataFrame): when shorting a stock, 
+            you will pay a rate on the value
             of the position equal to the cash return plus this spread, expressed in percent annualized. These
             values are hard to find historically, if you are unsure consider long-only portfolios or look
             at CFDs/futures instead. We set the default value to 0.5 (percent annualized) which is probably
-            OK for US large caps. See https://www.interactivebrokers.com/en/pricing/short-sale-cost.php
+            See https://www.interactivebrokers.com/en/pricing/short-sale-cost.php
 
-        spread_on_long_positions_percent (float or None): if you trade CFDs you will pay interest on your long positions
+        spread_on_long_positions_percent (float, None, pd.Series, pd.DataFrame): if you trade CFDs you will pay interest 
+            on your long positions
             as well as your short positions, equal to the cash return plus this value (percent annualized). If
              instead this is None, the default value, you pay nothing on your long positions (as you do if you trade
             stocks). We don't consider dividend payments because those are already incorporated in the
             open-to-open returns as we compute them from the Yahoo Finance data. See cvxportfolio.data for details.
+    
+        dividends (float, pd.DataFrame): if not included in the returns (as they are by the default data interface,
+            based on `yfinance`), you can pass a DataFrame of dividend payments which will be credited to the cash
+            account (or debited, if short) at each round. Default is 0., corresponding to no dividends.
 
-        spread_on_lending_cash_percent (float): the cash account will generate annualized
+        spread_on_lending_cash_percent (float, pd.Series): the cash account will generate annualized
             return equal to the cash return minus this number, expressed in percent annualized, or zero if
             the spread is larger than the cash return. For example with USDOLLAR cash,
             if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5
             (the default value), then the uninvested cash in the portfolio generates annualized
             return of 4.3%. See https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php
 
-        spread_on_borrowing_cash_percent (float): if we instead borrow cash we pay the
+        spread_on_borrowing_cash_percent (float, pd.Series): if we instead borrow cash we pay the
             cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
             See https://www.interactivebrokers.com/en/trading/margin-rates.php
 
-        cash_key (str): name of the cash account, there must be a matching data reader and symbol in
-            MarketSimulator.cash_keys. Default is 'USDOLLAR'.
+        cash_key (str or None): name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
+            as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
+            along with the stock returns as its last column. 
     """
 
-    cash_keys = {"USDOLLAR": (FredRate, "DFF")}
+    periods_per_year = 250
+    
+    def __init__(self, universe=[], returns=None, volumes=None, 
+                 prices=None, spreads=0., round_trades=True,
+                 per_share_fixed_cost=0.005, transaction_cost_coefficient_b=1.,
+                 transaction_cost_exponent=1.5, rolling_window_sigma_estimator=1000,
+                 spread_on_borrowing_stocks_percent=.5, spread_on_long_positions_percent=None,
+                 dividends=0.,
+                 spread_on_lending_cash_percent=.5, spread_on_borrowing_cash_percent=.5,
+                 cash_key="USDOLLAR"):
+        """Initialize the Simulator and download data if necessary."""
+        if not len(universe):
+            if returns is None:
+                raise SyntaxError("If you don't specify a universe you should pass `returns` and `volumes`.")
+            self.returns = DataEstimator(returns)
+            self.volumes = DataEstimator(volumes)
+            if not self.returns.shape[1] == self.volumes.shape[1] + 1:
+                raise SyntaxError("In `returns` you must include the cash returns as the last column (and not in `volumes`).")
+            self.cash_key = returns.columns[-1]
+            self.prices = DataEstimator(prices) if not prices is None else None
+            if prices is None:
+                 if per_share_fixed_cost > 0:
+                     raise SyntaxError("If you don't specify prices you can't request `per_share_fixed_cost` transaction costs.")
+                 if round_trades:
+                     raise SyntaxError("If you don't specify prices you can't request `round_trades`.")
+        else:
+            self.cash_key = cash_key
+            self.prepare_data()
+        
+        self.spreads = DataEstimator(spreads)
+        self.dividends = DataEstimator(dividends)
+        self.round_trades = round_trades
+        self.per_share_fixed_cost = per_share_fixed_cost
+        self.transaction_cost_coefficient_b = transaction_cost_coefficient_b
+        self.transaction_cost_exponent = transaction_cost_exponent
+        self.rolling_window_sigma_estimator = rolling_window_sigma_estimator
+        self.spread_on_borrowing_stocks_percent = spread_on_borrowing_stocks_percent
+        self.spread_on_long_positions_percent = spread_on_long_positions_percent
+        self.spread_on_lending_cash_percent = spread_on_lending_cash_percent
+        self.spread_on_borrowing_cash_percent = spread_on_borrowing_cash_percent
+        
+        # compute my DataEstimator(s)
+        self.sigma_estimate = DataEstimator(self.returns.rolling(self.rolling_window_sigma_estimator).std().shift(1))
+    
+    
+    def prepare_data(self):
+        """Build data from data storage and download interfaces.
+        
+        This is a first cut, it's doing a for loop when we could instead parallelize
+        at the `yfinance` level and use the estimator logic of TimeSeries directly.
+        """
+        database_accesses = {}
+        for stock in self.universe:
+            print('Updating data...')
+            database_accesses[stock] = TimeSeries(stock)
+            database_accesses[stock].pre_evaluation()
+        if not self.cash_key == 'USDOLLAR':
+            raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
+        database_accesses[self.cash_key] = TimeSeries(self.cash_key, source='fred')
+        
+        # build returns
+        self.returns = pd.DataFrame({stock:database_accesses[stock].data['Returns'] for stock in self.universe})
+        self.returns = DataEstimator(self.returns)
+        
+        # build volumes
+        self.volumes = pd.DataFrame({stock:database_accesses[stock].data['ValueVolume'] for stock in self.universe})
+        self.volumes = DataEstimator(self.volumes)
+        
+        # build prices
+        self.prices = pd.DataFrame({stock:database_accesses[stock].data['Open'] for stock in self.universe})
+        self.prices = DataEstimator(self.prices)
+        
+
+    def round_trade_vector(self, u):
+        """Round dollar trade vector u."""
+        result = pd.Series(u, copy=True)
+        result[:-1] = np.round(u[:-1] / self.prices.current_value)
+        return result
+        
+         
+    def transaction_costs(self, u):
+        """Compute transaction costs at time t for dollar trade vector u.
+        
+        Returns a non-positive float.
+        
+        Args:
+            u (pd.Series): dollar trade vector for all stocks including cash (but the cash
+                term is not used here).
+        """
+        
+        result = 0.
+        if not self.prices is None:
+            # compute number of shares traded. 
+            # we assume round_trades is True and we add a small number to ensure
+            # we are on the safe side of rounding errors
+            result += self.per_share_fixed_cost + int(sum(np.abs(u[:-1] + 1E-6) / self.prices.current_value))
+            
+        if not self.spreads == None:
+            result += np.dot(self.spreads.current_value, np.abs(u[:-1]))
+            
+        result += self.transaction_cost_coefficient_b * self.sigma_estimate.current_value / (
+            self.volumes.current_value ** self.transaction_cost_exponent-1) * np.abs(u[:-1])**self.transaction_cost_exponent
+        
+        return -result
+
+        
+    def stocks_holding_costs(self, h_plus):
+        """Compute holding costs at current time for post trade holdings h_plus (only stocks).
+        
+        Args:
+            h_plus (pd.Series): post trade holdings vector for all stocks including cash (but the cash
+                term is not used here).
+        """
+        
+        result = 0.
+        cash_return = self.returns.current_value[self.cash_key]
+        
+        # shorting stocks.
+        borrowed_stock_positions = np.minimum(h_plus[:-1], 0.)
+        result += np.sum((cash_return + self.spread_on_borrowing_stocks_percent/self.periods_per_year) * borrowed_stock_positions)
+        
+        # going long on stocks.
+        if not self.spread_on_long_positions_percent is None:
+            long_positions = np.maximum(h_plus[:-1], 0.)
+            result -= np.sum((cash_return + self.spread_on_long_positions_percent/self.periods_per_year) * long_positions)
+            
+        # dividends
+        result += np.sum(h_plus[:-1] * self.dividends.current_value)
+            
+        return result
+        
+    
+    def cash_holding_cost(self, h_plus):
+        """Compute holding cost on cash (including cash return) for post trade holdings h_plus."""
+        
+        cash_return = self.returns.current_value[self.cash_key] 
+        
+        # we subtract from cash the value of borrowed stocks
+        real_cash = h_plus[-1] + sum(np.minimum(h_plus[:-1], 0.))
+        
+        if real_cash > 0:
+            return real_cash * max(cash_return - self.spread_on_lending_cash_percent, 0.)
+        else:
+            return real_cash * (cash_return + self.spread_on_borrowing_cash_percent)
+            
+    
+    def values_in_time(self, t, current_weights, current_portfolio_value, policy, **kwargs):
+        """Get next portfolio and statistics used by Backtest for reporting.
+        
+        The signature of this method differs from other estimators
+        because we pass the policy directly to it, and the past returns and past volumes
+        are computed by it.
+        """
+        
+        past_returns = self.returns.loc[self.returns.index < t]
+        past_volumes = self.volumes.loc[self.volumes.index < t]
+        
+        # update all internal estimators
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        
+        # evaluate the policy
+        z = policy.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        
+        # trades in dollars
+        u = z * current_portfolio_value
+        if self.round_trades:
+            u = self.round_trade_vector(u)
+        h_plus = current_weights * current_portfolio_value + u
+        
+        # we have updated the internal estimators in this method, and they are used by these methods
+        transaction_costs = self.transaction_costs(u)
+        holding_costs = self.stocks_holding_costs(h_plus)
+        cash_holding_costs = self.cash_holding_cost(h_plus)
+        
+        # credit costs to cash
+        h_plus[-1] = h_plus[-1] + (transaction_costs + holding_costs + cash_holding_costs)
+        
+        # multiply positions by market returns
+        h_next = pd.Series(h_plus, copy=True)
+        h_next[:-1] *= (1 + self.returns.current_value[:-1])
+        
+        # obtain tomorrow's weights and values
+        tomorrows_portfolio_value = sum(h_next)
+        tomorrows_weights = h_next / tomorrows_portfolio_value
+        
+        # return
+        return tomorrows_weights, tomorrows_portfolio_value, z, transaction_costs, holding_costs, cash_holding_costs
+        
+        
+        
+
+        
+        
+        
+## OLD MARKET SIMULATOR, DEPRECATED
+            
+        
 
 
-class MarketSimulator(BaseMarketSimulator):
+class MarketSimulator:
     """Current market simulator, name will change soon."""
 
     logger = None

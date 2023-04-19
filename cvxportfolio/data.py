@@ -433,7 +433,7 @@ class TimeSeries(DataEstimator):
         if isinstance(source, str) and source == "yahoo":
             source = YfinanceBase
         if isinstance(source, str) and source == "fred":
-            source = FredBase
+            source = FredRate
 
         # from
         # https://stackoverflow.com/questions/11042424/adding-base-class-to-existing-object-in-python
