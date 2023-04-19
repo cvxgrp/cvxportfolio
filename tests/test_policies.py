@@ -299,6 +299,56 @@ def test_single_period_optimization(returns, volumes):
     print(cvxpy_result)
 
     assert np.allclose(cvxportfolio_result - cvxpy_result, 0., atol=1e-7)
+    
+    
+def test_single_period_optimization_solve_twice(returns, volumes):
+
+    N = returns.shape[1]
+    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    policy = SinglePeriodOptimization(
+        return_forecast
+        - 2 * risk_forecast
+        - TcostModel(half_spread=5 * 1E-4)  # , power=2)
+        ,
+        constraints=[LongOnly(), LeverageLimit(1)],
+        # verbose=True,
+        solver='ECOS')
+
+    policy.pre_evaluation(returns,
+                          volumes,
+                          start_time=returns.index[50],
+                          end_time=returns.index[-1])
+
+    curw = np.zeros(N)
+    curw[-1] = 1.
+
+    result = policy.values_in_time(
+        t=returns.index[51],
+        current_weights=pd.Series(
+            curw,
+            returns.columns),
+        current_portfolio_value=1000,
+        past_returns=None,
+        past_volumes=None)
+        
+    assert not np.allclose(result, 0.)
+
+    cvxportfolio_result = pd.Series(result, returns.columns)
+    
+    curw += result
+    
+    result2 = policy.values_in_time(
+        t=returns.index[51],
+        current_weights=pd.Series(
+            curw,
+            returns.columns),
+        current_portfolio_value=1000,
+        past_returns=None,
+        past_volumes=None)
+        
+    assert np.allclose(result2, 0.)
+
 
 
 def test_single_period_optimization_infeasible(returns, volumes):

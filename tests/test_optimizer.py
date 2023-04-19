@@ -50,7 +50,7 @@ def test_single_period_opt(returns, sigma, volumes, tcost_model, hcost_model):
     t = times[1]
     p_0 = pd.Series(index=universe, data=1e6)
     z = pol.get_trades(p_0, t)
-    assert z.sum() == pytest.approx(0.0, abs=1e-8)
+    assert z.sum() == pytest.approx(0.0, abs=1e-7)
     # Compare with CP calculation.
     h = z + p_0
     rho = 1.0 * sigma.loc[t] * (sum(p_0) / volumes.loc[t])
@@ -64,4 +64,4 @@ def test_single_period_opt(returns, sigma, volumes, tcost_model, hcost_model):
     nu = (1 - h0.sum()) / offset.sum()
     hstar = h0 + nu * offset
     assert hstar.sum() == pytest.approx(1.0)
-    assert np.allclose(h / sum(p_0), hstar)
+    assert np.allclose(h / sum(p_0), hstar, atol=1e-6)

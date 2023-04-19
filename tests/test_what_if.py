@@ -47,7 +47,7 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     emp_Sigma = np.cov(returns.to_numpy().T)
-    risk_model = FullCovariance(emp_Sigma, gamma=100.0)
+    risk_model = 10 * FullCovariance(emp_Sigma)#, gamma=100.0)
 
     pol = SinglePeriodOpt(
         alpha_model, [
@@ -58,12 +58,17 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
     market_sim = simulator.MarketSimulator(
         returns, costs=[tcost, hcost], market_volumes=volumes
     )
-
+    
+    
     p_0 = pd.Series(index=returns.columns, data=1e6)
     noisy = market_sim.run_backtest(
         p_0, returns.index[1], returns.index[10], pol)
+    
+    
     # linear fit attribution
+        
     attr = market_sim.attribute(noisy, pol, parallel=False, fit="linear")
+        
     base_line = noisy.v - sum(p_0)
     for i in range(3):
         assert np.allclose(
@@ -71,6 +76,8 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
             base_line / sum(p_0))
 
     assert np.allclose(attr["RMS error"], np.zeros(len(noisy.v)))
+    
+    
 
     # least-squares fit attribution
     attr = market_sim.attribute(

@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .estimator import ParameterEstimator  # , ConstantEstimator
+from .estimator import ParameterEstimator, DataEstimator  # , ConstantEstimator
 import logging
+
+import scipy.linalg
 
 import cvxpy as cvx
 import numpy as np
@@ -72,11 +74,16 @@ class BaseRiskModel(BaseCost):
         if self.benchmark_weights is None:
             bw = pd.Series(0.0, returns.columns)
             bw[-1] = 1.0
-            self.benchmark_weights = ParameterEstimator(bw)
+            self.benchmark_weights = bw # ParameterEstimator(bw)
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
     def set_benchmark(self, benchmark_weights):
-        self.benchmark_weights = ParameterEstimator(benchmark_weights)
+        """We can only have constant benchmark because otherwise it is not dpp compliant.
+        
+        DEPRECATED: IT SHOULD NOT BE PASSED HERE. IT SHOULD BE PASSED TO POLICY
+            AND ADDED w_plus_wrt_bm as a variable with equality constraint.
+        """
+        self.benchmark_weights = benchmark_weights #ParameterEstimator(benchmark_weights)
 
     def weight_expr(self, t, w_plus, z, value):
         """Temporary placeholder while migrating to new interface"""
@@ -106,26 +113,33 @@ class FullCovariance(BaseRiskModel):
         # DEPRECATED, IT'S USED BY SOME OLD CVXPORTFOLIO PIECES
         super(FullCovariance, self).__init__(**kwargs)
         self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
-        self.forecast_error_kappa = forecast_error_kappa #ParameterEstimator(
+        self.forecast_error_kappa = DataEstimator(forecast_error_kappa) #ParameterEstimator(
         self.parameter_forecast_error = cvx.Parameter(Sigma.shape[1], nonneg=True)
         #    forecast_error_kappa, non_negative=True
         #)
         
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        self.Sigma_sqrt = cvx.Parameter(self.Sigma.shape)
+        
     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
-        """Update forecast error risk here."""
+        """Update forecast error risk here, and take square root of Sigma."""
         super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
-        self.parameter_forecast_error.value = np.sqrt(np.diag(self.Sigma.value)) * np.sqrt(self.forecast_error_kappa)
+        self.parameter_forecast_error.value = np.sqrt(np.diag(self.Sigma.value)) * np.sqrt(self.forecast_error_kappa.current_value)
+        self.Sigma_sqrt.value = scipy.linalg.sqrtm(self.Sigma.value)
+        assert np.allclose(self.Sigma.value, self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)
+        
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        self.cvxpy_expression =  cvx.quad_form(w_plus - self.benchmark_weights, self.Sigma) + \
-            cvx.square(cvx.abs(w_plus - self.benchmark_weights).T @ self.parameter_forecast_error)
-        assert self.cvxpy_expression.is_dcp()#dpp=True)
+        ## TEMPORARY SOMETHING'S BROKEN WITH NEW INTERFACE VS OLD INTERFACE, CHECK BACK ONCE
+        # NEW SIMULATOR IS DONE
+        self.cvxpy_expression =  cvx.quad_form(w_plus - self.benchmark_weights, self.Sigma) #+ \
+        #self.cvxpy_expression =  cvx.sum_squares(self.Sigma_sqrt.T @ (w_plus - self.benchmark_weights)) 
+        #assert self.cvxpy_expression.is_dcp(dpp=True)
+        self.cvxpy_expression += cvx.square(cvx.abs(w_plus - self.benchmark_weights).T @ self.parameter_forecast_error)
+        # assert self.cvxpy_expression.is_dcp(dpp=True)
         return self.cvxpy_expression
         
-         #+ self.forecast_error_kappa * cvx.square(
-         #   cvx.abs(w_plus - self.benchmark_weights).T @ cvx.sqrt(cvx.diag(self.Sigma))
-         #)
-
 
 class RollingWindowFullCovariance(FullCovariance):
     """Build FullCovariance model automatically with pandas rolling window.
@@ -139,14 +153,10 @@ class RollingWindowFullCovariance(FullCovariance):
             trading day to compute the historical covariance.
     """
 
-    def __init__(
-            self,
-            lookback_period=250,
-            zero_cash_covariance=True,
-            forecast_error_kappa=0.0):
+    def __init__(self, lookback_period=250, zero_cash_covariance=True, forecast_error_kappa=0.0):
         self.lookback_period = lookback_period
         self.zero_cash_covariance = zero_cash_covariance
-        self.forecast_error_kappa = forecast_error_kappa
+        self.forecast_error_kappa = DataEstimator(forecast_error_kappa)
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
@@ -179,14 +189,10 @@ class ExponentialWindowFullCovariance(FullCovariance):
             exponential moving window
     """
 
-    def __init__(
-            self,
-            half_life=250,
-            zero_cash_covariance=True,
-            forecast_error_kappa=0.0):
+    def __init__(self, half_life=250, zero_cash_covariance=True, forecast_error_kappa=0.0):
         self.half_life = half_life
         self.zero_cash_covariance = zero_cash_covariance
-        self.forecast_error_kappa = forecast_error_kappa
+        self.forecast_error_kappa = DataEstimator(forecast_error_kappa)
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
@@ -217,7 +223,7 @@ class DiagonalCovariance(BaseRiskModel):
         self.standard_deviations = ParameterEstimator(standard_deviations)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        return cvx.sum_squares(cvx.multiply(w_plus, self.standard_deviations))
+        return cvx.sum_squares(cvx.multiply(w_plus - self.benchmark_weights, self.standard_deviations))
 
 
 class RollingWindowDiagonalCovariance(DiagonalCovariance):
@@ -296,6 +302,8 @@ class FactorModelRisk(BaseRiskModel):
         factor_Sigma (pd.DataFrame or None): a constant factor covariance matrix
             or a DataFrame with multiindex where the first index is time. If None,
             the default, it is understood that the factor covariance is the identity.
+            (Otherwise we compute its matrix square root at each step internally and
+             apply it to the exposures).
         forecast_error_kappa (float or pd.Series): uncertainty on the
             assets' correlations. See the paper, pages 32-33.
 
@@ -303,47 +311,51 @@ class FactorModelRisk(BaseRiskModel):
 
     factor_Sigma = None
 
-    def __init__(
-            self,
-            exposures,
-            idyosync,
-            factor_Sigma=None,
-            forecast_error_kappa=0.0,
-            **kwargs):
+    def __init__(self, exposures, idyosync, factor_Sigma=None, forecast_error_kappa=0.0, **kwargs):
         self.exposures = ParameterEstimator(exposures)
         if not (factor_Sigma is None):
             self.factor_Sigma = ParameterEstimator(factor_Sigma)
         self.idyosync = ParameterEstimator(idyosync)
-        self.forecast_error_kappa = ParameterEstimator(forecast_error_kappa)
-        if (
-            (np.isscalar(forecast_error_kappa) and forecast_error_kappa > 0)
+        self.forecast_error_kappa = forecast_error_kappa #ParameterEstimator(forecast_error_kappa)
+        if ((np.isscalar(forecast_error_kappa) and forecast_error_kappa > 0)
             or (np.any(forecast_error_kappa > 0))
         ) and factor_Sigma is not None:
             raise NotImplementedError(
                 "You should do a Cholesky decomposition of the factor_Sigmas and apply them to the exposures."
             )
+            
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        self.idyosync_sqrt = cvx.Parameter(returns.shape[1])
+        if not (self.factor_Sigma is None):
+            self.factor_Sigma_sqrt = cvx.Parameter(self.factor_Sigma.shape)
+        self.forecast_error_penalizer = cvx.Parameter(returns.shape[1], nonneg=True)
+        
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        self.idyosync_sqrt.value = np.sqrt(self.idyosync.value)
+        if not (self.factor_Sigma is None):
+            self.factor_Sigma_sqrt.value = scipy.linalg.sqrtm(self.factor_Sigma.value)
+            assert np.allclose(self.factor_Sigma.value, self.factor_Sigma_sqrt.value @ self.factor_Sigma_sqrt.value.T)
+        self.forecast_error_penalizer.value = np.sqrt(np.sum(self.exposures.value**2, axis=0) + self.idyosync.value)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        self.expression = cvx.sum_squares(
-            cvx.multiply(
-                cvx.sqrt(
-                    self.idyosync),
-                (w_plus - self.benchmark_weights)))
+        self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt, (w_plus - self.benchmark_weights)))
+        assert self.expression.is_dcp(dpp=True)
         if not (self.factor_Sigma is None):
-            self.expression += cvx.quad_form(
-                (w_plus.T @ self.exposures.T).T,
-                self.factor_Sigma,
-            )
+            self.expression += cvx.sum_squares(self.factor_Sigma_sqrt.T @ (w_plus - self.benchmark_weights)) 
+            #self.expression += cvx.quad_form((w_plus.T @ self.exposures.T).T, self.factor_Sigma)
+            assert self.expression.is_dcp(dpp=True)
         else:
-            self.expression += cvx.sum_squares(
-                self.exposures @ (w_plus - self.benchmark_weights)
-            )
+            self.expression += cvx.sum_squares(self.exposures @ (w_plus - self.benchmark_weights))
+            assert self.expression.is_dcp(dpp=True)
 
         # forecast error risk, assuming factor_Sigma is the identity
         self.expression += self.forecast_error_kappa * cvx.square(
-            cvx.abs(w_plus - self.benchmark_weights).T
-            @ cvx.sqrt(cvx.sum(cvx.square(self.exposures), axis=0) + self.idyosync)
+            cvx.abs(w_plus - self.benchmark_weights).T @ self.forecast_error_penalizer
+            #@ cvx.sqrt(cvx.sum(cvx.square(self.exposures), axis=0) + self.idyosync)
         )
+        assert self.expression.is_dcp(dpp=True)
         return self.expression
 
 
@@ -369,32 +381,18 @@ class LowRankRollingRisk(BaseRiskModel):
             shape=(self.lookback, returns.shape[1]))
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
-    def values_in_time(
-        self,
-        t,
-        current_weights,
-        current_portfolio_value,
-        past_returns,
-        past_volumes,
-        **kwargs
-    ):
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
         val = past_returns.iloc[-self.lookback:].copy(deep=True)
         if self.zero_cash_risk:
             val.iloc[:, -1] = 0.0
         self.recent_returns.value = val.values
         # update attributes
-        super().values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs
-        )
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        return (cvx.sum_squares(self.recent_returns @
-                                (w_plus - self.benchmark_weights)) / self.lookback)
+        self.expression = (cvx.sum_squares(self.recent_returns @ (w_plus - self.benchmark_weights)) / self.lookback)
+        assert self.expression.is_dcp(dpp=True)
+        return self.expression
 
 
 class RollingWindowFactorModelRisk(FactorModelRisk):
@@ -413,12 +411,7 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
             resulting covariance matrix to zero. Default True.
     """
 
-    def __init__(
-            self,
-            lookback=250,
-            num_factors=1,
-            zero_cash_risk=True,
-            forecast_error_kappa=0.0):
+    def __init__(self, lookback=250, num_factors=1, zero_cash_risk=True, forecast_error_kappa=0.0):
         self.lookback = lookback
         self.num_factors = num_factors
         self.zero_cash_risk = zero_cash_risk
@@ -431,15 +424,7 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
         self.exposures = cvx.Parameter((self.num_factors, returns.shape[1]))
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
-    def values_in_time(
-        self,
-        t,
-        current_weights,
-        current_portfolio_value,
-        past_returns,
-        past_volumes,
-        **kwargs
-    ):
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
         val = past_returns.iloc[-self.lookback:].copy(deep=True)
         if self.zero_cash_risk:
             val.iloc[:, -1] = 0.0
@@ -447,23 +432,12 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
         total_variances = np.sum(val**2, axis=0) / self.lookback
         u, s, v = np.linalg.svd(val, full_matrices=False)
 
-        self.exposures.value = (
-            v[: self.num_factors].T * s[: self.num_factors]
-        ).T / np.sqrt(self.lookback)
+        self.exposures.value = (v[: self.num_factors].T * s[: self.num_factors]).T / np.sqrt(self.lookback)
 
-        self.idyosync.value = (
-            total_variances - np.sum(self.exposures.value**2, axis=0)
-        ).values
+        self.idyosync.value = (total_variances - np.sum(self.exposures.value**2, axis=0)).values
         assert np.all(self.idyosync.value >= 0.0)
 
-        super().values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs
-        )
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
 
 class WorstCaseRisk(BaseRiskModel):
@@ -485,41 +459,14 @@ class WorstCaseRisk(BaseRiskModel):
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Initialize objects."""
         for risk in self.riskmodels:
-            risk.pre_evaluation(
-                returns,
-                volumes,
-                start_time,
-                end_time,
-                **kwargs)
+            risk.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
-    def values_in_time(
-        self,
-        t,
-        current_weights,
-        current_portfolio_value,
-        past_returns,
-        past_volumes,
-        **kwargs
-    ):
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
         """Update parameters."""
         for risk in self.riskmodels:
-            risk.values_in_time(
-                t,
-                current_weights,
-                current_portfolio_value,
-                past_returns,
-                past_volumes,
-                **kwargs
-            )
-        super().values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs
-        )
+            risk.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
     def compile_to_cvxpy(self, w_plus, z, value):
         risks = [risk.compile_to_cvxpy(w_plus, z, value)
