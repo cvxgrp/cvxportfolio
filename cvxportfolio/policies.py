@@ -336,6 +336,7 @@ class SinglePeriodOptimization(BaseTradingPolicy):
         """Compile all cvxpy expressions and the problem."""
         self.cvxpy_objective = self.objective.compile_to_cvxpy(
             w_plus, z, value)
+        assert self.cvxpy_objective.is_dcp()#dpp=True)
         assert self.cvxpy_objective.is_concave()
         self.cvxpy_constraints = [constr.compile_to_cvxpy(
             w_plus, z, value) for constr in self.constraints]
@@ -343,7 +344,7 @@ class SinglePeriodOptimization(BaseTradingPolicy):
         self.problem = cvx.Problem(
             cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints
         )
-        assert self.problem.is_dcp()
+        assert self.problem.is_dcp()#dpp=True)
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Pass a full view of the data to initialize objects that need it."""

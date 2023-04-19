@@ -106,16 +106,25 @@ class FullCovariance(BaseRiskModel):
         # DEPRECATED, IT'S USED BY SOME OLD CVXPORTFOLIO PIECES
         super(FullCovariance, self).__init__(**kwargs)
         self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
-        self.forecast_error_kappa = ParameterEstimator(
-            forecast_error_kappa, non_negative=True
-        )
+        self.forecast_error_kappa = forecast_error_kappa #ParameterEstimator(
+        self.parameter_forecast_error = cvx.Parameter(Sigma.shape[1], nonneg=True)
+        #    forecast_error_kappa, non_negative=True
+        #)
+        
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+        """Update forecast error risk here."""
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        self.parameter_forecast_error.value = np.sqrt(np.diag(self.Sigma.value)) * np.sqrt(self.forecast_error_kappa)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        return cvx.quad_form(
-            w_plus - self.benchmark_weights, self.Sigma
-        ) + self.forecast_error_kappa * cvx.square(
-            cvx.abs(w_plus - self.benchmark_weights).T @ cvx.sqrt(cvx.diag(self.Sigma))
-        )
+        self.cvxpy_expression =  cvx.quad_form(w_plus - self.benchmark_weights, self.Sigma) + \
+            cvx.square(cvx.abs(w_plus - self.benchmark_weights).T @ self.parameter_forecast_error)
+        assert self.cvxpy_expression.is_dcp()#dpp=True)
+        return self.cvxpy_expression
+        
+         #+ self.forecast_error_kappa * cvx.square(
+         #   cvx.abs(w_plus - self.benchmark_weights).T @ cvx.sqrt(cvx.diag(self.Sigma))
+         #)
 
 
 class RollingWindowFullCovariance(FullCovariance):
@@ -153,6 +162,7 @@ class RollingWindowFullCovariance(FullCovariance):
             positive_semi_definite=True,
         )
         # initialize cvxpy Parameter(s)
+        self.parameter_forecast_error = cvx.Parameter(returns.shape[1], nonneg=True)
 
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
@@ -189,6 +199,7 @@ class ExponentialWindowFullCovariance(FullCovariance):
             returns.ewm(halflife=self.half_life).cov().shift(returns.shape[1]),
             positive_semi_definite=True,
         )
+        self.parameter_forecast_error = cvx.Parameter(returns.shape[1], nonneg=True)
         # initialize cvxpy Parameter(s)
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 

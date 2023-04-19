@@ -56,7 +56,7 @@ class BaseCost(CvxpyExpressionEstimator):
         """Temporary interface to old cvxportfolio."""
         self.pre_evaluation(None, None, t, None)
         cost = self.compile_to_cvxpy(w_plus, z, value)
-        self.values_in_time(t, None, None, None, None)
+        self.values_in_time(t, None, value, None, None)
         return cost, []
 
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
@@ -142,12 +142,13 @@ class CombinedCosts(BaseCost):
 
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Iterate over constituent costs."""
-        return sum(
-            [
-                multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value)
-                for multiplier, cost in zip(self.multipliers, self.costs)
-            ]
-        )
+        self.expression = 0
+        for multiplier, cost in zip(self.multipliers, self.costs):
+            self.expression += multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value)
+            # assert self.expression.is_dcp()#dpp=True)
+        return self.expression
+        #return sum([multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value)
+        #    for multiplier, cost in zip(self.multipliers, self.costs)])
 
     # TEMPORARY IN ORDER NOT TO BREAK TESTS
     # THESE METHODS ARE DEPRECATED
@@ -229,23 +230,23 @@ class TcostModel(BaseCost):
       power (float): The nonlinear tcost exponent. Default 1.5.
     """
 
-    def __init__(
-            self,
-            half_spread=0.0,
-            nonlin_coeff=0.0,
-            sigma=0.0,
-            volume=1.0,
-            power=1.5):
+    def __init__(self, half_spread=0.0, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5):
         self.compile_first_term = not np.isscalar(
             half_spread) or half_spread > 0.0
         self.compile_second_term = (
             not np.isscalar(nonlin_coeff) or nonlin_coeff > 0.0
         ) and (not np.isscalar(sigma) or sigma > 0.0)
         self.half_spread = ParameterEstimator(half_spread, non_negative=True)
-        self.sigma = ParameterEstimator(sigma, non_negative=True)
-        self.volume = ParameterEstimator(volume, non_negative=True)
-        self.nonlin_coeff = ParameterEstimator(nonlin_coeff, non_negative=True)
+        # self.sigma = DataEstimator(sigma) #, non_negative=True)
+        # self.volume = DataEstimator(volume) #, non_negative=True)
+        # self.nonlin_coeff = DataEstimator(nonlin_coeff) #, non_negative=True)
+        self.second_term_multiplier = ParameterEstimator(sigma * nonlin_coeff / (volume**(power-1)), non_negative=True)
         self.power: float = power
+        
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+        """We patch here to apply current portfolio value to tcost."""
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        self.second_term_multiplier.value *= current_portfolio_value ** (self.power - 1)
 
     def compile_to_cvxpy(self, w_plus, z, value):
         first_term = (
@@ -255,17 +256,19 @@ class TcostModel(BaseCost):
         )
         assert cvx.sum(first_term).is_convex()
         if self.compile_second_term:
-            second_term = cvx.multiply(self.nonlin_coeff, self.sigma)
+            # second_term = cvx.multiply(self.nonlin_coeff, self.sigma)
+            # second_term = cvx.multiply(
+            #     second_term, (value / self.volume) ** (self.power - 1)
+            # )
             second_term = cvx.multiply(
-                second_term, (value / self.volume) ** (self.power - 1)
-            )
-            second_term = cvx.multiply(
-                second_term, cvx.abs(z[:-1]) ** self.power)
+                self.second_term_multiplier, cvx.abs(z[:-1]) ** self.power)
         else:
             second_term = 0.0
         assert cvx.sum(second_term).is_convex()
+        assert cvx.sum(second_term).is_dcp(dpp=True)
         self.expression = first_term + second_term
         self.expression = cvx.sum(self.expression)
+        assert self.expression.is_dcp(dpp=True)
         assert self.expression.is_convex()
         return self.expression
 
@@ -324,15 +327,16 @@ class TcostModel(BaseCost):
         """Temporary placeholder, new simulators implement their own tcost."""
 
         self.pre_evaluation(None, None, t, None)
-        self.values_in_time(t, None, None, None, None)
+        self.values_in_time(t, None, 1., None, None)
 
         u_nc = u.iloc[:-1]
         self.tmp_tcosts = np.abs(u_nc) * self.half_spread.value
         self.tmp_tcosts += (
-            self.nonlin_coeff.value
-            * self.sigma.value
+            self.second_term_multiplier.value
+            #self.nonlin_coeff.value
+            #* self.sigma.value
             * np.abs(u_nc) ** self.power
-            / (self.volume.value ** (self.power - 1))
+            #/ (self.volume.value ** (self.power - 1))
         )
 
         return self.tmp_tcosts.sum()

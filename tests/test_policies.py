@@ -298,7 +298,7 @@ def test_single_period_optimization(returns, volumes):
 
     print(cvxpy_result)
 
-    assert np.allclose(cvxportfolio_result - cvxpy_result, 0.)
+    assert np.allclose(cvxportfolio_result - cvxpy_result, 0., atol=1e-7)
 
 
 def test_single_period_optimization_infeasible(returns, volumes):

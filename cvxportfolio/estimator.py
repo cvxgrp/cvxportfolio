@@ -60,19 +60,9 @@ class Estimator:
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "pre_evaluation"):
-                subestimator.pre_evaluation(
-                    returns, volumes, start_time, end_time, **kwargs
-                )
+                subestimator.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
-    def values_in_time(
-        self,
-        t,
-        current_weights,
-        current_portfolio_value,
-        past_returns,
-        past_volumes,
-        **kwargs,
-    ):
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
         """Evaluates estimator at a point in time recursively on its sub-estimators.
 
         This function is called by Simulator classes on Policy classes
@@ -93,14 +83,7 @@ class Estimator:
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "values_in_time"):
-                subestimator.values_in_time(
-                    t,
-                    current_weights,
-                    current_portfolio_value,
-                    past_returns,
-                    past_volumes,
-                    **kwargs,
-                )
+                subestimator.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
 
 class CvxpyExpressionEstimator(Estimator):
