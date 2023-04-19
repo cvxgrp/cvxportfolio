@@ -15,13 +15,13 @@
 simulate as accurately as possibly what would have been the realized
 performance of a trading policy if it had been run in the market in the past.
 In financial jargon this is called *backtesting*.
-
-
 """
 
 import copy
 import logging
 import time
+from pathlib import Path
+
 
 import multiprocess
 import numpy as np
@@ -91,8 +91,8 @@ class NewMarketSimulator(Estimator):
             you will pay a rate on the value
             of the position equal to the cash return plus this spread, expressed in percent annualized. These
             values are hard to find historically, if you are unsure consider long-only portfolios or look
-            at CFDs/futures instead. We set the default value to 0.5 (percent annualized) which is probably
-            See https://www.interactivebrokers.com/en/pricing/short-sale-cost.php
+            at CFDs/futures instead. We set the default value to 0.5 (percent annualized) which is probably OK 
+            for US large cap stocks. See https://www.interactivebrokers.com/en/pricing/short-sale-cost.php
 
         spread_on_long_positions_percent (float, None, pd.Series, pd.DataFrame): if you trade CFDs you will pay interest 
             on your long positions
@@ -118,27 +118,29 @@ class NewMarketSimulator(Estimator):
 
         cash_key (str or None): name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
             as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
-            along with the stock returns as its last column. 
+            along with the stock returns as its last column.
+     
+        base_location (pathlib.Path): base location for (by default, sqlite) storage of data. 
+            Default is `Path.home() / "cvxportfolio"`. Unused if passing `returns` and `volumes`.
     """
 
     periods_per_year = 250
     
-    def __init__(self, universe=[], returns=None, volumes=None, 
-                 prices=None, spreads=0., round_trades=True,
-                 per_share_fixed_cost=0.005, transaction_cost_coefficient_b=1.,
+    def __init__(self, universe=[], returns=None, volumes=None, prices=None, spreads=0., 
+                 round_trades=True, per_share_fixed_cost=0.005,  transaction_cost_coefficient_b=1., 
                  transaction_cost_exponent=1.5, rolling_window_sigma_estimator=1000,
                  spread_on_borrowing_stocks_percent=.5, spread_on_long_positions_percent=None,
-                 dividends=0.,
-                 spread_on_lending_cash_percent=.5, spread_on_borrowing_cash_percent=.5,
-                 cash_key="USDOLLAR"):
+                 dividends=0., spread_on_lending_cash_percent=.5, 
+                 spread_on_borrowing_cash_percent=.5, cash_key="USDOLLAR", 
+                 base_location = Path.home() / "cvxportfolio"):
         """Initialize the Simulator and download data if necessary."""
         if not len(universe):
-            if returns is None:
+            if (returns is None) or (volumes is None):
                 raise SyntaxError("If you don't specify a universe you should pass `returns` and `volumes`.")
+            if not returns.shape[1] == volumes.shape[1] + 1:
+                raise SyntaxError("In `returns` you must include the cash returns as the last column (and not in `volumes`).")
             self.returns = DataEstimator(returns)
             self.volumes = DataEstimator(volumes)
-            if not self.returns.shape[1] == self.volumes.shape[1] + 1:
-                raise SyntaxError("In `returns` you must include the cash returns as the last column (and not in `volumes`).")
             self.cash_key = returns.columns[-1]
             self.prices = DataEstimator(prices) if not prices is None else None
             if prices is None:
@@ -147,7 +149,9 @@ class NewMarketSimulator(Estimator):
                  if round_trades:
                      raise SyntaxError("If you don't specify prices you can't request `round_trades`.")
         else:
+            self.universe = universe
             self.cash_key = cash_key
+            self.base_location = base_location
             self.prepare_data()
         
         self.spreads = DataEstimator(spreads)
@@ -163,7 +167,7 @@ class NewMarketSimulator(Estimator):
         self.spread_on_borrowing_cash_percent = spread_on_borrowing_cash_percent
         
         # compute my DataEstimator(s)
-        self.sigma_estimate = DataEstimator(self.returns.rolling(self.rolling_window_sigma_estimator).std().shift(1))
+        self.sigma_estimate = DataEstimator(self.returns.data.iloc[:,:-1].rolling(self.rolling_window_sigma_estimator).std().shift(1))
     
     
     def prepare_data(self):
@@ -175,14 +179,17 @@ class NewMarketSimulator(Estimator):
         database_accesses = {}
         for stock in self.universe:
             print('Updating data...')
-            database_accesses[stock] = TimeSeries(stock)
+            database_accesses[stock] = TimeSeries(stock, base_location = self.base_location)
             database_accesses[stock].pre_evaluation()
         if not self.cash_key == 'USDOLLAR':
             raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
-        database_accesses[self.cash_key] = TimeSeries(self.cash_key, source='fred')
+        database_accesses[self.cash_key] = TimeSeries('DFF', source='fred', base_location = self.base_location)
+        database_accesses[self.cash_key].pre_evaluation()
         
         # build returns
-        self.returns = pd.DataFrame({stock:database_accesses[stock].data['Returns'] for stock in self.universe})
+        self.returns = pd.DataFrame({stock:database_accesses[stock].data['Return'] for stock in self.universe})
+        self.returns[self.cash_key] = database_accesses[self.cash_key].data
+        self.returns[self.cash_key] = self.returns[self.cash_key].fillna(method='ffill')
         self.returns = DataEstimator(self.returns)
         
         # build volumes
@@ -284,13 +291,25 @@ class NewMarketSimulator(Estimator):
         # evaluate the policy
         z = policy.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
         
+
+        
         # trades in dollars
         u = z * current_portfolio_value
+
+
+        # zero out trades on stock that weren't trading on that day
+        current_volumes = self.volumes.current_value
+        non_tradable_stocks = current_volumes[current_volumes<=0]
+        u[non_tradable_stocks] = 0.    
+        
+        # round trades
         if self.round_trades:
             u = self.round_trade_vector(u)
+            
+        # compute post-trade holdings
         h_plus = current_weights * current_portfolio_value + u
         
-        # we have updated the internal estimators in this method, and they are used by these methods
+        # we have updated the internal estimators and they are used by these methods
         transaction_costs = self.transaction_costs(u)
         holding_costs = self.stocks_holding_costs(h_plus)
         cash_holding_costs = self.cash_holding_cost(h_plus)
@@ -308,10 +327,6 @@ class NewMarketSimulator(Estimator):
         
         # return
         return tomorrows_weights, tomorrows_portfolio_value, z, transaction_costs, holding_costs, cash_holding_costs
-        
-        
-        
-
         
         
         

@@ -388,7 +388,7 @@ class Yfinance(YfinanceBase, LocalDataStore):
         return super().update_and_load(symbol)
 
 
-class FredRate(FredBase, RateBase, LocalDataStore):
+class FredRate(FredBase, RateBase, SqliteDataStore):
     """Load and store FRED rates like DFF."""
 
     def __init__(self, *args, **kwargs):
