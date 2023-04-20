@@ -365,7 +365,7 @@ class FredBase(BaseData):
 class RateBase(BaseData):
     """Manipulate rate data from percent annualized to daily."""
 
-    trading_days = 250
+    trading_days = 252
 
     @classmethod
     def preload(cls, data):

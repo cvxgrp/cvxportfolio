@@ -67,7 +67,8 @@ def test_full_sigma(returns):
 
     risk_model.values_in_time(t, None, None, None, None)
 
-    assert np.isclose(cvxpy_expression.value, w_plus.value @ historical_covariances.loc[t] @ w_plus.value)
+    assert np.isclose(cvxpy_expression.value, w_plus.value @
+                      historical_covariances.loc[t] @ w_plus.value)
 
 
 def test_rolling_window_sigma(returns):

@@ -334,16 +334,19 @@ class SinglePeriodOptimization(BaseTradingPolicy):
 
     def compile_to_cvxpy(self, w_plus, z, value):
         """Compile all cvxpy expressions and the problem."""
-        self.cvxpy_objective = self.objective.compile_to_cvxpy(w_plus, z, value)
-        assert self.cvxpy_objective.is_dcp()#dpp=True)
+        self.cvxpy_objective = self.objective.compile_to_cvxpy(
+            w_plus, z, value)
+        assert self.cvxpy_objective.is_dcp()  # dpp=True)
         assert self.cvxpy_objective.is_concave()
         self.cvxpy_constraints = [constr.compile_to_cvxpy(
             w_plus, z, value) for constr in self.constraints]
-        self.cvxpy_constraints += [cvx.sum(self.z) == 0, self.w_plus == self.w_current + self.z] # we need this for dpp compliance
+        # we need this for dpp compliance
+        self.cvxpy_constraints += [cvx.sum(self.z) == 0,
+                                   self.w_plus == self.w_current + self.z]
         self.problem = cvx.Problem(
             cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints
         )
-        assert self.problem.is_dcp()#dpp=True)
+        assert self.problem.is_dcp()  # dpp=True)
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Pass a full view of the data to initialize objects that need it."""
@@ -358,7 +361,7 @@ class SinglePeriodOptimization(BaseTradingPolicy):
         self.w_current = cvx.Parameter(returns.shape[1])
         self.z = cvx.Variable(returns.shape[1])
         self.w_plus = cvx.Variable(returns.shape[1])
-        
+
         self.compile_to_cvxpy(self.w_plus, self.z, self.portfolio_value)
 
     def values_in_time(
@@ -371,9 +374,21 @@ class SinglePeriodOptimization(BaseTradingPolicy):
         **kwargs,
     ):
         """Update all cvxpy parameters and solve."""
-        self.objective.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        self.objective.values_in_time(
+            t,
+            current_weights,
+            current_portfolio_value,
+            past_returns,
+            past_volumes,
+            **kwargs)
         for constr in self.constraints:
-            constr.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+            constr.values_in_time(
+                t,
+                current_weights,
+                current_portfolio_value,
+                past_returns,
+                past_volumes,
+                **kwargs)
 
         self.portfolio_value.value = current_portfolio_value
         self.w_current.value = current_weights.values
@@ -493,10 +508,11 @@ class SinglePeriodOpt(BaseTradingPolicy):
 
         for el in constraints:
             assert el.is_dcp()
-            
+
         # raise Exception
 
-        self.prob = cvx.Problem(cvx.Maximize(alpha_term - sum(costs)), [cvx.sum(z) == 0] + constraints)
+        self.prob = cvx.Problem(cvx.Maximize(
+            alpha_term - sum(costs)), [cvx.sum(z) == 0] + constraints)
         try:
             self.prob.solve(solver=self.solver, **self.solver_opts)
 

@@ -95,16 +95,22 @@ def test_tcost_value_expr(returns, sigma, volumes):
     model = TcostModel(
         half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=2
     )
-    
+
     tcost, _ = model.weight_expr(t, None, z_var, value)
-    assert np.isclose(tcost.value * value, np.sum(1.0 * sigma.loc[t] / volumes.loc[t] * u**2))
+    assert np.isclose(
+        tcost.value *
+        value,
+        np.sum(
+            1.0 *
+            sigma.loc[t] /
+            volumes.loc[t] *
+            u**2))
 
     model = TcostModel(
         half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=2
     )
 
     value_expr = model.value_expr(t, None, u)
-
 
     assert tcost.value == pytest.approx(value_expr / value)
 
@@ -115,7 +121,7 @@ def test_tcost_value_expr(returns, sigma, volumes):
     )
     tcost, _ = model.weight_expr(t, None, z_var, value)
     1.0 * sigma.loc[t] * np.sqrt(value / volumes.loc[t])
-    
+
     model = TcostModel(
         half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=1.5
     )
@@ -126,11 +132,11 @@ def test_tcost_value_expr(returns, sigma, volumes):
         half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
     )
     tcost, _ = model.weight_expr(t, None, z_var, value)
-    
+
     model = TcostModel(
         half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
     )
-    
+
     value_expr = model.value_expr(t, None, u)
     assert tcost.value == pytest.approx(value_expr / value)
 
@@ -140,11 +146,11 @@ def test_tcost_value_expr(returns, sigma, volumes):
     )
     tau = returns.index[2]
     tcost, _ = model.weight_expr_ahead(t, tau, None, z_var, value)
-    
+
     model = TcostModel(
         half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
     )
-    
+
     value_expr = model.value_expr(t, None, u)
     assert tcost.value == pytest.approx(value_expr / value)
 

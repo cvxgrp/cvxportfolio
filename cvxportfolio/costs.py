@@ -144,10 +144,11 @@ class CombinedCosts(BaseCost):
         """Iterate over constituent costs."""
         self.expression = 0
         for multiplier, cost in zip(self.multipliers, self.costs):
-            self.expression += multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value)
+            self.expression += multiplier * \
+                cost.compile_to_cvxpy(w_plus, z, portfolio_value)
             # assert self.expression.is_dcp()#dpp=True)
         return self.expression
-        #return sum([multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value)
+        # return sum([multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value)
         #    for multiplier, cost in zip(self.multipliers, self.costs)])
 
     # TEMPORARY IN ORDER NOT TO BREAK TESTS
@@ -230,7 +231,13 @@ class TcostModel(BaseCost):
       power (float): The nonlinear tcost exponent. Default 1.5.
     """
 
-    def __init__(self, half_spread=0.0, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5):
+    def __init__(
+            self,
+            half_spread=0.0,
+            nonlin_coeff=0.0,
+            sigma=0.0,
+            volume=1.0,
+            power=1.5):
         self.compile_first_term = not np.isscalar(
             half_spread) or half_spread > 0.0
         self.compile_second_term = (
@@ -240,13 +247,28 @@ class TcostModel(BaseCost):
         # self.sigma = DataEstimator(sigma) #, non_negative=True)
         # self.volume = DataEstimator(volume) #, non_negative=True)
         # self.nonlin_coeff = DataEstimator(nonlin_coeff) #, non_negative=True)
-        self.second_term_multiplier = ParameterEstimator(sigma * nonlin_coeff / (volume**(power-1)), non_negative=True)
+        self.second_term_multiplier = ParameterEstimator(
+            sigma * nonlin_coeff / (volume**(power - 1)), non_negative=True)
         self.power: float = power
-        
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+
+    def values_in_time(
+            self,
+            t,
+            current_weights,
+            current_portfolio_value,
+            past_returns,
+            past_volumes,
+            **kwargs):
         """We patch here to apply current portfolio value to tcost."""
-        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
-        self.second_term_multiplier.value *= current_portfolio_value ** (self.power - 1)
+        super().values_in_time(
+            t,
+            current_weights,
+            current_portfolio_value,
+            past_returns,
+            past_volumes,
+            **kwargs)
+        self.second_term_multiplier.value *= current_portfolio_value ** (
+            self.power - 1)
 
     def compile_to_cvxpy(self, w_plus, z, value):
         first_term = (
@@ -333,10 +355,10 @@ class TcostModel(BaseCost):
         self.tmp_tcosts = np.abs(u_nc) * self.half_spread.value
         self.tmp_tcosts += (
             self.second_term_multiplier.value
-            #self.nonlin_coeff.value
-            #* self.sigma.value
+            # self.nonlin_coeff.value
+            # * self.sigma.value
             * np.abs(u_nc) ** self.power
-            #/ (self.volume.value ** (self.power - 1))
+            # / (self.volume.value ** (self.power - 1))
         )
 
         return self.tmp_tcosts.sum()

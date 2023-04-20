@@ -19,29 +19,35 @@ import pytest
 
 from cvxportfolio.simulator import NewMarketSimulator
 
+
 def test_simulator_raises():
-    
+
     with pytest.raises(SyntaxError):
         simulator = NewMarketSimulator()
-        
+
     with pytest.raises(SyntaxError):
         simulator = NewMarketSimulator(returns=pd.DataFrame([[0.]]))
 
     with pytest.raises(SyntaxError):
         simulator = NewMarketSimulator(volumes=pd.DataFrame([[0.]]))
-        
+
     with pytest.raises(SyntaxError):
-        simulator = NewMarketSimulator(returns=pd.DataFrame([[0.]]), volumes=pd.DataFrame([[0.]]))
-        
+        simulator = NewMarketSimulator(returns=pd.DataFrame(
+            [[0.]]), volumes=pd.DataFrame([[0.]]))
+
     # not raises
-    simulator = NewMarketSimulator(returns=pd.DataFrame([[0., 0.]]), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0., round_trades=False)
-    
+    simulator = NewMarketSimulator(returns=pd.DataFrame([[0., 0.]]), volumes=pd.DataFrame(
+        [[0.]]), per_share_fixed_cost=0., round_trades=False)
+
     with pytest.raises(SyntaxError):
-        simulator = NewMarketSimulator(returns=pd.DataFrame([[0., 0.]]), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
-        
+        simulator = NewMarketSimulator(returns=pd.DataFrame(
+            [[0., 0.]]), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
+
     with pytest.raises(SyntaxError):
-        simulator = NewMarketSimulator(returns=pd.DataFrame([[0., 0.]]), volumes=pd.DataFrame([[0.]]), round_trades=False)
-        
+        simulator = NewMarketSimulator(returns=pd.DataFrame(
+            [[0., 0.]]), volumes=pd.DataFrame([[0.]]), round_trades=False)
+
+
 def test_prepare_data(tmp_path):
     simulator = NewMarketSimulator(['ZM', 'META'], base_location=tmp_path)
     assert simulator.returns.data.shape[1] == 3
@@ -54,6 +60,23 @@ def test_prepare_data(tmp_path):
     assert simulator.returns.data.index[-1] == simulator.volumes.data.index[-1]
     assert simulator.returns.data.index[-1] == simulator.prices.data.index[-1]
     assert simulator.sigma_estimate.data.index[-1] == simulator.prices.data.index[-1]
-    assert simulator.sigma_estimate.data.iloc[-1,0] == simulator.returns.data.iloc[-1001:-1, 0].std()
+    assert np.isclose(simulator.sigma_estimate.data.iloc[-1,0],
+         simulator.returns.data.iloc[-1001:-1,0].std())
+         
+def test_methods(tmp_path):
+    simulator = NewMarketSimulator(['ZM', 'META', 'AAPL'], base_location=tmp_path)
+    super(simulator.__class__, simulator).values_in_time('2023-04-14', None, None, None, None)
     
+    for i in range(10):
+        np.random.seed(i)
+        tmp = np.random.uniform(size=4)*1000
+        tmp[3] = -sum(tmp[:3])
+        u = pd.Series(tmp, simulator.returns.data.columns)
+        rounded = simulator.round_trade_vector(u)
+        assert sum(rounded) == 0
+        assert np.linalg.norm(rounded[:-1] - u[:-1]) < \
+            np.linalg.norm(simulator.prices.data.loc['2023-04-14']/2)
+        
+        print(u)
     
+    # raise Exception

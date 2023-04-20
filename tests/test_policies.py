@@ -299,8 +299,8 @@ def test_single_period_optimization(returns, volumes):
     print(cvxpy_result)
 
     assert np.allclose(cvxportfolio_result - cvxpy_result, 0., atol=1e-7)
-    
-    
+
+
 def test_single_period_optimization_solve_twice(returns, volumes):
 
     N = returns.shape[1]
@@ -331,13 +331,13 @@ def test_single_period_optimization_solve_twice(returns, volumes):
         current_portfolio_value=1000,
         past_returns=None,
         past_volumes=None)
-        
+
     assert not np.allclose(result, 0.)
 
     cvxportfolio_result = pd.Series(result, returns.columns)
-    
+
     curw += result
-    
+
     result2 = policy.values_in_time(
         t=returns.index[51],
         current_weights=pd.Series(
@@ -346,9 +346,8 @@ def test_single_period_optimization_solve_twice(returns, volumes):
         current_portfolio_value=1000,
         past_returns=None,
         past_volumes=None)
-        
-    assert np.allclose(result2, 0.)
 
+    assert np.allclose(result2, 0.)
 
 
 def test_single_period_optimization_infeasible(returns, volumes):
