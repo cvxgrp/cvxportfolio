@@ -309,86 +309,194 @@ class AdaptiveRebalance(BaseTradingPolicy):
             return pd.Series(0.0, current_weights.index)
 
 
-class SinglePeriodOptimization(BaseTradingPolicy):
-    """Single Period Optimization policy.
+# class SinglePeriodOptimization(MultiPeriodOptimization):
+#     """Single Period Optimization policy.
+#
+#     Implements the model developed in Chapter 4, in particular
+#     at page 43, of the book. You specify the objective term
+#     using classes such as ReturnsForecast and TcostModel, each
+#     multiplied by its multiplier. You also specify a list
+#     of constraints.
+#
+#     Args:
+#         objective (algebra of BaseCost): this will be maximized.
+#         constraints (list of BaseConstraints): these will be
+#             imposed on the optimization. Default [].
+#         **kwargs: these will be passed to cvxpy.Problem.solve,
+#             so you can choose your own solver and pass
+#             parameters to it.
+#     """
+#
+#     def __init__(self, objective, constraints=[], **kwargs):
+    #     self.objective = objective
+    #     self.constraints = constraints
+    #     self.cvxpy_kwargs = kwargs
+    #
+    # def compile_to_cvxpy(self, w_plus, z, value):
+    #     """Compile all cvxpy expressions and the problem."""
+    #     self.cvxpy_objective = self.objective.compile_to_cvxpy(
+    #         w_plus, z, value)
+    #     assert self.cvxpy_objective.is_dcp()  # dpp=True)
+    #     assert self.cvxpy_objective.is_concave()
+    #     self.cvxpy_constraints = [constr.compile_to_cvxpy(
+    #         w_plus, z, value) for constr in self.constraints]
+    #     # we need this for dpp compliance
+    #     self.cvxpy_constraints += [cvx.sum(self.z) == 0,
+    #                                self.w_plus == self.w_current + self.z]
+    #     self.problem = cvx.Problem(
+    #         cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints
+    #     )
+    #     assert self.problem.is_dcp()  # dpp=True)
+    #
+    # def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+    #     """Pass a full view of the data to initialize objects that need it."""
+    #     self.objective.pre_evaluation(
+    #         returns, volumes, start_time, end_time, **kwargs)
+    #     for constr in self.constraints:
+    #         constr.pre_evaluation(
+    #             returns, volumes, start_time, end_time, **kwargs)
+    #
+    #     # initialize the problem
+    #     self.portfolio_value = cvx.Parameter(nonneg=True)
+    #     self.w_current = cvx.Parameter(returns.shape[1])
+    #     self.z = cvx.Variable(returns.shape[1])
+    #     self.w_plus = cvx.Variable(returns.shape[1])
+    #
+    #     self.compile_to_cvxpy(self.w_plus, self.z, self.portfolio_value)
+    #
+    # def values_in_time(self, t, current_weights, current_portfolio_value,
+    #     past_returns, past_volumes, **kwargs):
+    #     """Update all cvxpy parameters and solve."""
+    #     self.objective.values_in_time(t, current_weights, current_portfolio_value,
+    #         past_returns, past_volumes, **kwargs)
+    #     for constr in self.constraints:
+    #         constr.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+    #
+    #     self.portfolio_value.value = current_portfolio_value
+    #     self.w_current.value = current_weights.values
+    #     try:
+    #         self.problem.solve(**self.cvxpy_kwargs)
+    #     except cvx.SolverError:
+    #         raise PortfolioOptimizationError(
+    #             f"Numerical solver for policy {self.__class__.__name__} at time {t} failed;"
+    #             "try changing it, relaxing some constraints, or dropping some costs.")
+    #     if self.problem.status in ["unbounded", "unbounded_inaccurate"]:
+    #         raise PortfolioOptimizationError(
+    #             f"Policy {self.__class__.__name__} at time {t} resulted in an unbounded problem."
+    #         )
+    #     if self.problem.status in ["infeasible", 'infeasible_inaccurate']:
+    #         raise PortfolioOptimizationError(
+    #             f"Policy {self.__class__.__name__} at time {t} resulted in an infeasible problem."
+    #         )
+    #
+    #     return pd.Series(self.z.value, current_weights.index)
 
-    Implements the model developed in Chapter 4, in particular
-    at page 43, of the paper. You specify the objective term
+
+class MultiPeriodOptimization(BaseTradingPolicy):
+    """Multi Period Optimization policy.
+
+    Implements the model developed in Chapter 5, in particular
+    at page 49, of the book. You specify the objective terms
     using classes such as ReturnsForecast and TcostModel, each
-    multiplied by its multiplier. You also specify a list
-    of constraints.
+    multiplied by its multiplier. You also specify lists
+    of constraints. There are two ways to do it. You either
+    define the same objective terms and costraints for each 
+    step of the multi-period problem, or you define a different
+    objective term and different list of constraints for each step.
+    In addition we offer a `terminal_constraint` argument to
+    simply impose that at the last step in the optimization the
+    post-trade weights match the given weights (see page 51).
+    
+    When it computes the trajectory of weights for the future
+    it only returns the first step (to the Simulator, typically).
+    The future steps (planning horizon) are by default not returned.
 
     Args:
-        objective (algebra of BaseCost): this will be maximized.
-        constraints (list of BaseConstraints): these will be
-            imposed on the optimization. Default [].
+        objective (algebra of BaseCost or list of those): these will be maximized;
+            if you pass a single expression of BaseCost it is understood as the 
+            same for all steps; if it's a list you must also pass a list of lists
+            for `constraints`, each term represents the cost for each step of the optimization
+            (starting from the first, i.e., today) and the length of the list is 
+            used as planning_horizon (the value you pass there will be ignored) 
+        constraints (list of BaseConstraints or list of those): these will be
+            imposed on the optimization. Default []. Pass this as a list of
+            lists of the same length as `objective` to specify different 
+            constraints at different time steps.
+        planning_horizon (int or None): how many steps in the future we 
+            plan for. Ignored if passing `objective` and `constraints` as lists.
+            Default is None.
+        terminal_constraint (pd.Series or None): if you pass a Series to this
+            (default is None) it will impose that at the last step of the multi
+            period optimization the post-trade weights are equal to this.
         **kwargs: these will be passed to cvxpy.Problem.solve,
             so you can choose your own solver and pass
             parameters to it.
     """
 
-    def __init__(self, objective, constraints=[], **kwargs):
-        self.objective = objective
-        self.constraints = constraints
+    def __init__(self, objective, constraints=[], planning_horizon=None,terminal_constraint=None,**kwargs):
+        if hasattr(objective, '__iter__'):
+            if not hasattr(constraints, '__iter__') and hasattr(constraints[0], '__iter__') and len(objective) == len(constraints):
+                raise SyntaxError('If you pass objective as a list, constraints should be a list of lists of the same length.')
+            self.planning_horizon = len(objective)
+            self.objective = objective
+            self.constraints = constraints
+        else:
+            if not np.isscalar(planning_horizon):
+                raise SyntaxError('If `objective` and `constraints` are the same for all steps you must specify `planning_horizon`.')
+            self.planning_horizon = planning_horizon
+            self.objective = [objective for i in range(planning_horizon)]
+            self.constraints = [constraints for i in range(planning_horizon)]
+                
+        self.terminal_constraint = terminal_constraint
         self.cvxpy_kwargs = kwargs
 
-    def compile_to_cvxpy(self, w_plus, z, value):
+    def compile_to_cvxpy(self):#, w_plus, z, value):
         """Compile all cvxpy expressions and the problem."""
-        self.cvxpy_objective = self.objective.compile_to_cvxpy(
-            w_plus, z, value)
+        self.cvxpy_objective = [
+            el.compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.portfolio_value) 
+            for i, el in enumerate(self.objective)]
+        self.cvxpy_objective = sum(self.cvxpy_objective)
         assert self.cvxpy_objective.is_dcp()  # dpp=True)
         assert self.cvxpy_objective.is_concave()
-        self.cvxpy_constraints = [constr.compile_to_cvxpy(
-            w_plus, z, value) for constr in self.constraints]
-        # we need this for dpp compliance
-        self.cvxpy_constraints += [cvx.sum(self.z) == 0,
-                                   self.w_plus == self.w_current + self.z]
-        self.problem = cvx.Problem(
-            cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints
-        )
+        self.cvxpy_constraints = [
+            [constr.compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.portfolio_value) 
+                for constr in el]
+            for i, el in enumerate(self.constraints)]
+        self.cvxpy_constraints = sum(self.cvxpy_constraints, [])
+        self.cvxpy_constraints += [cvx.sum(z) == 0 for z in self.z_at_lags]
+        w = self.w_current
+        for i in range(self.planning_horizon):
+            self.cvxpy_constraints.append(self.w_plus_at_lags[i] == self.z_at_lags[i] + w)
+            w = self.w_plus_at_lags[i]
+        if not self.terminal_constraint is None:
+            self.cvxpy_constraints.append(w == self.terminal_constraint)
+        self.problem = cvx.Problem(cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints)
         assert self.problem.is_dcp()  # dpp=True)
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Pass a full view of the data to initialize objects that need it."""
-        self.objective.pre_evaluation(
-            returns, volumes, start_time, end_time, **kwargs)
-        for constr in self.constraints:
-            constr.pre_evaluation(
-                returns, volumes, start_time, end_time, **kwargs)
+        for obj in self.objective:
+            obj.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        for constr_at_lag in self.constraints:
+            for constr in constr_at_lag:
+                constr.pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
         # initialize the problem
         self.portfolio_value = cvx.Parameter(nonneg=True)
         self.w_current = cvx.Parameter(returns.shape[1])
-        self.z = cvx.Variable(returns.shape[1])
-        self.w_plus = cvx.Variable(returns.shape[1])
+        self.z_at_lags = [cvx.Variable(returns.shape[1]) for i in range(self.planning_horizon)] 
+        self.w_plus_at_lags = [cvx.Variable(returns.shape[1]) for i in range(self.planning_horizon)]
 
-        self.compile_to_cvxpy(self.w_plus, self.z, self.portfolio_value)
+        self.compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
 
-    def values_in_time(
-        self,
-        t,
-        current_weights,
-        current_portfolio_value,
-        past_returns,
-        past_volumes,
-        **kwargs,
-    ):
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
         """Update all cvxpy parameters and solve."""
-        self.objective.values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs)
-        for constr in self.constraints:
-            constr.values_in_time(
-                t,
-                current_weights,
-                current_portfolio_value,
-                past_returns,
-                past_volumes,
-                **kwargs)
+        for obj in self.objective:
+            obj.values_in_time(t, current_weights, current_portfolio_value,
+                past_returns, past_volumes, **kwargs)
+        for constr_at_lag in self.constraints:
+            for constr in constr_at_lag:
+                constr.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
         self.portfolio_value.value = current_portfolio_value
         self.w_current.value = current_weights.values
@@ -407,8 +515,30 @@ class SinglePeriodOptimization(BaseTradingPolicy):
                 f"Policy {self.__class__.__name__} at time {t} resulted in an infeasible problem."
             )
 
-        return pd.Series(self.z.value, current_weights.index)
+        return pd.Series(self.z_at_lags[0].value, current_weights.index)
 
+
+class SinglePeriodOptimization(MultiPeriodOptimization):
+    """Single Period Optimization policy.
+
+    Implements the model developed in Chapter 4, in particular
+    at page 43, of the book. You specify the objective term
+    using classes such as ReturnsForecast and TcostModel, each
+    multiplied by its multiplier. You also specify a list
+    of constraints.
+
+    Args:
+        objective (algebra of BaseCost): this will be maximized.
+        constraints (list of BaseConstraints): these will be
+            imposed on the optimization. Default [].
+        **kwargs: these will be passed to cvxpy.Problem.solve,
+            so you can choose your own solver and pass
+            parameters to it.
+    """
+
+    def __init__(self, objective, constraints=[], **kwargs):
+        super().__init__([objective], [constraints], **kwargs)
+        
 
 class SinglePeriodOptOLDTONEW(SinglePeriodOptimization):
     """Placeholder class while we translate tests to new interface."""
