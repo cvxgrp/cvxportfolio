@@ -60,7 +60,7 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
     )
 
     p_0 = pd.Series(index=returns.columns, data=1e6)
-    noisy = market_sim.run_backtest(
+    noisy = market_sim.legacy_run_backtest(
         p_0, returns.index[1], returns.index[10], pol)
 
     # linear fit attribution
@@ -125,7 +125,7 @@ def test_attribute_non_profit_series(
     )
 
     p_0 = pd.Series(index=returns.columns, data=1e6)
-    noisy = market_sim.run_backtest(
+    noisy = market_sim.legacy_run_backtest(
         p_0, returns.index[1], returns.index[10], pol)
     # Select tcosts.
 
@@ -186,7 +186,7 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
         returns=returns, costs=[tcost_model, hcost_model])
 
     p_0 = pd.Series(index=returns.columns, data=1e6)
-    noisy = market_sim.run_backtest(
+    noisy = market_sim.legacy_run_backtest(
         p_0, returns.index[1], returns.index[10], pol)
     # Select tcosts.
 

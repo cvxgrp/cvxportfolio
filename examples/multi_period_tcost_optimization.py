@@ -78,7 +78,7 @@ market_sim = cp.MarketSimulator(
 )
 init_portfolio = pd.Series(index=returns.columns, data=1E9)
 init_portfolio.USDOLLAR = 0
-results = market_sim.run_multiple_backtest(
+results = market_sim.legacy_run_multiple_backtest(
     init_portfolio,
     start_time="2023-03-01",
     end_time="2023-03-31",

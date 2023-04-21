@@ -384,6 +384,17 @@ class MarketSimulator(Estimator):
         that initalizes the policy and all its dependents. It is called by Backtest.
         """
         policy.pre_evaluation(self.returns, self.volumes, start_time, end_time)
+        
+        
+    ### THE FOLLOWING METHODS ARE FROM THE ORIGINAL SIMULATOR (PRE-2023)
+    ### The main difference is that you pass a list of costs, which implement
+    ### a `value_expression` method, and those take care of the cost evaluation
+    ### during backtest. These can be used, as they are in the examples, using
+    ### `legacy_run_backtest` and `legacy_run_multiple_backtest`. 
+    ###
+    ### Also, we have two methods that are not part of the book
+    ### and are not well-documented, `what_if` and `attribute`. We may remove
+    ### all methods below this comment block in the coming months.
 
     def propagate(self, h, u, t):
         """Propagates the portfolio forward over time period t, given trades u.
@@ -426,7 +437,7 @@ class MarketSimulator(Estimator):
         assert not u.isnull().values.any()
         return h_next, u
 
-    def run_backtest(
+    def legacy_run_backtest(
             self,
             initial_portfolio,
             start_time,
@@ -486,7 +497,7 @@ class MarketSimulator(Estimator):
         )
         return results
 
-    def run_multiple_backtest(
+    def legacy_run_multiple_backtest(
         self,
         initial_portf,
         start_time,
@@ -497,26 +508,26 @@ class MarketSimulator(Estimator):
     ):
         """Backtest multiple policies."""
 
-        def _run_backtest(policy):
-            return self.run_backtest(
+        def _legacy_run_backtest(policy):
+            return self.legacy_run_backtest(
                 initial_portf, start_time, end_time, policy, loglevel=loglevel
             )
 
         num_workers = min(multiprocess.cpu_count(), len(policies))
         if parallel:
             workers = multiprocess.Pool(num_workers)
-            results = workers.map(_run_backtest, policies)
+            results = workers.map(_legacy_run_backtest, policies)
             workers.close()
             return results
         else:
-            return list(map(_run_backtest, policies))
+            return list(map(_legacy_run_backtest, policies))
 
     def what_if(self, time, results, alt_policies, parallel=True):
         """Run alternative policies starting from given time."""
         # TODO fix
         initial_portf = copy.copy(results.h.loc[time])
         all_times = results.h.index
-        alt_results = self.run_multiple_backtest(
+        alt_results = self.legacy_run_multiple_backtest(
             initial_portf, time, all_times[-1], alt_policies, parallel
         )
         for idx, alt_result in enumerate(alt_results):
@@ -579,7 +590,7 @@ class MarketSimulator(Estimator):
             perturb_pols.append(new_pol)
         # Simulate
         p0 = true_results.initial_portfolio
-        alt_results = self.run_multiple_backtest(
+        alt_results = self.legacy_run_multiple_backtest(
             p0, times[0], times[-1], perturb_pols, parallel=parallel
         )
         # Attribute.
@@ -614,35 +625,3 @@ class MarketSimulator(Estimator):
         ).ravel()
         data["RMS error"] /= np.sqrt(num_sources)
         return data
-        
-        
-
-# # OLD MARKET SIMULATOR, DEPRECATED
-#
-#
-# class MarketSimulator:
-#     """Current market simulator, name will change soon."""
-#
-#     logger = None
-#
-#     def __init__(
-#         self,
-#         market_returns,
-#         costs,
-#         market_volumes=None,
-#         cash_key="cash",
-#     ):
-#         """Provide market returns object and cost objects."""
-#         self.market_returns = market_returns
-#         if market_volumes is not None:
-#             self.market_volumes = market_volumes[
-#                 market_volumes.columns.difference([cash_key])
-#             ]
-#         else:
-#             self.market_volumes = None
-#
-#         self.costs = costs
-#         for cost in self.costs:
-#             assert isinstance(cost, BaseCost)
-#
-#         self.cash_key = cash_key

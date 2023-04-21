@@ -15,9 +15,9 @@ WORK IN PROGRESS
 ```{eval-rst}
 .. autoclass:: MarketSimulator
 
-    .. automethod:: run_backtest
+    .. automethod:: legacy_run_backtest
 
-    .. automethod:: run_multiple_backtest
+    .. automethod:: legacy_run_multiple_backtest
 
     .. automethod:: what_if
 

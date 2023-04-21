@@ -67,7 +67,7 @@ res = pd.DataFrame(
     index=["Daily", "Weekly", "Monthly", "Quarterly", "Annually", "Hold"]
 )
 for label, fund_val in [("\$100M", 1e8), ("\$10B", 1e10)]:
-    res[label] = simulator.run_multiple_backtest(
+    res[label] = simulator.legacy_run_multiple_backtest(
         fund_val * w_b,
         start_time=start_t,
         end_time=end_t,

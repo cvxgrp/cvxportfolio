@@ -48,7 +48,7 @@ init_portfolio.USDOLLAR = 0
 
 # run backtests for the single period optimization policy 
 # and a Hold() policy which never trades
-results = market_sim.run_multiple_backtest(
+results = market_sim.legacy_run_multiple_backtest(
     init_portfolio,
     start_time="2020-01-01",
     end_time="2023-04-01",

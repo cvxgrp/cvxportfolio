@@ -95,7 +95,7 @@ results.update(
     dict(
         zip(
             policies.keys(),
-            simulator.run_multiple_backtest(
+            simulator.legacy_run_multiple_backtest(
                 1e8 * w_b,
                 start_time=start_t,
                 end_time=end_t,
@@ -176,7 +176,7 @@ results.update(
     dict(
         zip(
             policies.keys(),
-            simulator.run_multiple_backtest(
+            simulator.legacy_run_multiple_backtest(
                 1e8 * w_b,
                 start_time=start_t,
                 end_time=end_t,
@@ -287,7 +287,7 @@ results_pareto.update(
     dict(
         zip(
             policies.keys(),
-            simulator.run_multiple_backtest(
+            simulator.legacy_run_multiple_backtest(
                 1e8 * w_b,
                 start_time=start_t,
                 end_time=end_t,

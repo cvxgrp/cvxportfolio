@@ -87,7 +87,7 @@ policy = cp.SinglePeriodOpt(
     solver_opts={"verbose": True},
     solver=solver,
 )
-result = simulator.run_backtest(
+result = simulator.legacy_run_backtest(
     1e8 * w_b, start_time=start_t, end_time=end_t, policy=policy  #'2012-01-31',
 )
 

@@ -81,7 +81,7 @@ risk_model = cp.FactorModelSigma(
 rank_and_long_short = cp.RankAndLongShort(
     return_forecast=return_estimate, num_short=10, num_long=10, target_turnover=0.01
 )
-result_rank = simulator.run_backtest(
+result_rank = simulator.legacy_run_backtest(
     1e8 * w_b, start_time=start_t, end_time=end_t, policy=rank_and_long_short
 )
 
@@ -96,7 +96,7 @@ spo = cp.SinglePeriodOpt(
     [10.0 * risk_model, 7 * optimization_tcost, 10.0 * optimization_hcost],
     [cp.LeverageLimit(3)],
 )
-result_spo = simulator.run_backtest(
+result_spo = simulator.legacy_run_backtest(
     1e8 * w_b, start_time=start_t, end_time=end_t, policy=spo
 )
 

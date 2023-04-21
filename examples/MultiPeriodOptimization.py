@@ -123,7 +123,7 @@ results_MPO.update(
         k: v
         for k, v in zip(
             policies.keys(),
-            simulator.run_multiple_backtest(
+            simulator.legacy_run_multiple_backtest(
                 w_b * 1e8,
                 start_time=start_t,
                 end_time=end_t,
@@ -218,7 +218,7 @@ results_pareto.update(
     dict(
         zip(
             policies.keys(),
-            simulator.run_multiple_backtest(
+            simulator.legacy_run_multiple_backtest(
                 1e8 * w_b,
                 start_time=start_t,
                 end_time=end_t,
