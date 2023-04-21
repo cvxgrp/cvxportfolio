@@ -236,8 +236,8 @@ class MarketSimulator(Estimator):
         if self.prices.iloc[-5:].isnull().any().any():
             drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
             self.prices = self.prices.loc[self.prices.index<drop_at]
-            self.returns = self.prices.loc[self.returns.index<drop_at]
-            self.volumes = self.prices.loc[self.volumes.index<drop_at]
+            self.returns = self.returns.loc[self.returns.index<drop_at]
+            self.volumes = self.volumes.loc[self.volumes.index<drop_at]
         
         self.returns = DataEstimator(self.returns)
         self.volumes = DataEstimator(self.volumes)
