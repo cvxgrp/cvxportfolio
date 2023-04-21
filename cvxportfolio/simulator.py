@@ -239,6 +239,10 @@ class MarketSimulator(Estimator):
             self.returns = self.returns.loc[self.returns.index<drop_at]
             self.volumes = self.volumes.loc[self.volumes.index<drop_at]
         
+        # for consistency we must also nan-out the last row of returns and volumes
+        self.returns.iloc[-1] = np.nan
+        self.volumes.iloc[-1] = np.nan
+        
         self.returns = DataEstimator(self.returns)
         self.volumes = DataEstimator(self.volumes)
         self.prices = DataEstimator(self.prices)
