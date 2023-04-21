@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This module contains trading policies that can be backtested."""
 
 import datetime as dt
 import pandas as pd
@@ -46,37 +47,23 @@ class BaseTradingPolicy(Estimator):
 
     costs = []
     constraints = []
+    
+    INITIALIZED = False # used to interface w/ old cvxportfolio
 
     # TEMPORARY INTERFACE OLD NEW
     def get_trades(self, portfolio, t=dt.datetime.today()):
         """Trades list given current portfolio and time t."""
         value = sum(portfolio)
         w = portfolio / value
-        self.pre_evaluation(
-            returns=pd.DataFrame(0.0, index=[t], columns=portfolio.index),
-            volumes=None,
-            start_time=t,
-            end_time=None,
-        )
-        return (
-            self.values_in_time(
-                t,
-                current_weights=w,
-                current_portfolio_value=value,
-                past_returns=None,
-                past_volumes=None,
-            )
-            * value
-        )
+        if not self.INITIALIZED:
+            self.pre_evaluation(returns=pd.DataFrame(0.0, index=[t], columns=portfolio.index),
+                volumes=None, start_time=t, end_time=None)
+            self.INITIALIZED = True
+        return self.values_in_time(t, current_weights=w,
+                current_portfolio_value=value, past_returns=None, past_volumes=None) * value
 
     def _nulltrade(self, portfolio):
         return pd.Series(index=portfolio.index, data=0.0)
-
-    # DEPRECATED, WE INCLUDE THIS LOGIC IN THE SIMULATOR
-    def get_rounded_trades(self, portfolio, prices, t):
-        """Get trades vector as number of shares, rounded to integers."""
-        return np.round(self.get_trades(portfolio, t) /
-                        values_in_time(prices, t))[:-1]
 
 
 class Hold(BaseTradingPolicy):
@@ -308,88 +295,6 @@ class AdaptiveRebalance(BaseTradingPolicy):
             return pd.Series(0.0, current_weights.index)
 
 
-# class SinglePeriodOptimization(MultiPeriodOptimization):
-#     """Single Period Optimization policy.
-#
-#     Implements the model developed in Chapter 4, in particular
-#     at page 43, of the book. You specify the objective term
-#     using classes such as ReturnsForecast and TcostModel, each
-#     multiplied by its multiplier. You also specify a list
-#     of constraints.
-#
-#     Args:
-#         objective (algebra of BaseCost): this will be maximized.
-#         constraints (list of BaseConstraints): these will be
-#             imposed on the optimization. Default [].
-#         **kwargs: these will be passed to cvxpy.Problem.solve,
-#             so you can choose your own solver and pass
-#             parameters to it.
-#     """
-#
-#     def __init__(self, objective, constraints=[], **kwargs):
-    #     self.objective = objective
-    #     self.constraints = constraints
-    #     self.cvxpy_kwargs = kwargs
-    #
-    # def compile_to_cvxpy(self, w_plus, z, value):
-    #     """Compile all cvxpy expressions and the problem."""
-    #     self.cvxpy_objective = self.objective.compile_to_cvxpy(
-    #         w_plus, z, value)
-    #     assert self.cvxpy_objective.is_dcp()  # dpp=True)
-    #     assert self.cvxpy_objective.is_concave()
-    #     self.cvxpy_constraints = [constr.compile_to_cvxpy(
-    #         w_plus, z, value) for constr in self.constraints]
-    #     # we need this for dpp compliance
-    #     self.cvxpy_constraints += [cvx.sum(self.z) == 0,
-    #                                self.w_plus == self.w_current + self.z]
-    #     self.problem = cvx.Problem(
-    #         cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints
-    #     )
-    #     assert self.problem.is_dcp()  # dpp=True)
-    #
-    # def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-    #     """Pass a full view of the data to initialize objects that need it."""
-    #     self.objective.pre_evaluation(
-    #         returns, volumes, start_time, end_time, **kwargs)
-    #     for constr in self.constraints:
-    #         constr.pre_evaluation(
-    #             returns, volumes, start_time, end_time, **kwargs)
-    #
-    #     # initialize the problem
-    #     self.portfolio_value = cvx.Parameter(nonneg=True)
-    #     self.w_current = cvx.Parameter(returns.shape[1])
-    #     self.z = cvx.Variable(returns.shape[1])
-    #     self.w_plus = cvx.Variable(returns.shape[1])
-    #
-    #     self.compile_to_cvxpy(self.w_plus, self.z, self.portfolio_value)
-    #
-    # def values_in_time(self, t, current_weights, current_portfolio_value,
-    #     past_returns, past_volumes, **kwargs):
-    #     """Update all cvxpy parameters and solve."""
-    #     self.objective.values_in_time(t, current_weights, current_portfolio_value,
-    #         past_returns, past_volumes, **kwargs)
-    #     for constr in self.constraints:
-    #         constr.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
-    #
-    #     self.portfolio_value.value = current_portfolio_value
-    #     self.w_current.value = current_weights.values
-    #     try:
-    #         self.problem.solve(**self.cvxpy_kwargs)
-    #     except cvx.SolverError:
-    #         raise PortfolioOptimizationError(
-    #             f"Numerical solver for policy {self.__class__.__name__} at time {t} failed;"
-    #             "try changing it, relaxing some constraints, or dropping some costs.")
-    #     if self.problem.status in ["unbounded", "unbounded_inaccurate"]:
-    #         raise PortfolioOptimizationError(
-    #             f"Policy {self.__class__.__name__} at time {t} resulted in an unbounded problem."
-    #         )
-    #     if self.problem.status in ["infeasible", 'infeasible_inaccurate']:
-    #         raise PortfolioOptimizationError(
-    #             f"Policy {self.__class__.__name__} at time {t} resulted in an infeasible problem."
-    #         )
-    #
-    #     return pd.Series(self.z.value, current_weights.index)
-
 
 class MultiPeriodOptimization(BaseTradingPolicy):
     """Multi Period Optimization policy.
@@ -554,8 +459,3 @@ class SinglePeriodOptOLDTONEW(SinglePeriodOptimization):
         if not (solver is None):
             kwargs["solver"] = solver
         super().__init__(objective, constraints, **kwargs)
-
-
-# LEGACY CLASSES USED BY OLD TESTS, REPLACEMENT ONES ARE ABOVE
-
-

@@ -47,7 +47,8 @@ class BaseCost(CvxpyExpressionEstimator):
 
     # gamma = 1. # this will be removed
     LEGACY = False # used by some methods that need to know if they run in legacy mode
-
+    INITIALIZED = False # used to interface w/ old cvxportfolio
+    
     # PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
     def weight_expr(self, t, w_plus, z, value):
         cost, constr = self._estimate(t, w_plus, z, value)
@@ -56,10 +57,12 @@ class BaseCost(CvxpyExpressionEstimator):
     def _estimate(self, t, w_plus, z, value):
         """Temporary interface to old cvxportfolio."""
         self.LEGACY = True
-        self.pre_evaluation(None, None, t, None)
-        cost = self.compile_to_cvxpy(w_plus, z, value)
+        if not self.INITIALIZED:
+            self.pre_evaluation(None, None, t, None)
+            self.legacy_expression = self.compile_to_cvxpy(w_plus, z, value)
+            self.INITIALIZED = True
         self.values_in_time(t, None, value, None, None)
-        return cost, []
+        return self.legacy_expression, []
 
     def weight_expr_ahead(self, t, tau, w_plus, z, value):
         return self.weight_expr(t, w_plus, z, value)
