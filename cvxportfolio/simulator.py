@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 import cvxpy as cvx
 
-from .returns import MultipleReturnsForecasts
+from .legacy import MultipleReturnsForecasts
 
 from .result import SimulationResult
 from .costs import BaseCost

@@ -146,7 +146,7 @@ class YfinanceBase(BaseData):
             updated (pandas.DataFrame): updated DataFrame for the symbol
         """
         if (current is None) or (len(current) < overlap):
-            updated = yf.download(symbol, **kwargs)
+            updated = yf.download(symbol, progress=False, **kwargs)
             return cls.internal_process(updated)
         else:
             new = yf.download(symbol, start=current.index[-overlap], **kwargs)

@@ -30,7 +30,7 @@ import numpy as np
 import copy
 
 # from .expression import Expression
-from .utils import null_checker, values_in_time
+# from .utils import null_checker, values_in_time
 from .estimator import CvxpyExpressionEstimator, ParameterEstimator
 
 __all__ = ["HcostModel", "TcostModel"]
@@ -46,6 +46,7 @@ class BaseCost(CvxpyExpressionEstimator):
     """
 
     # gamma = 1. # this will be removed
+    LEGACY = False # used by some methods that need to know if they run in legacy mode
 
     # PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
     def weight_expr(self, t, w_plus, z, value):
@@ -54,6 +55,7 @@ class BaseCost(CvxpyExpressionEstimator):
 
     def _estimate(self, t, w_plus, z, value):
         """Temporary interface to old cvxportfolio."""
+        self.LEGACY = True
         self.pre_evaluation(None, None, t, None)
         cost = self.compile_to_cvxpy(w_plus, z, value)
         self.values_in_time(t, None, value, None, None)
@@ -116,6 +118,12 @@ class CombinedCosts(BaseCost):
                 )
         self.costs = costs
         self.multipliers = multipliers
+        
+    def _estimate(self, t, w_plus, z, value):
+        """Temporary interface to old cvxportfolio."""
+        for cost in self.costs:
+            cost.LEGACY = True
+        return super()._estimate(t, w_plus, z, value)
 
     def __add__(self, other):
         """Add other (combined) cost to self."""

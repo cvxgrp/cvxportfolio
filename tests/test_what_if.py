@@ -109,12 +109,12 @@ def test_attribute_non_profit_series(
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
     emp_Sigma = np.cov(returns.to_numpy().T)
-    risk_model = FullCovariance(emp_Sigma, gamma=100.0)
+    risk_model = FullCovariance(emp_Sigma)#, gamma=100.0)
     # tcost_model = TcostModel(self.a, self.b, sigma, volumes)
     # hcost_model = HcostModel(self.s, self.s * 0)
     pol = SinglePeriodOpt(
         alpha_model, [
-            risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS)
+            100 * risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS)
 
     tcost = TcostModel(0.0005, 1.0, sigma, volumes)
 

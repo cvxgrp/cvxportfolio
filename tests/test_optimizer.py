@@ -18,8 +18,8 @@ import pandas as pd
 import pytest
 
 from cvxportfolio.costs import HcostModel, TcostModel
-from cvxportfolio.policies import SinglePeriodOpt
-from cvxportfolio.returns import *
+from cvxportfolio.legacy import SinglePeriodOpt, LegacyReturnsForecast
+# from cvxportfolio.returns import *
 from cvxportfolio.risks import FullCovariance
 
 

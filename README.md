@@ -34,9 +34,7 @@ pip install cvxportfolio
 Testing
 ------------
 
-To test it locally set up the development environment with [`poetry`](https://python-poetry.org/) (you will need to
-install it first) and run [`pytest`](https://pytest.org/). 
-
+To test it locally, for example, you can set up the development environment with [`poetry`](https://python-poetry.org/) and run [`pytest`](https://pytest.org/). 
 
 ```
 git clone https://github.com/cvxgrp/cvxportfolio.git
@@ -58,17 +56,6 @@ Examples
 
 You can see basic usage of the package in the [examples](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/).
 These are currently being reworked and simplified. At the moment we don't guarantee they run without issues.
-
-If you want to run them, for example, you can clone the repository and do it from the development environment:
-
-```
-git clone https://github.com/cvxgrp/cvxportfolio.git
-cd cvxportfolio
-poetry install
-cd examples
-poetry run python hello_world.py
-```
-
 
 Citing
 ------------

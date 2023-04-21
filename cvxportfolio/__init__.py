@@ -19,8 +19,10 @@ from .simulator import MarketSimulator
 from .result import SimulationResult
 from .policies import *
 from .constraints import *
-from .utils import *
 from .costs import TcostModel, HcostModel
 from .returns import *
 from .estimator import DataEstimator
 from .risks import *
+
+from .legacy import *
+

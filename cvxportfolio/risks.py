@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from .costs import BaseCost
-from .utils import values_in_time
+# from .utils import values_in_time
 
 logger = logging.getLogger(__name__)
 
@@ -133,26 +133,23 @@ class FullCovariance(BaseRiskModel):
             past_volumes,
             **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        super().values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs)
+        super().values_in_time(t, current_weights, current_portfolio_value,
+            past_returns, past_volumes, **kwargs)
         self.parameter_forecast_error.value = np.sqrt(
             np.diag(self.Sigma.value)) * np.sqrt(self.forecast_error_kappa.current_value)
-        self.Sigma_sqrt.value = scipy.linalg.sqrtm(self.Sigma.value)
-        assert np.allclose(
-            self.Sigma.value,
-            self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)
+        if not self.LEGACY:
+            self.Sigma_sqrt.value = scipy.linalg.sqrtm(self.Sigma.value)
+            assert np.allclose(
+                self.Sigma.value,
+                self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        # TEMPORARY SOMETHING'S BROKEN WITH NEW INTERFACE VS OLD INTERFACE, CHECK BACK ONCE
-        # NEW SIMULATOR IS DONE
-        self.cvxpy_expression = cvx.quad_form(
-            w_plus - self.benchmark_weights, self.Sigma)  # + \
-        # self.cvxpy_expression =  cvx.sum_squares(self.Sigma_sqrt.T @ (w_plus - self.benchmark_weights))
+        # something's broken with the old interface, patching it here
+        if self.LEGACY:
+            self.cvxpy_expression = cvx.quad_form(
+                w_plus - self.benchmark_weights, self.Sigma) 
+        else:
+            self.cvxpy_expression =  cvx.sum_squares(self.Sigma_sqrt.T @ (w_plus - self.benchmark_weights))
         # assert self.cvxpy_expression.is_dcp(dpp=True)
         self.cvxpy_expression += cvx.square(cvx.abs(w_plus -
                                                     self.benchmark_weights).T @ self.parameter_forecast_error)

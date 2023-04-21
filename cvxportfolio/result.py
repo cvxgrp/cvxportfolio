@@ -17,7 +17,7 @@ import collections
 import numpy as np
 import pandas as pd
 import copy
-from .policies import MultiPeriodOpt
+from .legacy import *
 from .estimator import Estimator
 
 

@@ -20,7 +20,7 @@ import cvxpy as cvx
 import numpy as np
 
 # from cvxportfolio.expression import Expression
-from .utils import values_in_time, null_checker
+# from .legacy import values_in_time, null_checker
 from .costs import BaseCost
 from .risks import BaseRiskModel
 from .estimator import DataEstimator, ParameterEstimator
@@ -31,9 +31,6 @@ __all__ = [
     "ExponentialWindowReturnsForecast",
     "ReturnsForecastErrorRisk",
     "RollingWindowReturnsForecastErrorRisk",
-    "LegacyReturnsForecast",
-    "MPOReturnsForecast",
-    "MultipleReturnsForecasts",
 ]
 
 
@@ -166,129 +163,3 @@ class ExponentialWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
         raise NotImplementedError
 
 
-# LEGACY CLASSES USED BY OLD TESTS. WILL BE REMOVED AS WE FINISH TRANSLATION
-
-
-class LegacyReturnsForecast(BaseReturnsModel):
-    """A single return forecast.
-
-    STILL USED BY OLD PARTS OF CVXPORTFOLIO
-
-    Attributes:
-      alpha_data: A dataframe of return estimates.
-      delta_data: A confidence interval around the estimates.
-      half_life: Number of days for alpha auto-correlation to halve.
-    """
-
-    def __init__(self, returns, delta=0.0, gamma_decay=None, name=None):
-        null_checker(returns)
-        self.returns = returns
-        null_checker(delta)
-        self.delta = delta
-        self.gamma_decay = gamma_decay
-        self.name = name
-
-    def weight_expr(self, t, wplus, z=None, v=None):
-        """Returns the estimated alpha.
-
-        Args:
-          t: time estimate is made.
-          wplus: An expression for holdings.
-          tau: time of alpha being estimated.
-
-        Returns:
-          An expression for the alpha.
-        """
-        alpha = cvx.multiply(values_in_time(self.returns, t), wplus)
-        alpha -= cvx.multiply(values_in_time(self.delta, t), cvx.abs(wplus))
-        return cvx.sum(alpha)
-
-    def weight_expr_ahead(self, t, tau, wplus):
-        """Returns the estimate at time t of alpha at time tau.
-
-        Args:
-          t: time estimate is made.
-          wplus: An expression for holdings.
-          tau: time of alpha being estimated.
-
-        Returns:
-          An expression for the alpha.
-        """
-
-        alpha = self.weight_expr(t, wplus)
-        if tau > t and self.gamma_decay is not None:
-            alpha *= (tau - t).days ** (-self.gamma_decay)
-        return alpha
-
-
-class MPOReturnsForecast(BaseReturnsModel):
-    """A single alpha estimation.
-
-    Attributes:
-      alpha_data: A dict of series of return estimates.
-    """
-
-    def __init__(self, alpha_data):
-        self.alpha_data = alpha_data
-
-    def weight_expr_ahead(self, t, tau, wplus):
-        """Returns the estimate at time t of alpha at time tau.
-
-        Args:
-          t: time estimate is made.
-          wplus: An expression for holdings.
-          tau: time of alpha being estimated.
-
-        Returns:
-          An expression for the alpha.
-        """
-        return self.alpha_data[(t, tau)].values.T * wplus
-
-
-class MultipleReturnsForecasts(BaseReturnsModel):
-    """A weighted combination of alpha sources.
-
-    DEPRECATED: THIS SHOULD BE DONE BY MULTIPLYING BY HYPERPARAMETERS
-    AND PASSING MULTIPLE RETURN MODELS LIKE WE DO FOR COSTS
-
-    Attributes:
-      alpha_sources: a list of alpha sources.
-      weights: An array of weights for the alpha sources.
-    """
-
-    def __init__(self, alpha_sources, weights):
-        self.alpha_sources = alpha_sources
-        self.weights = weights
-
-    def weight_expr(self, t, wplus, z=None, v=None):
-        """Returns the estimated alpha.
-
-        Args:
-            t: time estimate is made.
-            wplus: An expression for holdings.
-            tau: time of alpha being estimated.
-
-        Returns:
-          An expression for the alpha.
-        """
-        alpha = 0
-        for idx, source in enumerate(self.alpha_sources):
-            alpha += source.weight_expr(t, wplus) * self.weights[idx]
-        return alpha
-
-    def weight_expr_ahead(self, t, tau, wplus):
-        """Returns the estimate at time t of alpha at time tau.
-
-        Args:
-          t: time estimate is made.
-          wplus: An expression for holdings.
-          tau: time of alpha being estimated.
-
-        Returns:
-          An expression for the alpha.
-        """
-        alpha = 0
-        for idx, source in enumerate(self.alpha_sources):
-            alpha += source.weight_expr_ahead(t,
-                                              tau, wplus) * self.weights[idx]
-        return alpha

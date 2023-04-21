@@ -22,6 +22,7 @@ import pytest
 from cvxportfolio.costs import HcostModel, TcostModel
 from cvxportfolio.returns import *
 from cvxportfolio.risks import FullCovariance
+from cvxportfolio.legacy import LegacyReturnsForecast, MultipleReturnsForecasts
 
 
 def test_alpha(returns):
