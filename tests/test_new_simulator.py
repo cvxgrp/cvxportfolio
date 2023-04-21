@@ -17,39 +17,39 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cvxportfolio.simulator import NewMarketSimulator
+from cvxportfolio.simulator import MarketSimulator
 
 
 def test_simulator_raises():
 
     with pytest.raises(SyntaxError):
-        simulator = NewMarketSimulator()
+        simulator = MarketSimulator()
 
     with pytest.raises(SyntaxError):
-        simulator = NewMarketSimulator(returns=pd.DataFrame([[0.]]))
+        simulator = MarketSimulator(returns=pd.DataFrame([[0.]]))
 
     with pytest.raises(SyntaxError):
-        simulator = NewMarketSimulator(volumes=pd.DataFrame([[0.]]))
+        simulator = MarketSimulator(volumes=pd.DataFrame([[0.]]))
 
     with pytest.raises(SyntaxError):
-        simulator = NewMarketSimulator(returns=pd.DataFrame(
+        simulator = MarketSimulator(returns=pd.DataFrame(
             [[0.]]), volumes=pd.DataFrame([[0.]]))
 
     # not raises
-    simulator = NewMarketSimulator(returns=pd.DataFrame([[0., 0.]]), volumes=pd.DataFrame(
+    simulator = MarketSimulator(returns=pd.DataFrame([[0., 0.]]), volumes=pd.DataFrame(
         [[0.]]), per_share_fixed_cost=0., round_trades=False)
 
     with pytest.raises(SyntaxError):
-        simulator = NewMarketSimulator(returns=pd.DataFrame(
+        simulator = MarketSimulator(returns=pd.DataFrame(
             [[0., 0.]]), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
 
     with pytest.raises(SyntaxError):
-        simulator = NewMarketSimulator(returns=pd.DataFrame(
+        simulator = MarketSimulator(returns=pd.DataFrame(
             [[0., 0.]]), volumes=pd.DataFrame([[0.]]), round_trades=False)
 
 
 def test_prepare_data(tmp_path):
-    simulator = NewMarketSimulator(['ZM', 'META'], base_location=tmp_path)
+    simulator = MarketSimulator(['ZM', 'META'], base_location=tmp_path)
     assert simulator.returns.data.shape[1] == 3
     assert simulator.prices.data.shape[1] == 2
     assert simulator.volumes.data.shape[1] == 2
@@ -64,7 +64,7 @@ def test_prepare_data(tmp_path):
          simulator.returns.data.iloc[-1001:-1,0].std())
          
 def test_methods(tmp_path):
-    simulator = NewMarketSimulator(['ZM', 'META', 'AAPL'], base_location=tmp_path)
+    simulator = MarketSimulator(['ZM', 'META', 'AAPL'], base_location=tmp_path)
     super(simulator.__class__, simulator).values_in_time('2023-04-14', None, None, None, None)
     
     for i in range(10):

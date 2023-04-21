@@ -56,7 +56,7 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
     tcost = TcostModel(0.0005, 1.0, sigma, volumes)
     hcost = HcostModel(0.0)
     market_sim = simulator.MarketSimulator(
-        returns, costs=[tcost, hcost], market_volumes=volumes
+        returns=returns, costs=[tcost, hcost], volumes=volumes
     )
 
     p_0 = pd.Series(index=returns.columns, data=1e6)
@@ -121,7 +121,7 @@ def test_attribute_non_profit_series(
     # tcost = TcostModel(volumes, sigma, self.a, self.b)
     hcost = HcostModel(0.0)
     market_sim = simulator.MarketSimulator(
-        returns, costs=[tcost, hcost], market_volumes=volumes
+        returns=returns, costs=[tcost, hcost], volumes=volumes
     )
 
     p_0 = pd.Series(index=returns.columns, data=1e6)
@@ -183,7 +183,7 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
             100 * risk_model, tcost_model, hcost_model], [])
 
     market_sim = simulator.MarketSimulator(
-        returns, costs=[tcost_model, hcost_model])
+        returns=returns, costs=[tcost_model, hcost_model])
 
     p_0 = pd.Series(index=returns.columns, data=1e6)
     noisy = market_sim.run_backtest(

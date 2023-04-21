@@ -37,7 +37,7 @@ def tcost_term(sigma, volumes):
 @pytest.fixture()
 def simulator(returns, hcost_term, tcost_term, volumes):
     return MarketSimulator(
-        returns, costs=[tcost_term, hcost_term], market_volumes=volumes
+        returns=returns, costs=[tcost_term, hcost_term], volumes=volumes
     )
 
 
@@ -77,7 +77,7 @@ def test_hcost_neg(returns, portfolio, tcost_term, volumes):
     """Test hcost function, negative positions."""
     hcost_term = HcostModel(0.0001)
     simulator = MarketSimulator(
-        returns, costs=[tcost_term, hcost_term], market_volumes=volumes
+        returns=returns, costs=[tcost_term, hcost_term], volumes=volumes
     )
 
     # simulator.hcost_term.borrow_costs += .0001

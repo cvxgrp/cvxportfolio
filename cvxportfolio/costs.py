@@ -204,12 +204,12 @@ class HcostModel(BaseCost):
 
     def value_expr(self, t, h_plus, u):
         """Placeholder method as we update the rest of the stack to new interface."""
-
-        self.pre_evaluation(None, None, t, None)
+        
+        if not self.INITIALIZED:
+            self.pre_evaluation(None, None, t, None)
         self.values_in_time(t, None, None, None, None)
 
-        self.last_cost = -np.minimum(0,
-                                     h_plus.iloc[:-1]) * self.borrow_costs.value
+        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.value
         self.last_cost -= h_plus.iloc[:-1] * self.dividends.value
 
         return sum(self.last_cost)
@@ -359,7 +359,8 @@ class TcostModel(BaseCost):
     def value_expr(self, t, h_plus, u):
         """Temporary placeholder, new simulators implement their own tcost."""
 
-        self.pre_evaluation(None, None, t, None)
+        if not self.INITIALIZED:
+            self.pre_evaluation(None, None, t, None)
         self.values_in_time(t, None, 1., None, None)
 
         u_nc = u.iloc[:-1]

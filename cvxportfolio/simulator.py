@@ -1,4 +1,5 @@
 # Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
+# Copyright 2023- The Cvxportfolio Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +38,7 @@ from .data import FredRate, Yfinance, TimeSeries
 from .estimator import Estimator, DataEstimator
 
 
-class NewMarketSimulator(Estimator):
+class MarketSimulator(Estimator):
     """This class implements a simulator of market performance for trading strategies.
 
     We strive to make the parameters here as accurate as possible. The following is
@@ -131,6 +132,7 @@ class NewMarketSimulator(Estimator):
             universe=[],
             returns=None,
             volumes=None,
+            costs=None,
             prices=None,
             spreads=0.,
             round_trades=True,
@@ -148,17 +150,22 @@ class NewMarketSimulator(Estimator):
             "cvxportfolio"):
         """Initialize the Simulator and download data if necessary."""
         if not len(universe):
-            if (returns is None) or (volumes is None):
-                raise SyntaxError(
-                    "If you don't specify a universe you should pass `returns` and `volumes`.")
-            if not returns.shape[1] == volumes.shape[1] + 1:
-                raise SyntaxError(
-                    "In `returns` you must include the cash returns as the last column (and not in `volumes`).")
+            if costs is None: # we allow old simulator syntax for the time being
+                if ((returns is None) or (volumes is None)):
+                    raise SyntaxError(
+                        "If you don't specify a universe you should pass `returns` and `volumes`.")
+                if not returns.shape[1] == volumes.shape[1] + 1:
+                    raise SyntaxError(
+                        "In `returns` you must include the cash returns as the last column (and not in `volumes`).")
             self.returns = DataEstimator(returns)
-            self.volumes = DataEstimator(volumes)
+            self.volumes = DataEstimator(volumes) if not volumes is None else volumes
             self.cash_key = returns.columns[-1]
+            self.costs = costs
+            if not self.costs is None:
+                for cost in self.costs:
+                    assert isinstance(cost, BaseCost)
             self.prices = DataEstimator(prices) if prices is not None else None
-            if prices is None:
+            if prices is None and self.costs is None:
                 if per_share_fixed_cost > 0:
                     raise SyntaxError(
                         "If you don't specify prices you can't request `per_share_fixed_cost` transaction costs.")
@@ -317,13 +324,7 @@ class NewMarketSimulator(Estimator):
             return real_cash * \
                 (cash_return + self.spread_on_borrowing_cash_percent)
 
-    def values_in_time(
-            self,
-            t,
-            current_weights,
-            current_portfolio_value,
-            policy,
-            **kwargs):
+    def values_in_time(self, t, current_weights, current_portfolio_value, policy, **kwargs):
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
@@ -335,22 +336,10 @@ class NewMarketSimulator(Estimator):
         past_volumes = self.volumes.loc[self.volumes.index < t]
 
         # update all internal estimators
-        super().values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs)
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
         # evaluate the policy
-        z = policy.values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs)
+        z = policy.values_in_time(t, current_weights, current_portfolio_value, past_returns,past_volumes, **kwargs)
 
         # trades in dollars
         u = z * current_portfolio_value
@@ -387,37 +376,14 @@ class NewMarketSimulator(Estimator):
 
         # return
         return tomorrows_weights, tomorrows_portfolio_value, z, transaction_costs, holding_costs, cash_holding_costs
-
-
-# OLD MARKET SIMULATOR, DEPRECATED
-
-
-class MarketSimulator:
-    """Current market simulator, name will change soon."""
-
-    logger = None
-
-    def __init__(
-        self,
-        market_returns,
-        costs,
-        market_volumes=None,
-        cash_key="cash",
-    ):
-        """Provide market returns object and cost objects."""
-        self.market_returns = market_returns
-        if market_volumes is not None:
-            self.market_volumes = market_volumes[
-                market_volumes.columns.difference([cash_key])
-            ]
-        else:
-            self.market_volumes = None
-
-        self.costs = costs
-        for cost in self.costs:
-            assert isinstance(cost, BaseCost)
-
-        self.cash_key = cash_key
+        
+    def pre_evaluation(self, policy, start_time, end_time):
+        """Initialize the policy object.
+        
+        This method differs from other Estimators because it is the Simulator
+        that initalizes the policy and all its dependents. It is called by Backtest.
+        """
+        policy.pre_evaluation(self.returns, self.volumes, start_time, end_time)
 
     def propagate(self, h, u, t):
         """Propagates the portfolio forward over time period t, given trades u.
@@ -433,9 +399,9 @@ class MarketSimulator:
         """
         assert u.index.equals(h.index)
 
-        if self.market_volumes is not None:
+        if self.volumes is not None:
             # don't trade if volume is null
-            null_trades = self.market_volumes.columns[self.market_volumes.loc[t] == 0]
+            null_trades = self.volumes.data.columns[self.volumes.data.loc[t] == 0]
             if len(null_trades):
                 logging.info(
                     "No trade condition for stocks %s on %s" % (null_trades, t)
@@ -452,9 +418,9 @@ class MarketSimulator:
         hplus[self.cash_key] = h[self.cash_key] + u[self.cash_key]
 
         assert hplus.index.sort_values().equals(
-            self.market_returns.columns.sort_values()
+            self.returns.data.columns.sort_values()
         )
-        h_next = self.market_returns.loc[t] * hplus + hplus
+        h_next = self.returns.data.loc[t] * hplus + hplus
 
         assert not h_next.isnull().values.any()
         assert not u.isnull().values.any()
@@ -478,9 +444,9 @@ class MarketSimulator:
         )
         h = initial_portfolio
 
-        simulation_times = self.market_returns.index[
-            (self.market_returns.index >= start_time)
-            & (self.market_returns.index <= end_time)
+        simulation_times = self.returns.data.index[
+            (self.returns.data.index >= start_time)
+            & (self.returns.data.index <= end_time)
         ]
         logging.info(
             "Backtest started, from %s to %s"
@@ -510,7 +476,7 @@ class MarketSimulator:
                 t=t,
                 u=u,
                 h_next=h,
-                risk_free_return=self.market_returns.loc[t, self.cash_key],
+                risk_free_return=self.returns.data.loc[t, self.cash_key],
                 exec_time=end - start,
             )
 
@@ -648,3 +614,35 @@ class MarketSimulator:
         ).ravel()
         data["RMS error"] /= np.sqrt(num_sources)
         return data
+        
+        
+
+# # OLD MARKET SIMULATOR, DEPRECATED
+#
+#
+# class MarketSimulator:
+#     """Current market simulator, name will change soon."""
+#
+#     logger = None
+#
+#     def __init__(
+#         self,
+#         market_returns,
+#         costs,
+#         market_volumes=None,
+#         cash_key="cash",
+#     ):
+#         """Provide market returns object and cost objects."""
+#         self.market_returns = market_returns
+#         if market_volumes is not None:
+#             self.market_volumes = market_volumes[
+#                 market_volumes.columns.difference([cash_key])
+#             ]
+#         else:
+#             self.market_volumes = None
+#
+#         self.costs = costs
+#         for cost in self.costs:
+#             assert isinstance(cost, BaseCost)
+#
+#         self.cash_key = cash_key
