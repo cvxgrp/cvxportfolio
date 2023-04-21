@@ -34,6 +34,7 @@ __all__ = [
     "ProportionalRebalance",
     "AdaptiveRebalance",
     "SinglePeriodOptimization",
+    "MultiPeriodOptimization",
     "ProportionalTradeToTargets",
     "RankAndLongShort",
     "FixedWeights",
@@ -433,7 +434,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
 
     def __init__(self, objective, constraints=[], planning_horizon=None,terminal_constraint=None,**kwargs):
         if hasattr(objective, '__iter__'):
-            if not hasattr(constraints, '__iter__') and hasattr(constraints[0], '__iter__') and len(objective) == len(constraints):
+            if not (hasattr(constraints, '__iter__') and len(constraints) and (hasattr(constraints[0], '__iter__') and len(objective) == len(constraints))):
                 raise SyntaxError('If you pass objective as a list, constraints should be a list of lists of the same length.')
             self.planning_horizon = len(objective)
             self.objective = objective
