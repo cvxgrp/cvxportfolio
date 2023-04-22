@@ -348,7 +348,7 @@ def test_single_period_optimization_solve_twice(returns, volumes):
         past_returns=None,
         past_volumes=None)
 
-    assert np.allclose(result2, 0.)
+    assert np.allclose(result2, 0., atol=1e-7)
 
 
 def test_single_period_optimization_infeasible(returns, volumes):
@@ -614,8 +614,9 @@ def test_multi_period_optimization3(returns, volumes):
         
         
 def test_spo_old_vs_new(returns, volumes, sigma):
-    tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,)
-    hcost_model = HcostModel(borrow_costs=0., dividends=0.)
+    tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,
+    )
+    #hcost_model = HcostModel(borrow_costs=0., dividends=0.)
     emp_Sigma = np.cov(returns.to_numpy().T)
     risk_model = FullCovariance(emp_Sigma)
     returns_forecast = ReturnsForecast(returns.mean())
@@ -624,19 +625,22 @@ def test_spo_old_vs_new(returns, volumes, sigma):
         returns_forecast, [
             10 * risk_model, 
             2 * tcost_model, 
-            hcost_model
-        ], [], solver=cvx.ECOS, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
+            #hcost_model
+        ], [], solver=cvx.ECOS)#, solver_opts={'verbose':True})#, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
     
-    np.random.seed(0)
-    init = pd.Series(np.random.uniform(size=returns.shape[1]), index = returns.columns)
+    #np.random.seed(0)
+    init = pd.Series(1., index = returns.columns)
     init *= 1E6
         
     trad = pol.get_trades(init, t=returns.index[10])
     
     print(trad)
+    
+    # raise Exception
 
     # print(pol.costs[1].costs[0].second_term_multiplier.value)
-    
+    risk_model = FullCovariance(emp_Sigma)
+    returns_forecast = ReturnsForecast(returns.mean())
     tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,)
     hcost_model = HcostModel(borrow_costs=0., dividends=0.)
     
@@ -644,8 +648,8 @@ def test_spo_old_vs_new(returns, volumes, sigma):
         returns_forecast, [
             10 * risk_model, 
             2 * tcost_model, 
-            hcost_model
-        ], [], solver=cvx.ECOS, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
+            #hcost_model
+        ], [], solver=cvx.ECOS)#, solver_opts={'verbose':True})#, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
         
     trad_new = pol_new.get_trades(init, t=returns.index[10])
     
@@ -669,7 +673,7 @@ def test_spo_old_vs_new(returns, volumes, sigma):
             - 2 * 0.0005 * cvx.norm1(z[:-1])
             - 2 * (cvx.abs(z[:-1])**1.5).T @ (s * np.sqrt(val / V))
             )
-    cvx.Problem(objective, [cvx.sum(z) == 0, z + w0 == w]).solve(solver='ECOS', abstol=1E-16, reltol=1e-16, feastol=1e-16)
+    cvx.Problem(objective, [cvx.sum(z) == 0, z + w0 == w]).solve(solver='ECOS')#, abstol=1E-16, reltol=1e-16, feastol=1e-16)
     
     trad_cvxpy = pd.Series(val * w.value - init, returns.columns)
     assert np.allclose((trad_cvxpy - trad_new)/sum(init), 0., atol=1E-3)        

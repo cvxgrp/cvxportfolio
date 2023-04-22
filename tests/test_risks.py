@@ -55,10 +55,11 @@ def test_full_sigma(returns):
     w_plus = cvx.Variable(N)
 
     risk_model.pre_evaluation(
-        None,
+        returns.iloc[:, :N],
         None,
         start_time=historical_covariances.index[0][0],
         end_time=None)
+    risk_model.set_benchmark(pd.Series(0., returns.iloc[:, :N].columns))
     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
     assert cvxpy_expression.is_convex()
 

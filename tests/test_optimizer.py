@@ -44,6 +44,7 @@ def test_single_period_opt(returns, sigma, volumes, tcost_model, hcost_model):
     alpha_model = ReturnsForecast(returns)
     emp_Sigma = np.cov(returns.to_numpy().T) + np.eye(n) * 1e-3
     risk_model = FullCovariance(emp_Sigma)
+    risk_model.set_benchmark(pd.Series(0, returns.columns))
     pol = SinglePeriodOpt(
         alpha_model, [
             gamma * risk_model, tcost_model, hcost_model], [], solver=cvx.ECOS)

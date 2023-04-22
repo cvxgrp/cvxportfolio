@@ -27,6 +27,7 @@ provided in the class definitions.
 
 import cvxpy as cvx
 import numpy as np
+import pandas as pd
 import copy
 
 # from .expression import Expression
@@ -46,8 +47,8 @@ class BaseCost(CvxpyExpressionEstimator):
     """
 
     # gamma = 1. # this will be removed
-    LEGACY = False # used by some methods that need to know if they run in legacy mode
-    INITIALIZED = False # used to interface w/ old cvxportfolio
+    #LEGACY = False # used by some methods that need to know if they run in legacy mode
+    #INITIALIZED = False # used to interface w/ old cvxportfolio
     
     # PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
     def weight_expr(self, t, w_plus, z, value):
@@ -56,11 +57,12 @@ class BaseCost(CvxpyExpressionEstimator):
 
     def _estimate(self, t, w_plus, z, value):
         """Temporary interface to old cvxportfolio."""
-        self.LEGACY = True
-        if not self.INITIALIZED:
-            self.pre_evaluation(None, None, t, None)
-            self.legacy_expression = self.compile_to_cvxpy(w_plus, z, value)
-            self.INITIALIZED = True
+        #self.LEGACY = True
+        #if not self.INITIALIZED:
+        placehoder_returns = pd.DataFrame(np.zeros((1, w_plus.shape[0] if not w_plus is None else z.shape[0])))
+        self.pre_evaluation(placehoder_returns, None, t, None)
+        self.legacy_expression = self.compile_to_cvxpy(w_plus, z, value)
+        #self.INITIALIZED = True
         self.values_in_time(t, None, value, None, None)
         return self.legacy_expression, []
 
@@ -122,11 +124,11 @@ class CombinedCosts(BaseCost):
         self.costs = costs
         self.multipliers = multipliers
         
-    def _estimate(self, t, w_plus, z, value):
-        """Temporary interface to old cvxportfolio."""
-        for cost in self.costs:
-            cost.LEGACY = True
-        return super()._estimate(t, w_plus, z, value)
+    # def _estimate(self, t, w_plus, z, value):
+    #     """Temporary interface to old cvxportfolio."""
+    #     #for cost in self.costs:
+    #         #cost.LEGACY = True
+    #     return super()._estimate(t, w_plus, z, value)
 
     def __add__(self, other):
         """Add other (combined) cost to self."""
@@ -205,8 +207,12 @@ class HcostModel(BaseCost):
     def value_expr(self, t, h_plus, u):
         """Placeholder method as we update the rest of the stack to new interface."""
         
-        if not self.INITIALIZED:
-            self.pre_evaluation(None, None, t, None)
+        #if not self.INITIALIZED:
+        self.pre_evaluation(None, None, t, None)
+        wplus = cvx.Variable(len(h_plus))
+        z = cvx.Variable(len(h_plus))
+        v = cvx.Parameter(nonneg=True)
+        self.compile_to_cvxpy(wplus, z, v)
         self.values_in_time(t, None, None, None, None)
 
         self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.value
@@ -345,8 +351,12 @@ class TcostModel(BaseCost):
     def value_expr(self, t, h_plus, u):
         """Temporary placeholder, new simulators implement their own tcost."""
 
-        if not self.INITIALIZED:
-            self.pre_evaluation(None, None, t, None)
+        #if not self.INITIALIZED:
+        self.pre_evaluation(None, None, t, None)
+        wplus = cvx.Variable(len(u))
+        z = cvx.Variable(len(u))
+        v = cvx.Parameter(nonneg=True)
+        self.compile_to_cvxpy(wplus, z, v)
         self.values_in_time(t, None, 1., None, None)
 
         u_nc = u.iloc[:-1]

@@ -88,8 +88,8 @@ class MultipleReturnsForecasts(BaseReturnsModel):
         
     def _estimate(self, t, w_plus, z, value):
         """Temporary interface to old cvxportfolio."""
-        for cost in self.alpha_sources:
-            cost.LEGACY = True
+        #for cost in self.alpha_sources:
+        #    cost.LEGACY = True
         return super()._estimate(t, w_plus, z, value)
 
     # def weight_expr(self, t, wplus, z=None, v=None):

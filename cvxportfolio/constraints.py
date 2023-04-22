@@ -41,14 +41,14 @@ __all__ = [
 class BaseConstraint(CvxpyExpressionEstimator):
     """Base cvxpy constraint class."""
     
-    INITIALIZED = False # used to interface w/ old cvxportfolio
+    #INITIALIZED = False # used to interface w/ old cvxportfolio
 
     # interface to old cvxportfolio
     def weight_expr(self, t, w_plus, z, v):
-        if not self.INITIALIZED:
-            self.pre_evaluation(None, None, t, None)
-            self.legacy_expression = self.compile_to_cvxpy(w_plus, z, v)
-            self.INITIALIZED = True
+        #if not self.INITIALIZED:
+        self.pre_evaluation(None, None, t, None)
+        self.legacy_expression = self.compile_to_cvxpy(w_plus, z, v)
+        #self.INITIALIZED = True
         self.values_in_time(t, None, None, None, None)
         if hasattr(self.legacy_expression, "__iter__"):
             return self.legacy_expression

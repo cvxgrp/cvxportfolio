@@ -524,108 +524,108 @@ class MarketSimulator(Estimator):
         else:
             return list(map(_legacy_run_backtest, policies))
 
-    # def what_if(self, time, results, alt_policies, parallel=True):
-    #     """Run alternative policies starting from given time."""
-    #     # TODO fix
-    #     initial_portf = copy.copy(results.h.loc[time])
-    #     all_times = results.h.index
-    #     alt_results = self.legacy_run_multiple_backtest(
-    #         initial_portf, time, all_times[-1], alt_policies, parallel
-    #     )
-    #     for idx, alt_result in enumerate(alt_results):
-    #         alt_result.h.loc[time] = results.h.loc[time]
-    #         alt_result.h.sort_index(axis=0, inplace=True)
-    #     return alt_results
-    #
-    # @staticmethod
-    # def reduce_signal_perturb(initial_weights, delta):
-    #     """Compute matrix of perturbed weights given initial weights."""
-    #     perturb_weights_matrix = np.zeros(
-    #         (len(initial_weights), len(initial_weights)))
-    #     for i in range(len(initial_weights)):
-    #         perturb_weights_matrix[i, :] = initial_weights / (
-    #             1 - delta * initial_weights[i]
-    #         )
-    #         perturb_weights_matrix[i, i] = (1 - delta) * initial_weights[i]
-    #     return perturb_weights_matrix
-    #
-    # def attribute(
-    #         self,
-    #         true_results,
-    #         policy,
-    #         selector=None,
-    #         delta=1,
-    #         fit="linear",
-    #         parallel=True):
-    #     """Attributes returns over a period to individual alpha sources.
-    #
-    #     Args:
-    #         true_results: observed results.
-    #         policy: the policy that achieved the returns.
-    #                 Alpha model must be a stream.
-    #         selector: A map from SimulationResult to time series.
-    #         delta: the fractional deviation.
-    #         fit: the type of fit to perform.
-    #     Returns:
-    #         A dict of alpha source to return series.
-    #     """
-    #     # Default selector looks at profits.
-    #     if selector is None:
-    #
-    #         def selector(result):
-    #             return result.v - sum(result.initial_portfolio)
-    #
-    #     alpha_stream = policy.return_forecast
-    #     assert isinstance(alpha_stream, MultipleReturnsForecasts)
-    #     times = true_results.h.index
-    #     weights = alpha_stream.weights
-    #     assert np.sum(weights) == 1
-    #     alpha_sources = alpha_stream.alpha_sources
-    #     num_sources = len(alpha_sources)
-    #     Wmat = self.reduce_signal_perturb(weights, delta)
-    #     perturb_pols = []
-    #     for idx in range(len(alpha_sources)):
-    #         new_pol = copy.copy(policy)
-    #         new_pol.return_forecast = MultipleReturnsForecasts(
-    #             [ReturnsForecast(el.expected_returns.data) for el in alpha_sources],
-    #             #alpha_sources,
-    #             Wmat[idx, :]
-    #         )
-    #         perturb_pols.append(new_pol)
-    #     # Simulate
-    #     p0 = true_results.initial_portfolio
-    #     alt_results = self.legacy_run_multiple_backtest(
-    #         p0, times[0], times[-1], perturb_pols, parallel=parallel
-    #     )
-    #     # Attribute.
-    #     true_arr = selector(true_results).values
-    #     attr_times = selector(true_results).index
-    #     Rmat = np.zeros((num_sources, len(attr_times)))
-    #     for idx, result in enumerate(alt_results):
-    #         Rmat[idx, :] = selector(result).values
-    #     Pmat = cvx.Variable((num_sources, len(attr_times)))
-    #     if fit == "linear":
-    #         prob = cvx.Problem(cvx.Minimize(0), [Wmat @ Pmat == Rmat])
-    #         prob.solve()
-    #     elif fit == "least-squares":
-    #         error = cvx.sum_squares(Wmat @ Pmat - Rmat)
-    #         prob = cvx.Problem(
-    #             cvx.Minimize(error), [
-    #                 Pmat.T @ weights == true_arr])
-    #         prob.solve()
-    #     else:
-    #         raise Exception("Unknown fitting method.")
-    #     # Dict of results.
-    #     wmask = np.tile(weights[:, np.newaxis], (1, len(attr_times))).T
-    #     data = pd.DataFrame(
-    #         columns=[s.name for s in alpha_sources],
-    #         index=attr_times,
-    #         data=Pmat.value.T * wmask,
-    #     )
-    #     data["residual"] = true_arr - \
-    #         np.asarray((weights @ Pmat).value).ravel()
-    #     data["RMS error"] = np.asarray(
-    #         cvx.norm(Wmat @ Pmat - Rmat, 2, axis=0).value
-    #     ).ravel()
-    #     data["RMS error"] /= np.sqrt(num_sources)
-    #     return data
+    def what_if(self, time, results, alt_policies, parallel=True):
+        """Run alternative policies starting from given time."""
+        # TODO fix
+        initial_portf = copy.copy(results.h.loc[time])
+        all_times = results.h.index
+        alt_results = self.legacy_run_multiple_backtest(
+            initial_portf, time, all_times[-1], alt_policies, parallel
+        )
+        for idx, alt_result in enumerate(alt_results):
+            alt_result.h.loc[time] = results.h.loc[time]
+            alt_result.h.sort_index(axis=0, inplace=True)
+        return alt_results
+
+    @staticmethod
+    def reduce_signal_perturb(initial_weights, delta):
+        """Compute matrix of perturbed weights given initial weights."""
+        perturb_weights_matrix = np.zeros(
+            (len(initial_weights), len(initial_weights)))
+        for i in range(len(initial_weights)):
+            perturb_weights_matrix[i, :] = initial_weights / (
+                1 - delta * initial_weights[i]
+            )
+            perturb_weights_matrix[i, i] = (1 - delta) * initial_weights[i]
+        return perturb_weights_matrix
+
+    def attribute(
+            self,
+            true_results,
+            policy,
+            selector=None,
+            delta=1,
+            fit="linear",
+            parallel=True):
+        """Attributes returns over a period to individual alpha sources.
+
+        Args:
+            true_results: observed results.
+            policy: the policy that achieved the returns.
+                    Alpha model must be a stream.
+            selector: A map from SimulationResult to time series.
+            delta: the fractional deviation.
+            fit: the type of fit to perform.
+        Returns:
+            A dict of alpha source to return series.
+        """
+        # Default selector looks at profits.
+        if selector is None:
+
+            def selector(result):
+                return result.v - sum(result.initial_portfolio)
+
+        alpha_stream = policy.return_forecast
+        assert isinstance(alpha_stream, MultipleReturnsForecasts)
+        times = true_results.h.index
+        weights = alpha_stream.weights
+        assert np.sum(weights) == 1
+        alpha_sources = alpha_stream.alpha_sources
+        num_sources = len(alpha_sources)
+        Wmat = self.reduce_signal_perturb(weights, delta)
+        perturb_pols = []
+        for idx in range(len(alpha_sources)):
+            new_pol = copy.copy(policy)
+            new_pol.return_forecast = MultipleReturnsForecasts(
+                [ReturnsForecast(el.expected_returns.data) for el in alpha_sources],
+                #alpha_sources,
+                Wmat[idx, :]
+            )
+            perturb_pols.append(new_pol)
+        # Simulate
+        p0 = true_results.initial_portfolio
+        alt_results = self.legacy_run_multiple_backtest(
+            p0, times[0], times[-1], perturb_pols, parallel=parallel
+        )
+        # Attribute.
+        true_arr = selector(true_results).values
+        attr_times = selector(true_results).index
+        Rmat = np.zeros((num_sources, len(attr_times)))
+        for idx, result in enumerate(alt_results):
+            Rmat[idx, :] = selector(result).values
+        Pmat = cvx.Variable((num_sources, len(attr_times)))
+        if fit == "linear":
+            prob = cvx.Problem(cvx.Minimize(0), [Wmat @ Pmat == Rmat])
+            prob.solve()
+        elif fit == "least-squares":
+            error = cvx.sum_squares(Wmat @ Pmat - Rmat)
+            prob = cvx.Problem(
+                cvx.Minimize(error), [
+                    Pmat.T @ weights == true_arr])
+            prob.solve()
+        else:
+            raise Exception("Unknown fitting method.")
+        # Dict of results.
+        wmask = np.tile(weights[:, np.newaxis], (1, len(attr_times))).T
+        data = pd.DataFrame(
+            columns=[s.name for s in alpha_sources],
+            index=attr_times,
+            data=Pmat.value.T * wmask,
+        )
+        data["residual"] = true_arr - \
+            np.asarray((weights @ Pmat).value).ravel()
+        data["RMS error"] = np.asarray(
+            cvx.norm(Wmat @ Pmat - Rmat, 2, axis=0).value
+        ).ravel()
+        data["RMS error"] /= np.sqrt(num_sources)
+        return data

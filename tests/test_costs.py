@@ -220,7 +220,7 @@ def test_cost_algebra(returns):
     cost2 = FullCovariance(returns.T @ returns / len(returns))
     cost3 = cost1 + cost2
 
-    cost3.pre_evaluation(None, None, t, None)
+    cost3.pre_evaluation(returns, None, t, None)
     expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
     expr1 = cost1.compile_to_cvxpy(wplus, None, 1e6)
     expr2 = cost2.compile_to_cvxpy(wplus, None, 1e6)
@@ -241,7 +241,7 @@ def test_cost_algebra(returns):
 
     cost3 = -cost1 + 2 * (cost2 + cost1)
     expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
-    assert expr3.value == -expr1.value + 2 * (expr2.value + expr1.value)
+    assert np.isclose(expr3.value, -expr1.value + 2 * (expr2.value + expr1.value))
 
     cost3 = cost1 - 2 * (cost2 + cost1)
     expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
