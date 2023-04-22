@@ -18,6 +18,7 @@ import pandas as pd
 import pytest
 
 from cvxportfolio.policies import *
+from cvxportfolio.policies import SinglePeriodOptOLD, SinglePeriodOptNEW
 from cvxportfolio.returns import *
 from cvxportfolio.risks import *
 from cvxportfolio.costs import *
@@ -611,4 +612,68 @@ def test_multi_period_optimization3(returns, volumes):
     assert np.linalg.norm(diff_to_benchmarks[0]) < np.linalg.norm(diff_to_benchmarks[1])
     assert np.linalg.norm(diff_to_benchmarks[1]) < np.linalg.norm(diff_to_benchmarks[2])
         
+        
+def test_spo_old_vs_new(returns, volumes, sigma):
+    tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,)
+    hcost_model = HcostModel(borrow_costs=0., dividends=0.)
+    emp_Sigma = np.cov(returns.to_numpy().T)
+    risk_model = FullCovariance(emp_Sigma)
+    returns_forecast = ReturnsForecast(returns.mean())
+    
+    pol = SinglePeriodOptOLD(
+        returns_forecast, [
+            10 * risk_model, 
+            2 * tcost_model, 
+            hcost_model
+        ], [], solver=cvx.ECOS, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
+    
+    np.random.seed(0)
+    init = pd.Series(np.random.uniform(size=returns.shape[1]), index = returns.columns)
+    init *= 1E6
+        
+    trad = pol.get_trades(init, t=returns.index[10])
+    
+    print(trad)
+
+    # print(pol.costs[1].costs[0].second_term_multiplier.value)
+    
+    tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,)
+    hcost_model = HcostModel(borrow_costs=0., dividends=0.)
+    
+    pol_new = SinglePeriodOptNEW(
+        returns_forecast, [
+            10 * risk_model, 
+            2 * tcost_model, 
+            hcost_model
+        ], [], solver=cvx.ECOS, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
+        
+    trad_new = pol_new.get_trades(init, t=returns.index[10])
+    
+    print(trad_new)
+    
+    # print(pol_new.objective[0].costs[2].second_term_multiplier.value)
+    
+    assert np.allclose(trad/1E6, trad_new/1E6, atol=1e-4)
+    
+    ### CVXPY
+    w = cvx.Variable(returns.shape[1])
+    z = cvx.Variable(returns.shape[1])
+    w0 = init / sum(init)
+    mu = returns.mean()
+    Sigma = emp_Sigma
+    V = volumes.iloc[10]
+    val = sum(init)
+    s = sigma.iloc[10]
+    objective = cvx.Maximize(w.T @ mu 
+        - 10 * cvx.quad_form(w, Sigma) 
+            - 2 * 0.0005 * cvx.norm1(z[:-1])
+            - 2 * (cvx.abs(z[:-1])**1.5).T @ (s * np.sqrt(val / V))
+            )
+    cvx.Problem(objective, [cvx.sum(z) == 0, z + w0 == w]).solve(solver='ECOS', abstol=1E-16, reltol=1e-16, feastol=1e-16)
+    
+    trad_cvxpy = pd.Series(val * w.value - init, returns.columns)
+    assert np.allclose((trad_cvxpy - trad_new)/sum(init), 0., atol=1E-3)        
+    
+    
+    
         

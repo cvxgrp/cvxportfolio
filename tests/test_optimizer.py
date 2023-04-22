@@ -18,8 +18,8 @@ import pandas as pd
 import pytest
 
 from cvxportfolio.costs import HcostModel, TcostModel
-from cvxportfolio.legacy import SinglePeriodOpt, LegacyReturnsForecast
-# from cvxportfolio.returns import *
+from cvxportfolio.policies import SinglePeriodOpt
+from cvxportfolio.returns import ReturnsForecast
 from cvxportfolio.risks import FullCovariance
 
 
@@ -41,7 +41,7 @@ def test_single_period_opt(returns, sigma, volumes, tcost_model, hcost_model):
     # Alpha source
     gamma = 100.0
     n = len(universe)
-    alpha_model = LegacyReturnsForecast(returns)
+    alpha_model = ReturnsForecast(returns)
     emp_Sigma = np.cov(returns.to_numpy().T) + np.eye(n) * 1e-3
     risk_model = FullCovariance(emp_Sigma)
     pol = SinglePeriodOpt(

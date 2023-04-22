@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import copy
 from .legacy import *
+from .policies import SinglePeriodOpt #, MultiPeriodOpt
 from .estimator import Estimator
 
 

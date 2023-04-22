@@ -150,6 +150,7 @@ class FullCovariance(BaseRiskModel):
                 w_plus - self.benchmark_weights, self.Sigma) 
         else:
             self.cvxpy_expression =  cvx.sum_squares(self.Sigma_sqrt.T @ (w_plus - self.benchmark_weights))
+        
         # assert self.cvxpy_expression.is_dcp(dpp=True)
         self.cvxpy_expression += cvx.square(cvx.abs(w_plus -
                                                     self.benchmark_weights).T @ self.parameter_forecast_error)

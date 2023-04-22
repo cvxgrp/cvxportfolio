@@ -21,12 +21,13 @@ import numpy as np
 
 # from cvxportfolio.expression import Expression
 # from .legacy import values_in_time, null_checker
-from .costs import BaseCost
+from .costs import BaseCost, CombinedCosts
 from .risks import BaseRiskModel
 from .estimator import DataEstimator, ParameterEstimator
 
 __all__ = [
     "ReturnsForecast",
+    "MultipleReturnsForecasts",
     "RollingWindowReturnsForecast",
     "ExponentialWindowReturnsForecast",
     "ReturnsForecastErrorRisk",
@@ -40,7 +41,10 @@ class BaseReturnsModel(BaseCost):
     Use this to define any logic common to return models.
     """
 
-    pass
+    # interface to old
+    def weight_expr(self, t, w_plus, z=None, value=None):
+        cost, constr = self._estimate(t, w_plus, z, value)
+        return cost
 
 
 class ReturnsForecast(BaseReturnsModel):
@@ -51,11 +55,76 @@ class ReturnsForecast(BaseReturnsModel):
             forecasts (if Series) or varying in time (if DataFrame)
     """
 
-    def __init__(self, expected_returns):
+    def __init__(self, expected_returns, name=None):
         self.expected_returns = ParameterEstimator(expected_returns)
+        self.name = name
 
     def compile_to_cvxpy(self, w_plus, z, v):
         return w_plus.T @ self.expected_returns
+        
+        
+class MultipleReturnsForecasts(BaseReturnsModel):
+    """A weighted combination of alpha sources.
+
+    DEPRECATED: THIS CLASS IS KEPT TO REUSE OLD TESTS
+    IT'S NOW IMPLEMENTED BY COMBINED COSTS, I.E.,
+    YOU JUST WRITE AN ALGEBRA OF RETURNS FORECASTS
+    """
+
+    def __init__(self, alpha_sources, weights):
+        self.alpha_sources = alpha_sources
+        self.weights = weights
+    
+    def pre_evaluation(self, *args, **kwargs):
+        """Iterate over constituent costs."""
+        [el.pre_evaluation(*args, **kwargs) for el in self.alpha_sources]
+
+    def values_in_time(self, *args, **kwargs):
+        """Iterate over constituent costs."""
+        [el.values_in_time(*args, **kwargs) for el in self.alpha_sources] 
+               
+    def compile_to_cvxpy(self, w_plus, z, v):
+        return sum([el.compile_to_cvxpy(w_plus, z, v) * self.weights[i] for i, el in enumerate(self.alpha_sources)])
+        
+    def _estimate(self, t, w_plus, z, value):
+        """Temporary interface to old cvxportfolio."""
+        for cost in self.alpha_sources:
+            cost.LEGACY = True
+        return super()._estimate(t, w_plus, z, value)
+
+    # def weight_expr(self, t, wplus, z=None, v=None):
+    #     """Returns the estimated alpha.
+    #
+    #     Args:
+    #         t: time estimate is made.
+    #         wplus: An expression for holdings.
+    #         tau: time of alpha being estimated.
+    #
+    #     Returns:
+    #       An expression for the alpha.
+    #     """
+    #     alpha = 0
+    #     for idx, source in enumerate(self.alpha_sources):
+    #         alpha += source.weight_expr(t, wplus) * self.weights[idx]
+    #     return alpha
+    #
+    # def weight_expr_ahead(self, t, tau, wplus):
+    #     """Returns the estimate at time t of alpha at time tau.
+    #
+    #     Args:
+    #       t: time estimate is made.
+    #       wplus: An expression for holdings.
+    #       tau: time of alpha being estimated.
+    #
+    #     Returns:
+    #       An expression for the alpha.
+    #     """
+    #     alpha = 0
+    #     for idx, source in enumerate(self.alpha_sources):
+    #         alpha += source.weight_expr_ahead(t,
+    #                                           tau, wplus) * self.weights[idx]
+    #     return alpha
+
 
 
 class RollingWindowReturnsForecast(ReturnsForecast):
