@@ -246,13 +246,13 @@ class MarketSimulator(Estimator):
         self.prices = DataEstimator(self.prices)
         
         
-
     def round_trade_vector(self, u):
         """Round dollar trade vector u."""
         result = pd.Series(u, copy=True)
         result[:-1] = np.round(u[:-1] / self.prices.current_value) * self.prices.current_value
         result[-1] = -sum(result[:-1])
         return result
+
 
     def transaction_costs(self, u):
         """Compute transaction costs at time t for dollar trade vector u.
@@ -269,15 +269,14 @@ class MarketSimulator(Estimator):
             # compute number of shares traded.
             # we assume round_trades is True and we add a small number to ensure
             # we are on the safe side of rounding errors
-            result += self.per_share_fixed_cost + \
-                int(sum(np.abs(u[:-1] + 1E-6) / self.prices.current_value))
+            result += self.per_share_fixed_cost * int(sum(np.abs(u[:-1] + 1E-6) / self.prices.current_value))
 
         if self.spreads is not None:
-            result += np.dot(self.spreads.current_value, np.abs(u[:-1]))
+            result += sum(self.spreads.current_value * np.abs(u[:-1]))/2.
 
-        result += self.transaction_cost_coefficient_b * self.sigma_estimate.current_value / (
-            self.volumes.current_value ** self.transaction_cost_exponent - 1) * np.abs(u[:-1])**self.transaction_cost_exponent
-
+        result += (np.abs(u[:-1])**self.transaction_cost_exponent) @ (self.transaction_cost_coefficient_b * self.sigma_estimate.current_value / (
+            self.volumes.current_value ** (self.transaction_cost_exponent - 1)))
+            
         return -result
 
     def stocks_holding_costs(self, h_plus):
@@ -289,21 +288,19 @@ class MarketSimulator(Estimator):
         """
 
         result = 0.
-        cash_return = self.returns.current_value[self.cash_key]
+        cash_return = self.returns.current_value[-1]
 
         # shorting stocks.
         borrowed_stock_positions = np.minimum(h_plus[:-1], 0.)
         result += np.sum((cash_return +
-                          self.spread_on_borrowing_stocks_percent /
-                          self.periods_per_year) *
+                          (self.spread_on_borrowing_stocks_percent / 100) / self.periods_per_year) *
                          borrowed_stock_positions)
 
         # going long on stocks.
         if self.spread_on_long_positions_percent is not None:
             long_positions = np.maximum(h_plus[:-1], 0.)
             result -= np.sum((cash_return +
-                              self.spread_on_long_positions_percent /
-                              self.periods_per_year) *
+                              (self.spread_on_long_positions_percent /100) / self.periods_per_year) *
                              long_positions)
 
         # dividends
@@ -314,34 +311,43 @@ class MarketSimulator(Estimator):
     def cash_holding_cost(self, h_plus):
         """Compute holding cost on cash (including cash return) for post trade holdings h_plus."""
 
-        cash_return = self.returns.current_value[self.cash_key]
+        cash_return = self.returns.current_value[-1]
 
         # we subtract from cash the value of borrowed stocks
+        # if trading CFDs/futures we must amend this
         real_cash = h_plus[-1] + sum(np.minimum(h_plus[:-1], 0.))
 
         if real_cash > 0:
             return real_cash * \
-                max(cash_return - self.spread_on_lending_cash_percent, 0.)
+                max(cash_return - (self.spread_on_lending_cash_percent/100)/self.periods_per_year, 0.)
         else:
             return real_cash * \
-                (cash_return + self.spread_on_borrowing_cash_percent)
+                (cash_return + (self.spread_on_borrowing_cash_percent/100)/self.periods_per_year)
+                
 
-    def values_in_time(self, t, current_weights, current_portfolio_value, policy, **kwargs):
+    def simulate(self, t, h, policy, **kwargs):
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
         because we pass the policy directly to it, and the past returns and past volumes
         are computed by it.
         """
+        
+        # translate to weights
+        current_portfolio_value = sum(h)
+        current_weights = h / current_portfolio_value
 
-        past_returns = self.returns.loc[self.returns.index < t]
-        past_volumes = self.volumes.loc[self.volumes.index < t]
+        # get view of past data
+        past_returns = self.returns.data.loc[self.returns.data.index < t]
+        past_volumes = self.volumes.data.loc[self.volumes.data.index < t]
 
         # update all internal estimators
         super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
         # evaluate the policy
-        z = policy.values_in_time(t, current_weights, current_portfolio_value, past_returns,past_volumes, **kwargs)
+        z = policy.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        # for safety
+        z[-1] = -sum(z[:-1])
 
         # trades in dollars
         u = z * current_portfolio_value
@@ -355,7 +361,7 @@ class MarketSimulator(Estimator):
         if self.round_trades:
             u = self.round_trade_vector(u)
 
-        # compute post-trade holdings
+        # compute post-trade holdings (including cash balance)
         h_plus = current_weights * current_portfolio_value + u
 
         # we have updated the internal estimators and they are used by these
@@ -364,28 +370,24 @@ class MarketSimulator(Estimator):
         holding_costs = self.stocks_holding_costs(h_plus)
         cash_holding_costs = self.cash_holding_cost(h_plus)
 
-        # credit costs to cash
-        h_plus[-1] = h_plus[-1] + \
-            (transaction_costs + holding_costs + cash_holding_costs)
-
         # multiply positions by market returns
         h_next = pd.Series(h_plus, copy=True)
         h_next[:-1] *= (1 + self.returns.current_value[:-1])
-
-        # obtain tomorrow's weights and values
-        tomorrows_portfolio_value = sum(h_next)
-        tomorrows_weights = h_next / tomorrows_portfolio_value
-
-        # return
-        return tomorrows_weights, tomorrows_portfolio_value, z, transaction_costs, holding_costs, cash_holding_costs
         
-    def pre_evaluation(self, policy, start_time, end_time):
+        # credit costs to cash (includes cash return)
+        h_next[-1] = h_plus[-1] + (transaction_costs + holding_costs + cash_holding_costs)
+            
+        return h_next, z, transaction_costs, holding_costs, cash_holding_costs
+        
+    def initialize_policy(self, policy, start_time, end_time):
         """Initialize the policy object.
         
         This method differs from other Estimators because it is the Simulator
-        that initalizes the policy and all its dependents. It is called by Backtest.
+        that initializes the policy and all its dependents. It is called by Backtest.
         """
-        policy.pre_evaluation(self.returns, self.volumes, start_time, end_time)
+        policy.pre_evaluation(self.returns.data.loc[self.returns.data.index<end_time], 
+                              self.volumes.data.loc[self.volumes.data.index<end_time], 
+                              start_time, end_time)
         
         
     ### THE FOLLOWING METHODS ARE FROM THE ORIGINAL SIMULATOR (PRE-2023)

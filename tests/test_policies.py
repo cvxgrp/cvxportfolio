@@ -98,9 +98,14 @@ def test_rank_and_long_short():
 
 
 def test_proportional_trade(returns):
+    
+    a = pd.Series(1., returns.columns)
+    a[-1] = 1 - sum(a[:-1])
+    b = pd.Series(-1., returns.columns)
+    b[-1] = 1 - sum(b[:-1])
 
-    targets = pd.DataFrame({returns.index[3]: pd.Series(1., returns.columns),
-                            returns.index[15]: pd.Series(-1., returns.columns)
+    targets = pd.DataFrame({returns.index[3]: a,
+                            returns.index[15]: b
                             }).T
     policy = ProportionalTradeToTargets(targets)
 
@@ -109,13 +114,16 @@ def test_proportional_trade(returns):
         np.random.randn(
             returns.shape[1]),
         returns.columns)
+    start_portfolio[-1] = 1 - sum(start_portfolio[:-1])
     for t in returns.index[:17]:
         print(t)
         print(start_portfolio)
-        if t in targets.index:
-            assert np.all(start_portfolio == targets.loc[t])
+        
         trade = policy.values_in_time(t, start_portfolio, None, None, None)
         start_portfolio += trade
+        
+        if t in targets.index:
+            assert np.all(start_portfolio == targets.loc[t])
 
     assert np.all(trade == 0.)
 
@@ -225,7 +233,7 @@ def test_proportional_rebalance(returns):
     init += trade
     trade2 = policy.values_in_time(returns.index[2], init, None, None, None)
     assert np.allclose(trade, trade2)
-    assert np.allclose(trade2 + init, target)
+    assert np.allclose(trade + trade2 + init, target)
 
 
 def test_adaptive_rebalance(returns):

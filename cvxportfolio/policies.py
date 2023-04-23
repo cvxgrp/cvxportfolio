@@ -151,14 +151,15 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
     def values_in_time(self, t, current_weights, *args, **kwargs):
         """Get current trade weights."""
         super().values_in_time(t, current_weights, *args, **kwargs)
-        next_targets = self.targets.loc[self.targets.index > t]
+        next_targets = self.targets.loc[self.targets.index >= t]
+        assert np.allclose(next_targets.sum(1), 1.)
         if not len(next_targets):
             return pd.Series(0.0, index=current_weights.index)
         next_target = next_targets.iloc[0]
         next_target_day = next_targets.index[0]
         trading_days_to_target = len(self.trading_days[(
             self.trading_days >= t) & (self.trading_days < next_target_day)])
-        return (next_target - current_weights) / trading_days_to_target
+        return (next_target - current_weights) / (trading_days_to_target + 1)
 
 
 class SellAll(BaseTradingPolicy):
