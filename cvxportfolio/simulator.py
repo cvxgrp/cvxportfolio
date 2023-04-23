@@ -362,7 +362,7 @@ class MarketSimulator(Estimator):
             u = self.round_trade_vector(u)
 
         # compute post-trade holdings (including cash balance)
-        h_plus = current_weights * current_portfolio_value + u
+        h_plus = h + u
 
         # we have updated the internal estimators and they are used by these
         # methods
@@ -377,7 +377,7 @@ class MarketSimulator(Estimator):
         # credit costs to cash (includes cash return)
         h_next[-1] = h_plus[-1] + (transaction_costs + holding_costs + cash_holding_costs)
             
-        return h_next, z, transaction_costs, holding_costs, cash_holding_costs
+        return h_next, z, u, transaction_costs, holding_costs, cash_holding_costs
         
     def initialize_policy(self, policy, start_time, end_time):
         """Initialize the policy object.

@@ -217,7 +217,7 @@ class RollingWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
             1) / np.sqrt(self.lookback_period)
         if self.zero_for_cash:
             tmp.iloc[:, -1] = 0.0
-        self.deltas_errors = ParameterEstimator(tmp)
+        self.deltas_errors = ParameterEstimator(tmp, non_negative=True)
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
 

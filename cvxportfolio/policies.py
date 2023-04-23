@@ -414,7 +414,8 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         self.portfolio_value.value = 1. # not used current_portfolio_value
         self.w_current.value = current_weights.values
         try:
-            self.problem.solve(**self.cvxpy_kwargs)
+            self.problem.solve(#ignore_dpp=True, 
+                **self.cvxpy_kwargs)
         except cvx.SolverError:
             raise PortfolioOptimizationError(
                 f"Numerical solver for policy {self.__class__.__name__} at time {t} failed;"

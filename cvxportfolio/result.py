@@ -21,6 +21,7 @@ from .legacy import *
 from .policies import SinglePeriodOpt, MultiPeriodOpt
 from .estimator import Estimator
 
+__all__ = ['BackTest', 'SimulationResult']
 
 class BacktestResult(Estimator):
     """This will be the class returned by the simulator.
@@ -262,3 +263,43 @@ class SimulationResult(BacktestResult):
             elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
                 max_dd_so_far = 100 * (cur_max - val) / cur_max
         return max_dd_so_far
+        
+        
+class BackTest(SimulationResult):
+    
+    def __init__(self, policy, simulator, start_time, end_time=None, value_init = 1E6, h=None):
+        
+        self.policy = policy
+        self.simulator = simulator
+        self.start_time = pd.Series(simulator.returns.data.index >= start_time, simulator.returns.data.index).idxmax()
+        if end_time is None:
+            self.end_time  = simulator.returns.data.index[-1]
+        else:
+            self.end_time = simulator.returns.data.index[simulator.returns.data.index <= end_time][-1]
+        
+        self.end_time = end_time
+        simulator.initialize_policy(policy, self.start_time , self.end_time)
+        
+        if h is None:
+            h = pd.Series(0., simulator.returns.data.columns)
+            h[-1] = value_init
+        
+        self.h = pd.DataFrame(columns=simulator.returns.data.columns)
+        self.u = pd.DataFrame(columns=simulator.returns.data.columns)
+        self.z = pd.DataFrame(columns=simulator.returns.data.columns)
+        self.tcost = pd.Series(dtype=float)
+        self.hcost_stocks = pd.Series(dtype=float)
+        self.hcost_cash = pd.Series(dtype=float)
+        
+        for t in simulator.returns.data.index[(simulator.returns.data.index >= self.start_time) & (simulator.returns.data.index < self.end_time)]:
+            self.h.loc[t] = h
+            h, self.z.loc[t], self.u.loc[t], self.tcost.loc[t], self.hcost_stocks.loc[t], self.hcost_cash.loc[t] = \
+                simulator.simulate(t=t, h=h, policy=self.policy)
+        
+        self.h.loc[self.end_time] = h    
+        
+        self.PPY = 252
+        self.timedelta = pd.Timedelta('1d')
+        self.cash_key = self.h.columns[-1]
+
+        
