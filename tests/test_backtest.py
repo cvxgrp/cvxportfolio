@@ -23,7 +23,7 @@ from cvxportfolio import BackTest
 
 import cvxportfolio as cp
 
-def UNFINISHEDtest_backtest(tmp_path):
+def test_UNFINISHED_backtest(tmp_path):
     pol = cp.SinglePeriodOptimization(cp.RollingWindowReturnsForecast(2000) - 
         cp.RollingWindowReturnsForecastErrorRisk(2000) -
         .5 * cp.RollingWindowFullCovariance(2000), 
@@ -31,11 +31,11 @@ def UNFINISHEDtest_backtest(tmp_path):
         cp.LeverageLimit(1)], verbose=True)
     sim = cp.MarketSimulator(['AAPL', 'MSFT'],#', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
      base_location=tmp_path)
-    backt = BackTest(pol, sim, pd.Timestamp('2020-01-01'), pd.Timestamp('2023-04-20'))
+    backt = BackTest(pol, sim, pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
     
-    m = (np.log(backt.h.sum(1))).diff().mean()
-    s = (np.log(backt.h.sum(1))).diff().std()
+    #m = (np.log(backt.h.sum(1))).diff().mean()
+    #s = (np.log(backt.h.sum(1))).diff().std()
     
-    print(np.sqrt(252) * m / s)
+    #print(np.sqrt(252) * m / s)
     
-    raise Exception
+    

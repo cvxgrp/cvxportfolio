@@ -425,7 +425,7 @@ class TimeSeries(DataEstimator):
         self,
         symbol,
         source="yahoo",
-        storage="sqlite",
+        storage="csv",
         use_last_available_time=False,
         base_location=None,
     ):

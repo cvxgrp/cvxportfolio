@@ -45,9 +45,117 @@ def getFiscalQuarter(dt):
     year = dt.year
     quarter = (dt.month - 1) // 3 + 1
     return "Q%i %s" % (quarter, year)
+    
+    
+class CommonComputations(BacktestResult):
+    """Temporary while having both old and new interface."""
+
+    @property
+    def v(self):
+        """The value of the portfolio over time."""
+        return self.h.sum(axis=1)
+
+    @property
+    def profit(self):
+        """The profit made, in dollars."""
+        return self.v[-1] - self.v[0]
+
+    @property
+    def w(self):
+        """The weights of the portfolio over time."""
+        return (self.h.T / self.v).T
+
+    @property
+    def leverage(self):
+        """Portfolio leverage"""
+        return np.abs(self.w).sum(1)
+
+    @property
+    def volatility(self):
+        """The annualized, realized portfolio volatility."""
+        return np.sqrt(self.PPY) * np.std(self.returns)
+
+    @property
+    def mean_return(self):
+        """The annualized mean portfolio return."""
+        return self.PPY * np.mean(self.returns)
+
+    @property
+    def returns(self):
+        """The returns R_t = (v_{t+1}-v_t)/v_t"""
+        val = self.v
+        return pd.Series(
+            data=val.values[1:] / val.values[:-1] - 1, index=val.index[:-1]
+        )
+
+    @property
+    def growth_rates(self):
+        """The growth rate log(v_{t+1}/v_t)"""
+        return np.log(self.returns + 1)
+
+    @property
+    def annual_growth_rate(self):
+        """The annualized growth rate PPY/T sum_{t=1}^T log(v_{t+1}/v_t)"""
+        return self.growth_rates.sum() * self.PPY / self.growth_rates.size
+
+    @property
+    def annual_return(self):
+        """The annualized return in percent."""
+        ret = self.growth_rates
+        return self._growth_to_return(ret.mean())
+
+    def _growth_to_return(self, growth):
+        """Convert growth to annualized percentage return."""
+        return 100 * (np.exp(self.PPY * growth) - 1)
+
+    def get_quarterly_returns(self, benchmark=None):
+        """The annualized returns for each fiscal quarter."""
+        ret = self.growth_rates
+        quarters = ret.groupby(getFiscalQuarter).aggregate(np.mean)
+        return self._growth_to_return(quarters)
+
+    def get_best_quarter(self, benchmark=None):
+        ret = self.get_quarterly_returns(benchmark)
+        return (ret.argmax(), ret.max())
+
+    def get_worst_quarter(self, benchmark=None):
+        ret = self.get_quarterly_returns(benchmark)
+        return (ret.argmin(), ret.min())
+
+    @property
+    def sharpe_ratio(self):
+        return (
+            np.sqrt(self.PPY)
+            * np.mean(self.excess_returns)
+            / np.std(self.excess_returns)
+        )
+
+    @property
+    def turnover(self):
+        """Turnover ||u_t||_1/v_t"""
+        noncash_trades = self.u.drop(self.cash_key, axis=1)
+        return np.abs(noncash_trades).sum(axis=1) / self.v.loc[self.u.index]
+
+    @property
+    def trading_days(self):
+        """The fraction of days with nonzero turnover."""
+        return (self.turnover.values > 0).sum() / self.turnover.size
+
+    @property
+    def max_drawdown(self):
+        """The maximum peak to trough drawdown in percent."""
+        val_arr = self.v.values
+        max_dd_so_far = 0
+        cur_max = val_arr[0]
+        for val in val_arr[1:]:
+            if val >= cur_max:
+                cur_max = val
+            elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
+                max_dd_so_far = 100 * (cur_max - val) / cur_max
+        return max_dd_so_far
 
 
-class SimulationResult(BacktestResult):
+class SimulationResult(CommonComputations):
     """A container for the result of a simulation.
 
     Attributes:
@@ -156,116 +264,11 @@ class SimulationResult(BacktestResult):
         # tmp.loc[self.h_next.index[-1] + self.timedelta]=self.h_next.iloc[-1]
         return tmp
 
-    @property
-    def v(self):
-        """The value of the portfolio over time."""
-        return self.h.sum(axis=1)
-
-    @property
-    def profit(self):
-        """The profit made, in dollars."""
-        return self.v[-1] - self.v[0]
-
-    @property
-    def w(self):
-        """The weights of the portfolio over time."""
-        return (self.h.T / self.v).T
-
-    @property
-    def leverage(self):
-        """Portfolio leverage"""
-        return np.abs(self.w).sum(1)
-
-    @property
-    def volatility(self):
-        """The annualized, realized portfolio volatility."""
-        return np.sqrt(self.PPY) * np.std(self.returns)
-
-    @property
-    def mean_return(self):
-        """The annualized mean portfolio return."""
-        return self.PPY * np.mean(self.returns)
-
-    @property
-    def returns(self):
-        """The returns R_t = (v_{t+1}-v_t)/v_t"""
-        val = self.v
-        return pd.Series(
-            data=val.values[1:] / val.values[:-1] - 1, index=val.index[:-1]
-        )
-
-    @property
-    def growth_rates(self):
-        """The growth rate log(v_{t+1}/v_t)"""
-        return np.log(self.returns + 1)
-
-    @property
-    def annual_growth_rate(self):
-        """The annualized growth rate PPY/T sum_{t=1}^T log(v_{t+1}/v_t)"""
-        return self.growth_rates.sum() * self.PPY / self.growth_rates.size
-
-    @property
-    def annual_return(self):
-        """The annualized return in percent."""
-        ret = self.growth_rates
-        return self._growth_to_return(ret.mean())
-
-    def _growth_to_return(self, growth):
-        """Convert growth to annualized percentage return."""
-        return 100 * (np.exp(self.PPY * growth) - 1)
-
-    def get_quarterly_returns(self, benchmark=None):
-        """The annualized returns for each fiscal quarter."""
-        ret = self.growth_rates
-        quarters = ret.groupby(getFiscalQuarter).aggregate(np.mean)
-        return self._growth_to_return(quarters)
-
-    def get_best_quarter(self, benchmark=None):
-        ret = self.get_quarterly_returns(benchmark)
-        return (ret.argmax(), ret.max())
-
-    def get_worst_quarter(self, benchmark=None):
-        ret = self.get_quarterly_returns(benchmark)
-        return (ret.argmin(), ret.min())
-
-    @property
-    def excess_returns(self):
-        return self.returns - self.risk_free_returns
-
-    @property
-    def sharpe_ratio(self):
-        return (
-            np.sqrt(self.PPY)
-            * np.mean(self.excess_returns)
-            / np.std(self.excess_returns)
-        )
-
-    @property
-    def turnover(self):
-        """Turnover ||u_t||_1/v_t"""
-        noncash_trades = self.u.drop(self.cash_key, axis=1)
-        return np.abs(noncash_trades).sum(axis=1) / self.v
-
-    @property
-    def trading_days(self):
-        """The fraction of days with nonzero turnover."""
-        return (self.turnover.values > 0).sum() / self.turnover.size
-
-    @property
-    def max_drawdown(self):
-        """The maximum peak to trough drawdown in percent."""
-        val_arr = self.v.values
-        max_dd_so_far = 0
-        cur_max = val_arr[0]
-        for val in val_arr[1:]:
-            if val >= cur_max:
-                cur_max = val
-            elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
-                max_dd_so_far = 100 * (cur_max - val) / cur_max
-        return max_dd_so_far
+    
         
         
-class BackTest(SimulationResult):
+class BackTest(CommonComputations):
+    """Perform a backtest and hold the results."""
     
     def __init__(self, policy, simulator, start_time, end_time=None, value_init = 1E6, h=None):
         
@@ -301,5 +304,9 @@ class BackTest(SimulationResult):
         self.PPY = 252
         self.timedelta = pd.Timedelta('1d')
         self.cash_key = self.h.columns[-1]
+        
+    @property
+    def excess_returns(self):
+        return self.returns - self.simulator.returns.data[self.cash_key].loc[self.returns.index]
 
         

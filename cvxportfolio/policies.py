@@ -229,6 +229,14 @@ class FixedWeights(BaseTradingPolicy):
                 current_weights)
         except MissingValuesError:
             return pd.Series(0.0, current_weights.index)
+            
+class Uniform(FixedWeights):
+    """Uniform allocation on non-cash assets."""
+    
+    def pre_evaluation(self, returns, *args, **kwargs):
+        self.target_weights = pd.Series(1., returns.columns)
+        self.target_weights.iloc[-1] = 0
+        self.target_weights /= sum(self.target_weights)
 
 
 class PeriodicRebalance(FixedWeights):

@@ -5,24 +5,16 @@
 [![Documentation Status](https://readthedocs.org/projects/cvxportfolio/badge/?version=latest)](https://cvxportfolio.readthedocs.io/en/latest/?badge=latest)
 
 
-**Cvxportfolio is currently under development. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
+**WORK IN PROGRESS. Cvxportfolio is currently under development. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3. The script `hello_world.py` now runs with the new interface (see below).**
 
 
 `cvxportfolio` is a python library for portfolio optimization and simulation
 based on the book [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
 It is written in Python, its main dependencies are [`cvxpy`](https://github.com/cvxgrp/cvxpy)
 and [`pandas`](https://github.com/pandas-dev/pandas). 
+
 The documentation of the package is at [cvxportfolio.readthedocs.io](https://cvxportfolio.readthedocs.io/en/latest/).
 
-
-Roadmap
-------------
-Cvxportfolio is currently under fast development. (You can see the commit log.) We expect to have a working minimum viable product by end of Ramdan or, worst case, end of April 2023. In the meantime various things are not up to date. Please be patient. See the section below for comments on the status of the examples. Regarding the documentation, docstrings in the code are currently the best way to see what is happening. Here are the main aspects that are being developed:
-
-- Data interface. Cvxportfolio versions 0.0.X had no logic to ingest and process data, and everything was done externally. We are building a modular interface that can be used with public or private data sources and databases. It is defined and documented in `cvxportfolio.data`. It is meant to also be used by `cvxportfolio` object to store data, *e.g.*, backtest results.
-- Problem compilation. Cvxportfolio is now using `cvxpy.Parameters` as placeholders for data objects, it compiles the optimization problem at the start of each backtest, and updates the parameters as the backtest progesses. This, in combination with warm-startable solvers like `osqp`, provides huge speedups on backtest computation with respect to existising methods. The new mechanism is defined and documented in `cvxportfolio.estimator` and is being adopted across the rest of the classes.
-- Simulator. It is being rewritten, with the goal of radical simplification of the user interface while keeping all existing features and adding new ones. More realistic costs are being added. Documentation is being written along with the new code in `cvxportfolio.simulator`
-- Project management and testing. We migrated to `poetry` and `pytest`, we are still iterating on the best workflow automation tools. **We haven't broken any testfile and we don't intend to.** Tests currently run at a coverage of around 85%, we plan to make it close to 100%.
 
 Installation
 ------------
@@ -43,21 +35,57 @@ poetry install
 poetry run pytest --cov
 ```
 
-Releases
+
+Example
 ------------
-With comments from the [git tags](https://github.com/cvxgrp/cvxportfolio/tags).
+To get a sneak preview of `cvxportfolio` you may try the following code. This is available in `examples/hello_world.py` and runs 
+with `cvxportfolio` >= 0.2.0
 
-- [0.1.1](https://pypi.org/project/cvxportfolio/0.1.1/) Last version before 2023 internals change. If you have built code in
-  2016-2023 that uses cvxportfolio versions 0.0.X and relies on internal methods you probably want this release. Subsequent ones will change the internal interfaces. User interfaces instead will mostly remain the same. In addition, this version adds a new module data.py (that here is not called by the rest of cvxportfolio) that simplifies getting data.
-- 0.0.X Early development versions. Not tagged in git but [distributed on PyPI](https://pypi.org/project/cvxportfolio/).
 
-Examples
-------------
+```python
+import cvxportfolio as cp
+import matplotlib.pyplot as plt
 
-You can see basic usage of the package in the [examples](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/).
-These are currently being reworked and simplified. At the moment we don't guarantee they run without issues.
+# define a portfolio optimization policy
+# with rolling window mean (~10 yrs) returns
+# with forecast error risk on returns (see the book)
+# rolling window mean (~10 yrs) covariance
+# and forecast error risk on covariance (see the book)
+policy = cp.SinglePeriodOptimization(objective = 
+        cp.RollingWindowReturnsForecast(2500) -
+        cp.RollingWindowReturnsForecastErrorRisk(2500) -
+        5 * cp.RollingWindowFullCovariance(2500, forecast_error_kappa = 0.25), 
+        constraints = [cp.LeverageLimit(3)]
+        )
+        
+# define a market simulator, which downloads stock market data and stores it locally
+# in ~/cvxportfolio/        
+simulator = cp.MarketSimulator(["AMZN", "AAPL", "MSFT", "GOOGL", "TSLA", "GM"])
 
-Citing
+# perform a backtest (by default it starts with 1E6 USD cash)
+backtest = cp.BackTest(policy, simulator, '2023-01-01', '2023-04-21')
+
+# plot value of the portfolio in time
+backtest.v.plot(figsize=(12, 5), label='Single Period Optimization')
+plt.ylabel('USD')
+plt.title('Total value of the portfolio in time')
+plt.show()
+
+# plot weights of the (non-cash) assets for the SPO policy
+backtest.w.iloc[:, :-1].plot()
+plt.title('Weights of the portfolio in time')
+plt.show()
+
+print('total tcost', backtest.tcost.sum())
+print('total borrow cost', backtest.hcost_stocks.sum())
+print('total cash return + cost', backtest.hcost_cash.sum())
+
+```
+
+(*The other examples may currently have problems as we are changing various bits and pieces of `cvxportfolio`.*)
+
+
+Academic
 ------------
 
 If you use `cvxportfolio` in your academic work please cite our book:
