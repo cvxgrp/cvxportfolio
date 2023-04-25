@@ -485,11 +485,13 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
             lookback=250,
             num_factors=1,
             zero_cash_risk=True,
-            forecast_error_kappa=0.0):
+            forecast_error_kappa=0.0,
+            on_correlation = False):
         self.lookback = lookback
         self.num_factors = num_factors
         self.zero_cash_risk = zero_cash_risk
         self.forecast_error_kappa = forecast_error_kappa
+        self.on_correlation = on_correlation
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         """Function to initialize object with full prescience."""
@@ -509,6 +511,9 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
         val = past_returns.iloc[-self.lookback:].copy(deep=True)
         if self.zero_cash_risk:
             val.iloc[:, -1] = 0.0
+        if self.on_correlation:
+            stds = val.std()
+            val /= stds
 
         total_variances = np.sum(val**2, axis=0) / self.lookback
         u, s, v = np.linalg.svd(val, full_matrices=False)
@@ -522,6 +527,10 @@ class RollingWindowFactorModelRisk(FactorModelRisk):
                 self.exposures.value**2,
                 axis=0)).values
         assert np.all(self.idyosync.value >= 0.0)
+        
+        if self.on_correlation:
+            self.idyosync *= stds**2
+            self.exposures *= stds
 
         super().values_in_time(
             t,
