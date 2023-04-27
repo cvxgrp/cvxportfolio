@@ -50,6 +50,7 @@ extensions = ['sphinx.ext.autodoc',
               #'sphinx.ext.mathjax',
               #'sphinx.ext.githubpages',
 	          'sphinx.ext.napoleon',
+              'sphinx.ext.autosectionlabel',
               #'myst_parser'
           ]
 

@@ -51,27 +51,87 @@ class ReturnsForecast(BaseReturnsModel):
     r"""Returns forecast, either provided by the user or computed from the data.
     
     This class represents the term :math:`\hat{r}_t`, 
-    the forecast of assets' returns at time :math:`t`, 
-    in single- and multi-period optimization policies.
+    the forecast of assets' returns at time :math:`t`.
+    :ref:`Optimization-based policies` use this, typically as the first
+    element of their objectives.
+    See Chapters 4 and 5 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
+    for more details.
+    
+    It can either get returns forecast from the user, for example
+    computed with some machine learning technique, or it can estimate them 
+    automatically from the data. 
+    
+    In the first case ``r_hat`` is specified as
+    
+    * :class:`float`, if :math:`\hat{r}_t` is the same for all times and assets
+    * :class:`pandas.Series` with :class:`pandas.DatetimeIndex`, if :math:`\hat{r}_t` is the same for all assets but changes in time
+    * :class:`pandas.Series` indexed by assets' names, if :math:`\hat{r}_t` is constant in time and changes across assets
+    * :class:`pandas.DataFrame` with :class:`pandas.DatetimeIndex`, if :math:`\hat{r}_t` changes across time and assets.
+    
+    The returns' forecast provided by the user must be supplied for all assets
+    including cash (unless it is constant across all assets, so, also cash).
+    
+    If instead ``r_hat`` is not speficied it defaults to None. This instructs
+    this class to compute :math:`\hat{r}_t` instead. It is
+    done, at each step of a :class:`BackTest`, by evaluating an average of the
+    past returns (*i.e.,* the real returns :math:`{r}_{t-1}, {r}_{t-2}, \ldots`,
+    where :math:`t` is the current time). This class implements three ways to do so.
+    
+    * The full average of all available past returns skipping :class:`numpy.nan` values. 
+      This is the default mode if no parameters are passed.
+    * a *rolling window*  average of recent returns. This is specified by setting
+      the ``rolling`` parameter to a positive integer. If specified it takes precedence
+      over ``ewm``. See the documentation of :class:`pandas.DataFrame.rolling` for
+      details. It fails if the specified window contains :class:`numpy.nan` values.
+    * an *exponential moving window* average of past returns. This is specified
+      by setting the ``halflife`` parameter to a positive integer.
+      The exponential moving window is a weighted
+      average where the most recent returns have a larger weight than the older
+      ones. This is done by calling :class:`pandas.DataFrame.ewm` with the
+      `halflife`` argument, which represents the number of periods over which
+      the weight decays by a factor of 2. See the relevant ``pandas`` documentation
+      for more details.
+      
 
-    See the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_, 
-    Chapters 4 and 5, for details.
+    The only exception to the above is the forecast of cash return 
+    :math:`{\left(\hat{r}_t\right)}_n`, for which the observed value
+    from last period :math:`{\left({r}_{t-1}\right)}_n`
+    is typically chosen. This is
+    the default behavior and is done by setting ``lastforcash`` to ``True``.
+    (If instead ``lastforcash`` is ``False``, the same averaging of past 
+    returns is used to forecast the cash return as well.)
     
-
-    :param expected_returns: constant per-symbol forecasts (if Series) 
-         or varying in time (if DataFrame), 
-         or constant across simbols and time (if float) expected returns.
-    :type expected_returns: float or pandas.Series or pandas.DataFrame
+    :param r_hat: return forecasts supplied by the user, default is None
+    :type r_hat: float or pandas.Series or pandas.DataFrame or None
+    :param rolling: size of rolling window, it takes precendence over 
+        ``halflife`` if both are specified
+    :type rolling: int or None
+    :param halflife: half-life of exponential moving window
+    :type halflife: int or None
+    :param lastforcash: use last value to estimate cash return 
+    :type lastforcash: bool
     
-    :raises cvxportfolio.MissingValuesError: if the policy tries to access 
-        elements of expected_returns that are np.nan
+    :raises cvxportfolio.MissingValuesError: If the class accesses 
+        user-provided elements of ``r_hat`` that are :class:`numpy.nan`,
+        or the rolling window used for averaging contains :class:`numpy.nan`.
+    :raises ValueError: If the data passed by the user is not of the right
+        size (for example the cash returns' columns is missing).
     
-    .. seealso:: :class:`MultipleReturnsForecasts`, :class:`FullCovariance`
+    :Example:
+    
+    >>> import cvxportfolio as cp
+    >>> policy = cp.SinglePeriod(cp.ReturnsForecast() - \
+        0.5 * cp.FullCovariance())
+    
+    Defines a single period optimization policy where the returns' forecasts
+    :math:`\hat{r}_t` are the full average of past returns at each point in time
+    and the risk model is the full covariance, also computed from the past returns.
     """    
 
-    def __init__(self, expected_returns, name=None):
-        self.expected_returns = ParameterEstimator(expected_returns)
-        self.name = name
+    def __init__(self, r_hat=None, rolling=None, halflife=None, lastforcash=True):
+        self.expected_returns = ParameterEstimator(r_hat)
+        
+        self.name = 'PLACEHOLDER'
 
     def compile_to_cvxpy(self, w_plus, z, v):
         return w_plus.T @ self.expected_returns
