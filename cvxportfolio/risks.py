@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "FullCovariance",
-    "RollingWindowFullCovariance",
-    "ExponentialWindowFullCovariance",
+    #"RollingWindowFullCovariance",
+    #"ExponentialWindowFullCovariance",
     "DiagonalCovariance",
     "RollingWindowDiagonalCovariance",
     "ExponentialWindowDiagonalCovariance",
@@ -99,134 +99,226 @@ class BaseRiskModel(BaseCost):
 
 
 class FullCovariance(BaseRiskModel):
-    """Quadratic risk model with full covariance matrix.
+    r"""Quadratic risk model with full covariance matrix.
+    
+    This class represents the term :math:`\Sigma_t`, *i.e.,*
+    the :math:`(n-1) \times (n-1)` positive semi-definite matrix
+    which estimates the covariance of the (non-cash) assets' returns.
+    :ref:`Optimization-based policies` use this, as is explained 
+    in Chapter 4 and 5 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+    
+    The user can either supply a :class:`pandas.DataFrame` with the covariance matrix
+    (constant or varying in time) computed externally (for example
+    with some machine learning technique) or let this class estimate the covariance from the data. 
+    The latter is the default behavior.
+    
+    This class implements three ways to compute the covariance matrix from the past returns. The
+    computation is repeated at each point in time :math:`t` of a :class:`BackTest` using only
+    the past returns available at that point: :math:`r_{t-1}, r_{t-2}, \ldots`.
+    
+    * *rolling covariance*, using :class:`pandas.DataFrame.rolling.cov`. This is done
+      if the user specifies the ``rolling`` argument.
+    * *exponential moving window covariance*, using :class:`pandas.DataFrame.ewm.cov`. This is done
+      if the user specifies the ``halflife`` argument (``rolling`` takes precedence).
+    * *full historical covariance*, using :class:`pandas.DataFrame.cov`. This is the default
+      behavior if no arguments are specified.
+    
+    If there are missing data in the historical returns the estimated covariance may not
+    be positive semi-definite. We correct it by projecting on the positive semi-definite 
+    cone (*i.e.*, we set the negative eigenvalues of the resulting :math:`\Sigma_t` to zero). 
 
-    Args:
-        Sigma (pd.DataFrame): DataFrame of Sigma matrices as understood
-        by `cvxportfolio.estimator.DataEstimator`.
-        forecast_error_kappa (float or pd.Series): add cost term for the
-            uncertainty on the assets' correlations. See the paper, pages 32-33.
-            Default is zero, corresponding to no uncertainty cost.
+    :param Sigma: :class:`pandas.DataFrame` of covariance matrices 
+        supplied by the user. The DataFrame either represents a single (constant) covariance matrix
+        or one for each point in time. In the latter case the DataFrame must have a :class:`pandas.MultiIndex`
+        where the first level is a :class:`pandas.DatetimeIndex`. If ``None`` (the default)
+        the covariance matrix is computed from past returns.
+    :type Sigma: pandas.DataFrame or None
+    :param rolling: if it is not ``None`` the covariance matrix will be estimated
+        on a rolling window of size ``rolling`` of the past returns.
+    :type rolling: int or None
+    :param halflife: if it is not ``None`` the covariance matrix will be estimated
+        on an exponential moving window of the past returns with half-life ``halflife``. 
+        If ``rolling`` is specified it takes precedence over ``halflife``. If both are ``None`` the full history 
+        will be used for estimation.
+    :type halflife: int or None
+    :param kappa: the multiplier for the associated forecast error risk 
+        (see pages 32-33 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_).
+        If ``float`` a passed it is treated as a constant, if ``pandas.Series`` with ``pandas.DateTime`` index
+        it varies in time, if ``None`` the forecast error risk term will not be compiled.
+    :type kappa: float or pandas.Series or None
+    :param addmean: correct the covariance matrix with the term :math:`\mu\mu^T`, as is explained
+        in page 28 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_, 
+        to match the second term of the Taylor expansion of the portfolio log-return. Default
+        is ``False``, corresponding to classical mean-variance optimization. If ``True``, it 
+        estimates :math:`\mu` with the same technique as :math:`\Sigma`, *i.e.*, with rolling window
+        average, exponential moving window average, or an average of the full history.
+    :type addmean: bool
     """
 
-    def __init__(self, Sigma=None, forecast_error_kappa=0.0, **kwargs):
-        # DEPRECATED, IT'S USED BY SOME OLD CVXPORTFOLIO PIECES
-        super(FullCovariance, self).__init__(**kwargs)
-        self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
-        self.forecast_error_kappa = DataEstimator(
-            forecast_error_kappa)  # ParameterEstimator(
-        self.parameter_forecast_error = cvx.Parameter(
-            Sigma.shape[1], nonneg=True)
+    def __init__(self, Sigma=None, rolling=None, halflife=None, kappa=None, addmean=False):
+        if not Sigma is None:
+            self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
+        else:
+            self.Sigma = None
+        self.rolling = rolling if Sigma is None else None
+        self.halflife = halflife if Sigma is None else None
+        self.full = self.Sigma is None and self.rolling is None and self.halflife is None
+        if not kappa is None:
+            self.kappa = DataEstimator(kappa)
+        else:
+            self.kappa = None
+        self.addmean = addmean
+        if self.addmean:
+            raise NotImplementedError
+        # self.forecast_error_kappa = DataEstimator(
+        #     forecast_error_kappa)  # ParameterEstimator(
+        # self.parameter_forecast_error = cvx.Parameter(
+        #     Sigma.shape[1], nonneg=True)
         #    forecast_error_kappa, non_negative=True
         # )
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+        
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-        self.Sigma_sqrt = cvx.Parameter(self.Sigma.shape)
+        
+        if not self.kappa is None:
+            self.forecast_error = cvx.Parameter(returns.shape[1]-1, nonneg=True)
+
+        if not self.rolling is None:
+            forecasts = returns.iloc[:, :-1].rolling(window=self.rolling).cov().shift(
+                returns.shape[1]-1)
+                
+        elif not self.halflife is None:
+            forecasts = returns.iloc[:, :-1].ewm(halflife=self.halflife).cov().shift(
+                returns.shape[1]-1)
+                
+        elif self.full:
+            self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1))
+            return
+        
+        if self.Sigma is None:
+            self.Sigma = ParameterEstimator(forecasts)
+        
+        self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1))
+        
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        
 
     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes,
             **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        super().values_in_time(t, current_weights, current_portfolio_value,
-            past_returns, past_volumes, **kwargs)
-        self.parameter_forecast_error.value = np.sqrt(
-            np.diag(self.Sigma.value)) * np.sqrt(self.forecast_error_kappa.current_value)
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        
+        if not self.full:
+            current_Sigma = self.Sigma.value
+        else:
+            current_Sigma = past_returns.iloc[:,:-1].cov()
+            
+        eigval, eigvec = np.linalg.eigh(current_Sigma)
+        eigval = np.maximum(eigval, 0.)
+        self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
+        
+        if not self.kappa is None:
+            self.forecast_error.value = np.sqrt(np.diag(self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)) * \
+                np.sqrt(self.forecast_error_kappa.current_value)
+        
+        
+        #self.parameter_forecast_error.value = np.sqrt(
+        #    np.diag(self.Sigma.value)) * np.sqrt(self.forecast_error_kappa.current_value)
         #if not self.LEGACY:
-        self.Sigma_sqrt.value = scipy.linalg.sqrtm(self.Sigma.value)
-        assert np.allclose(
-            self.Sigma.value,
-            self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)
+        #self.Sigma_sqrt.value = scipy.linalg.sqrtm(self.Sigma.value)
+        # assert np.allclose(
+        #     self.Sigma.value,
+        #     self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        # something's broken with the old interface, patching it here
-        #if self.LEGACY:
-        #self.cvxpy_expression = cvx.quad_form(w_plus - self.benchmark_weights, self.Sigma) 
-        #else:
-        self.cvxpy_expression =  cvx.sum_squares(self.Sigma_sqrt.T @ (w_plus - self.benchmark_weights))
         
-        # assert self.cvxpy_expression.is_dcp(dpp=True)
-        self.cvxpy_expression += cvx.square(cvx.abs(w_plus - self.benchmark_weights).T @ self.parameter_forecast_error)
+        self.cvxpy_expression = cvx.sum_squares(self.Sigma_sqrt.T @ (w_plus - self.benchmark_weights)[:-1])
+    
+        if not self.kappa is None:
+            self.cvxpy_expression += cvx.square(cvx.abs(w_plus - self.benchmark_weights)[:-1].T @ self.forecast_error)
+            
         # assert self.cvxpy_expression.is_dcp(dpp=True)
         return self.cvxpy_expression
 
 
-class RollingWindowFullCovariance(FullCovariance):
-    """Build FullCovariance model automatically with pandas rolling window.
-
-    At the start of a backtest receives a view of asset returns
-    (excluding cash) and computes the rolling window covariance
-    for given lookback_period (default 250).
-
-    Args:
-        loockback_period (int): how many past returns are used each
-            trading day to compute the historical covariance.
-    """
-
-    def __init__(
-            self,
-            lookback_period=250,
-            zero_cash_covariance=True,
-            forecast_error_kappa=0.0):
-        self.lookback_period = lookback_period
-        self.zero_cash_covariance = zero_cash_covariance
-        self.forecast_error_kappa = DataEstimator(forecast_error_kappa)
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        """Function to initialize object with full prescience."""
-        # drop cash return
-        if self.zero_cash_covariance:
-            returns = returns.copy(deep=True)
-            returns.iloc[:, -1] = 0.0
-        self.Sigma = ParameterEstimator(
-            # shift forward so only past returns are used
-            returns.rolling(
-                window=self.lookback_period).cov().shift(
-                returns.shape[1]),
-            positive_semi_definite=True,
-        )
-        # initialize cvxpy Parameter(s)
-        self.parameter_forecast_error = cvx.Parameter(
-            returns.shape[1], nonneg=True)
-
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-
-
-class ExponentialWindowFullCovariance(FullCovariance):
-    """Build FullCovariance model automatically with pandas exponential window.
-
-    At the start of a backtest receives a view of asset returns
-    (excluding cash) and computes the exponential window covariance
-    for given half_life (default 250).
-
-    Args:
-        half_life (int): the half life of exponential decay used by pandas
-            exponential moving window
-    """
-
-    def __init__(
-            self,
-            half_life=250,
-            zero_cash_covariance=True,
-            forecast_error_kappa=0.0):
-        self.half_life = half_life
-        self.zero_cash_covariance = zero_cash_covariance
-        self.forecast_error_kappa = DataEstimator(forecast_error_kappa)
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        """Function to initialize object with full prescience."""
-
-        if self.zero_cash_covariance:
-            returns = returns.copy(deep=True)
-            returns.iloc[:, -1] = 0.0
-        self.Sigma = ParameterEstimator(
-            # shift forward so only past returns are used
-            returns.ewm(halflife=self.half_life).cov().shift(returns.shape[1]),
-            positive_semi_definite=True,
-        )
-        self.parameter_forecast_error = cvx.Parameter(
-            returns.shape[1], nonneg=True)
-        # initialize cvxpy Parameter(s)
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+# class RollingWindowFullCovariance(FullCovariance):
+#     """Build FullCovariance model automatically with pandas rolling window.
+#
+#     At the start of a backtest receives a view of asset returns
+#     (excluding cash) and computes the rolling window covariance
+#     for given lookback_period (default 250).
+#
+#     Args:
+#         loockback_period (int): how many past returns are used each
+#             trading day to compute the historical covariance.
+#     """
+#
+#     def __init__(
+#             self,
+#             lookback_period=250,
+#             zero_cash_covariance=True,
+#             forecast_error_kappa=0.0):
+#         self.lookback_period = lookback_period
+#         self.zero_cash_covariance = zero_cash_covariance
+#         self.forecast_error_kappa = DataEstimator(forecast_error_kappa)
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         """Function to initialize object with full prescience."""
+#         # drop cash return
+#         if self.zero_cash_covariance:
+#             returns = returns.copy(deep=True)
+#             returns.iloc[:, -1] = 0.0
+#         self.Sigma = ParameterEstimator(
+#             # shift forward so only past returns are used
+#             returns.rolling(
+#                 window=self.lookback_period).cov().shift(
+#                 returns.shape[1]),
+#             positive_semi_definite=True,
+#         )
+#         # initialize cvxpy Parameter(s)
+#         self.parameter_forecast_error = cvx.Parameter(
+#             returns.shape[1], nonneg=True)
+#
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+#
+#
+# class ExponentialWindowFullCovariance(FullCovariance):
+#     """Build FullCovariance model automatically with pandas exponential window.
+#
+#     At the start of a backtest receives a view of asset returns
+#     (excluding cash) and computes the exponential window covariance
+#     for given half_life (default 250).
+#
+#     Args:
+#         half_life (int): the half life of exponential decay used by pandas
+#             exponential moving window
+#     """
+#
+#     def __init__(
+#             self,
+#             half_life=250,
+#             zero_cash_covariance=True,
+#             forecast_error_kappa=0.0):
+#         self.half_life = half_life
+#         self.zero_cash_covariance = zero_cash_covariance
+#         self.forecast_error_kappa = DataEstimator(forecast_error_kappa)
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         """Function to initialize object with full prescience."""
+#
+#         if self.zero_cash_covariance:
+#             returns = returns.copy(deep=True)
+#             returns.iloc[:, -1] = 0.0
+#         self.Sigma = ParameterEstimator(
+#             # shift forward so only past returns are used
+#             returns.ewm(halflife=self.half_life).cov().shift(returns.shape[1]),
+#             positive_semi_definite=True,
+#         )
+#         self.parameter_forecast_error = cvx.Parameter(
+#             returns.shape[1], nonneg=True)
+#         # initialize cvxpy Parameter(s)
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
 
 class DiagonalCovariance(BaseRiskModel):

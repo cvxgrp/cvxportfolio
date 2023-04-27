@@ -7,33 +7,15 @@ WORK IN PROGRESS
 
 .. py:module:: cvxportfolio
 
-Full covariance models
-----------------------
+.. autoclass:: DiagonalCovariance
 
 .. autoclass:: FullCovariance
 
-.. autoclass:: RollingWindowFullCovariance
+.. autoclass:: FactorModelCovariance
 
-.. autoclass:: ExponentialWindowFullCovariance
+.. autoclass:: ReturnForecastError
 
+.. autoclass:: CovarianceForecastError
 
-Diagonal covariance models
---------------------------
+.. autoclass:: WorstCase
 
-.. autoclass:: DiagonalCovariance
-
-.. autoclass:: RollingWindowDiagonalCovariance
-
-.. autoclass:: ExponentialWindowDiagonalCovariance
-
-
-Low rank risk models
---------------------
-
-.. autoclass:: LowRankRollingRisk
-
-.. autoclass:: RollingWindowFactorModelRisk
-
-.. autoclass:: WorstCaseRisk
-
-.. autoclass:: FactorModelRisk

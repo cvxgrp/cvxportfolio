@@ -217,7 +217,7 @@ def test_cost_algebra(returns):
     t = returns.index[1]
 
     cost1 = HcostModel(1, 2)
-    cost2 = FullCovariance(returns.T @ returns / len(returns))
+    cost2 = FullCovariance(returns.iloc[:, :-1].T @ returns.iloc[:, :-1] / len(returns))
     cost3 = cost1 + cost2
 
     cost3.pre_evaluation(returns, None, t, None)

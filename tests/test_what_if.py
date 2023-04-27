@@ -52,7 +52,7 @@ def test_attribution(returns, volumes, sigma, tcost_model, hcost_model):
 
     #alpha_model = ReturnsForecast(returns)
 
-    emp_Sigma = np.cov(returns.to_numpy().T)
+    emp_Sigma = np.cov(returns.iloc[:,:-1].to_numpy().T)
     risk_model = 100 * FullCovariance(emp_Sigma)
 
     pol = SinglePeriodOpt(
@@ -122,7 +122,7 @@ def test_attribute_non_profit_series(
         alpha_sources[i].name = i
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
-    emp_Sigma = np.cov(returns.to_numpy().T)
+    emp_Sigma = np.cov(returns.iloc[:,:-1].to_numpy().T)
     risk_model = FullCovariance(emp_Sigma)#, gamma=100.0)
     # tcost_model = TcostModel(self.a, self.b, sigma, volumes)
     # hcost_model = HcostModel(self.s, self.s * 0)
@@ -187,7 +187,7 @@ def test_attribute_non_profit_scalar(returns, sigma, volumes):
         alpha_sources[i].name = i
     weights = np.array([0.1, 0.3, 0.6])
     alpha_model = MultipleReturnsForecasts(alpha_sources, weights)
-    emp_Sigma = np.cov(returns.to_numpy().T)
+    emp_Sigma = np.cov(returns.iloc[:,:-1].to_numpy().T)
     risk_model = FullCovariance(emp_Sigma)
     tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,)
 

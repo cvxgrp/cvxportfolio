@@ -263,7 +263,7 @@ def test_single_period_optimization(returns, volumes):
 
     N = returns.shape[1]
     return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    risk_forecast = FullCovariance(rolling=50)
     policy = SinglePeriodOptimization(
         return_forecast
         - 2 * risk_forecast
@@ -297,7 +297,7 @@ def test_single_period_optimization(returns, volumes):
     # REPLICATE WITH CVXPY
     w = cvx.Variable(N)
     cvx.Problem(cvx.Maximize(w.T @ return_forecast.r_hat.value -
-                             2 * cvx.quad_form(w, risk_forecast.Sigma.value) -
+                             2 * cvx.quad_form(w[:-1], risk_forecast.Sigma.value) -
                              5 * 1E-4 * cvx.sum(cvx.abs(w - curw)[:-1])
                              ),
                 [w >= 0, w <= 1, sum(w) == 1]
@@ -314,7 +314,7 @@ def test_single_period_optimization_solve_twice(returns, volumes):
 
     N = returns.shape[1]
     return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    risk_forecast = FullCovariance(rolling=50)
     policy = SinglePeriodOptimization(
         return_forecast
         - 2 * risk_forecast
@@ -363,7 +363,7 @@ def test_single_period_optimization_infeasible(returns, volumes):
 
     N = returns.shape[1]
     return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    risk_forecast = FullCovariance(rolling=50)
     policy = SinglePeriodOptimization(
         return_forecast
         - 2 * risk_forecast
@@ -396,7 +396,7 @@ def test_single_period_optimization_unbounded(returns, volumes):
 
     N = returns.shape[1]
     return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    risk_forecast = FullCovariance(rolling=50)
     policy = SinglePeriodOptimization(
         return_forecast        # - 2 * risk_forecast
         # - TcostModel(half_spread=5*1E-4)#, power=2)
@@ -440,7 +440,7 @@ def test_multi_period_optimization1(returns, volumes):
     """Test that SPO and MPO1 return same"""
     N = returns.shape[1]
     return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    risk_forecast = FullCovariance(rolling=50)
     policy = MultiPeriodOptimization(
         return_forecast
         - 2 * risk_forecast
@@ -471,7 +471,7 @@ def test_multi_period_optimization1(returns, volumes):
     cvxportfolio_result = pd.Series(result, returns.columns)
     
     return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+    risk_forecast = FullCovariance(rolling=50)
     
     policy1 = SinglePeriodOptimization(
         return_forecast
@@ -507,7 +507,7 @@ def test_multi_period_optimization2(returns, volumes):
     for planning_horizon in [1,2,5]:
         N = returns.shape[1]
         return_forecast = ReturnsForecast(rolling=50)
-        risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+        risk_forecast = FullCovariance(rolling=50)
         policy = MultiPeriodOptimization(
             return_forecast
             - 10 * risk_forecast
@@ -544,7 +544,7 @@ def test_multi_period_optimization2(returns, volumes):
     for planning_horizon in [1,2,5]:
         N = returns.shape[1]
         return_forecast = ReturnsForecast(rolling=50)
-        risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+        risk_forecast = FullCovariance(rolling=50)
         policy = MultiPeriodOptimization(
             return_forecast
             - 10 * risk_forecast
@@ -587,7 +587,7 @@ def test_multi_period_optimization3(returns, volumes):
     for planning_horizon in [1,2,5]:
         N = returns.shape[1]
         return_forecast = ReturnsForecast(rolling=50)
-        risk_forecast = RollingWindowFullCovariance(lookback_period=50)
+        risk_forecast = FullCovariance(rolling=50)
         policy = MultiPeriodOptimization(
             return_forecast
             - 10 * risk_forecast
@@ -625,7 +625,7 @@ def test_spo_old_vs_new(returns, volumes, sigma):
     tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,
     )
     #hcost_model = HcostModel(borrow_costs=0., dividends=0.)
-    emp_Sigma = np.cov(returns.to_numpy().T)
+    emp_Sigma = np.cov(returns.iloc[:, :-1].to_numpy().T)
     risk_model = FullCovariance(emp_Sigma)
     returns_forecast = ReturnsForecast(returns.mean())
     
@@ -677,7 +677,7 @@ def test_spo_old_vs_new(returns, volumes, sigma):
     val = sum(init)
     s = sigma.iloc[10]
     objective = cvx.Maximize(w.T @ mu 
-        - 10 * cvx.quad_form(w, Sigma) 
+        - 10 * cvx.quad_form(w[:-1], Sigma) 
             - 2 * 0.0005 * cvx.norm1(z[:-1])
             - 2 * (cvx.abs(z[:-1])**1.5).T @ (s * np.sqrt(val / V))
             )
