@@ -138,9 +138,10 @@ class DataEstimator(Estimator):
 
     """
 
-    def __init__(self, data, use_last_available_time=False):
+    def __init__(self, data, use_last_available_time=False, allow_nans=False):
         self.data = data
         self.use_last_available_time = use_last_available_time
+        self.allow_nans = allow_nans
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned.
@@ -157,7 +158,7 @@ class DataEstimator(Estimator):
         """
 
         if np.isscalar(result):
-            if np.isnan(result):
+            if np.isnan(result) and not self.allow_nans:
                 raise MissingValuesError(
                     f"{self.__class__.__name__}.values_in_time result is a np.nan scalar."
                 )
@@ -165,7 +166,7 @@ class DataEstimator(Estimator):
                 return result
 
         if isinstance(result, np.ndarray):
-            if np.any(np.isnan(result)):
+            if np.any(np.isnan(result)) and not self.allow_nans:
                 raise MissingValuesError(
                     f"{self.__class__.__name__}.values_in_time result is an array with np.nan's."
                 )

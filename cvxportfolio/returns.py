@@ -48,12 +48,26 @@ class BaseReturnsModel(BaseCost):
 
 
 class ReturnsForecast(BaseReturnsModel):
-    """Simple return forecast provided by the user.
+    r"""Returns forecast, either provided by the user or computed from the data.
+    
+    This class represents the term :math:`\hat{r}_t`, 
+    the forecast of assets' returns at time :math:`t`, 
+    in single- and multi-period optimization policies.
 
-    Args:
-        expected_returns (pd.DataFrame or pd.Series): constant per-symbol
-            forecasts (if Series) or varying in time (if DataFrame)
-    """
+    See the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_, 
+    Chapters 4 and 5, for details.
+    
+
+    :param expected_returns: constant per-symbol forecasts (if Series) 
+         or varying in time (if DataFrame), 
+         or constant across simbols and time (if float) expected returns.
+    :type expected_returns: float or pandas.Series or pandas.DataFrame
+    
+    :raises cvxportfolio.MissingValuesError: if the policy tries to access 
+        elements of expected_returns that are np.nan
+    
+    .. seealso:: :class:`MultipleReturnsForecasts`, :class:`FullCovariance`
+    """    
 
     def __init__(self, expected_returns, name=None):
         self.expected_returns = ParameterEstimator(expected_returns)
@@ -62,6 +76,7 @@ class ReturnsForecast(BaseReturnsModel):
     def compile_to_cvxpy(self, w_plus, z, v):
         return w_plus.T @ self.expected_returns
         
+   
         
 class MultipleReturnsForecasts(BaseReturnsModel):
     """A weighted combination of alpha sources.
