@@ -37,8 +37,7 @@ def test_returns_forecast(returns):
 def test_rolling_mean_returns_forecast(returns):
 
     N = returns.shape[1]
-    alpha_model = RollingWindowReturnsForecast(lookback_period=50,
-                                               )
+    alpha_model = ReturnsForecast(rolling=50)
     alpha_model.pre_evaluation(returns, None, returns.index[50], None)
     w_plus = cvx.Variable(N)
 
@@ -55,8 +54,7 @@ def test_rolling_mean_returns_forecast(returns):
 def test_exponential_mean_returns_forecast(returns):
 
     N = returns.shape[1]
-    alpha_model = ExponentialWindowReturnsForecast(half_life=25,
-                                                   )
+    alpha_model = ReturnsForecast(halflife=25)
     alpha_model.pre_evaluation(returns, None, returns.index[50], None)
     w_plus = cvx.Variable(N)
 

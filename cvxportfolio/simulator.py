@@ -589,7 +589,7 @@ class MarketSimulator(Estimator):
         for idx in range(len(alpha_sources)):
             new_pol = copy.copy(policy)
             new_pol.return_forecast = MultipleReturnsForecasts(
-                [ReturnsForecast(el.expected_returns.data) for el in alpha_sources],
+                [ReturnsForecast(el.r_hat.data) for el in alpha_sources],
                 #alpha_sources,
                 Wmat[idx, :]
             )

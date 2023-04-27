@@ -28,8 +28,8 @@ from .estimator import DataEstimator, ParameterEstimator
 __all__ = [
     "ReturnsForecast",
     "MultipleReturnsForecasts",
-    "RollingWindowReturnsForecast",
-    "ExponentialWindowReturnsForecast",
+    #"RollingWindowReturnsForecast",
+    #"ExponentialWindowReturnsForecast",
     "ReturnsForecastErrorRisk",
     "RollingWindowReturnsForecastErrorRisk",
 ]
@@ -57,7 +57,7 @@ class ReturnsForecast(BaseReturnsModel):
     See Chapters 4 and 5 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
     for more details.
     
-    It can either get returns forecast from the user, for example
+    It can either get return forecasts from the user, for example
     computed with some machine learning technique, or it can estimate them 
     automatically from the data. 
     
@@ -129,12 +129,52 @@ class ReturnsForecast(BaseReturnsModel):
     """    
 
     def __init__(self, r_hat=None, rolling=None, halflife=None, lastforcash=True):
-        self.expected_returns = ParameterEstimator(r_hat)
         
+        if not r_hat is None:
+            self.r_hat = ParameterEstimator(r_hat)
+        else:
+            self.r_hat = None
+        
+        self.rolling = rolling
+        self.halflife = halflife
+        self.lastforcash=True
+        
+        self.full = self.r_hat is None and self.rolling is None and self.halflife is None
+    
         self.name = 'PLACEHOLDER'
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+        
+        if not self.rolling is None:
+            forecasts = returns.rolling(window=self.rolling).mean().shift(1)
+        elif not self.halflife is None:
+            forecasts = returns.ewm(halflife=self.halflife).mean().shift(1)
+        elif self.full:
+            self.r_hat = cvx.Parameter(returns.shape[1])
+            return
+        
+        if self.r_hat is None:
+            self.r_hat = ParameterEstimator(forecasts)
+            
+            if self.lastforcash:
+                forecasts.iloc[:, -1] = returns.iloc[:, -1].shift(1)
+        
+            # initialize self.r_hat
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+    
+    
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
 
+        if self.full:
+            current_forecast = past_returns.mean()
+            if self.lastforcash:
+                current_forecast.iloc[-1] = past_returns.iloc[-1, -1]
+            self.r_hat.value = current_forecast.values
+            
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        
     def compile_to_cvxpy(self, w_plus, z, v):
-        return w_plus.T @ self.expected_returns
+        return w_plus.T @ self.r_hat
         
    
         
@@ -202,48 +242,48 @@ class MultipleReturnsForecasts(BaseReturnsModel):
 
 
 
-class RollingWindowReturnsForecast(ReturnsForecast):
-    """Compute returns forecast by rolling window mean of past returns.
+# class RollingWindowReturnsForecast(ReturnsForecast):
+#     """Compute returns forecast by rolling window mean of past returns.
+#
+#     Args:
+#         lookback_period (int): how many past returns are used at each point in time.
+#             Default is 250.
+#         use_last_for_cash (bool): for the cash return instead just use the last
+#             value. Default True.
+#     """
+#
+#     def __init__(self, lookback_period, use_last_for_cash=True):
+#         self.lookback_period = lookback_period
+#         self.use_last_for_cash = use_last_for_cash
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         forecasts = returns.rolling(
+#             window=self.lookback_period).mean().shift(1)
+#         if self.use_last_for_cash:
+#             forecasts.iloc[:, -1] = returns.iloc[:, -1].shift(1)
+#         self.expected_returns = ParameterEstimator(forecasts)
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
-    Args:
-        lookback_period (int): how many past returns are used at each point in time.
-            Default is 250.
-        use_last_for_cash (bool): for the cash return instead just use the last
-            value. Default True.
-    """
 
-    def __init__(self, lookback_period, use_last_for_cash=True):
-        self.lookback_period = lookback_period
-        self.use_last_for_cash = use_last_for_cash
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        forecasts = returns.rolling(
-            window=self.lookback_period).mean().shift(1)
-        if self.use_last_for_cash:
-            forecasts.iloc[:, -1] = returns.iloc[:, -1].shift(1)
-        self.expected_returns = ParameterEstimator(forecasts)
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-
-
-class ExponentialWindowReturnsForecast(ReturnsForecast):
-    """Compute returns forecast by exponential window mean of past returns.
-
-    Args:
-        half_life (int): Half life of exponential decay used. Default is 250.
-        use_last_for_cash (bool): for the cash return instead just use the last
-            value. Default True.
-    """
-
-    def __init__(self, half_life, use_last_for_cash=True):
-        self.half_life = half_life
-        self.use_last_for_cash = use_last_for_cash
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        forecasts = returns.ewm(halflife=self.half_life).mean().shift(1)
-        if self.use_last_for_cash:
-            forecasts.iloc[:, -1] = returns.iloc[:, -1].shift(1)
-        self.expected_returns = ParameterEstimator(forecasts)
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+# class ExponentialWindowReturnsForecast(ReturnsForecast):
+#     """Compute returns forecast by exponential window mean of past returns.
+#
+#     Args:
+#         half_life (int): Half life of exponential decay used. Default is 250.
+#         use_last_for_cash (bool): for the cash return instead just use the last
+#             value. Default True.
+#     """
+#
+#     def __init__(self, half_life, use_last_for_cash=True):
+#         self.half_life = half_life
+#         self.use_last_for_cash = use_last_for_cash
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         forecasts = returns.ewm(halflife=self.half_life).mean().shift(1)
+#         if self.use_last_for_cash:
+#             forecasts.iloc[:, -1] = returns.iloc[:, -1].shift(1)
+#         self.expected_returns = ParameterEstimator(forecasts)
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
 
 class ReturnsForecastErrorRisk(BaseRiskModel):

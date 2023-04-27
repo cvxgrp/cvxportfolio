@@ -24,7 +24,7 @@ from cvxportfolio import BackTest
 import cvxportfolio as cp
 
 def test_UNFINISHED_backtest(tmp_path):
-    pol = cp.SinglePeriodOptimization(cp.RollingWindowReturnsForecast(2000) - 
+    pol = cp.SinglePeriodOptimization(cp.ReturnsForecast(rolling=2000) - 
         cp.RollingWindowReturnsForecastErrorRisk(2000) -
         .5 * cp.RollingWindowFullCovariance(2000), 
         [#cp.LongOnly(), 

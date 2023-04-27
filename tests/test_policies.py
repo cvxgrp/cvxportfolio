@@ -262,7 +262,7 @@ def test_adaptive_rebalance(returns):
 def test_single_period_optimization(returns, volumes):
 
     N = returns.shape[1]
-    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    return_forecast = ReturnsForecast(rolling=50)
     risk_forecast = RollingWindowFullCovariance(lookback_period=50)
     policy = SinglePeriodOptimization(
         return_forecast
@@ -296,7 +296,7 @@ def test_single_period_optimization(returns, volumes):
 
     # REPLICATE WITH CVXPY
     w = cvx.Variable(N)
-    cvx.Problem(cvx.Maximize(w.T @ return_forecast.expected_returns.value -
+    cvx.Problem(cvx.Maximize(w.T @ return_forecast.r_hat.value -
                              2 * cvx.quad_form(w, risk_forecast.Sigma.value) -
                              5 * 1E-4 * cvx.sum(cvx.abs(w - curw)[:-1])
                              ),
@@ -313,7 +313,7 @@ def test_single_period_optimization(returns, volumes):
 def test_single_period_optimization_solve_twice(returns, volumes):
 
     N = returns.shape[1]
-    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    return_forecast = ReturnsForecast(rolling=50)
     risk_forecast = RollingWindowFullCovariance(lookback_period=50)
     policy = SinglePeriodOptimization(
         return_forecast
@@ -362,7 +362,7 @@ def test_single_period_optimization_solve_twice(returns, volumes):
 def test_single_period_optimization_infeasible(returns, volumes):
 
     N = returns.shape[1]
-    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    return_forecast = ReturnsForecast(rolling=50)
     risk_forecast = RollingWindowFullCovariance(lookback_period=50)
     policy = SinglePeriodOptimization(
         return_forecast
@@ -395,7 +395,7 @@ def test_single_period_optimization_infeasible(returns, volumes):
 def test_single_period_optimization_unbounded(returns, volumes):
 
     N = returns.shape[1]
-    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    return_forecast = ReturnsForecast(rolling=50)
     risk_forecast = RollingWindowFullCovariance(lookback_period=50)
     policy = SinglePeriodOptimization(
         return_forecast        # - 2 * risk_forecast
@@ -426,20 +426,20 @@ def test_single_period_optimization_unbounded(returns, volumes):
 
 def test_multi_period_optimization_syntax():
     with pytest.raises(SyntaxError):
-        MultiPeriodOptimization([RollingWindowReturnsForecast(lookback_period=50)], [])
+        MultiPeriodOptimization([ReturnsForecast(rolling=50)], [])
     with pytest.raises(SyntaxError):
-        MultiPeriodOptimization([RollingWindowReturnsForecast(lookback_period=50)], [[],[]])
+        MultiPeriodOptimization([ReturnsForecast(rolling=50)], [[],[]])
     with pytest.raises(SyntaxError):
-        MultiPeriodOptimization([RollingWindowReturnsForecast(lookback_period=50)], None)
+        MultiPeriodOptimization([ReturnsForecast(rolling=50)], None)
     with pytest.raises(SyntaxError):
-        MultiPeriodOptimization(RollingWindowReturnsForecast(lookback_period=50))
-    MultiPeriodOptimization(RollingWindowReturnsForecast(lookback_period=50), planning_horizon = 1)
+        MultiPeriodOptimization(ReturnsForecast(rolling=50))
+    MultiPeriodOptimization(ReturnsForecast(rolling=50), planning_horizon = 1)
     
     
 def test_multi_period_optimization1(returns, volumes):
     """Test that SPO and MPO1 return same"""
     N = returns.shape[1]
-    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    return_forecast = ReturnsForecast(rolling=50)
     risk_forecast = RollingWindowFullCovariance(lookback_period=50)
     policy = MultiPeriodOptimization(
         return_forecast
@@ -470,7 +470,7 @@ def test_multi_period_optimization1(returns, volumes):
 
     cvxportfolio_result = pd.Series(result, returns.columns)
     
-    return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+    return_forecast = ReturnsForecast(rolling=50)
     risk_forecast = RollingWindowFullCovariance(lookback_period=50)
     
     policy1 = SinglePeriodOptimization(
@@ -506,7 +506,7 @@ def test_multi_period_optimization2(returns, volumes):
     results = []
     for planning_horizon in [1,2,5]:
         N = returns.shape[1]
-        return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+        return_forecast = ReturnsForecast(rolling=50)
         risk_forecast = RollingWindowFullCovariance(lookback_period=50)
         policy = MultiPeriodOptimization(
             return_forecast
@@ -543,7 +543,7 @@ def test_multi_period_optimization2(returns, volumes):
     results = []
     for planning_horizon in [1,2,5]:
         N = returns.shape[1]
-        return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+        return_forecast = ReturnsForecast(rolling=50)
         risk_forecast = RollingWindowFullCovariance(lookback_period=50)
         policy = MultiPeriodOptimization(
             return_forecast
@@ -586,7 +586,7 @@ def test_multi_period_optimization3(returns, volumes):
     diff_to_benchmarks = []
     for planning_horizon in [1,2,5]:
         N = returns.shape[1]
-        return_forecast = RollingWindowReturnsForecast(lookback_period=50)
+        return_forecast = ReturnsForecast(rolling=50)
         risk_forecast = RollingWindowFullCovariance(lookback_period=50)
         policy = MultiPeriodOptimization(
             return_forecast
