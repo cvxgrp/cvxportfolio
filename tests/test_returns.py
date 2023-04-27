@@ -49,6 +49,23 @@ def test_rolling_mean_returns_forecast(returns):
     myforecast.iloc[-1] = returns.iloc[122, -1]
 
     assert np.isclose(cvxpy_expression.value, w_plus.value @ myforecast)
+    
+    
+def test_full_returns_forecast(returns):
+
+    N = returns.shape[1]
+    alpha_model = ReturnsForecast()
+    alpha_model.pre_evaluation(returns, None, returns.index[50], None)
+    w_plus = cvx.Variable(N)
+
+    t = returns.index[123]
+    cvxpy_expression = alpha_model.compile_to_cvxpy(w_plus, None, None)
+    alpha_model.values_in_time(t, None, None, returns.loc[returns.index<t], None)
+    w_plus.value = np.random.randn(N)
+    myforecast = returns.loc[returns.index < t].mean()
+    myforecast.iloc[-1] = returns.iloc[122, -1]
+
+    assert np.isclose(cvxpy_expression.value, w_plus.value @ myforecast)
 
 
 def test_exponential_mean_returns_forecast(returns):

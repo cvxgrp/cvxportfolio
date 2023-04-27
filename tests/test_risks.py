@@ -93,6 +93,7 @@ def test_full_estimated_sigma(returns):
     assert np.isclose(cvxpy_expression.value,
                       w_plus[:-1].value @ should_be @ w_plus[:-1].value)
 
+
 def test_rolling_window_sigma(returns):
 
     risk_model = FullCovariance(rolling=50)
