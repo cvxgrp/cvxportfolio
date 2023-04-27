@@ -31,8 +31,6 @@ Simple policies
 
 .. autoclass:: AdaptiveRebalance
 
-
-
 .. autoclass:: ProportionalTradeToTargets
 
 .. autoclass:: RankAndLongShort

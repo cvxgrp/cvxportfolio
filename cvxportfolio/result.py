@@ -153,6 +153,10 @@ class CommonComputations(BacktestResult):
             elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
                 max_dd_so_far = 100 * (cur_max - val) / cur_max
         return max_dd_so_far
+        
+    @property
+    def excess_returns(self):
+        return self.returns - self.simulator.returns.data[self.cash_key].loc[self.returns.index]
 
 
 class SimulationResult(CommonComputations):
@@ -230,7 +234,7 @@ class SimulationResult(CommonComputations):
     def log_policy(self, t, exec_time):
         self.log_data("policy_time", t, exec_time)
         # TODO mpo policy requires changes in the optimization_log methods
-        if not isinstance(self.policy, MultiPeriodOpt):
+        if (not isinstance(self.policy, MultiPeriodOpt)) and hasattr(self.policy, 'costs'):
             for cost in self.policy.costs:
                 self.log_data(
                     "policy_" +
@@ -305,8 +309,6 @@ class BackTest(CommonComputations):
         self.timedelta = pd.Timedelta('1d')
         self.cash_key = self.h.columns[-1]
         
-    @property
-    def excess_returns(self):
-        return self.returns - self.simulator.returns.data[self.cash_key].loc[self.returns.index]
+
 
         

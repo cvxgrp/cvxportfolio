@@ -334,80 +334,53 @@ class FactorModelRisk(BaseRiskModel):
 
     factor_Sigma = None
 
-    def __init__(
-            self,
-            exposures,
-            idyosync,
-            factor_Sigma=None,
-            forecast_error_kappa=0.0,
-            **kwargs):
-        self.exposures = ParameterEstimator(exposures)
+    def __init__(self, exposures, idyosync, factor_Sigma=None, forecast_error_kappa=0.0, use_last_available_time=False, **kwargs):
         if not (factor_Sigma is None):
-            self.factor_Sigma = ParameterEstimator(factor_Sigma)
-        self.idyosync = ParameterEstimator(idyosync)
-        # ParameterEstimator(forecast_error_kappa)
+            self.factor_Sigma = DataEstimator(factor_Sigma, use_last_available_time=True)
+            # we copy the exposures because we'll modify them
+            assert isinstance(exposures, pd.DataFrame)
+            exposures = pd.DataFrame(exposures, copy = True)
+        else:
+            self.factor_Sigma = None
+        self.exposures = ParameterEstimator(exposures, use_last_available_time=use_last_available_time)
+        self.idyosync = ParameterEstimator(idyosync, use_last_available_time=use_last_available_time)
         self.forecast_error_kappa = forecast_error_kappa
-        if ((np.isscalar(forecast_error_kappa) and forecast_error_kappa > 0)
-                    or (np.any(forecast_error_kappa > 0))
-                ) and factor_Sigma is not None:
-            raise NotImplementedError(
-                "You should do a Cholesky decomposition of the factor_Sigmas and apply them to the exposures."
-            )
+        # if ((np.isscalar(forecast_error_kappa) and forecast_error_kappa > 0)
+        #     or (np.any(forecast_error_kappa > 0))) and factor_Sigma is not None:
+        #     raise NotImplementedError("You should do Cholesky decompositions of the factor_Sigmas"
+        #     "and apply them to the exposures.")
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         self.idyosync_sqrt = cvx.Parameter(returns.shape[1])
-        if not (self.factor_Sigma is None):
-            self.factor_Sigma_sqrt = cvx.Parameter(self.factor_Sigma.shape)
-        self.forecast_error_penalizer = cvx.Parameter(
-            returns.shape[1], nonneg=True)
+        # if not (self.factor_Sigma is None):
+        #     self.factor_Sigma_sqrt = cvx.Parameter(self.factor_Sigma.shape, PSD=True)
+        self.forecast_error_penalizer = cvx.Parameter(returns.shape[1], nonneg=True)
 
-    def values_in_time(
-            self,
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs):
-        super().values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs)
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
         self.idyosync_sqrt.value = np.sqrt(self.idyosync.value)
         if not (self.factor_Sigma is None):
-            self.factor_Sigma_sqrt.value = scipy.linalg.sqrtm(
-                self.factor_Sigma.value)
-            assert np.allclose(
-                self.factor_Sigma.value,
-                self.factor_Sigma_sqrt.value @ self.factor_Sigma_sqrt.value.T)
-        self.forecast_error_penalizer.value = np.sqrt(
-            np.sum(self.exposures.value**2, axis=0) + self.idyosync.value)
+            factor_Sigma_sqrt = scipy.linalg.sqrtm(self.factor_Sigma.current_value)
+            assert np.allclose(self.factor_Sigma.current_value, factor_Sigma_sqrt @ factor_Sigma_sqrt.T)
+            self.exposures.value = factor_Sigma_sqrt @ self.exposures.value
+        self.forecast_error_penalizer.value = np.sqrt(np.sum(self.exposures.value**2, axis=0) + self.idyosync.value)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        self.expression = cvx.sum_squares(
-            cvx.multiply(
-                self.idyosync_sqrt,
-                (w_plus - self.benchmark_weights)))
+        self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt, (w_plus - self.benchmark_weights)))
         assert self.expression.is_dcp(dpp=True)
-        if not (self.factor_Sigma is None):
-            self.expression += cvx.sum_squares(
-                self.factor_Sigma_sqrt.T @ (w_plus - self.benchmark_weights))
-            # self.expression += cvx.quad_form((w_plus.T @ self.exposures.T).T, self.factor_Sigma)
-            assert self.expression.is_dcp(dpp=True)
-        else:
-            self.expression += cvx.sum_squares(self.exposures @
-                                               (w_plus - self.benchmark_weights))
-            assert self.expression.is_dcp(dpp=True)
+        # if not (self.factor_Sigma is None):
+        #     self.expression += cvx.sum_squares(
+        #         self.factor_Sigma_sqrt.T @ self.exposures @ (w_plus - self.benchmark_weights))
+        #     # self.expression += cvx.quad_form((w_plus.T @ self.exposures.T).T, self.factor_Sigma)
+        #     assert self.expression.is_dcp(dpp=True)
+        # else:
+        self.expression += cvx.sum_squares(self.exposures @ (w_plus - self.benchmark_weights))
+        assert self.expression.is_dcp(dpp=True)
 
         # forecast error risk, assuming factor_Sigma is the identity
         self.expression += self.forecast_error_kappa * cvx.square(
-            cvx.abs(
-                w_plus -
-                self.benchmark_weights).T @ self.forecast_error_penalizer
+            cvx.abs(w_plus - self.benchmark_weights).T @ self.forecast_error_penalizer
             # @ cvx.sqrt(cvx.sum(cvx.square(self.exposures), axis=0) + self.idyosync)
         )
         assert self.expression.is_dcp(dpp=True)

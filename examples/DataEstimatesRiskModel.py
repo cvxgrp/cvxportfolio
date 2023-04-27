@@ -6,6 +6,9 @@ RISK_FREE_SYMBOL = "USDOLLAR"
 datadir = "../data/"
 assets = pd.read_csv(datadir + "SP500.txt", comment="#").set_index("Symbol")
 
+SAVE_ESTIMATES = False
+SAVE_RISK_MODEL = True
+
 ## NOTE (April 2023): The original plots in the paper were produced with data
 # downloaded from `quandl`, which is now defunct. We have the data stored
 # in the repository and here is the code that was used to download it,
@@ -179,17 +182,17 @@ noise = pd.DataFrame(
 return_estimate = (returns + noise) * sigma2_r / (sigma2_r + sigma2_n)
 return_estimate.USDOLLAR = returns.USDOLLAR
 
-return_estimate.to_csv(datadir + "return_estimate.csv.gz", compression="gzip", float_format="%.3e")
-
+if SAVE_ESTIMATES:
+    return_estimate.to_csv(datadir + "return_estimate.csv.gz", compression="gzip", float_format="%.3e")
 
 agree_on_sign = np.sign(returns.iloc[:, :-1]) == np.sign(return_estimate.iloc[:, :-1])
 print("Return predictions have the right sign %.1f%% of the times" % (100 * agree_on_sign.sum().sum() / (agree_on_sign.shape[0] * (agree_on_sign.shape[1] - 1))))
 
-
-volume_estimate = volumes.rolling(window=10, center=False).mean().dropna()
-volume_estimate.to_csv(datadir + "volume_estimate.csv.gz", compression="gzip", float_format="%d")
-sigmas_estimate = sigmas.rolling(window=10, center=False).mean().dropna()
-sigmas_estimate.to_csv(datadir + "sigma_estimate.csv.gz", compression="gzip", float_format="%.3e")
+if SAVE_ESTIMATES:
+    volume_estimate = volumes.rolling(window=10, center=False).mean().dropna()
+    volume_estimate.to_csv(datadir + "volume_estimate.csv.gz", compression="gzip", float_format="%d")
+    sigmas_estimate = sigmas.rolling(window=10, center=False).mean().dropna()
+    sigmas_estimate.to_csv(datadir + "sigma_estimate.csv.gz", compression="gzip", float_format="%.3e")
 
 ## Risk model 
 
@@ -216,18 +219,30 @@ for day in first_days_month:
         index=returns.columns,
     )
     
-raise Exception
 
-pd.Panel(exposures).swapaxes(1, 2).to_hdf(datadir + "risk_model.h5", "exposures")
-pd.DataFrame(idyos).T.to_hdf(datadir + "risk_model.h5", "idyos")
-pd.Panel(factor_sigma).to_hdf(datadir + "risk_model.h5", "factor_sigma")
+# build multiindexed dataframe of exposures
+major_index = pd.DatetimeIndex(exposures.keys())
+minor_index = pd.DataFrame(list(exposures.values())[0]).columns
+columns = pd.DataFrame(list(exposures.values())[0]).index
+exposures_df = pd.DataFrame(np.vstack([exposures[k].values.T for k in exposures]),
+    index=pd.MultiIndex.from_product([major_index, minor_index]), 
+    columns = columns)
 
-# load with
-# store = pd.HDFStore('risk_model.h5')
-# store.exposures, etc.
+# build multiindexed dataframe of factor sigmas 
+major_index = pd.DatetimeIndex(factor_sigma.keys())
+minor_index = pd.DataFrame(list(factor_sigma.values())[0]).index
+factor_sigma_df = pd.DataFrame(np.vstack([factor_sigma[k] for k in factor_sigma]),
+    index=pd.MultiIndex.from_product([major_index, minor_index]), columns = minor_index)
 
 
-# In[ ]:
+if SAVE_RISK_MODEL:
+    #pd.Panel(exposures).swapaxes(1, 2).to_hdf(datadir + "risk_model.h5", "exposures")
+    #pd.DataFrame(idyos).T.to_hdf(datadir + "risk_model.h5", "idyos")
+    exposures_df.to_csv(datadir + "exposures.csv.gz", compression="gzip", float_format="%.3e")
+    pd.DataFrame(idyos).T.to_csv(datadir + "idyo_vars.csv.gz", compression="gzip", float_format="%.3e")
+    factor_sigma_df.to_csv(datadir + "factor_sigma.csv.gz", compression="gzip", float_format="%.3e")
+    
+
 
 
 

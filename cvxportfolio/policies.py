@@ -27,6 +27,7 @@ from .constraints import BaseConstraint
 from .estimator import Estimator, DataEstimator
 from .errors import MissingValuesError, PortfolioOptimizationError
 from .returns import ReturnsForecast
+from .legacy import null_checker
 
 __all__ = [
     "Hold",
@@ -496,7 +497,7 @@ class SinglePeriodOptOLD(BaseTradingPolicy):
         else:
             self.return_forecast = return_forecast
 
-        super(SinglePeriodOpt, self).__init__()
+        super(SinglePeriodOptOLD, self).__init__()
 
         for cost in costs:
             assert isinstance(cost, BaseCost)

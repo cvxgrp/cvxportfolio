@@ -24,9 +24,7 @@ import logging
 import cvxpy as cvx
 import numpy as np
 
-from .policies import BaseTradingPolicy
 from .returns import BaseReturnsModel, MultipleReturnsForecasts
-from .costs import BaseCost
 from .estimator import ParameterEstimator
 
 logger = logging.getLogger(__name__)
