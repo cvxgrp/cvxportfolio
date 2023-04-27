@@ -72,12 +72,33 @@ def test_full_sigma(returns):
                       historical_covariances.loc[t] @ w_plus[:-1].value)
 
 
+
+def test_full_estimated_sigma(returns):
+
+    risk_model = FullCovariance()
+
+    N = returns.shape[1]
+    # returns.iloc[:, -1] = 0.
+
+    w_plus = cvx.Variable(N)
+    risk_model.pre_evaluation(
+        returns.iloc[:, :], None, start_time=returns.index[50], end_time=None)
+    cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+    assert cvxpy_expression.is_convex()
+
+    t = pd.Timestamp('2014-06-02')
+    should_be = returns.iloc[:, :-1].loc[returns.index < t].cov()
+    w_plus.value = np.random.randn(N)
+    risk_model.values_in_time(t, None, None, returns.loc[returns.index < t], None)
+    assert np.isclose(cvxpy_expression.value,
+                      w_plus[:-1].value @ should_be @ w_plus[:-1].value)
+
 def test_rolling_window_sigma(returns):
 
     risk_model = FullCovariance(rolling=50)
 
     N = returns.shape[1]
-    returns.iloc[:, -1] = 0.
+    # returns.iloc[:, -1] = 0.
 
     w_plus = cvx.Variable(N)
     risk_model.pre_evaluation(
@@ -100,7 +121,7 @@ def test_exponential_window_sigma(returns):
     risk_model = FullCovariance(halflife=HL)
 
     N = returns.shape[1]
-    returns.iloc[:, -1] = 0.
+    # returns.iloc[:, -1] = 0.
     w_plus = cvx.Variable(N)
     risk_model.pre_evaluation(
         returns.iloc[:, :], None, start_time=returns.index[2], end_time=None)
