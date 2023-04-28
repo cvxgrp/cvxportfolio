@@ -257,11 +257,12 @@ class ParameterEstimator(cvxpy.Parameter, DataEstimator):
 
     """
 
-    def __init__(self, data, positive_semi_definite=False, non_negative=False, use_last_available_time=False):
+    def __init__(self, data, positive_semi_definite=False, non_negative=False, use_last_available_time=False, allow_nans=False):
         self.positive_semi_definite = positive_semi_definite
         self.non_negative = non_negative
         self.use_last_available_time = use_last_available_time
         self.data = data
+        self.allow_nans = allow_nans
         # super(DataEstimator).__init__(data, use_last_available_time)
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):

@@ -302,11 +302,46 @@ class ReturnsForecastErrorRisk(BaseRiskModel):
              or varying in time (if DataFrame).
     """
 
-    def __init__(self, deltas_errors):
-        self.deltas_errors = ParameterEstimator(deltas_errors)
+    def __init__(self, deltas=None, rolling=None, halflife=None):
+        
+        
+        if not deltas is None:
+            self.mode = 'user-provided'
+            self.deltas = ParameterEstimator(deltas, non_negative=True)
+            return
+            
+        if deltas is None and rolling is None and halflife is None:
+            self.mode = 'full'
+            return
+        
+        if not rolling is None:
+            self.mode = 'rolling'
+            self.rolling = rolling
+            return
+        
+        if not halflife is None:
+            self.mode = 'ewm'
+            self.halflife = halflife
+            return
+            
+        assert False
+            
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+        if not self.mode == 'user-provided':
+            self.deltas = cvx.Parameter(returns.shape[1]-1, nonneg=True)
+        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+        if self.mode == 'full':
+            self.deltas.value = (past_returns.iloc[:,:-1].std() / np.sqrt(past_returns.iloc[:,:-1].count())).values
+        if self.mode == 'rolling':
+            self.deltas.value = (past_returns.iloc[-self.rolling:,:-1].std() / np.sqrt(self.rolling)).values
+        if self.mode == 'ewm':
+            raise NotImplementedError
+        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
     def compile_to_cvxpy(self, w_plus, z, v):
-        return cvx.abs(w_plus - self.benchmark_weights).T @ self.deltas_errors
+        return cvx.abs(w_plus - self.benchmark_weights)[:-1].T @ self.deltas
 
 
 class RollingWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):

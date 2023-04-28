@@ -88,7 +88,7 @@ def test_exponential_mean_returns_forecast(returns):
 
 def test_returns_forecast_error(returns):
 
-    delta = returns.std() / np.sqrt(len(returns))
+    delta = returns.std()[:-1] / np.sqrt(len(returns))
     N = returns.shape[1]
 
     error_risk = ReturnsForecastErrorRisk(delta)
@@ -98,21 +98,21 @@ def test_returns_forecast_error(returns):
     error_risk.values_in_time(0, None, None, None, None)
 
     w_plus.value = np.random.randn(N)
-    assert np.isclose(cvxpy_expression.value, np.abs(w_plus.value) @ delta)
+    assert np.isclose(cvxpy_expression.value, np.abs(w_plus.value[:-1]) @ delta)
 
 
 def test_rolwin_returns_forecast_error(returns):
 
     N = returns.shape[1]
-    error_risk = RollingWindowReturnsForecastErrorRisk(lookback_period=20)
+    error_risk = ReturnsForecastErrorRisk(rolling=20)
     error_risk.pre_evaluation(returns, None, returns.index[50], None)
     w_plus = cvx.Variable(N)
 
     t = returns.index[123]
     cvxpy_expression = error_risk.compile_to_cvxpy(w_plus, None, None)
-    error_risk.values_in_time(t, None, None, None, None)
+    error_risk.values_in_time(t, None, None, returns.loc[returns.index < t], None)
     w_plus.value = np.random.randn(N)
     delta = returns.loc[returns.index < t].iloc[-20:].std() / np.sqrt(20)
     delta.iloc[-1] = 0.
 
-    assert np.isclose(cvxpy_expression.value, np.abs(w_plus.value) @ delta)
+    assert np.isclose(cvxpy_expression.value, np.abs(w_plus.value[:-1]) @ delta[:-1])

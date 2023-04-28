@@ -10,11 +10,10 @@ import matplotlib.pyplot as plt
 LOOKBACK = 2500
 
 policy = cp.SinglePeriodOptimization(objective = 
-        cp.RollingWindowReturnsForecast(LOOKBACK) -
-        .5 * cp.RollingWindowReturnsForecastErrorRisk(LOOKBACK) -
-        10 * cp.RollingWindowFactorModelRisk(LOOKBACK, num_factors=5, forecast_error_kappa = 0.25, #on_correlation=True,
-        ), 
-        #2 * cp.RollingWindowFullCovariance(LOOKBACK, forecast_error_kappa = 0.5), 
+        cp.ReturnsForecast() - #rolling=LOOKBACK) -
+        .25 * cp.ReturnsForecastErrorRisk() -
+        2.5 * cp.FullCovariance(kappa=.12, addmean=True), 
+        # 5 * cp.RollingWindowFactorModelRisk(LOOKBACK, num_factors=5, forecast_error_kappa = 0.5), 
         constraints = [cp.LeverageLimit(3)]
         )
         
@@ -23,10 +22,12 @@ policy = cp.SinglePeriodOptimization(objective =
 simulator = cp.MarketSimulator(["AMZN", "AAPL", "MSFT", "GOOGL", "TSLA", "GM", 'NKE', 'MCD', 'GE', 'CVX', 
                                 'XOM', 'MMM', 'UNH', 'HD', 'WMT', 'ORCL', 'INTC', 'JPM', 'BLK', 'BA', 'NVDA', 
                                 'F', 'GS', 'AMD', 'CSCO', 'KO', 'HON', 'DIS',# 'DOW',
-                                 'V', 'ADBE'])
+                                # 'V', 'ADBE'
+                            ])
 
+#policy = cp.Uniform()
 # perform a backtest (by default it starts with 1E6 USD cash)
-backtest = cp.BackTest(policy, simulator, '2021-01-01', '2023-04-21')
+backtest = cp.BackTest(policy, simulator, '2018-01-01', '2023-04-21')
 
 # plot value of the portfolio in time
 backtest.v.plot(figsize=(12, 5), label='Single Period Optimization')
@@ -44,3 +45,6 @@ print('total borrow cost', backtest.hcost_stocks.sum())
 print('total cash return + cost', backtest.hcost_cash.sum())
 
 print('sharpe ratio', backtest.sharpe_ratio)
+
+print('mean excess lret', backtest.excess_growth_rates.mean())
+print('std excess lret', backtest.excess_growth_rates.std())

@@ -43,6 +43,7 @@ __all__ = [
     "ProportionalTradeToTargets",
     "RankAndLongShort",
     "FixedWeights",
+    "Uniform",
 ]
 
 
@@ -234,10 +235,14 @@ class FixedWeights(BaseTradingPolicy):
 class Uniform(FixedWeights):
     """Uniform allocation on non-cash assets."""
     
+    def __init__(self):
+        pass
+    
     def pre_evaluation(self, returns, *args, **kwargs):
-        self.target_weights = pd.Series(1., returns.columns)
-        self.target_weights.iloc[-1] = 0
-        self.target_weights /= sum(self.target_weights)
+        target_weights = pd.Series(1., returns.columns)
+        target_weights.iloc[-1] = 0
+        target_weights /= sum(target_weights)
+        self.target_weights = DataEstimator(target_weights)
 
 
 class PeriodicRebalance(FixedWeights):

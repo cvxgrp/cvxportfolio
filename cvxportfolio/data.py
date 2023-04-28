@@ -149,7 +149,9 @@ class YfinanceBase(BaseData):
             updated = yf.download(symbol, progress=False, **kwargs)
             return cls.internal_process(updated)
         else:
-            new = yf.download(symbol, start=current.index[-overlap], **kwargs)
+            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta('2d'):
+                return current
+            new = yf.download(symbol, progress=False, start=current.index[-overlap], **kwargs)
             new = cls.internal_process(new)
             return pd.concat([current.iloc[:-overlap], new])
 
@@ -164,6 +166,8 @@ class YfinanceBase(BaseData):
         """
         data["ValueVolume"] = data["Volume"] * data["Open"]
         del data["Volume"]
+        # remove infty values
+        data.iloc[:, :] = np.nan_to_num(data.values, copy=True, nan=np.nan, posinf=np.nan, neginf=np.nan)
         return data
 
 

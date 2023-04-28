@@ -92,6 +92,12 @@ class CommonComputations(BacktestResult):
     def growth_rates(self):
         """The growth rate log(v_{t+1}/v_t)"""
         return np.log(self.returns + 1)
+        
+    @property
+    def excess_growth_rates(self):
+        """The growth rate log(v_{t+1}/v_t)"""
+        return np.log(self.excess_returns + 1)
+    
 
     @property
     def annual_growth_rate(self):
@@ -126,8 +132,8 @@ class CommonComputations(BacktestResult):
     def sharpe_ratio(self):
         return (
             np.sqrt(self.PPY)
-            * np.mean(self.excess_returns)
-            / np.std(self.excess_returns)
+            * np.mean(self.excess_growth_rates)
+            / np.std(self.excess_growth_rates)
         )
 
     @property

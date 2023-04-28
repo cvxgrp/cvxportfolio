@@ -168,8 +168,8 @@ class FullCovariance(BaseRiskModel):
         else:
             self.kappa = None
         self.addmean = addmean
-        if self.addmean:
-            raise NotImplementedError
+        #if self.addmean:
+        #    raise NotImplementedError
         # self.forecast_error_kappa = DataEstimator(
         #     forecast_error_kappa)  # ParameterEstimator(
         # self.parameter_forecast_error = cvx.Parameter(
@@ -193,14 +193,14 @@ class FullCovariance(BaseRiskModel):
                 returns.shape[1]-1)
                 
         elif self.full:
-            self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1))
+            self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1+self.addmean))
             return
         
         if self.Sigma is None:
             self.Sigma = ParameterEstimator(forecasts)
         
-        self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1))
-        
+        self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1+self.addmean))
+
         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
 
@@ -216,11 +216,17 @@ class FullCovariance(BaseRiskModel):
             
         eigval, eigvec = np.linalg.eigh(current_Sigma)
         eigval = np.maximum(eigval, 0.)
-        self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
+        if not self.addmean:
+            self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
+        else:
+            if not self.full:
+                raise NotImplementedError
+            current_mean = np.matrix(past_returns.iloc[:,:-1].mean().values)
+            self.Sigma_sqrt.value = np.hstack([ eigvec @ np.diag(np.sqrt(eigval)), current_mean.T])
         
         if not self.kappa is None:
             self.forecast_error.value = np.sqrt(np.diag(self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)) * \
-                np.sqrt(self.forecast_error_kappa.current_value)
+                np.sqrt(self.kappa.current_value)
         
         
         #self.parameter_forecast_error.value = np.sqrt(
