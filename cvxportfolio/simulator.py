@@ -247,7 +247,8 @@ class MarketSimulator(Estimator):
         
         
     def round_trade_vector(self, u):
-        """Round dollar trade vector u."""
+        """Round dollar trade vector u.
+        """
         result = pd.Series(u, copy=True)
         result[:-1] = np.round(u[:-1] / self.prices.current_value) * self.prices.current_value
         result[-1] = -sum(result[:-1])
@@ -274,8 +275,13 @@ class MarketSimulator(Estimator):
         if self.spreads is not None:
             result += sum(self.spreads.current_value * np.abs(u[:-1]))/2.
 
-        result += (np.abs(u[:-1])**self.transaction_cost_exponent) @ (self.transaction_cost_coefficient_b * self.sigma_estimate.current_value / (
-            self.volumes.current_value ** (self.transaction_cost_exponent - 1)))
+        result += (np.abs(u[:-1])**self.transaction_cost_exponent) @ (self.transaction_cost_coefficient_b * 
+            self.sigma_estimate.current_value / (
+            (self.volumes.current_value+1 # we add 1 to prevent 0 volumes error
+             ) ** (self.transaction_cost_exponent - 1)))
+            
+        assert not np.isnan(result)
+        assert not np.isinf(result)
             
         return -result
 
@@ -346,38 +352,43 @@ class MarketSimulator(Estimator):
 
         # evaluate the policy
         z = policy.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
-        # for safety
+        
+        # for safety recompute cash
         z[-1] = -sum(z[:-1])
-
+        assert sum(z) == 0.
+        
         # trades in dollars
         u = z * current_portfolio_value
 
-        # zero out trades on stock that weren't trading on that day
-        current_volumes = self.volumes.current_value
-        non_tradable_stocks = current_volumes[current_volumes <= 0]
+        # zero out trades on stock that weren't trading on that day 
+        current_volumes = pd.Series(self.volumes.current_value, self.volumes.data.columns)
+        non_tradable_stocks = current_volumes[current_volumes <= 0].index
         u[non_tradable_stocks] = 0.
 
         # round trades
         if self.round_trades:
             u = self.round_trade_vector(u)
+            
+        # for safety recompute cash
+        u[-1] = -sum(u[:-1])
+        assert sum(u) == 0.
 
         # compute post-trade holdings (including cash balance)
         h_plus = h + u
 
-        # we have updated the internal estimators and they are used by these
-        # methods
+        # we have updated the internal estimators and they are used by these methods
         transaction_costs = self.transaction_costs(u)
         holding_costs = self.stocks_holding_costs(h_plus)
         cash_holding_costs = self.cash_holding_cost(h_plus)
 
-        # multiply positions by market returns
+        # multiply positions by market returns (only non-cash)
         h_next = pd.Series(h_plus, copy=True)
         h_next[:-1] *= (1 + self.returns.current_value[:-1])
         
         # credit costs to cash (includes cash return)
         h_next[-1] = h_plus[-1] + (transaction_costs + holding_costs + cash_holding_costs)
             
-        return h_next, z, u, transaction_costs, holding_costs, cash_holding_costs
+        return h_next, z, u, transaction_costs, holding_costs, cash_holding_costs, 
         
     def initialize_policy(self, policy, start_time, end_time):
         """Initialize the policy object.
