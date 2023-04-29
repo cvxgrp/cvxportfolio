@@ -274,6 +274,42 @@ class SqliteDataStore(BaseDataStore):
             return None
 
 
+
+class PickleStore(BaseDataStore):
+    """Pickle data store for pandas Series and DataFrames.
+
+    Args:
+        base_location (pathlib.Path): filesystem directory where to store files.
+
+    """
+
+    base_location = Path.home() / "cvxportfolio"
+
+    @property
+    def location(self):
+        return self.base_location / self.__class__.__name__
+
+    def __init__(self, base_location=Path.home() / "cvxportfolio"):
+        self.base_location = base_location
+
+    def __create_if_not_existent(self):
+        if not self.location.is_dir():
+            self.location.mkdir(parents=True)
+            print(f"Created folder at {self.location}")
+
+    def load_raw(self, symbol, **kwargs):
+        """Load raw data from local store."""
+        try:
+            return pd.read_pickle(self.location / f"{symbol}.pickle")
+        except FileNotFoundError:
+            return None
+
+    def store(self, symbol, data, **kwargs):
+        """Store data locally."""
+        self.__create_if_not_existent()
+        data.to_pickle(self.location / f"{symbol}.pickle")
+        
+        
 class LocalDataStore(BaseDataStore):
     """Local data store for pandas Series and DataFrames.
 
@@ -429,7 +465,7 @@ class TimeSeries(DataEstimator):
         self,
         symbol,
         source="yahoo",
-        storage="csv",
+        storage="pickle",
         use_last_available_time=False,
         base_location=None,
     ):
@@ -450,6 +486,8 @@ class TimeSeries(DataEstimator):
             storage = SqliteDataStore
         if isinstance(storage, str) and storage == "csv":
             storage = LocalDataStore
+        if isinstance(storage, str) and storage == "pickle":
+            storage = PickleStore
 
         cls = self.__class__
         self.__class__ = cls.__class__(
