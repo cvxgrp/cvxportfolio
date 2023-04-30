@@ -168,6 +168,9 @@ class YfinanceBase(BaseData):
         del data["Volume"]
         # remove infty values
         data.iloc[:, :] = np.nan_to_num(data.values, copy=True, nan=np.nan, posinf=np.nan, neginf=np.nan)
+        # remove extreme values
+        data.loc[data["Return"] < -.99, "Return"] = np.nan
+        data.loc[data["Return"] > .99, "Return"] = np.nan
         return data
 
 

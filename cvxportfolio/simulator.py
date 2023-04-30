@@ -32,7 +32,7 @@ import cvxpy as cvx
 from .result import SimulationResult
 from .costs import BaseCost
 from .data import FredRate, Yfinance, TimeSeries
-from .returns import MultipleReturnsForecasts, ReturnsForecast
+from .returns import ReturnsForecast #, MultipleReturnsForecasts
 from .estimator import Estimator, DataEstimator
 
 
@@ -199,8 +199,9 @@ class MarketSimulator(Estimator):
         at the `yfinance` level and use the estimator logic of TimeSeries directly.
         """
         self.database_accesses = {}
+        print('Updating data', end='')
         for stock in self.universe:
-            print('Updating data...')
+            print('.', end='')
             self.database_accesses[stock] = TimeSeries(
                 stock, base_location=self.base_location)
             self.database_accesses[stock].pre_evaluation()
@@ -210,6 +211,7 @@ class MarketSimulator(Estimator):
         self.database_accesses[self.cash_key] = TimeSeries(
             'DFF', source='fred', base_location=self.base_location)
         self.database_accesses[self.cash_key].pre_evaluation()
+        print()
 
         # build returns
         self.returns = pd.DataFrame(
@@ -342,6 +344,7 @@ class MarketSimulator(Estimator):
         # translate to weights
         current_portfolio_value = sum(h)
         current_weights = h / current_portfolio_value
+        print(t, current_portfolio_value)
 
         # get view of past data
         past_returns = self.returns.data.loc[self.returns.data.index < t]

@@ -15,6 +15,7 @@
 
 from .estimator import ParameterEstimator, DataEstimator  # , ConstantEstimator
 import logging
+import warnings
 
 import scipy.linalg
 
@@ -23,6 +24,7 @@ import numpy as np
 import pandas as pd
 
 from .costs import BaseCost
+from .errors import ForeCastError
 # from .utils import values_in_time
 
 logger = logging.getLogger(__name__)
@@ -33,12 +35,14 @@ __all__ = [
     #"RollingWindowFullCovariance",
     #"ExponentialWindowFullCovariance",
     "DiagonalCovariance",
-    "RollingWindowDiagonalCovariance",
-    "ExponentialWindowDiagonalCovariance",
-    "LowRankRollingRisk",
-    "RollingWindowFactorModelRisk",
+    "FactorModelCovariance",
+    "RiskForecastError",
+    #"RollingWindowDiagonalCovariance",
+    #"ExponentialWindowDiagonalCovariance",
+    #"LowRankRollingRisk",
+    #"RollingWindowFactorModelRisk",
     "WorstCaseRisk",
-    "FactorModelRisk",
+    #"FactorModelRisk",
     # "CashBenchMark",
 ]
 
@@ -98,6 +102,28 @@ class BaseRiskModel(BaseCost):
             return np.NaN
 
 
+# def random_projector(past_returns, N):
+#     mean = past_returns.mean()
+#     demeaned = past_returns - mean
+#     std = np.sqrt((demeaned**2).mean())
+#     normalized = demeaned/std
+#     filled = normalized.fillna(0.)
+#     rand = pd.DataFrame(columns=filled.columns, dtype=float)
+#     for seed in range(N):
+#         np.random.seed(seed)
+#         sampler = np.random.randn(len(past_returns))
+#         # sampler /= np.sqrt((sampler**2).sum())
+#         #normalized
+#         rand.loc[seed] = normalized.fillna(0).T @ sampler
+#         #results.append((normalized.T * sampler).mean(1))
+#
+#     #rand = pd.concat(results,axis=1).T
+#     return rand, mean, std
+
+
+
+
+
 class FullCovariance(BaseRiskModel):
     r"""Quadratic risk model with full covariance matrix.
     
@@ -155,19 +181,22 @@ class FullCovariance(BaseRiskModel):
     :type addmean: bool
     """
 
-    def __init__(self, Sigma=None, rolling=None, halflife=None, kappa=None, addmean=False):
-        if not Sigma is None:
-            self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
-        else:
-            self.Sigma = None
-        self.rolling = rolling if Sigma is None else None
-        self.halflife = halflife if Sigma is None else None
-        self.full = self.Sigma is None and self.rolling is None and self.halflife is None
-        if not kappa is None:
-            self.kappa = DataEstimator(kappa)
-        else:
-            self.kappa = None
-        self.addmean = addmean
+    def __init__(self, Sigma=None, # TODO Sigma is dict or dataframe (no multiindex)
+     #rolling=None, #halflife=None, kappa=None, 
+        #addmean=False
+        ):
+        # if not Sigma is None:
+        #     self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
+        # else:
+        self.Sigma = Sigma
+        #self.rolling = rolling if Sigma is None else None
+        #self.halflife = halflife if Sigma is None else None
+        #self.full = self.Sigma is None and self.rolling is None and self.halflife is None
+        # if not kappa is None:
+        #     self.kappa = DataEstimator(kappa)
+        # else:
+        #     self.kappa = None
+        # self.addmean = addmean
         #if self.addmean:
         #    raise NotImplementedError
         # self.forecast_error_kappa = DataEstimator(
@@ -179,54 +208,86 @@ class FullCovariance(BaseRiskModel):
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        #super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
-        if not self.kappa is None:
-            self.forecast_error = cvx.Parameter(returns.shape[1]-1, nonneg=True)
+        # if not self.kappa is None:
+        #     self.forecast_error = cvx.Parameter(returns.shape[1]-1, nonneg=True)
+        #
+        # if not self.rolling is None:
+        #     forecasts = returns.iloc[:, :-1].rolling(window=self.rolling).cov().shift(
+        #         returns.shape[1]-1)
+        #
+        # elif not self.halflife is None:
+        #     forecasts = returns.iloc[:, :-1].ewm(halflife=self.halflife).cov().shift(
+        #         returns.shape[1]-1)
+        #
+        # elif self.full:
+        #     self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1+self.addmean))
+        #     return
+        #
+        # if self.Sigma is None:
+        #     self.Sigma = ParameterEstimator(forecasts)
+        
+        self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1))#+self.addmean))
 
-        if not self.rolling is None:
-            forecasts = returns.iloc[:, :-1].rolling(window=self.rolling).cov().shift(
-                returns.shape[1]-1)
-                
-        elif not self.halflife is None:
-            forecasts = returns.iloc[:, :-1].ewm(halflife=self.halflife).cov().shift(
-                returns.shape[1]-1)
-                
-        elif self.full:
-            self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1+self.addmean))
-            return
+        #super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
-        if self.Sigma is None:
-            self.Sigma = ParameterEstimator(forecasts)
-        
-        self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1+self.addmean))
-
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-        
+    # @classmethod
+    # def get_count_matrix(cls, past_returns):
+    #     """We obtain the matrix of non-null joint counts."""
+    #     tmp = ~past_returns.isnull()
+    #     return len(past_returns) * (tmp.cov(ddof=0) + np.outer(tmp.mean(), tmp.mean()))
+    #
+    # @classmethod # we make it a classmethod so that also covariances can use it
+    # def update_full_covariance(cls, past_returns, last_estimation, last_counts, last_time):
+    #
+    #     if last_time is None: # full estimation
+    #         estimation = past_returns.iloc[:,:-1].cov()
+    #         counts = self.get_count_matrix(past_returns)
+    #     else:
+    #         assert last_time == past_returns.index[-2]
+    #
+    #         estimation = last_estimation * last_counts + past_returns.iloc[-1:].fillna(0.)
+    #         counts = last_counts + past_returns.iloc[-1:].count()
+    #
+    #     return estimation, counts, past_returns.index[-1]
 
     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes,
             **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        #super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
         
-        if not self.full:
-            current_Sigma = self.Sigma.value
+        if self.Sigma is None:
+            Sigma = past_returns.iloc[:,:-1].cov(ddof=0)
+            mean = past_returns.iloc[:,:-1].mean()
+            Sigma += np.outer(mean, mean)
         else:
-            current_Sigma = past_returns.iloc[:,:-1].cov()
+            try:
+                Sigma = self.Sigma[t]
+            except KeyError:
+                Sigma = self.Sigma
             
-        eigval, eigvec = np.linalg.eigh(current_Sigma)
+        # if not self.full:
+        #     current_Sigma = self.Sigma.value
+        # else:
+        #     current_Sigma = past_returns.iloc[:,:-1].cov()
+            
+        eigval, eigvec = np.linalg.eigh(Sigma)
         eigval = np.maximum(eigval, 0.)
-        if not self.addmean:
-            self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
-        else:
-            if not self.full:
-                raise NotImplementedError
-            current_mean = np.matrix(past_returns.iloc[:,:-1].mean().values)
-            self.Sigma_sqrt.value = np.hstack([ eigvec @ np.diag(np.sqrt(eigval)), current_mean.T])
         
-        if not self.kappa is None:
-            self.forecast_error.value = np.sqrt(np.diag(self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)) * \
-                np.sqrt(self.kappa.current_value)
+        self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
+        
+        #if not self.addmean:
+        #    self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
+        #else:
+        #    if not self.full:
+        #        pass #raise NotImplementedError
+        #    current_mean = np.matrix(past_returns.iloc[:,:-1].mean().values)
+        #    self.Sigma_sqrt.value = np.hstack([ eigvec @ np.diag(np.sqrt(eigval)), current_mean.T])
+        
+        # if not self.kappa is None:
+        #     self.forecast_error.value = np.sqrt(np.diag(self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)) * \
+        #         np.sqrt(self.kappa.current_value)
         
         
         #self.parameter_forecast_error.value = np.sqrt(
@@ -238,11 +299,12 @@ class FullCovariance(BaseRiskModel):
         #     self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        
-        self.cvxpy_expression = cvx.sum_squares(self.Sigma_sqrt.T @ (w_plus - self.benchmark_weights)[:-1])
+        # TODO change benchmark weights passing
+        self.cvxpy_expression = cvx.sum_squares(self.Sigma_sqrt.T @ (w_plus #- self.benchmark_weights
+        )[:-1])
     
-        if not self.kappa is None:
-            self.cvxpy_expression += cvx.square(cvx.abs(w_plus - self.benchmark_weights)[:-1].T @ self.forecast_error)
+        #if not self.kappa is None:
+        #    self.cvxpy_expression += cvx.square(cvx.abs(w_plus - self.benchmark_weights)[:-1].T @ self.forecast_error)
             
         # assert self.cvxpy_expression.is_dcp(dpp=True)
         return self.cvxpy_expression
@@ -327,6 +389,46 @@ class FullCovariance(BaseRiskModel):
 #         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
 
+class RiskForecastError(BaseRiskModel):
+    """Risk forecast error.
+    """
+
+    def __init__(self, sigma_squares=None):
+        self.sigma_squares = sigma_squares
+        # self.standard_deviations = ParameterEstimator(standard_deviations)
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+        
+        self.sigmas_parameter = cvx.Parameter(returns.shape[1]-1, nonneg=True)#+self.addmean))
+
+
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes,
+            **kwargs):
+        """Update forecast error risk here, and take square root of Sigma."""
+        #super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        
+        if self.sigma_squares is None:
+            sigma_squares = past_returns.iloc[:,:-1].var(ddof=0)
+            mean = past_returns.iloc[:,:-1].mean()
+            sigma_squares += mean**2
+        else:
+            try:
+                sigma_squares = self.sigma_squares.loc[t]
+            except KeyError:
+                sigma_squares = self.sigma_squares
+            
+        
+        self.sigmas_parameter.value = np.sqrt(sigma_squares).values
+
+    def compile_to_cvxpy(self, w_plus, z, value):
+        # TODO benchmark
+
+        return cvx.sum(cvx.square(cvx.abs(w_plus #- self.benchmark_weights
+            )[:-1].T @ self.sigmas_parameter))
+                
+                
+
+
 class DiagonalCovariance(BaseRiskModel):
     """Risk model using diagonal covariance matrix.
 
@@ -336,136 +438,217 @@ class DiagonalCovariance(BaseRiskModel):
             Indexed by time if DataFrame.
     """
 
-    def __init__(self, standard_deviations=None):
-        self.standard_deviations = ParameterEstimator(standard_deviations)
+    def __init__(self, sigma_squares=None):
+        self.sigma_squares = sigma_squares
+        # self.standard_deviations = ParameterEstimator(standard_deviations)
+        
+    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+        
+        self.sigmas_parameter = cvx.Parameter(returns.shape[1]-1)#+self.addmean))
+
+
+
+    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes,
+            **kwargs):
+        """Update forecast error risk here, and take square root of Sigma."""
+        #super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        
+        if self.sigma_squares is None:
+            sigma_squares = past_returns.iloc[:,:-1].var(ddof=0)
+            mean = past_returns.iloc[:,:-1].mean()
+            sigma_squares += mean**2
+        else:
+            try:
+                sigma_squares = self.sigma_squares.loc[t]
+            except KeyError:
+                sigma_squares = self.sigma_squares
+            
+        # if not self.full:
+        #     current_Sigma = self.Sigma.value
+        # else:
+        #     current_Sigma = past_returns.iloc[:,:-1].cov()
+            
+        # eigval, eigvec = np.linalg.eigh(Sigma)
+        # eigval = np.maximum(eigval, 0.)
+        
+        self.sigmas_parameter.value = np.sqrt(sigma_squares).values
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        return cvx.sum_squares(
-            cvx.multiply(
-                w_plus -
-                self.benchmark_weights,
-                self.standard_deviations))
+        # TODO benchmark
+        return cvx.sum_squares(cvx.multiply((w_plus #- self.benchmark_weights
+            )[:-1],  
+        self.sigmas_parameter))
 
 
-class RollingWindowDiagonalCovariance(DiagonalCovariance):
-    """Build DiagonalCovariance model automatically with pandas rolling window.
+# class RollingWindowDiagonalCovariance(DiagonalCovariance):
+#     """Build DiagonalCovariance model automatically with pandas rolling window.
+#
+#     At the start of a backtest receives a view of asset returns
+#     (excluding cash) and computes the rolling window variances
+#     for given lookback_period (default 250).
+#
+#     Args:
+#         loockback_period (int): how many past returns are used each
+#             trading day to compute the historical covariance.
+#     """
+#
+#     def __init__(self, lookback_period=250, zero_cash_covariance=True):
+#         self.lookback_period = lookback_period
+#         self.zero_cash_covariance = zero_cash_covariance
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         """Function to initialize object with full prescience."""
+#         # drop cash return
+#         if self.zero_cash_covariance:
+#             returns = returns.copy(deep=True)
+#             returns.iloc[:, -1] = 0.0
+#         self.standard_deviations = ParameterEstimator(
+#             # shift forward so only past returns are used
+#             np.sqrt(
+#                 returns.rolling(window=self.lookback_period).var().shift(1),
+#             )
+#         )
+#         # initialize cvxpy Parameter(s)
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
-    At the start of a backtest receives a view of asset returns
-    (excluding cash) and computes the rolling window variances
-    for given lookback_period (default 250).
+#
+# class ExponentialWindowDiagonalCovariance(DiagonalCovariance):
+#     """Build DiagonalCovariance model automatically with pandas exponential window.
+#
+#     At the start of a backtest receives a view of asset returns
+#     (excluding cash) and computes the exponential window variances
+#     for given half_life (default 250).
+#
+#     Args:
+#         half_life (int): the half life of exponential decay used by pandas
+#             exponential moving window
+#     """
+#
+#     def __init__(self, half_life=250, zero_cash_covariance=True):
+#         self.half_life = half_life
+#         self.zero_cash_covariance = zero_cash_covariance
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         """Function to initialize object with full prescience."""
+#
+#         # drop cash return
+#         if self.zero_cash_covariance:
+#             returns = returns.copy(deep=True)
+#             returns.iloc[:, -1] = 0.0
+#         self.standard_deviations = ParameterEstimator(
+#             # shift forward so only past returns are used
+#             np.sqrt(
+#                 returns.ewm(halflife=self.half_life).var().shift(1),
+#             )
+#         )
+#         # initialize cvxpy Parameter(s)
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+#
 
-    Args:
-        loockback_period (int): how many past returns are used each
-            trading day to compute the historical covariance.
-    """
-
-    def __init__(self, lookback_period=250, zero_cash_covariance=True):
-        self.lookback_period = lookback_period
-        self.zero_cash_covariance = zero_cash_covariance
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        """Function to initialize object with full prescience."""
-        # drop cash return
-        if self.zero_cash_covariance:
-            returns = returns.copy(deep=True)
-            returns.iloc[:, -1] = 0.0
-        self.standard_deviations = ParameterEstimator(
-            # shift forward so only past returns are used
-            np.sqrt(
-                returns.rolling(window=self.lookback_period).var().shift(1),
-            )
-        )
-        # initialize cvxpy Parameter(s)
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-
-
-class ExponentialWindowDiagonalCovariance(DiagonalCovariance):
-    """Build DiagonalCovariance model automatically with pandas exponential window.
-
-    At the start of a backtest receives a view of asset returns
-    (excluding cash) and computes the exponential window variances
-    for given half_life (default 250).
-
-    Args:
-        half_life (int): the half life of exponential decay used by pandas
-            exponential moving window
-    """
-
-    def __init__(self, half_life=250, zero_cash_covariance=True):
-        self.half_life = half_life
-        self.zero_cash_covariance = zero_cash_covariance
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        """Function to initialize object with full prescience."""
-
-        # drop cash return
-        if self.zero_cash_covariance:
-            returns = returns.copy(deep=True)
-            returns.iloc[:, -1] = 0.0
-        self.standard_deviations = ParameterEstimator(
-            # shift forward so only past returns are used
-            np.sqrt(
-                returns.ewm(halflife=self.half_life).var().shift(1),
-            )
-        )
-        # initialize cvxpy Parameter(s)
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-
-
-class FactorModelRisk(BaseRiskModel):
+class FactorModelCovariance(BaseRiskModel):
     """Factor model covariance.
-
-    Args:
-        exposures (pd.DataFrame): constant factor exposure matrix or a dataframe
-            where the first index is time.
-        idyosync (pd.DataFrame or pd.Series): idyosyncratic variances for the symbol,
-            either fixed (pd.Series) or through time (pd.DataFrame).
-        factor_Sigma (pd.DataFrame or None): a constant factor covariance matrix
-            or a DataFrame with multiindex where the first index is time. If None,
-            the default, it is understood that the factor covariance is the identity.
-            (Otherwise we compute its matrix square root at each step internally and
-             apply it to the exposures).
-        forecast_error_kappa (float or pd.Series): uncertainty on the
-            assets' correlations. See the paper, pages 32-33.
-
+    
+    F @ F.T + np.diag(d)
+    
     """
+
+    # Args:
+    #     exposures (pd.DataFrame): constant factor exposure matrix or a dataframe
+    #         where the first index is time.
+    #     idyosync (pd.DataFrame or pd.Series): idyosyncratic variances for the symbol,
+    #         either fixed (pd.Series) or through time (pd.DataFrame).
+    #     factor_Sigma (pd.DataFrame or None): a constant factor covariance matrix
+    #         or a DataFrame with multiindex where the first index is time. If None,
+    #         the default, it is understood that the factor covariance is the identity.
+    #         (Otherwise we compute its matrix square root at each step internally and
+    #          apply it to the exposures).
+    #     forecast_error_kappa (float or pd.Series): uncertainty on the
+    #         assets' correlations. See the paper, pages 32-33.
+
+    # """
 
     factor_Sigma = None
 
-    def __init__(self, exposures, idyosync, factor_Sigma=None, forecast_error_kappa=0.0, use_last_available_time=False, **kwargs):
-        if not (factor_Sigma is None):
-            self.factor_Sigma = DataEstimator(factor_Sigma, use_last_available_time=True)
-            # we copy the exposures because we'll modify them
-            assert isinstance(exposures, pd.DataFrame)
-            exposures = pd.DataFrame(exposures, copy = True)
-        else:
-            self.factor_Sigma = None
-        self.exposures = ParameterEstimator(exposures, use_last_available_time=use_last_available_time)
-        self.idyosync = ParameterEstimator(idyosync, use_last_available_time=use_last_available_time)
-        self.forecast_error_kappa = forecast_error_kappa
+    def __init__(self, F=None, d=None, num_factors=1):
+        self.F = F
+        self.d = d
+        self.num_factors = num_factors
+        # if not (factor_Sigma is None):
+        #     self.factor_Sigma = DataEstimator(factor_Sigma, use_last_available_time=True)
+        #     # we copy the exposures because we'll modify them
+        #     assert isinstance(exposures, pd.DataFrame)
+        #     exposures = pd.DataFrame(exposures, copy = True)
+        # else:
+        #     self.factor_Sigma = None
+        # self.exposures = ParameterEstimator(exposures, use_last_available_time=use_last_available_time)
+        # self.idyosync = ParameterEstimator(idyosync, use_last_available_time=use_last_available_time)
+        # self.forecast_error_kappa = forecast_error_kappa
         # if ((np.isscalar(forecast_error_kappa) and forecast_error_kappa > 0)
         #     or (np.any(forecast_error_kappa > 0))) and factor_Sigma is not None:
         #     raise NotImplementedError("You should do Cholesky decompositions of the factor_Sigmas"
         #     "and apply them to the exposures.")
+        
+    @staticmethod
+    def build_low_rank_model(past_returns, num_factors=10, iters=10, shrink=True):
+        r"""Build a low rank risk model from past returns that include NaNs.
+    
+        This is an experimental procedure that may work well on past returns
+        matrices with few NaN values (say, below 20% of the total entries). 
+        If there are (many) NaNs, one should probably also use a rather 
+        large risk forecast error.
+        """
+        rets = past_returns.iloc[:,:-1] # drop cash
+        nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
+        if nan_fraction:
+            if nan_fraction > 0.1 and not shrink:
+                warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
+            normalizer = np.sqrt((rets**2).mean())
+            normalized = rets/normalizer
+            nan_implicit_imputation = pd.DataFrame(0., columns=normalized.columns, index = normalized.index)
+            for i in range(iters):
+                u, s, v = np.linalg.svd(normalized.fillna(nan_implicit_imputation), full_matrices=False)
+                nan_implicit_imputation = pd.DataFrame(
+                    (u[:, :num_factors] * (s[:num_factors] - s[num_factors] * shrink)) @ v[:num_factors], 
+                    columns = normalized.columns, index = normalized.index) 
+        else:
+            u, s, v = np.linalg.svd(normalized, full_matrices=False)
+        F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
+        F = pd.DataFrame(F.T * normalizer.values, columns=normalizer.index)
+        idyosyncratic = normalizer**2 - (F**2).sum(0)
+        if not np.all(idyosyncratic > 0.):
+            raise ForeCastError("Low rank risk estimation with iterative SVD did not work.")
+        return F, idyosyncratic
 
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-        self.idyosync_sqrt = cvx.Parameter(returns.shape[1])
+        # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        self.idyosync_sqrt_parameter = cvx.Parameter(returns.shape[1]-1)
+        self.F_parameter = cvx.Parameter((self.num_factors, returns.shape[1]-1))
         # if not (self.factor_Sigma is None):
         #     self.factor_Sigma_sqrt = cvx.Parameter(self.factor_Sigma.shape, PSD=True)
-        self.forecast_error_penalizer = cvx.Parameter(returns.shape[1], nonneg=True)
+        # self.forecast_error_penalizer = cvx.Parameter(returns.shape[1], nonneg=True)
 
     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
-        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
-        self.idyosync_sqrt.value = np.sqrt(self.idyosync.value)
-        if not (self.factor_Sigma is None):
-            factor_Sigma_sqrt = scipy.linalg.sqrtm(self.factor_Sigma.current_value)
-            assert np.allclose(self.factor_Sigma.current_value, factor_Sigma_sqrt @ factor_Sigma_sqrt.T)
-            self.exposures.value = factor_Sigma_sqrt @ self.exposures.value
-        self.forecast_error_penalizer.value = np.sqrt(np.sum(self.exposures.value**2, axis=0) + self.idyosync.value)
+        
+        if self.F is None:
+            F, d = self.build_low_rank_model(past_returns, num_factors=self.num_factors)
+        else:
+            F = self.F[t]
+            d = self.d[t]
+            
+        self.F_parameter.value = F.values
+        self.idyosync_sqrt_parameter.value = np.sqrt(d).values
+        # super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        # self.idyosync_sqrt.value = np.sqrt(self.idyosync.value)
+        # if not (self.factor_Sigma is None):
+        #     factor_Sigma_sqrt = scipy.linalg.sqrtm(self.factor_Sigma.current_value)
+        #     assert np.allclose(self.factor_Sigma.current_value, factor_Sigma_sqrt @ factor_Sigma_sqrt.T)
+        #     self.exposures.value = factor_Sigma_sqrt @ self.exposures.value
+        # self.forecast_error_penalizer.value = np.sqrt(np.sum(self.exposures.value**2, axis=0) + self.idyosync.value)
 
     def compile_to_cvxpy(self, w_plus, z, value):
-        self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt, (w_plus - self.benchmark_weights)))
+        # TODO benchmark passed in args
+        self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt_parameter, (w_plus #- self.benchmark_weights
+        )[:-1]))
         assert self.expression.is_dcp(dpp=True)
         # if not (self.factor_Sigma is None):
         #     self.expression += cvx.sum_squares(
@@ -473,143 +656,217 @@ class FactorModelRisk(BaseRiskModel):
         #     # self.expression += cvx.quad_form((w_plus.T @ self.exposures.T).T, self.factor_Sigma)
         #     assert self.expression.is_dcp(dpp=True)
         # else:
-        self.expression += cvx.sum_squares(self.exposures @ (w_plus - self.benchmark_weights))
+        self.expression += cvx.sum_squares(self.F_parameter @ (w_plus #- self.benchmark_weights
+        )[:-1])
         assert self.expression.is_dcp(dpp=True)
 
         # forecast error risk, assuming factor_Sigma is the identity
-        self.expression += self.forecast_error_kappa * cvx.square(
-            cvx.abs(w_plus - self.benchmark_weights).T @ self.forecast_error_penalizer
-            # @ cvx.sqrt(cvx.sum(cvx.square(self.exposures), axis=0) + self.idyosync)
-        )
+        # self.expression += self.forecast_error_kappa * cvx.square(
+        #     cvx.abs(w_plus - self.benchmark_weights).T @ self.forecast_error_penalizer
+        #     # @ cvx.sqrt(cvx.sum(cvx.square(self.exposures), axis=0) + self.idyosync)
+        # )
         assert self.expression.is_dcp(dpp=True)
         return self.expression
-
-
-class LowRankRollingRisk(BaseRiskModel):
-    """Use `lookback` past returns to build low-rank structured risk model.
-
-    Use this rather that RollingWindowFullCovariance when there are (many) more
-     assets than lookback periods, to limit overfit and avoid allocating large matrices.
-    (Or, better, use a factor model covariance).
-
-    Args:
-        lookback (int): how many past returns are used at each point in time.
-            Default 250.
-    """
-
-    def __init__(self, lookback=250, zero_cash_risk=True):
-        self.lookback = lookback
-        self.zero_cash_risk = zero_cash_risk
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        """Function to initialize object with full prescience."""
-        self.recent_returns = cvx.Parameter(
-            shape=(self.lookback, returns.shape[1]))
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-
-    def values_in_time(
-            self,
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs):
-        val = past_returns.iloc[-self.lookback:].copy(deep=True)
-        if self.zero_cash_risk:
-            val.iloc[:, -1] = 0.0
-        self.recent_returns.value = val.values
-        # update attributes
-        super().values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs)
-
-    def compile_to_cvxpy(self, w_plus, z, value):
-        self.expression = (cvx.sum_squares(
-            self.recent_returns @ (w_plus - self.benchmark_weights)) / self.lookback)
-        assert self.expression.is_dcp(dpp=True)
-        return self.expression
-
-
-class RollingWindowFactorModelRisk(FactorModelRisk):
-    """Build FactorModelRisk model automatically with rolling window and svd.
-
-    Procedure is detailed in the paper, pages 59-60, although here it is simplified.
-
-    Eventually this will also have logic to store the computed exposures
-    and idyosyncratic variances.
-
-    Args:
-        lookback (int): how many past returns are used at each point in time
-            to estimate the risk model. Default 250.
-        num_factors (int): how many factors in the risk model. Default is 1.
-        zero_cash_risk (bool): whether to set the column and row of the (implied)
-            resulting covariance matrix to zero. Default True.
-    """
-
-    def __init__(
-            self,
-            lookback=250,
-            num_factors=1,
-            zero_cash_risk=True,
-            forecast_error_kappa=0.0,
-            on_correlation = False):
-        self.lookback = lookback
-        self.num_factors = num_factors
-        self.zero_cash_risk = zero_cash_risk
-        self.forecast_error_kappa = forecast_error_kappa
-        self.on_correlation = on_correlation
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        """Function to initialize object with full prescience."""
-
-        self.idyosync = cvx.Parameter(returns.shape[1])
-        self.exposures = cvx.Parameter((self.num_factors, returns.shape[1]))
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-
-    def values_in_time(
-            self,
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs):
-        val = past_returns.iloc[-self.lookback:].copy(deep=True)
-        if self.zero_cash_risk:
-            val.iloc[:, -1] = 0.0
-        if self.on_correlation:
-            stds = val.std()
-            val /= stds
-
-        total_variances = np.sum(val**2, axis=0) / self.lookback
-        u, s, v = np.linalg.svd(val, full_matrices=False)
-
-        self.exposures.value = (
-            v[: self.num_factors].T * s[: self.num_factors]).T / np.sqrt(self.lookback)
-
-        self.idyosync.value = (
-            total_variances -
-            np.sum(
-                self.exposures.value**2,
-                axis=0)).values
-        assert np.all(self.idyosync.value >= 0.0)
         
-        if self.on_correlation:
-            self.idyosync *= stds**2
-            self.exposures *= stds
 
-        super().values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs)
+# class FactorModelRisk(BaseRiskModel):
+#     """Factor model covariance.
+#
+#     Args:
+#         exposures (pd.DataFrame): constant factor exposure matrix or a dataframe
+#             where the first index is time.
+#         idyosync (pd.DataFrame or pd.Series): idyosyncratic variances for the symbol,
+#             either fixed (pd.Series) or through time (pd.DataFrame).
+#         factor_Sigma (pd.DataFrame or None): a constant factor covariance matrix
+#             or a DataFrame with multiindex where the first index is time. If None,
+#             the default, it is understood that the factor covariance is the identity.
+#             (Otherwise we compute its matrix square root at each step internally and
+#              apply it to the exposures).
+#         forecast_error_kappa (float or pd.Series): uncertainty on the
+#             assets' correlations. See the paper, pages 32-33.
+#
+#     """
+#
+#     factor_Sigma = None
+#
+#     def __init__(self, exposures, idyosync, factor_Sigma=None, forecast_error_kappa=0.0, use_last_available_time=False, **kwargs):
+#         if not (factor_Sigma is None):
+#             self.factor_Sigma = DataEstimator(factor_Sigma, use_last_available_time=True)
+#             # we copy the exposures because we'll modify them
+#             assert isinstance(exposures, pd.DataFrame)
+#             exposures = pd.DataFrame(exposures, copy = True)
+#         else:
+#             self.factor_Sigma = None
+#         self.exposures = ParameterEstimator(exposures, use_last_available_time=use_last_available_time)
+#         self.idyosync = ParameterEstimator(idyosync, use_last_available_time=use_last_available_time)
+#         self.forecast_error_kappa = forecast_error_kappa
+#         # if ((np.isscalar(forecast_error_kappa) and forecast_error_kappa > 0)
+#         #     or (np.any(forecast_error_kappa > 0))) and factor_Sigma is not None:
+#         #     raise NotImplementedError("You should do Cholesky decompositions of the factor_Sigmas"
+#         #     "and apply them to the exposures.")
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+#         self.idyosync_sqrt = cvx.Parameter(returns.shape[1])
+#         # if not (self.factor_Sigma is None):
+#         #     self.factor_Sigma_sqrt = cvx.Parameter(self.factor_Sigma.shape, PSD=True)
+#         self.forecast_error_penalizer = cvx.Parameter(returns.shape[1], nonneg=True)
+#
+#     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+#         super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+#         self.idyosync_sqrt.value = np.sqrt(self.idyosync.value)
+#         if not (self.factor_Sigma is None):
+#             factor_Sigma_sqrt = scipy.linalg.sqrtm(self.factor_Sigma.current_value)
+#             assert np.allclose(self.factor_Sigma.current_value, factor_Sigma_sqrt @ factor_Sigma_sqrt.T)
+#             self.exposures.value = factor_Sigma_sqrt @ self.exposures.value
+#         self.forecast_error_penalizer.value = np.sqrt(np.sum(self.exposures.value**2, axis=0) + self.idyosync.value)
+#
+#     def compile_to_cvxpy(self, w_plus, z, value):
+#         self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt, (w_plus - self.benchmark_weights)))
+#         assert self.expression.is_dcp(dpp=True)
+#         # if not (self.factor_Sigma is None):
+#         #     self.expression += cvx.sum_squares(
+#         #         self.factor_Sigma_sqrt.T @ self.exposures @ (w_plus - self.benchmark_weights))
+#         #     # self.expression += cvx.quad_form((w_plus.T @ self.exposures.T).T, self.factor_Sigma)
+#         #     assert self.expression.is_dcp(dpp=True)
+#         # else:
+#         self.expression += cvx.sum_squares(self.exposures @ (w_plus - self.benchmark_weights))
+#         assert self.expression.is_dcp(dpp=True)
+#
+#         # forecast error risk, assuming factor_Sigma is the identity
+#         self.expression += self.forecast_error_kappa * cvx.square(
+#             cvx.abs(w_plus - self.benchmark_weights).T @ self.forecast_error_penalizer
+#             # @ cvx.sqrt(cvx.sum(cvx.square(self.exposures), axis=0) + self.idyosync)
+#         )
+#         assert self.expression.is_dcp(dpp=True)
+#         return self.expression
+
+
+# class LowRankRollingRisk(BaseRiskModel):
+#     """Use `lookback` past returns to build low-rank structured risk model.
+#
+#     Use this rather that RollingWindowFullCovariance when there are (many) more
+#      assets than lookback periods, to limit overfit and avoid allocating large matrices.
+#     (Or, better, use a factor model covariance).
+#
+#     Args:
+#         lookback (int): how many past returns are used at each point in time.
+#             Default 250.
+#     """
+#
+#     def __init__(self, lookback=250, zero_cash_risk=True):
+#         self.lookback = lookback
+#         self.zero_cash_risk = zero_cash_risk
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         """Function to initialize object with full prescience."""
+#         self.recent_returns = cvx.Parameter(
+#             shape=(self.lookback, returns.shape[1]))
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+#
+#     def values_in_time(
+#             self,
+#             t,
+#             current_weights,
+#             current_portfolio_value,
+#             past_returns,
+#             past_volumes,
+#             **kwargs):
+#         val = past_returns.iloc[-self.lookback:].copy(deep=True)
+#         if self.zero_cash_risk:
+#             val.iloc[:, -1] = 0.0
+#         self.recent_returns.value = val.values
+#         # update attributes
+#         super().values_in_time(
+#             t,
+#             current_weights,
+#             current_portfolio_value,
+#             past_returns,
+#             past_volumes,
+#             **kwargs)
+#
+#     def compile_to_cvxpy(self, w_plus, z, value):
+#         self.expression = (cvx.sum_squares(
+#             self.recent_returns @ (w_plus - self.benchmark_weights)) / self.lookback)
+#         assert self.expression.is_dcp(dpp=True)
+#         return self.expression
+#
+#
+# class RollingWindowFactorModelRisk(FactorModelRisk):
+#     """Build FactorModelRisk model automatically with rolling window and svd.
+#
+#     Procedure is detailed in the paper, pages 59-60, although here it is simplified.
+#
+#     Eventually this will also have logic to store the computed exposures
+#     and idyosyncratic variances.
+#
+#     Args:
+#         lookback (int): how many past returns are used at each point in time
+#             to estimate the risk model. Default 250.
+#         num_factors (int): how many factors in the risk model. Default is 1.
+#         zero_cash_risk (bool): whether to set the column and row of the (implied)
+#             resulting covariance matrix to zero. Default True.
+#     """
+#
+#     def __init__(
+#             self,
+#             lookback=250,
+#             num_factors=1,
+#             zero_cash_risk=True,
+#             forecast_error_kappa=0.0,
+#             on_correlation = False):
+#         self.lookback = lookback
+#         self.num_factors = num_factors
+#         self.zero_cash_risk = zero_cash_risk
+#         self.forecast_error_kappa = forecast_error_kappa
+#         self.on_correlation = on_correlation
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         """Function to initialize object with full prescience."""
+#
+#         self.idyosync = cvx.Parameter(returns.shape[1])
+#         self.exposures = cvx.Parameter((self.num_factors, returns.shape[1]))
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+#
+#     def values_in_time(
+#             self,
+#             t,
+#             current_weights,
+#             current_portfolio_value,
+#             past_returns,
+#             past_volumes,
+#             **kwargs):
+#         val = past_returns.iloc[-self.lookback:].copy(deep=True)
+#         if self.zero_cash_risk:
+#             val.iloc[:, -1] = 0.0
+#         if self.on_correlation:
+#             stds = val.std()
+#             val /= stds
+#
+#         total_variances = np.sum(val**2, axis=0) / self.lookback
+#         u, s, v = np.linalg.svd(val, full_matrices=False)
+#
+#         self.exposures.value = (
+#             v[: self.num_factors].T * s[: self.num_factors]).T / np.sqrt(self.lookback)
+#
+#         self.idyosync.value = (
+#             total_variances -
+#             np.sum(
+#                 self.exposures.value**2,
+#                 axis=0)).values
+#         assert np.all(self.idyosync.value >= 0.0)
+#
+#         if self.on_correlation:
+#             self.idyosync *= stds**2
+#             self.exposures *= stds
+#
+#         super().values_in_time(
+#             t,
+#             current_weights,
+#             current_portfolio_value,
+#             past_returns,
+#             past_volumes,
+#             **kwargs)
 
 
 class WorstCaseRisk(BaseRiskModel):

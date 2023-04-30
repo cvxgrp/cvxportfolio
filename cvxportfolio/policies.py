@@ -27,7 +27,7 @@ from .constraints import BaseConstraint
 from .estimator import Estimator, DataEstimator
 from .errors import MissingValuesError, PortfolioOptimizationError
 from .returns import ReturnsForecast
-from .legacy import null_checker
+# from .legacy import null_checker
 
 __all__ = [
     "Hold",

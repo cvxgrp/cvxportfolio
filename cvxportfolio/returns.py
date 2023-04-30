@@ -18,6 +18,7 @@ portfolio optimization policies, and related objects.
 
 import cvxpy as cvx
 import numpy as np
+import pandas as pd
 
 # from cvxportfolio.expression import Expression
 # from .legacy import values_in_time, null_checker
@@ -27,11 +28,11 @@ from .estimator import DataEstimator, ParameterEstimator
 
 __all__ = [
     "ReturnsForecast",
-    "MultipleReturnsForecasts",
+    #"MultipleReturnsForecasts",
     #"RollingWindowReturnsForecast",
     #"ExponentialWindowReturnsForecast",
-    "ReturnsForecastErrorRisk",
-    "RollingWindowReturnsForecastErrorRisk",
+    "ReturnsForecastError",
+    #"RollingWindowReturnsForecastErrorRisk",
 ]
 
 
@@ -46,6 +47,22 @@ class BaseReturnsModel(BaseCost):
         cost, constr = self._estimate(t, w_plus, z, value)
         return cost
 
+
+# class Kelly(BaseReturnsModel):
+#     r"""Maximize historical log-returns."""
+#
+#     def __init__(self, rolling):
+#         self.rolling = rolling
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         self.past_returns = cvx.Parameter((returns.shape[1], self.rolling))
+#
+#     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+#         self.past_returns.value = past_returns.iloc[-self.rolling:].values.T
+#
+#     def compile_to_cvxpy(self, w_plus, z, v):
+#         return cvx.sum(cvx.log(w_plus.T @ self.past_returns + 1)) / self.rolling
+    
 
 class ReturnsForecast(BaseReturnsModel):
     r"""Returns forecast, either provided by the user or computed from the data.
@@ -128,84 +145,116 @@ class ReturnsForecast(BaseReturnsModel):
     and the risk model is the full covariance, also computed from the past returns.
     """    
 
-    def __init__(self, r_hat=None, rolling=None, halflife=None, lastforcash=True):
+    def __init__(self, r_hat=None, #rolling=None, halflife=None, 
+                lastforcash=True):
         
-        if not r_hat is None:
-            self.r_hat = ParameterEstimator(r_hat)
-        else:
-            self.r_hat = None
+        # if not r_hat is None:
+#             self.r_hat = ParameterEstimator(r_hat)
+#         else:
+#             self.r_hat = None
+        self.r_hat = r_hat
         
-        self.rolling = rolling
-        self.halflife = halflife
-        self.lastforcash=True
+        #self.rolling = rolling
+        #self.halflife = halflife
+        self.lastforcash = True
         
-        self.full = self.r_hat is None and self.rolling is None and self.halflife is None
+        #self.full = self.r_hat is None and self.rolling is None and self.halflife is None
     
-        self.name = 'PLACEHOLDER'
+        #self.name = 'PLACEHOLDER'
+       
+    # @classmethod # we make it a classmethod so that also covariances can use it
+    # def update_full_mean(cls, past_returns, last_estimation, last_counts, last_time):
+    #
+    #     if last_time is None: # full estimation
+    #         estimation = past_returns.sum()
+    #         counts = past_returns.count()
+    #     else:
+    #         assert last_time == past_returns.index[-2]
+    #         estimation = last_estimation * last_counts + past_returns.iloc[-1].fillna(0.)
+    #         counts = last_counts + past_returns.iloc[-1:].count()
+    #
+    #     return estimation/counts, counts, past_returns.index[-1]
+            
         
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
         
-        if not self.rolling is None:
-            forecasts = returns.rolling(window=self.rolling).mean().shift(1)
-        elif not self.halflife is None:
-            forecasts = returns.ewm(halflife=self.halflife).mean().shift(1)
-        elif self.full:
-            self.r_hat = cvx.Parameter(returns.shape[1])
-            return
+        self.r_hat_parameter = cvx.Parameter(returns.shape[1])
         
-        if self.r_hat is None:
-            self.r_hat = ParameterEstimator(forecasts)
-            
-            if self.lastforcash:
-                forecasts.iloc[:, -1] = returns.iloc[:, -1].shift(1)
-        
-            # initialize self.r_hat
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        # if not self.rolling is None:
+        #     forecasts = returns.rolling(window=self.rolling).mean().shift(1)
+        # elif not self.halflife is None:
+        #     forecasts = returns.ewm(halflife=self.halflife).mean().shift(1)
+        # elif self.full:
+        #     self.r_hat = cvx.Parameter(returns.shape[1])
+        #     self.last_fullmean_estimation = None
+        #     self.last_fullmean_counts = None
+        #     self.last_fullmean_time = None
+        #     return
+        #
+        # if self.r_hat is None:
+        #     self.r_hat = ParameterEstimator(forecasts)
+        #
+        #     if self.lastforcash:
+        #         forecasts.iloc[:, -1] = returns.iloc[:, -1].shift(1)
+        #
+        #     # initialize self.r_hat
+        # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
     
     
     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
-
-        if self.full:
-            current_forecast = past_returns.mean()
+        
+        if self.r_hat is None:
+            tmp = past_returns.mean()
             if self.lastforcash:
-                current_forecast.iloc[-1] = past_returns.iloc[-1, -1]
-            self.r_hat.value = current_forecast.values
-            
-        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+                tmp.iloc[-1] = past_returns.iloc[-1, -1]
+            self.r_hat_parameter.value = tmp.values
+        else:
+            self.r_hat_parameter.value = self.r_hat.loc[t]
+
+        # if self.full:
+        #     self.last_fullmean_estimation, self.last_fullmean_counts, self.last_fullmean_time = \
+        #         self.update_full_mean(past_returns, self.last_fullmean_estimation, self.last_fullmean_counts, self.last_fullmean_time)
+        #     #current_forecast = past_returns.mean()
+        #     current_forecast = pd.Series(self.last_fullmean_estimation, copy=True)
+        #     if self.lastforcash:
+        #         current_forecast.iloc[-1] = past_returns.iloc[-1, -1]
+        #     self.r_hat.value = current_forecast.values
+        #
+        # super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
         
     def compile_to_cvxpy(self, w_plus, z, v):
-        return w_plus.T @ self.r_hat
+        return w_plus.T @ self.r_hat_parameter
         
    
         
-class MultipleReturnsForecasts(BaseReturnsModel):
-    """A weighted combination of alpha sources.
-
-    DEPRECATED: THIS CLASS IS KEPT TO REUSE OLD TESTS
-    IT'S NOW IMPLEMENTED BY COMBINED COSTS, I.E.,
-    YOU JUST WRITE AN ALGEBRA OF RETURNS FORECASTS
-    """
-
-    def __init__(self, alpha_sources, weights):
-        self.alpha_sources = alpha_sources
-        self.weights = weights
-    
-    def pre_evaluation(self, *args, **kwargs):
-        """Iterate over constituent costs."""
-        [el.pre_evaluation(*args, **kwargs) for el in self.alpha_sources]
-
-    def values_in_time(self, *args, **kwargs):
-        """Iterate over constituent costs."""
-        [el.values_in_time(*args, **kwargs) for el in self.alpha_sources] 
-               
-    def compile_to_cvxpy(self, w_plus, z, v):
-        return sum([el.compile_to_cvxpy(w_plus, z, v) * self.weights[i] for i, el in enumerate(self.alpha_sources)])
-        
-    def _estimate(self, t, w_plus, z, value):
-        """Temporary interface to old cvxportfolio."""
-        #for cost in self.alpha_sources:
-        #    cost.LEGACY = True
-        return super()._estimate(t, w_plus, z, value)
+# class MultipleReturnsForecasts(BaseReturnsModel):
+#     """A weighted combination of alpha sources.
+#
+#     DEPRECATED: THIS CLASS IS KEPT TO REUSE OLD TESTS
+#     IT'S NOW IMPLEMENTED BY COMBINED COSTS, I.E.,
+#     YOU JUST WRITE AN ALGEBRA OF RETURNS FORECASTS
+#     """
+#
+#     def __init__(self, alpha_sources, weights):
+#         self.alpha_sources = alpha_sources
+#         self.weights = weights
+#
+#     def pre_evaluation(self, *args, **kwargs):
+#         """Iterate over constituent costs."""
+#         [el.pre_evaluation(*args, **kwargs) for el in self.alpha_sources]
+#
+#     def values_in_time(self, *args, **kwargs):
+#         """Iterate over constituent costs."""
+#         [el.values_in_time(*args, **kwargs) for el in self.alpha_sources]
+#
+#     def compile_to_cvxpy(self, w_plus, z, v):
+#         return sum([el.compile_to_cvxpy(w_plus, z, v) * self.weights[i] for i, el in enumerate(self.alpha_sources)])
+#
+#     def _estimate(self, t, w_plus, z, value):
+#         """Temporary interface to old cvxportfolio."""
+#         #for cost in self.alpha_sources:
+#         #    cost.LEGACY = True
+#         return super()._estimate(t, w_plus, z, value)
 
     # def weight_expr(self, t, wplus, z=None, v=None):
     #     """Returns the estimated alpha.
@@ -286,7 +335,7 @@ class MultipleReturnsForecasts(BaseReturnsModel):
 #         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
 
-class ReturnsForecastErrorRisk(BaseRiskModel):
+class ReturnsForecastError(BaseRiskModel):
     """Simple return forecast error risk with values provided by the user.
 
     Implements the model described in pages 31-32 of the paper. You
@@ -302,83 +351,95 @@ class ReturnsForecastErrorRisk(BaseRiskModel):
              or varying in time (if DataFrame).
     """
 
-    def __init__(self, deltas=None, rolling=None, halflife=None):
+    def __init__(self, deltas=None, zeroforcash=True, # rolling=None, halflife=None
+        ):
         
-        
-        if not deltas is None:
-            self.mode = 'user-provided'
-            self.deltas = ParameterEstimator(deltas, non_negative=True)
-            return
-            
-        if deltas is None and rolling is None and halflife is None:
-            self.mode = 'full'
-            return
-        
-        if not rolling is None:
-            self.mode = 'rolling'
-            self.rolling = rolling
-            return
-        
-        if not halflife is None:
-            self.mode = 'ewm'
-            self.halflife = halflife
-            return
-            
-        assert False
+        self.deltas = deltas
+        self.zeroforcash = zeroforcash
+        # if not deltas is None:
+        #     self.mode = 'user-provided'
+        #     self.deltas = ParameterEstimator(deltas, non_negative=True)
+        #     return
+        #
+        # if deltas is None and rolling is None and halflife is None:
+        #     self.mode = 'full'
+        #     return
+        #
+        # if not rolling is None:
+        #     self.mode = 'rolling'
+        #     self.rolling = rolling
+        #     return
+        #
+        # if not halflife is None:
+        #     self.mode = 'ewm'
+        #     self.halflife = halflife
+        #     return
+        #
+        # assert False
             
     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        if not self.mode == 'user-provided':
-            self.deltas = cvx.Parameter(returns.shape[1]-1, nonneg=True)
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        self.deltas_parameter = cvx.Parameter(returns.shape[1]-1, nonneg=True)
+        # if not self.mode == 'user-provided':
+        #     self.deltas = cvx.Parameter(returns.shape[1]-1, nonneg=True)
+        # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
-        if self.mode == 'full':
-            self.deltas.value = (past_returns.iloc[:,:-1].std() / np.sqrt(past_returns.iloc[:,:-1].count())).values
-        if self.mode == 'rolling':
-            self.deltas.value = (past_returns.iloc[-self.rolling:,:-1].std() / np.sqrt(self.rolling)).values
-        if self.mode == 'ewm':
-            raise NotImplementedError
-        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        if self.deltas is None:
+            # if self.mode == 'full':
+            tmp = (past_returns.iloc[:,:-1].std() / np.sqrt(past_returns.iloc[:,:-1].count())).values
+            if self.zeroforcash:
+                tmp[-1] = 0.
+            self.deltas_parameter.value = tmp
+        else:
+            self.deltas_parameter.value = self.deltas.loc[t]
+            
+        # if self.mode == 'rolling':
+        #     self.deltas.value = (past_returns.iloc[-self.rolling:,:-1].std() / np.sqrt(self.rolling)).values
+        # if self.mode == 'ewm':
+        #     raise NotImplementedError
+        # super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
     def compile_to_cvxpy(self, w_plus, z, v):
-        return cvx.abs(w_plus - self.benchmark_weights)[:-1].T @ self.deltas
+        # TODO fix benchmark passing here
+        return cvx.abs(w_plus #- self.benchmark_weights
+            )[:-1].T @ self.deltas_parameter
 
 
-class RollingWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
-    """Compute returns forecast errors with rolling window of past returns.
-
-    We compute the forecast error as the standard deviation of the mean
-    estimator on a rolling window. That is, the rolling window standard deviation
-    divided by sqrt(lookback_period), i.e., the square root of the number of samples
-    used.
-
-    Args:
-        lookback_period (int): how many past returns are used at each point in time.
-            Default is 250.
-        zero_for_cash (bool): for the cash return forecast instead the error is zero.
-    """
-
-    def __init__(self, lookback_period, zero_for_cash=True):
-        self.lookback_period = lookback_period
-        self.zero_for_cash = zero_for_cash
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        tmp = returns.rolling(window=self.lookback_period).std().shift(
-            1) / np.sqrt(self.lookback_period)
-        if self.zero_for_cash:
-            tmp.iloc[:, -1] = 0.0
-        self.deltas_errors = ParameterEstimator(tmp, non_negative=True)
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-
-
-class ExponentialWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
-    """Compute returns forecast errors with exponential window of past returns.
-
-    Currently not implemented; we need to work out the math. It's probably
-    as simple as ewm(...).std() / np.sqrt(half_life).
-    """
-
-    def __init__(self):
-        raise NotImplementedError
+# class RollingWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
+#     """Compute returns forecast errors with rolling window of past returns.
+#
+#     We compute the forecast error as the standard deviation of the mean
+#     estimator on a rolling window. That is, the rolling window standard deviation
+#     divided by sqrt(lookback_period), i.e., the square root of the number of samples
+#     used.
+#
+#     Args:
+#         lookback_period (int): how many past returns are used at each point in time.
+#             Default is 250.
+#         zero_for_cash (bool): for the cash return forecast instead the error is zero.
+#     """
+#
+#     def __init__(self, lookback_period, zero_for_cash=True):
+#         self.lookback_period = lookback_period
+#         self.zero_for_cash = zero_for_cash
+#
+#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#         tmp = returns.rolling(window=self.lookback_period).std().shift(
+#             1) / np.sqrt(self.lookback_period)
+#         if self.zero_for_cash:
+#             tmp.iloc[:, -1] = 0.0
+#         self.deltas_errors = ParameterEstimator(tmp, non_negative=True)
+#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+#
+#
+# class ExponentialWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):
+#     """Compute returns forecast errors with exponential window of past returns.
+#
+#     Currently not implemented; we need to work out the math. It's probably
+#     as simple as ewm(...).std() / np.sqrt(half_life).
+#     """
+#
+#     def __init__(self):
+#         raise NotImplementedError
 
 
