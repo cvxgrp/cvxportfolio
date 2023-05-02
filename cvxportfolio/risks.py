@@ -182,14 +182,19 @@ class FullCovariance(BaseRiskModel):
     :type addmean: bool
     """
 
-    def __init__(self, Sigma=None, # TODO Sigma is dict or dataframe (no multiindex)
+    def __init__(self, Sigma=None, zeroforcash=True, addmean=True# TODO Sigma is dict or dataframe (no multiindex)
      #rolling=None, #halflife=None, kappa=None, 
         #addmean=False
         ):
         # if not Sigma is None:
         #     self.Sigma = ParameterEstimator(Sigma, positive_semi_definite=True)
         # else:
-        self.Sigma = Sigma
+        if not Sigma is None:
+            self.Sigma = DataEstimator(Sigma)
+        else:
+            self.Sigma = Sigma
+        self.zeroforcash = zeroforcash
+        self.addmean = addmean
         #self.rolling = rolling if Sigma is None else None
         #self.halflife = halflife if Sigma is None else None
         #self.full = self.Sigma is None and self.rolling is None and self.halflife is None
@@ -207,7 +212,8 @@ class FullCovariance(BaseRiskModel):
         #    forecast_error_kappa, non_negative=True
         # )
 
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+    def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe, backtest_times)
         
         #super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
@@ -229,7 +235,7 @@ class FullCovariance(BaseRiskModel):
         # if self.Sigma is None:
         #     self.Sigma = ParameterEstimator(forecasts)
         
-        self.Sigma_sqrt = cvx.Parameter((returns.shape[1]-1, returns.shape[1]-1))#+self.addmean))
+        self.Sigma_sqrt = cvx.Parameter((len(universe), len(universe)))#+self.addmean))
 
         #super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
@@ -253,20 +259,20 @@ class FullCovariance(BaseRiskModel):
     #
     #     return estimation, counts, past_returns.index[-1]
 
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes,
-            **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        #super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         if self.Sigma is None:
-            Sigma = past_returns.iloc[:,:-1].cov(ddof=0)
-            mean = past_returns.iloc[:,:-1].mean()
-            Sigma += np.outer(mean, mean)
+            Sigma = past_returns.cov(ddof=0)
+            if self.addmean:
+                mean = past_returns.mean()
+                Sigma += np.outer(mean, mean)
+            if self.zeroforcash:
+                Sigma.iloc[:, -1] = 0
+                Sigma.iloc[-1, :] = 0
         else:
-            try:
-                Sigma = self.Sigma[t]
-            except KeyError:
-                Sigma = self.Sigma
+            Sigma = self.Sigma.current_value
             
         # if not self.full:
         #     current_Sigma = self.Sigma.value
@@ -299,10 +305,9 @@ class FullCovariance(BaseRiskModel):
         #     self.Sigma.value,
         #     self.Sigma_sqrt.value @ self.Sigma_sqrt.value.T)
 
-    def compile_to_cvxpy(self, w_plus, z, value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         # TODO change benchmark weights passing
-        self.cvxpy_expression = cvx.sum_squares(self.Sigma_sqrt.T @ (w_plus #- self.benchmark_weights
-        )[:-1])
+        self.cvxpy_expression = cvx.sum_squares(self.Sigma_sqrt.T @ w_plus_minus_w_bm)
     
         #if not self.kappa is None:
         #    self.cvxpy_expression += cvx.square(cvx.abs(w_plus - self.benchmark_weights)[:-1].T @ self.forecast_error)
@@ -394,38 +399,39 @@ class RiskForecastError(BaseRiskModel):
     """Risk forecast error.
     """
 
-    def __init__(self, sigma_squares=None):
-        self.sigma_squares = sigma_squares
+    def __init__(self, sigma_squares=None, zeroforcash=True, addmean=True):
+        if sigma_squares is None:
+            self.sigma_squares = None
+        else:
+            self.sigma_squares = DataEstimator(sigma_squares)
         # self.standard_deviations = ParameterEstimator(standard_deviations)
+        self.zeroforcash=zeroforcash
+        self.addmean=addmean
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        
-        self.sigmas_parameter = cvx.Parameter(returns.shape[1]-1, nonneg=True)#+self.addmean))
+    def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe, backtest_times)
+        self.sigmas_parameter = cvx.Parameter(len(universe), nonneg=True)#+self.addmean))
 
-
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes,
-            **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        #super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        super().values_in_time(t=t, past_returns=past_returns)
         
         if self.sigma_squares is None:
-            sigma_squares = past_returns.iloc[:,:-1].var(ddof=0)
-            mean = past_returns.iloc[:,:-1].mean()
-            sigma_squares += mean**2
+            sigma_squares = past_returns.var(ddof=0)
+            if self.addmean:
+                mean = past_returns.mean()
+                sigma_squares += mean**2
+            if self.zeroforcash:
+                sigma_squares.iloc[-1] = 0.
+            sigma_squares = sigma_squares.values
         else:
-            try:
-                sigma_squares = self.sigma_squares.loc[t]
-            except KeyError:
-                sigma_squares = self.sigma_squares
-            
+            sigma_squares = self.sigma_squares.current_value
         
-        self.sigmas_parameter.value = np.sqrt(sigma_squares).values
+        self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
-    def compile_to_cvxpy(self, w_plus, z, value):
-        # TODO benchmark
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
-        return cvx.sum(cvx.square(cvx.abs(w_plus #- self.benchmark_weights
-            )[:-1].T @ self.sigmas_parameter))
+        return cvx.square(cvx.abs(w_plus_minus_w_bm).T @ self.sigmas_parameter)
                 
                 
 
@@ -439,30 +445,34 @@ class DiagonalCovariance(BaseRiskModel):
             Indexed by time if DataFrame.
     """
 
-    def __init__(self, sigma_squares=None):
-        self.sigma_squares = sigma_squares
+    def __init__(self, sigma_squares=None, zeroforcash=True, addmean=True):
+        if not sigma_squares is None:
+            self.sigma_squares = DataEstimator(sigma_squares)
+        else:
+            self.sigma_squares = None
+        self.zeroforcash = zeroforcash
+        self.addmean = addmean
         # self.standard_deviations = ParameterEstimator(standard_deviations)
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        
-        self.sigmas_parameter = cvx.Parameter(returns.shape[1]-1)#+self.addmean))
+    def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe, backtest_times)
+        self.sigmas_parameter = cvx.Parameter(len(universe)) #+self.addmean))
 
-
-
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes,
-            **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
         #super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         if self.sigma_squares is None:
-            sigma_squares = past_returns.iloc[:,:-1].var(ddof=0)
-            mean = past_returns.iloc[:,:-1].mean()
-            sigma_squares += mean**2
+            sigma_squares = past_returns.var(ddof=0)
+            if self.addmean:
+                mean = past_returns.mean()       
+                sigma_squares += mean**2
+            if self.zeroforcash:
+                sigma_squares[-1] = 0.
+            sigma_squares = sigma_squares.values
         else:
-            try:
-                sigma_squares = self.sigma_squares.loc[t]
-            except KeyError:
-                sigma_squares = self.sigma_squares
+            sigma_squares = self.sigma_squares.current_value
             
         # if not self.full:
         #     current_Sigma = self.Sigma.value
@@ -472,13 +482,11 @@ class DiagonalCovariance(BaseRiskModel):
         # eigval, eigvec = np.linalg.eigh(Sigma)
         # eigval = np.maximum(eigval, 0.)
         
-        self.sigmas_parameter.value = np.sqrt(sigma_squares).values
+        self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
-    def compile_to_cvxpy(self, w_plus, z, value):
-        # TODO benchmark
-        return cvx.sum_squares(cvx.multiply((w_plus #- self.benchmark_weights
-            )[:-1],  
-        self.sigmas_parameter))
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+
+        return cvx.sum_squares(cvx.multiply(w_plus_minus_w_bm, self.sigmas_parameter))
 
 
 # class RollingWindowDiagonalCovariance(DiagonalCovariance):

@@ -59,7 +59,7 @@ class TestReturns(unittest.TestCase):
         self.w_plus.value = np.random.randn(self.N)
         myforecast = self.returns.loc[self.returns.index < t].mean()
         myforecast.iloc[-1] = self.returns.iloc[122, -1]
-        assert np.isclose(cvxpy_expression.value, self.w_plus.value @ myforecast)
+        self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus.value @ myforecast))
         
     def test_returns_forecast_error(self):
 
@@ -71,7 +71,7 @@ class TestReturns(unittest.TestCase):
         error_risk.values_in_time(t='ciao', past_returns='hello')
 
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
-        assert np.isclose(cvxpy_expression.value, np.abs(self.w_plus_minus_w_bm.value) @ delta)
+        self.assertTrue(np.isclose(cvxpy_expression.value, np.abs(self.w_plus_minus_w_bm.value) @ delta))
 
 
     def test_full_returns_forecast_error(self):
@@ -88,7 +88,7 @@ class TestReturns(unittest.TestCase):
 
         print(cvxpy_expression.value)
         print(np.abs(self.w_plus_minus_w_bm.value[:-1]) @ delta[:-1])
-        assert np.isclose(cvxpy_expression.value, np.abs(self.w_plus_minus_w_bm.value[:-1]) @ delta[:-1])
+        self.assertTrue(np.isclose(cvxpy_expression.value, np.abs(self.w_plus_minus_w_bm.value[:-1]) @ delta[:-1]))
     
     
 
