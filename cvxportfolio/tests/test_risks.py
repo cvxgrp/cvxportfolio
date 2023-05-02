@@ -206,6 +206,33 @@ class TestRisks(unittest.TestCase):
         self.assertTrue(np.isclose(cvxpy_expression.value,
             self.w_plus_minus_w_bm.value @ np.diag(d) @ self.w_plus_minus_w_bm.value + \
                 ((F @ self.w_plus_minus_w_bm.value)**2).sum()))
+                
+                
+                
+    def test_worst_case_risk(self):
+
+        risk_model0 = FullCovariance()
+        risk_model1 = DiagonalCovariance()
+        worst_case = WorstCaseRisk([risk_model0, risk_model1])
+        
+        cvxpy_expression = self.boilerplate(worst_case)
+
+        assert cvxpy_expression.is_convex()
+
+        cvxpy_expression0 = risk_model0.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        cvxpy_expression1 = risk_model1.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+
+        self.w_plus_minus_w_bm.value = np.ones(self.N)
+
+        t = pd.Timestamp('2014-06-02')
+        
+        worst_case.values_in_time(t=t, past_returns=self.returns.loc[self.returns.index < t])
+
+        print(cvxpy_expression.value)
+        print(cvxpy_expression0.value)
+        print(cvxpy_expression1.value)
+        assert (cvxpy_expression.value == cvxpy_expression0.value)
+        assert (cvxpy_expression.value > cvxpy_expression1.value)
         
         # self.assertTrue(np.isclose(cvxpy_expression.value,
         #     self.w_plus_minus_w_bm.value @ np.diag(d) @ self.w_plus_minus_w_bm.value + \
@@ -437,38 +464,4 @@ if __name__ == '__main__':
 #                       w_plus.value @  should_be @ w_plus.value)
 
 
-def test_worst_case_risk(returns):
-    PAST = 30
-    t = pd.Timestamp('2014-06-02')
-    N = returns.shape[1]
-    returns.iloc[:, -1] = 0.
 
-    risk_model0 = RollingWindowFactorModelRisk(
-        lookback=PAST, num_factors=2, forecast_error_kappa=0.)
-    risk_model1 = RollingWindowFactorModelRisk(
-        lookback=PAST, num_factors=2, forecast_error_kappa=.5)
-
-    worst_case = WorstCaseRisk([risk_model0, risk_model1])
-
-    w_plus = cvx.Variable(N)
-    worst_case.pre_evaluation(
-        returns,
-        None,
-        start_time=returns.index[0],
-        end_time=None)
-    cvxpy_expression = worst_case.compile_to_cvxpy(w_plus, None, None)
-    assert cvxpy_expression.is_convex()
-
-    cvxpy_expression0 = risk_model0.compile_to_cvxpy(w_plus, None, None)
-    cvxpy_expression1 = risk_model1.compile_to_cvxpy(w_plus, None, None)
-
-    w_plus.value = np.random.randn(N)
-
-    worst_case.values_in_time(t,
-                              current_weights=None,
-                              current_portfolio_value=None,
-                              past_returns=returns.loc[returns.index < t],
-                              past_volumes=None)
-
-    assert (cvxpy_expression.value == cvxpy_expression1.value)
-    assert (cvxpy_expression.value > cvxpy_expression0.value)

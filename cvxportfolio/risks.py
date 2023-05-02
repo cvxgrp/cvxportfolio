@@ -908,43 +908,17 @@ class WorstCaseRisk(BaseRiskModel):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
 
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+    def pre_evaluation(self, universe, backtest_times):
         """Initialize objects."""
         for risk in self.riskmodels:
-            risk.pre_evaluation(
-                returns,
-                volumes,
-                start_time,
-                end_time,
-                **kwargs)
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+            risk.pre_evaluation(universe, backtest_times)
 
-    def values_in_time(
-            self,
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs):
+    def values_in_time(self, **kwargs):
         """Update parameters."""
         for risk in self.riskmodels:
-            risk.values_in_time(
-                t,
-                current_weights,
-                current_portfolio_value,
-                past_returns,
-                past_volumes,
-                **kwargs)
-        super().values_in_time(
-            t,
-            current_weights,
-            current_portfolio_value,
-            past_returns,
-            past_volumes,
-            **kwargs)
+            risk.values_in_time(**kwargs)
 
-    def compile_to_cvxpy(self, w_plus, z, value):
-        risks = [risk.compile_to_cvxpy(w_plus, z, value)
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        risks = [risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
                  for risk in self.riskmodels]
         return cvx.max(cvx.hstack(risks))
