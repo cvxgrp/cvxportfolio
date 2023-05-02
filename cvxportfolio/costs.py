@@ -50,24 +50,24 @@ class BaseCost(CvxpyExpressionEstimator):
     #LEGACY = False # used by some methods that need to know if they run in legacy mode
     #INITIALIZED = False # used to interface w/ old cvxportfolio
     
-    # PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
-    def weight_expr(self, t, w_plus, z, value):
-        cost, constr = self._estimate(t, w_plus, z, value)
-        return cost, constr
-
-    def _estimate(self, t, w_plus, z, value):
-        """Temporary interface to old cvxportfolio."""
-        #self.LEGACY = True
-        #if not self.INITIALIZED:
-        placehoder_returns = pd.DataFrame(np.zeros((1, w_plus.shape[0] if not w_plus is None else z.shape[0])))
-        self.pre_evaluation(placehoder_returns, None, t, None)
-        self.legacy_expression = self.compile_to_cvxpy(w_plus, z, value)
-        #self.INITIALIZED = True
-        self.values_in_time(t, None, value, None, None)
-        return self.legacy_expression, []
-
-    def weight_expr_ahead(self, t, tau, w_plus, z, value):
-        return self.weight_expr(t, w_plus, z, value)
+    # # PLACEHOLDER METHOD TO USE OLD INTERFACE WITH NEW INTERFACE
+    # def weight_expr(self, t, w_plus, z, value):
+    #     cost, constr = self._estimate(t, w_plus, z, value)
+    #     return cost, constr
+    #
+    # def _estimate(self, t, w_plus, z, value):
+    #     """Temporary interface to old cvxportfolio."""
+    #     #self.LEGACY = True
+    #     #if not self.INITIALIZED:
+    #     placehoder_returns = pd.DataFrame(np.zeros((1, w_plus.shape[0] if not w_plus is None else z.shape[0])))
+    #     self.pre_evaluation(placehoder_returns, None, t, None)
+    #     self.legacy_expression = self.compile_to_cvxpy(w_plus, z, value)
+    #     #self.INITIALIZED = True
+    #     self.values_in_time(t, None, value, None, None)
+    #     return self.legacy_expression, []
+    #
+    # def weight_expr_ahead(self, t, tau, w_plus, z, value):
+    #     return self.weight_expr(t, w_plus, z, value)
 
     def __mul__(self, other):
         """Multiply by constant."""
@@ -167,22 +167,22 @@ class CombinedCosts(BaseCost):
     # TEMPORARY IN ORDER NOT TO BREAK TESTS
     # THESE METHODS ARE DEPRECATED
 
-    def optimization_log(self, t):
-        return sum(
-            [
-                multiplier
-                * (cost.expression.value if hasattr(cost, "expression") else 0.0)
-                for multiplier, cost in zip(self.multipliers, self.costs)
-            ]
-        )
-
-    def simulation_log(self, t):
-        return sum(
-            [
-                multiplier * (cost.last_cost if hasattr(cost, "last_cost") else 0.0)
-                for multiplier, cost in zip(self.multipliers, self.costs)
-            ]
-        )
+    # def optimization_log(self, t):
+    #     return sum(
+    #         [
+    #             multiplier
+    #             * (cost.expression.value if hasattr(cost, "expression") else 0.0)
+    #             for multiplier, cost in zip(self.multipliers, self.costs)
+    #         ]
+    #     )
+    #
+    # def simulation_log(self, t):
+    #     return sum(
+    #         [
+    #             multiplier * (cost.last_cost if hasattr(cost, "last_cost") else 0.0)
+    #             for multiplier, cost in zip(self.multipliers, self.costs)
+    #         ]
+    #     )
 
 
 class HcostModel(BaseCost):

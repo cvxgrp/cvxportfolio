@@ -42,10 +42,10 @@ class BaseReturnsModel(BaseCost):
     Use this to define any logic common to return models.
     """
 
-    # interface to old
-    def weight_expr(self, t, w_plus, z=None, value=None):
-        cost, constr = self._estimate(t, w_plus, z, value)
-        return cost
+    # # interface to old
+    # def weight_expr(self, t, w_plus, z=None, value=None):
+    #     cost, constr = self._estimate(t, w_plus, z, value)
+    #     return cost
 
 
 # class Kelly(BaseReturnsModel):
@@ -148,11 +148,12 @@ class ReturnsForecast(BaseReturnsModel):
     def __init__(self, r_hat=None, #rolling=None, halflife=None, 
                 lastforcash=True):
         
-        # if not r_hat is None:
-#             self.r_hat = ParameterEstimator(r_hat)
-#         else:
-#             self.r_hat = None
-        self.r_hat = r_hat
+        if not r_hat is None:
+            self.r_hat = DataEstimator(r_hat)
+        else:
+            self.r_hat = None
+            
+        # self.r_hat = r_hat
         
         #self.rolling = rolling
         #self.halflife = halflife
@@ -162,23 +163,23 @@ class ReturnsForecast(BaseReturnsModel):
     
         #self.name = 'PLACEHOLDER'
        
-    # @classmethod # we make it a classmethod so that also covariances can use it
-    # def update_full_mean(cls, past_returns, last_estimation, last_counts, last_time):
-    #
-    #     if last_time is None: # full estimation
-    #         estimation = past_returns.sum()
-    #         counts = past_returns.count()
-    #     else:
-    #         assert last_time == past_returns.index[-2]
-    #         estimation = last_estimation * last_counts + past_returns.iloc[-1].fillna(0.)
-    #         counts = last_counts + past_returns.iloc[-1:].count()
-    #
-    #     return estimation/counts, counts, past_returns.index[-1]
+    @classmethod # we make it a classmethod so that also covariances can use it
+    def update_full_mean(cls, past_returns, last_estimation, last_counts, last_time):
+
+        if last_time is None: # full estimation
+            estimation = past_returns.sum()
+            counts = past_returns.count()
+        else:
+            assert last_time == past_returns.index[-2]
+            estimation = last_estimation * last_counts + past_returns.iloc[-1].fillna(0.)
+            counts = last_counts + past_returns.iloc[-1:].count()
+
+        return estimation/counts, counts, past_returns.index[-1]
             
         
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+    def pre_evaluation(self, universe, backtest_times):
         
-        self.r_hat_parameter = cvx.Parameter(returns.shape[1])
+        self.r_hat_parameter = cvx.Parameter(len(universe))
         
         # if not self.rolling is None:
         #     forecasts = returns.rolling(window=self.rolling).mean().shift(1)
@@ -201,7 +202,9 @@ class ReturnsForecast(BaseReturnsModel):
         # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
     
     
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
+        
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         if self.r_hat is None:
             tmp = past_returns.mean()
@@ -209,7 +212,7 @@ class ReturnsForecast(BaseReturnsModel):
                 tmp.iloc[-1] = past_returns.iloc[-1, -1]
             self.r_hat_parameter.value = tmp.values
         else:
-            self.r_hat_parameter.value = self.r_hat.loc[t]
+            self.r_hat_parameter.value = self.r_hat.current_value
 
         # if self.full:
         #     self.last_fullmean_estimation, self.last_fullmean_counts, self.last_fullmean_time = \
@@ -222,7 +225,7 @@ class ReturnsForecast(BaseReturnsModel):
         #
         # super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
         
-    def compile_to_cvxpy(self, w_plus, z, v):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         return w_plus.T @ self.r_hat_parameter
         
    
@@ -354,7 +357,10 @@ class ReturnsForecastError(BaseRiskModel):
     def __init__(self, deltas=None, zeroforcash=True, # rolling=None, halflife=None
         ):
         
-        self.deltas = deltas
+        if not deltas is None:
+            self.deltas = DataEstimator(deltas)
+        else:
+            self.deltas = None
         self.zeroforcash = zeroforcash
         # if not deltas is None:
         #     self.mode = 'user-provided'
@@ -377,21 +383,23 @@ class ReturnsForecastError(BaseRiskModel):
         #
         # assert False
             
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        self.deltas_parameter = cvx.Parameter(returns.shape[1]-1, nonneg=True)
+    def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
+        self.deltas_parameter = cvx.Parameter(len(universe), nonneg=True)
         # if not self.mode == 'user-provided':
         #     self.deltas = cvx.Parameter(returns.shape[1]-1, nonneg=True)
         # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         if self.deltas is None:
             # if self.mode == 'full':
-            tmp = (past_returns.iloc[:,:-1].std() / np.sqrt(past_returns.iloc[:,:-1].count())).values
+            tmp = (past_returns.iloc[:,:].std() / np.sqrt(past_returns.iloc[:,:].count())).values
             if self.zeroforcash:
                 tmp[-1] = 0.
             self.deltas_parameter.value = tmp
         else:
-            self.deltas_parameter.value = self.deltas.loc[t]
+            self.deltas_parameter.value = self.deltas.current_value
             
         # if self.mode == 'rolling':
         #     self.deltas.value = (past_returns.iloc[-self.rolling:,:-1].std() / np.sqrt(self.rolling)).values
@@ -399,10 +407,9 @@ class ReturnsForecastError(BaseRiskModel):
         #     raise NotImplementedError
         # super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
 
-    def compile_to_cvxpy(self, w_plus, z, v):
-        # TODO fix benchmark passing here
-        return cvx.abs(w_plus #- self.benchmark_weights
-            )[:-1].T @ self.deltas_parameter
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile to cvxpy expression."""
+        return cvx.abs(w_plus_minus_w_bm).T @ self.deltas_parameter
 
 
 # class RollingWindowReturnsForecastErrorRisk(ReturnsForecastErrorRisk):

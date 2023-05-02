@@ -66,40 +66,41 @@ __all__ = [
 
 class BaseRiskModel(BaseCost):
     # benchmark_weights = None
+    pass
 
-    # DEPRECATED,BENCHMARK WEIGHTS ARE NOW PASSED BY set_benchmark
-    def __init__(self, **kwargs):
-        self.w_bench = kwargs.pop("w_bench", 0.0)
-        self.benchmark_weights = None #self.w_bench
-        # super(BaseRiskModel, self).__init__()
-        # self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
-
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        if not hasattr(self, 'benchmark_weights') or self.benchmark_weights is None:
-            bw = pd.Series(0.0, returns.columns)
-            bw.iloc[-1] = 1.0
-            self.benchmark_weights = bw  # ParameterEstimator(bw)
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-
-    def set_benchmark(self, benchmark_weights):
-        """We can only have constant benchmark because otherwise it is not dpp compliant.
-
-        DEPRECATED: IT SHOULD NOT BE PASSED HERE. IT SHOULD BE PASSED TO POLICY
-            AND ADDED w_plus_wrt_bm as a variable with equality constraint.
-        """
-        self.benchmark_weights = benchmark_weights  # ParameterEstimator(benchmark_weights)
-
-    def weight_expr(self, t, w_plus, z, value):
-        """Temporary placeholder while migrating to new interface"""
-        self.expression, _ = self._estimate(t, w_plus - self.w_bench, z, value)
-        return self.expression, []
-
-    # DEPRECATED, MAYBE INCLUDE ITS LOGIC AT BASECOST LEVEL
-    def optimization_log(self, t):
-        if self.expression.value:
-            return self.expression.value
-        else:
-            return np.NaN
+    # # DEPRECATED,BENCHMARK WEIGHTS ARE NOW PASSED BY set_benchmark
+    # def __init__(self, **kwargs):
+    #     self.w_bench = kwargs.pop("w_bench", 0.0)
+    #     self.benchmark_weights = None #self.w_bench
+    #     # super(BaseRiskModel, self).__init__()
+    #     # self.gamma_half_life = kwargs.pop("gamma_half_life", np.inf)
+    #
+    # def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+    #     if not hasattr(self, 'benchmark_weights') or self.benchmark_weights is None:
+    #         bw = pd.Series(0.0, returns.columns)
+    #         bw.iloc[-1] = 1.0
+    #         self.benchmark_weights = bw  # ParameterEstimator(bw)
+    #     super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+    #
+    # def set_benchmark(self, benchmark_weights):
+    #     """We can only have constant benchmark because otherwise it is not dpp compliant.
+    #
+    #     DEPRECATED: IT SHOULD NOT BE PASSED HERE. IT SHOULD BE PASSED TO POLICY
+    #         AND ADDED w_plus_wrt_bm as a variable with equality constraint.
+    #     """
+    #     self.benchmark_weights = benchmark_weights  # ParameterEstimator(benchmark_weights)
+    #
+    # def weight_expr(self, t, w_plus, z, value):
+    #     """Temporary placeholder while migrating to new interface"""
+    #     self.expression, _ = self._estimate(t, w_plus - self.w_bench, z, value)
+    #     return self.expression, []
+    #
+    # # DEPRECATED, MAYBE INCLUDE ITS LOGIC AT BASECOST LEVEL
+    # def optimization_log(self, t):
+    #     if self.expression.value:
+    #         return self.expression.value
+    #     else:
+    #         return np.NaN
 
 
 # def random_projector(past_returns, N):
