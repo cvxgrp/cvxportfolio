@@ -165,6 +165,80 @@ class TestRisks(unittest.TestCase):
         (np.abs(self.w_plus_minus_w_bm.value) @ np.sqrt(should_be))**2
         
         ))
+        
+    def test_low_rank_covariance(self):
+        
+        F = pd.DataFrame(np.random.randn(2, self.N), columns=self.returns.columns)
+        d = pd.Series(np.random.uniform(self.N), self.returns.columns)
+        risk_model = FactorModelCovariance(F=F, d=d)
+        
+        cvxpy_expression = self.boilerplate(risk_model)
+        self.assertTrue(cvxpy_expression.is_convex())
+        
+        risk_model.values_in_time(t=self.returns.index[12], past_returns='hello')
+        self.w_plus_minus_w_bm.value = np.random.randn(self.N)
+        
+        self.assertTrue(np.isclose(cvxpy_expression.value, 
+            self.w_plus_minus_w_bm.value @ np.diag(d) @ self.w_plus_minus_w_bm.value + \
+                ((F @ self.w_plus_minus_w_bm.value)**2).sum()))
+                
+    def test_estimated_low_rank_covariance(self):
+        
+        risk_model = FactorModelCovariance(normalize=False)
+        
+        cvxpy_expression = self.boilerplate(risk_model)
+        self.assertTrue(cvxpy_expression.is_convex())
+        
+        t = pd.Timestamp('2014-06-02')
+        
+        past = self.returns.loc[self.returns.index < t]
+        
+        FS = past.T @ past / len(past)
+        FS.iloc[:, -1] = 0.
+        FS.iloc[-1, :] = 0.
+        eigval, eigvec = np.linalg.eigh(FS)
+        F = np.sqrt(eigval[-1]) * eigvec[:, -1]
+        d = np.diag(FS) - F**2
+        
+        risk_model.values_in_time(t=t, past_returns=past)
+        self.w_plus_minus_w_bm.value = np.random.randn(self.N)
+        
+        self.assertTrue(np.isclose(cvxpy_expression.value,
+            self.w_plus_minus_w_bm.value @ np.diag(d) @ self.w_plus_minus_w_bm.value + \
+                ((F @ self.w_plus_minus_w_bm.value)**2).sum()))
+        
+        # self.assertTrue(np.isclose(cvxpy_expression.value,
+        #     self.w_plus_minus_w_bm.value @ np.diag(d) @ self.w_plus_minus_w_bm.value + \
+        #         ((F @ self.w_plus_minus_w_bm.value)**2).sum()))
+        
+        # w_plus = cvx.Variable(N)
+        # risk_model.pre_evaluation(
+        #     returns,
+        #     None,
+        #     start_time=returns.index[0],
+        #     end_time=None)
+        # cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+        # assert cvxpy_expression.is_convex()
+        #
+        # t = pd.Timestamp('2014-06-02')
+        #
+        # # raise Exception
+        # orig = returns.iloc[:, :N].loc[returns.index < t].iloc[-PAST:]
+        # orig = orig.T @ orig / PAST
+        # eigval, eigvec = np.linalg.eigh(orig)
+        #
+        # should_be = (eigvec[:, -2:] @ np.diag(eigval[-2:]) @ eigvec[:, -2:].T)
+        # should_be += np.diag(np.diag(orig) - np.diag(should_be))
+        #
+        # w_plus.value = np.random.randn(N)
+        # risk_model.values_in_time(t,
+        #                           current_weights=None,
+        #                           current_portfolio_value=None,
+        #                           past_returns=returns.loc[returns.index < t],
+        #                           past_volumes=None)
+        #
+        # assert np.isclose(cvxpy_expression.value,
+        #                   w_plus.value @  should_be @ w_plus.value)
 
 
 
@@ -293,74 +367,74 @@ if __name__ == '__main__':
 #                       np.diag(np.diag(should_be)) @ w_plus.value)
 
 
-def test_low_rank_rolling_risk(returns):
+# def test_low_rank_rolling_risk(returns):
+#
+#     PAST = 30
+#     N = returns.shape[1]
+#     returns.iloc[:, -1] = 0.
+#
+#     risk_model = LowRankRollingRisk(lookback=PAST)
+#
+#     w_plus = cvx.Variable(N)
+#     risk_model.pre_evaluation(
+#         returns,
+#         None,
+#         start_time=returns.index[0],
+#         end_time=None)
+#     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+#     assert cvxpy_expression.is_convex()
+#
+#     t = pd.Timestamp('2014-06-02')
+#     should_be = returns.iloc[:, :N].loc[returns.index < t].iloc[-PAST:]
+#     should_be = should_be.T @ should_be / PAST
+#
+#     w_plus.value = np.random.randn(N)
+#     risk_model.values_in_time(t,
+#                               current_weights=None,
+#                               current_portfolio_value=None,
+#                               past_returns=returns.loc[returns.index < t],
+#                               past_volumes=None)
+#
+#     assert np.isclose(cvxpy_expression.value,
+#                       w_plus.value @  should_be @ w_plus.value)
 
-    PAST = 30
-    N = returns.shape[1]
-    returns.iloc[:, -1] = 0.
 
-    risk_model = LowRankRollingRisk(lookback=PAST)
-
-    w_plus = cvx.Variable(N)
-    risk_model.pre_evaluation(
-        returns,
-        None,
-        start_time=returns.index[0],
-        end_time=None)
-    cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
-    assert cvxpy_expression.is_convex()
-
-    t = pd.Timestamp('2014-06-02')
-    should_be = returns.iloc[:, :N].loc[returns.index < t].iloc[-PAST:]
-    should_be = should_be.T @ should_be / PAST
-
-    w_plus.value = np.random.randn(N)
-    risk_model.values_in_time(t,
-                              current_weights=None,
-                              current_portfolio_value=None,
-                              past_returns=returns.loc[returns.index < t],
-                              past_volumes=None)
-
-    assert np.isclose(cvxpy_expression.value,
-                      w_plus.value @  should_be @ w_plus.value)
-
-
-def test_RollingWindowFactorModelRisk(returns):
-
-    PAST = 30
-    N = returns.shape[1]
-    returns.iloc[:, -1] = 0.
-
-    risk_model = RollingWindowFactorModelRisk(lookback=PAST, num_factors=2)
-
-    w_plus = cvx.Variable(N)
-    risk_model.pre_evaluation(
-        returns,
-        None,
-        start_time=returns.index[0],
-        end_time=None)
-    cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
-    assert cvxpy_expression.is_convex()
-
-    t = pd.Timestamp('2014-06-02')
-
-    # raise Exception
-    orig = returns.iloc[:, :N].loc[returns.index < t].iloc[-PAST:]
-    orig = orig.T @ orig / PAST
-    eigval, eigvec = np.linalg.eigh(orig)
-
-    should_be = (eigvec[:, -2:] @ np.diag(eigval[-2:]) @ eigvec[:, -2:].T)
-    should_be += np.diag(np.diag(orig) - np.diag(should_be))
-
-    w_plus.value = np.random.randn(N)
-    risk_model.values_in_time(t,
-                              current_weights=None,
-                              current_portfolio_value=None,
-                              past_returns=returns.loc[returns.index < t],
-                              past_volumes=None)
-
-    assert np.isclose(cvxpy_expression.value,
-                      w_plus.value @  should_be @ w_plus.value)
+# def test_RollingWindowFactorModelRisk(returns):
+#
+#     PAST = 30
+#     N = returns.shape[1]
+#     returns.iloc[:, -1] = 0.
+#
+#     risk_model = RollingWindowFactorModelRisk(lookback=PAST, num_factors=2)
+#
+#     w_plus = cvx.Variable(N)
+#     risk_model.pre_evaluation(
+#         returns,
+#         None,
+#         start_time=returns.index[0],
+#         end_time=None)
+#     cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+#     assert cvxpy_expression.is_convex()
+#
+#     t = pd.Timestamp('2014-06-02')
+#
+#     # raise Exception
+#     orig = returns.iloc[:, :N].loc[returns.index < t].iloc[-PAST:]
+#     orig = orig.T @ orig / PAST
+#     eigval, eigvec = np.linalg.eigh(orig)
+#
+#     should_be = (eigvec[:, -2:] @ np.diag(eigval[-2:]) @ eigvec[:, -2:].T)
+#     should_be += np.diag(np.diag(orig) - np.diag(should_be))
+#
+#     w_plus.value = np.random.randn(N)
+#     risk_model.values_in_time(t,
+#                               current_weights=None,
+#                               current_portfolio_value=None,
+#                               past_returns=returns.loc[returns.index < t],
+#                               past_volumes=None)
+#
+#     assert np.isclose(cvxpy_expression.value,
+#                       w_plus.value @  should_be @ w_plus.value)
 
 
 def test_worst_case_risk(returns):

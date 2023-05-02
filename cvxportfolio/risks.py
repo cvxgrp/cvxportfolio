@@ -578,10 +578,13 @@ class FactorModelCovariance(BaseRiskModel):
 
     factor_Sigma = None
 
-    def __init__(self, F=None, d=None, num_factors=1):
-        self.F = F
-        self.d = d
+    def __init__(self, F=None, d=None, num_factors=1, addmean=True, zeroforcash=True, normalize=False):
+        self.F = F if F is None else ParameterEstimator(F) 
+        self.d = d if d is None else DataEstimator(d) 
         self.num_factors = num_factors
+        self.addmean = addmean
+        self.zeroforcash = zeroforcash
+        self.normalize = normalize
         # if not (factor_Sigma is None):
         #     self.factor_Sigma = DataEstimator(factor_Sigma, use_last_available_time=True)
         #     # we copy the exposures because we'll modify them
@@ -598,7 +601,7 @@ class FactorModelCovariance(BaseRiskModel):
         #     "and apply them to the exposures.")
         
     @staticmethod
-    def build_low_rank_model(past_returns, num_factors=10, iters=10, shrink=True):
+    def build_low_rank_model(rets, num_factors=10, iters=10, normalize=True, shrink=True):
         r"""Build a low rank risk model from past returns that include NaNs.
     
         This is an experimental procedure that may work well on past returns
@@ -606,13 +609,16 @@ class FactorModelCovariance(BaseRiskModel):
         If there are (many) NaNs, one should probably also use a rather 
         large risk forecast error.
         """
-        rets = past_returns.iloc[:,:-1] # drop cash
+        # rets = past_returns.iloc[:,:-1] # drop cash
         nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
+        normalizer = np.sqrt((rets**2).mean()) 
+        if normalize:
+            normalized = rets/(normalizer + 1E-8)
+        else:
+            normalized = rets
         if nan_fraction:
             if nan_fraction > 0.1 and not shrink:
                 warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
-            normalizer = np.sqrt((rets**2).mean())
-            normalized = rets/normalizer
             nan_implicit_imputation = pd.DataFrame(0., columns=normalized.columns, index = normalized.index)
             for i in range(iters):
                 u, s, v = np.linalg.svd(normalized.fillna(nan_implicit_imputation), full_matrices=False)
@@ -622,30 +628,40 @@ class FactorModelCovariance(BaseRiskModel):
         else:
             u, s, v = np.linalg.svd(normalized, full_matrices=False)
         F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
-        F = pd.DataFrame(F.T * normalizer.values, columns=normalizer.index)
+        if normalize:
+            F = pd.DataFrame(F.T * (normalizer.values + 1E-8), columns=normalizer.index)
+        else:
+            F = pd.DataFrame(F.T, columns=normalizer.index)
         idyosyncratic = normalizer**2 - (F**2).sum(0)
-        if not np.all(idyosyncratic > 0.):
+        if not np.all(idyosyncratic >= 0.):
             raise ForeCastError("Low rank risk estimation with iterative SVD did not work.")
         return F, idyosyncratic
 
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+    def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe, backtest_times)
         # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-        self.idyosync_sqrt_parameter = cvx.Parameter(returns.shape[1]-1)
-        self.F_parameter = cvx.Parameter((self.num_factors, returns.shape[1]-1))
+        self.idyosync_sqrt_parameter = cvx.Parameter(len(universe))
+        self.F_parameter = cvx.Parameter((self.num_factors, len(universe))) if self.F is None else self.F
         # if not (self.factor_Sigma is None):
         #     self.factor_Sigma_sqrt = cvx.Parameter(self.factor_Sigma.shape, PSD=True)
         # self.forecast_error_penalizer = cvx.Parameter(returns.shape[1], nonneg=True)
 
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         if self.F is None:
-            F, d = self.build_low_rank_model(past_returns, num_factors=self.num_factors)
+            if not self.addmean:
+                past_returns = past_returns - past_returns.mean()
+            if self.zeroforcash:
+                past_returns = pd.DataFrame(past_returns, copy=True)
+                past_returns.iloc[:, -1] = 0.
+            F, d = self.build_low_rank_model(past_returns, num_factors=self.num_factors, normalize=self.normalize)
+            self.F_parameter.value = F.values
+            d = d.values
         else:
-            F = self.F[t]
-            d = self.d[t]
-            
-        self.F_parameter.value = F.values
-        self.idyosync_sqrt_parameter.value = np.sqrt(d).values
+            d = self.d.current_value
+    
+        self.idyosync_sqrt_parameter.value = np.sqrt(d)
         # super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
         # self.idyosync_sqrt.value = np.sqrt(self.idyosync.value)
         # if not (self.factor_Sigma is None):
@@ -654,10 +670,9 @@ class FactorModelCovariance(BaseRiskModel):
         #     self.exposures.value = factor_Sigma_sqrt @ self.exposures.value
         # self.forecast_error_penalizer.value = np.sqrt(np.sum(self.exposures.value**2, axis=0) + self.idyosync.value)
 
-    def compile_to_cvxpy(self, w_plus, z, value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         # TODO benchmark passed in args
-        self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt_parameter, (w_plus #- self.benchmark_weights
-        )[:-1]))
+        self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt_parameter, w_plus_minus_w_bm))
         assert self.expression.is_dcp(dpp=True)
         # if not (self.factor_Sigma is None):
         #     self.expression += cvx.sum_squares(
@@ -665,8 +680,7 @@ class FactorModelCovariance(BaseRiskModel):
         #     # self.expression += cvx.quad_form((w_plus.T @ self.exposures.T).T, self.factor_Sigma)
         #     assert self.expression.is_dcp(dpp=True)
         # else:
-        self.expression += cvx.sum_squares(self.F_parameter @ (w_plus #- self.benchmark_weights
-        )[:-1])
+        self.expression += cvx.sum_squares(self.F_parameter @ w_plus_minus_w_bm)
         assert self.expression.is_dcp(dpp=True)
 
         # forecast error risk, assuming factor_Sigma is the identity
@@ -674,7 +688,7 @@ class FactorModelCovariance(BaseRiskModel):
         #     cvx.abs(w_plus - self.benchmark_weights).T @ self.forecast_error_penalizer
         #     # @ cvx.sqrt(cvx.sum(cvx.square(self.exposures), axis=0) + self.idyosync)
         # )
-        assert self.expression.is_dcp(dpp=True)
+        # assert self.expression.is_dcp(dpp=True)
         return self.expression
         
 
