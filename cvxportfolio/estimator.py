@@ -35,35 +35,19 @@ class Estimator:
     on them.
     """
 
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-        """Run computation on estimators before the simulation with full prescience.
+    def pre_evaluation(self, universe, backtest_times):
+        """Initialize estimator and its sub-estimators.
 
-        This function is called by Simulator classes before the
-        start of a backtest with the full dataset available to the
-        simulator. This is useful for estimators such as pandas.rolling_mean
-        which are faster (and easier) when vectorized rather than called separately
-        at each point in time.
-
-        It should be used very carefully, if you
-        are not sure do not implement this method. You can use
-        values_in_time to build lazily whatever you would
-        build here beforehand. If you do implement this, double
-        check that at each point in time only past data
-        (with respect to that point) is used and not future data.
-
-        Args:
-            returns (pandas.DataFrame): market returns.
-            volumes (pandas.DataFrame): market volumes.
-            start_time (pandas.Timestamp): start time of the backtest.
-            end_time (pandas.Timestamp): end time of the backtest.
-            **kwargs: extra arguments for future development.
+        :param universe: names of assets to be traded 
+        :type universe: pandas.Index
+        :param backtest_times: times at which the estimator will be evaluated
+        :type backtest_time: pandas.DatetimeIndex
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "pre_evaluation"):
-                subestimator.pre_evaluation(
-                    returns, volumes, start_time, end_time, **kwargs)
+                subestimator.pre_evaluation(universe, backtest_times)
 
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
+    def values_in_time(self, **kwargs):
         """Evaluates estimator at a point in time recursively on its sub-estimators.
 
         This function is called by Simulator classes on Policy classes
@@ -72,25 +56,18 @@ class Estimator:
         and call this base function (via `super()`) before
         they do their internal computation. CvxpyExpression estimators
         should instead define this method to update their Cvxpy parameters.
-
-        Args:
-            t (pd.TimeStamp): point in time of the simulation.
-            current_weights (pd.Series): current portfolio weights.
-            current_portfolio_value (float): current total value of the portfolio.
-            past_returns (pd.DataFrame): view of the market returns up to today (i.e., the
-                last row are equal to today's open prices divided by yesterday's, minus 1).
-            past_volumes (pd.DataFrame): view of the market volumes up to yesterday's.
-            kwargs (dict): extra arguments for future development.
+        
+        Once we finalize the interface all parameters will be listed here.
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "values_in_time"):
-                subestimator.values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+                subestimator.values_in_time(**kwargs)
 
 
 class CvxpyExpressionEstimator(Estimator):
     """Base class for estimators that are Cvxpy expressions."""
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile term to cvxpy expression.
 
         This is called by a Policy class on its terms before the start of the backtest
@@ -103,14 +80,14 @@ class CvxpyExpressionEstimator(Estimator):
         In MultiPeriodOptimization policies this is called separately
         for costs and constraints at different look-ahead steps with
         the corresponding w_plus and z.
-
-        Args:
-            w_plus (cvxpy.Variable): post-trade allocation weights vector
-            z (cvxpy.Variable): trades weight vector
-            portfolio_value (cvxpy.Parameter): scalar Parameter that holds the value of the portfolio
-
-        Returns:
-            cvxpy.Expression
+        
+        
+        :param w_plus: post-trade weights 
+        :type w_plus: cvxpy.Variable
+        :param z: trade weights 
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: post-trade weights minus benchmark weights 
+        :type w_plus_minus_w_bm: cvxpy.Variable
         """
         raise NotImplementedError
 
@@ -265,18 +242,13 @@ class ParameterEstimator(cvxpy.Parameter, DataEstimator):
         self.allow_nans = allow_nans
         # super(DataEstimator).__init__(data, use_last_available_time)
 
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+    def pre_evaluation(self, universe, backtest_times):
         """Use the start time of the simulation to initialize the Parameter."""
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-        value = super().values_in_time(start_time, None, None, None, None)
-        super().__init__(
-            value.shape if hasattr(value, "shape") else (),
-            PSD=self.positive_semi_definite,
-            nonneg=self.non_negative,
-        )
-        # self.parameter = self
-        # self.parameter = cvxpy.Parameter(value.shape if hasattr(value, 'shape') else (), PSD=self.positive_semi_definite, nonneg=self.non_negative)
+        super().pre_evaluation(universe, backtest_times)
+        value = super().values_in_time(t=backtest_times[0])
+        super().__init__(value.shape if hasattr(value, "shape") else (), 
+            PSD=self.positive_semi_definite, nonneg=self.non_negative)
 
-    def values_in_time(self, t, *args, **kwargs):
+    def values_in_time(self, t, **kwargs):
         """Update Cvxpy Parameter value."""
-        self.value = super().values_in_time(t, *args, **kwargs)
+        self.value = super().values_in_time(t=t, **kwargs)

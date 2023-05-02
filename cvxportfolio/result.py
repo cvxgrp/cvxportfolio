@@ -309,7 +309,7 @@ class BackTest(CommonComputations):
             h, self.z.loc[t], self.u.loc[t], self.tcost.loc[t], self.hcost_stocks.loc[t], self.hcost_cash.loc[t] = \
                 simulator.simulate(t=t, h=h, policy=self.policy)
         
-        self.h.loc[self.end_time] = h    
+        self.h.loc[pd.Timestamp(self.end_time)] = h    
         
         self.PPY = 252
         self.timedelta = pd.Timedelta('1d')

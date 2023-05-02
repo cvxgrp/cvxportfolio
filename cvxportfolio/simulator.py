@@ -137,7 +137,7 @@ class MarketSimulator(Estimator):
             per_share_fixed_cost=0.005,
             transaction_cost_coefficient_b=1.,
             transaction_cost_exponent=1.5,
-            rolling_window_sigma_estimator=1000,
+            halflife_sigma_estimator=250,
             spread_on_borrowing_stocks_percent=.5,
             spread_on_long_positions_percent=None,
             dividends=0.,
@@ -182,7 +182,7 @@ class MarketSimulator(Estimator):
         self.per_share_fixed_cost = per_share_fixed_cost
         self.transaction_cost_coefficient_b = transaction_cost_coefficient_b
         self.transaction_cost_exponent = transaction_cost_exponent
-        self.rolling_window_sigma_estimator = rolling_window_sigma_estimator
+        self.halflife_sigma_estimator = halflife_sigma_estimator
         self.spread_on_borrowing_stocks_percent = spread_on_borrowing_stocks_percent
         self.spread_on_long_positions_percent = spread_on_long_positions_percent
         self.spread_on_lending_cash_percent = spread_on_lending_cash_percent
@@ -190,7 +190,7 @@ class MarketSimulator(Estimator):
 
         # compute my DataEstimator(s)
         self.sigma_estimate = DataEstimator(
-            self.returns.data.iloc[:, :-1].rolling(self.rolling_window_sigma_estimator).std().shift(1))
+            self.returns.data.iloc[:, :-1].ewm(halflife=self.halflife_sigma_estimator).std().shift(1))
 
     def prepare_data(self):
         """Build data from data storage and download interfaces.
@@ -199,9 +199,9 @@ class MarketSimulator(Estimator):
         at the `yfinance` level and use the estimator logic of TimeSeries directly.
         """
         self.database_accesses = {}
-        print('Updating data', end='')
+        print('Updating data')
         for stock in self.universe:
-            print('.', end='')
+            print('.')
             self.database_accesses[stock] = TimeSeries(
                 stock, base_location=self.base_location)
             self.database_accesses[stock].pre_evaluation()
@@ -211,7 +211,7 @@ class MarketSimulator(Estimator):
         self.database_accesses[self.cash_key] = TimeSeries(
             'DFF', source='fred', base_location=self.base_location)
         self.database_accesses[self.cash_key].pre_evaluation()
-        print()
+        # print()
 
         # build returns
         self.returns = pd.DataFrame(

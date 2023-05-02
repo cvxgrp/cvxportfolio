@@ -43,17 +43,17 @@ class BaseConstraint(CvxpyExpressionEstimator):
     
     #INITIALIZED = False # used to interface w/ old cvxportfolio
 
-    # interface to old cvxportfolio
-    def weight_expr(self, t, w_plus, z, v):
-        #if not self.INITIALIZED:
-        self.pre_evaluation(None, None, t, None)
-        self.legacy_expression = self.compile_to_cvxpy(w_plus, z, v)
-        #self.INITIALIZED = True
-        self.values_in_time(t, None, None, None, None)
-        if hasattr(self.legacy_expression, "__iter__"):
-            return self.legacy_expression
-        else:
-            return [self.legacy_expression]
+    # # interface to old cvxportfolio
+    # def weight_expr(self, t, w_plus, z, v):
+    #     #if not self.INITIALIZED:
+    #     self.pre_evaluation(None, None, t, None)
+    #     self.legacy_expression = self.compile_to_cvxpy(w_plus, z, v)
+    #     #self.INITIALIZED = True
+    #     self.values_in_time(t, None, None, None, None)
+    #     if hasattr(self.legacy_expression, "__iter__"):
+    #         return self.legacy_expression
+    #     else:
+    #         return [self.legacy_expression]
 
 
 class BaseTradeConstraint(BaseConstraint):
@@ -87,10 +87,15 @@ class ParticipationRateLimit(BaseTradeConstraint):
         self.volumes = ParameterEstimator(volumes)
         self.max_participation_rate = ParameterEstimator(
             max_fraction_of_volumes)
+        self.portfolio_value = cvx.Parameter(nonneg=True)
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def values_in_time(self, current_portfolio_value, **kwargs):
+        self.portfolio_value.value = current_portfolio_value
+        super().values_in_time(current_portfolio_value=current_portfolio_value, **kwargs)
+        
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return cvx.multiply(cvx.abs(z[:-1]), portfolio_value) <= cvx.multiply(
+        return cvx.multiply(cvx.abs(z[:-1]), self.portfolio_value) <= cvx.multiply(
             self.volumes, self.max_participation_rate
         )
 
@@ -98,7 +103,7 @@ class ParticipationRateLimit(BaseTradeConstraint):
 class LongOnly(BaseWeightConstraint):
     """A long only constraint."""
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] >= 0
 
@@ -113,7 +118,7 @@ class LeverageLimit(BaseWeightConstraint):
     def __init__(self, limit):
         self.limit = ParameterEstimator(limit)
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return cvx.norm(w_plus[:-1], 1) <= self.limit
 
@@ -121,7 +126,7 @@ class LeverageLimit(BaseWeightConstraint):
 class LongCash(BaseWeightConstraint):
     """Requires that cash be non-negative."""
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[-1] >= 0
 
@@ -129,7 +134,7 @@ class LongCash(BaseWeightConstraint):
 class DollarNeutral(BaseWeightConstraint):
     """Long-short dollar neutral strategy."""
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[-1] == 1
 
@@ -144,7 +149,7 @@ class MaxWeights(BaseWeightConstraint):
     def __init__(self, limit):
         self.limit = ParameterEstimator(limit)
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] <= self.limit
 
@@ -159,7 +164,7 @@ class MinWeights(BaseWeightConstraint):
     def __init__(self, limit):
         self.limit = ParameterEstimator(limit)
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] >= self.limit
 
@@ -177,7 +182,7 @@ class FactorMaxLimit(BaseWeightConstraint):
         self.factor_exposure = ParameterEstimator(factor_exposure)
         self.limit = ParameterEstimator(limit)
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return self.factor_exposure.T @ w_plus[:-1] <= self.limit
 
@@ -195,7 +200,7 @@ class FactorMinLimit(BaseWeightConstraint):
         self.factor_exposure = ParameterEstimator(factor_exposure)
         self.limit = ParameterEstimator(limit)
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return self.factor_exposure.T @ w_plus[:-1] >= self.limit
 
@@ -215,6 +220,6 @@ class FixedFactorLoading(BaseWeightConstraint):
         self.factor_exposure = ParameterEstimator(factor_exposure)
         self.target = ParameterEstimator(target)
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return self.factor_exposure.T @ w_plus[:-1] == self.target

@@ -149,7 +149,7 @@ class YfinanceBase(BaseData):
             updated = yf.download(symbol, progress=False, **kwargs)
             return cls.internal_process(updated)
         else:
-            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta('2d'):
+            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta('5d'):
                 return current
             new = yf.download(symbol, progress=False, start=current.index[-overlap], **kwargs)
             new = cls.internal_process(new)

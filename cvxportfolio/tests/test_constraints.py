@@ -16,14 +16,15 @@ class TestConstraints(unittest.TestCase):
         cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
         cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
         cls.w_plus = cvx.Variable(cls.returns.shape[1])
+        cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
         cls.z = cvx.Variable(cls.returns.shape[1])
         cls.N = cls.returns.shape[1]
         
     def build_constraint(self, constraint, t=None):
         """Initialize constraint, build expression, and point it to given time."""
-        constraint.pre_evaluation(None, None, pd.Timestamp("2022-01-01") if t is None else t, None)
-        cvxpy_expression = constraint.compile_to_cvxpy(self.w_plus, self.z, None)
-        constraint.values_in_time(pd.Timestamp("2020-01-01") if t is None else t, None, None, None, None)
+        constraint.pre_evaluation(self.returns.columns, self.returns.index)
+        cvxpy_expression = constraint.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        constraint.values_in_time(t=pd.Timestamp("2020-01-01") if t is None else t)
         return cvxpy_expression
         
     def test_long_only(self):
@@ -85,7 +86,7 @@ class TestConstraints(unittest.TestCase):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        model.values_in_time(self.returns.index[2], None, None, None, None)
+        model.values_in_time(t=self.returns.index[2])
         self.assertFalse(cons.value())
         
     def test_max_weights(self):
@@ -119,7 +120,7 @@ class TestConstraints(unittest.TestCase):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        model.values_in_time(self.returns.index[2], None, None, None, None)
+        model.values_in_time(t=self.returns.index[2])
         self.assertFalse(cons.value())
         
     def test_min_weights(self):
@@ -150,7 +151,7 @@ class TestConstraints(unittest.TestCase):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        model.values_in_time(self.returns.index[2], None, None, None, None)
+        model.values_in_time(t=self.returns.index[2])
         self.assertFalse(cons.value())
 
     def test_factor_max_limit(self):
@@ -220,9 +221,10 @@ class TestConstraints(unittest.TestCase):
         # avg daily value limits.
         value = 1e6
         model = cp.ParticipationRateLimit(self.volumes, max_fraction_of_volumes=0.1)
-        model.pre_evaluation(None, None, self.returns.index[0], None)
-        cons = model.compile_to_cvxpy(None, self.z, value)
-        model.values_in_time(t, None, None, None, None)
+        model.pre_evaluation(self.returns.columns, self.returns.index)
+        cons = model.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        model.values_in_time(t=t, current_portfolio_value=value)
+        print(model.portfolio_value.value)
         # cons = model.weight_expr(t, None, z, value)[0]
         tmp = np.zeros(self.N)
         tmp[:-1] = self.volumes.loc[t].values / value * 0.05
