@@ -57,6 +57,9 @@ def values_in_time(obj, t, tau=None):
 
     if hasattr(obj, '__call__'):
         return obj(t, tau)
+    
+    if hasattr(obj, 'index') and hasattr(obj.index, 'levels'):
+        return obj.loc[t]
 
     if isinstance(obj, pd.Series) or isinstance(obj, pd.DataFrame):
         try:
