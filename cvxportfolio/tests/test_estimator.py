@@ -29,8 +29,8 @@ class PlaceholderCallable:
         return self.value
 
 class TestEstimators(unittest.TestCase):
-
-
+        
+        
     def test_callable(self):
         estimator = DataEstimator(PlaceholderCallable(1.0))
         time = pd.Timestamp("2022-01-01")

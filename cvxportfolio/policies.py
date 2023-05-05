@@ -55,29 +55,29 @@ class BaseTradingPolicy(Estimator):
     
     #INITIALIZED = False # used to interface w/ old cvxportfolio
 
-    # TEMPORARY INTERFACE OLD NEW
-    def get_trades(self, portfolio, t=dt.datetime.today()):
-        """Trades list given current portfolio and time t."""
-        value = sum(portfolio)
-        w = pd.Series(portfolio, copy=True) / value
-        # raise Exception
-        #if not self.INITIALIZED:
-        self.pre_evaluation(returns=pd.DataFrame(0.0, index=[t], columns=portfolio.index),
-                volumes=None, start_time=t, end_time=None)
-        #self.INITIALIZED = True
-        return self.values_in_time(t, current_weights=w,
-                current_portfolio_value=value, past_returns=None, past_volumes=None) * value
-
-    def _nulltrade(self, portfolio):
-        return pd.Series(index=portfolio.index, data=0.0)
+    # # TEMPORARY INTERFACE OLD NEW
+    # def get_trades(self, portfolio, t=dt.datetime.today()):
+    #     """Trades list given current portfolio and time t."""
+    #     value = sum(portfolio)
+    #     w = pd.Series(portfolio, copy=True) / value
+    #     # raise Exception
+    #     #if not self.INITIALIZED:
+    #     self.pre_evaluation(returns=pd.DataFrame(0.0, index=[t], columns=portfolio.index),
+    #             volumes=None, start_time=t, end_time=None)
+    #     #self.INITIALIZED = True
+    #     return self.values_in_time(t, current_weights=w,
+    #             current_portfolio_value=value, past_returns=None, past_volumes=None) * value
+    #
+    # def _nulltrade(self, portfolio):
+    #     return pd.Series(index=portfolio.index, data=0.0)
 
 
 class Hold(BaseTradingPolicy):
     """Hold initial portfolio, don't trade."""
 
-    def values_in_time(self, t, current_weights, *args, **kwargs):
+    def values_in_time(self, current_weights, **kwargs):
         """Update sub-estimators and produce current estimate."""
-        return pd.Series(0.0, index=current_weights.index)
+        return pd.Series(0., index=current_weights.index)
 
 
 class RankAndLongShort(BaseTradingPolicy):
@@ -98,16 +98,16 @@ class RankAndLongShort(BaseTradingPolicy):
             if specified as Series it must be indexed by time.
     """
 
-    def __init__(self, signal, num_long=1, num_short=1, target_leverage=1.0):
+    def __init__(self, signal, num_long=1, num_short=1, target_leverage=1.):
         """Define sub-estimators at class attribute level."""
         self.num_long = DataEstimator(num_long)
         self.num_short = DataEstimator(num_short)
         self.signal = DataEstimator(signal)
         self.target_leverage = DataEstimator(target_leverage)
 
-    def values_in_time(self, t, current_weights, *args, **kwargs):
+    def values_in_time(self, t, current_weights, **kwargs):
         """Update sub-estimators and produce current estimate."""
-        super().values_in_time(t, current_weights, *args, **kwargs)
+        super().values_in_time(t=t, current_weights=current_weights, **kwargs)
 
         sorted_ret = pd.Series(
             self.signal.current_value, current_weights.index[:-1]
@@ -115,15 +115,15 @@ class RankAndLongShort(BaseTradingPolicy):
         short_positions = sorted_ret.index[: self.num_short.current_value]
         long_positions = sorted_ret.index[-self.num_long.current_value:]
 
-        target_weights = pd.Series(0.0, index=current_weights.index)
-        target_weights[short_positions] = -1.0
-        target_weights[long_positions] = 1.0
+        target_weights = pd.Series(0., index=current_weights.index)
+        target_weights[short_positions] = -1.
+        target_weights[long_positions] = 1.
 
         target_weights /= sum(abs(target_weights))
         target_weights *= self.target_leverage.current_value
 
         # cash is always 1.
-        target_weights[current_weights.index[-1]] = 1.0
+        target_weights[current_weights.index[-1]] = 1.
 
         return target_weights - current_weights
 
@@ -145,18 +145,18 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
     def __init__(self, targets):
         self.targets = targets
 
-    def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+    def pre_evaluation(self, universe, backtest_times):
         """Get list of trading days."""
-        self.trading_days = returns.index
-        super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+        self.trading_days = backtest_times
+        super().pre_evaluation(universe, backtest_times)
 
-    def values_in_time(self, t, current_weights, *args, **kwargs):
+    def values_in_time(self, t, current_weights, **kwargs):
         """Get current trade weights."""
-        super().values_in_time(t, current_weights, *args, **kwargs)
+        super().values_in_time(t=t, current_weights=current_weights, **kwargs)
         next_targets = self.targets.loc[self.targets.index >= t]
         assert np.allclose(next_targets.sum(1), 1.)
         if not len(next_targets):
-            return pd.Series(0.0, index=current_weights.index)
+            return pd.Series(0., index=current_weights.index)
         next_target = next_targets.iloc[0]
         next_target_day = next_targets.index[0]
         trading_days_to_target = len(self.trading_days[(
@@ -171,11 +171,11 @@ class SellAll(BaseTradingPolicy):
     or as an element in a (currently not implemented) composite policy.
     """
 
-    def values_in_time(self, t, current_weights, *args, **kwargs):
+    def values_in_time(self, t, current_weights, **kwargs):
         """Get current trade weights."""
-        super().values_in_time(t, current_weights, *args, **kwargs)
+        super().values_in_time(t=t, current_weights=current_weights, **kwargs)
         target = np.zeros(len(current_weights))
-        target[-1] = 1.0
+        target[-1] = 1.
         return target - current_weights
 
 
@@ -195,14 +195,14 @@ class FixedTrades(BaseTradingPolicy):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
         self.trades_weights = DataEstimator(trades_weights)
 
-    def values_in_time(self, t, current_weights, *args, **kwargs):
+    def values_in_time(self, t, current_weights, **kwargs):
         try:
-            super().values_in_time(t, current_weights, *args, **kwargs)
+            super().values_in_time(t=t, current_weights=current_weights, **kwargs)
             return pd.Series(
                 self.trades_weights.current_value,
                 current_weights.index)
         except MissingValuesError:
-            return pd.Series(0.0, current_weights.index)
+            return pd.Series(0., current_weights.index)
 
 
 class FixedWeights(BaseTradingPolicy):
@@ -221,16 +221,14 @@ class FixedWeights(BaseTradingPolicy):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
         self.target_weights = DataEstimator(target_weights)
 
-    def values_in_time(self, t, current_weights, *args, **kwargs):
+    def values_in_time(self, t, current_weights, **kwargs):
         try:
-            super().values_in_time(t, current_weights, *args, **kwargs)
-            return (
-                pd.Series(
-                    self.target_weights.current_value,
-                    current_weights.index) -
-                current_weights)
+            super().values_in_time(t=t, current_weights=current_weights, **kwargs)
+            return pd.Series(self.target_weights.current_value,
+                    current_weights.index) - current_weights
         except MissingValuesError:
-            return pd.Series(0.0, current_weights.index)
+            return pd.Series(0., current_weights.index)
+            
             
 class Uniform(FixedWeights):
     """Uniform allocation on non-cash assets."""
@@ -238,8 +236,8 @@ class Uniform(FixedWeights):
     def __init__(self):
         pass
     
-    def pre_evaluation(self, returns, *args, **kwargs):
-        target_weights = pd.Series(1., returns.columns)
+    def pre_evaluation(self, universe, backtest_times):
+        target_weights = pd.Series(1., universe)
         target_weights.iloc[-1] = 0
         target_weights /= sum(target_weights)
         self.target_weights = DataEstimator(target_weights)
