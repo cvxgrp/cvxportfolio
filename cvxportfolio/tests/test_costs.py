@@ -79,6 +79,36 @@ class TestCosts(unittest.TestCase):
         expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue( expr3.value == expr1.value - 2 * (expr2.value + expr1.value))
         
+    def test_hcost(self):
+        """Test holding cost model."""
+        dividends = pd.Series(np.random.randn(self.N-1), self.returns.columns[:-1])
+        dividends *= 0.
+        hcost = HoldingCost(spread_on_borrowing_stocks_percent=.5,
+                            dividends=dividends)
+        
+        hcost.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        expression = hcost.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        hcost.values_in_time(t=self.returns.index[12], past_returns=self.returns.iloc[:12])
+        cash_ret = self.returns.iloc[11][-1]
+        
+        for i in range(10):
+            self.w_plus.value = np.random.randn(self.N)
+            self.w_plus.value[-1] = 1 - np.sum(self.w_plus.value[:-1])
+        
+            print(expression.value)
+
+            print( -np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (cash_ret + .5/(100 * 252)))
+            print( - self.w_plus.value[:-1].T @ dividends)
+            print(-np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (cash_ret + 0.5/(100 * 252))
+               - self.w_plus.value[:-1].T @ dividends)
+
+            self.assertTrue(np.isclose(expression.value,
+                -np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (cash_ret + 0.5/(100 * 252))
+                #+ np.abs(self.w_plus.value[-1])* 0.5/(100 * 252)
+               - self.w_plus.value[:-1].T @ dividends
+            ))
+                            
+
 
 if __name__ == '__main__':
     unittest.main()
@@ -276,26 +306,6 @@ def test_tcost(returns, volumes, sigma):
 
 
 
-def test_hcost(returns):
-    """Test holding cost model."""
-    div = 0.0
-    n = len(returns.columns)
-    wplus = cvx.Variable(n)
-    wplus.value = np.arange(n) - n / 2
-    t = returns.index[1]
-    model = HcostModel(0.0)
-    hcost, _ = model.weight_expr(t, wplus, None, None)
-    bcost = sum(wplus[:-1].value * 0.0)
-    assert hcost.value == pytest.approx(bcost)
-
-    model = HcostModel(0.0, div)
-    hcost, _ = model.weight_expr(t, wplus, None, None)
-    divs = np.sum(wplus[:-1].value * div)
-    assert -hcost.value == pytest.approx(divs)
-
-    model = HcostModel(0.0, div)
-    hcost, _ = model.weight_expr(t, wplus, None, None)
-    assert hcost.value == pytest.approx(bcost - divs)
 
 
 def test_hcost_value_expr(returns):

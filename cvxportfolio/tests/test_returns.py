@@ -48,7 +48,13 @@ class TestReturns(unittest.TestCase):
         cvxpy_expression = self.boilerplate(alpha_model)
         alpha_model.values_in_time(t=self.returns.index[123], past_returns=None)
         self.w_plus.value = np.random.randn(self.N)
-        self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus.value @ self.returns.iloc[123]))
+        print(cvxpy_expression.value)
+        print(self.w_plus[:-1].value @ self.returns.iloc[123][:-1] + 
+        ((self.w_plus[-1].value + np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1]))
+        self.assertTrue(np.isclose(cvxpy_expression.value, 
+            self.w_plus[:-1].value @ self.returns.iloc[123][:-1]
+                + ((self.w_plus[-1].value + np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1])
+            ))
         
         
     def test_full_returns_forecast(self):
@@ -56,7 +62,8 @@ class TestReturns(unittest.TestCase):
         cvxpy_expression = self.boilerplate(alpha_model)
         t = self.returns.index[123]
         alpha_model.values_in_time(t=t, past_returns = self.returns.loc[self.returns.index<t])
-        self.w_plus.value = np.random.randn(self.N)
+        self.w_plus.value = np.random.uniform(size=self.N)
+        self.w_plus.value /= sum(self.w_plus.value)
         myforecast = self.returns.loc[self.returns.index < t].mean()
         myforecast.iloc[-1] = self.returns.iloc[122, -1]
         self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus.value @ myforecast))

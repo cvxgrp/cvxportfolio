@@ -28,9 +28,11 @@ import copy
 
 # from .expression import Expression
 # from .utils import null_checker, values_in_time
-from .estimator import CvxpyExpressionEstimator, ParameterEstimator
+from .estimator import CvxpyExpressionEstimator, ParameterEstimator, DataEstimator
 
-# __all__ = ["HoldingCost", "TransactionCost"]
+__all__ = ["HoldingCost", 
+#"TransactionCost"
+]
 
 
 class BaseCost(CvxpyExpressionEstimator):
@@ -176,46 +178,148 @@ class CombinedCosts(BaseCost):
     #     )
 
 
-class HcostModel(BaseCost):
+class HoldingCost(BaseCost):
     """A model for holding costs.
+    
+    In normal use cases you should not pass any argument to the constructur, but
+    rather to :class:`Backtest` (unless you're happy with the default values there).
+    That will take care of populating the values for the various holding 
+    costs in this class during each backtest. 
+    Regarding dividends, by default they are already included in each stock's return. 
+    Legacy applications might instead account for stock returns and dividends separately.
+    That is not advised: it would introduce small biases in the estimation of historical
+    mean returns and covariances.
 
-    Attributes:
-      borrow_costs: A dataframe of borrow costs.
-      dividends: A dataframe of dividends.
+    :param borrow_spread: spread on top of cash return payed for borrowing assets,
+        including cash. If ``None``, the default, it gets from :class:`Backtest` the
+        value for the period.
+    :type borrow_spread: float or pd.Series or pd.DataFrame or None
+    :param cash_lending_spread: spread that subtracts from the cash return for
+        uninvested cash. If ``None``, the default, it gets from :class:`Backtest` the
+        value for the period.
+    :type cash_lending_spread: float or pd.Series or None
+    :param dividends: dividends payed (expressed as fraction of the stock value)
+        for each period.  If ``None``, the default, it gets from :class:`Backtest` the
+        value for the period.
+    :type dividends: pd.DataFrame or None
     """
 
-    def __init__(self, borrow_costs, dividends=0.0):
-        self.borrow_costs = ParameterEstimator(borrow_costs, non_negative=True)
-        self.dividends = ParameterEstimator(dividends)
-
-    def compile_to_cvxpy(self, w_plus, z, value):
-        """Compile cost to cvxpy expression."""
-        self.expression = cvx.multiply(self.borrow_costs, cvx.neg(w_plus[:-1]))
-        self.expression -= cvx.multiply(self.dividends, w_plus[:-1])
-        self.expression = cvx.sum(self.expression)
-        return self.expression
-
-    def value_expr(self, t, h_plus, u):
-        """Placeholder method as we update the rest of the stack to new interface."""
+    def __init__(self, 
+        spread_on_borrowing_stocks_percent=.5,
+        #spread_on_cash_percent = .5,
+        # spread_on_long_positions_percent=None,
+        dividends=None,
+        # spread_on_lending_cash_percent=.5,
+        # spread_on_borrowing_cash_percent=.5,
+        # make_dqcp=False
+        ):
         
-        #if not self.INITIALIZED:
-        self.pre_evaluation(None, None, t, None)
-        wplus = cvx.Variable(len(h_plus))
-        z = cvx.Variable(len(h_plus))
-        v = cvx.Parameter(nonneg=True)
-        self.compile_to_cvxpy(wplus, z, v)
-        self.values_in_time(t, None, None, None, None)
+        self.spread_on_borrowing_stocks_percent = None if spread_on_borrowing_stocks_percent is None else \
+            DataEstimator(spread_on_borrowing_stocks_percent)
+        #self.spread_on_cash_percent = None if spread_on_cash_percent is None else \
+        #    DataEstimator(spread_on_cash_percent)
+        # self.spread_on_long_positions_percent = None if spread_on_long_positions_percent is None else \
+        #     DataEstimator(spread_on_long_positions_percent)
+        self.dividends = None if dividends is None else \
+            ParameterEstimator(dividends)
+        # self.spread_on_lending_cash_percent = DataEstimator(0.) if spread_on_lending_cash_percent is None else \
+        #     DataEstimator(spread_on_lending_cash_percent)
+        # self.spread_on_borrowing_cash_percent = DataEstimator(0.) if spread_on_borrowing_cash_percent is None else \
+        #     DataEstimator(spread_on_borrowing_cash_percent)
+        #
+        # self.make_dqcp=False
+        
+    def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
+        
+        # if not (self.spread_on_long_positions_percent is None):
+        #     self.long_cost_stocks = cvx.Parameter(len(universe) - 1, nonneg=True)
+        if not (self.spread_on_borrowing_stocks_percent is None):
+            self.borrow_cost_stocks = cvx.Parameter(len(universe) - 1, nonneg=True)
+        #if not (self.spread_on_cash_percent is None):
+        #    self.cash_cost = cvx.Parameter(nonneg=True)
+        # self.cash_lending_parameter = cvx.Parameter(nonneg=True)
+        # self.cash_borrowing_parameter = cvx.Parameter(nonneg=True)
+        # self.cash_return_parameter = cvx.Parameter()
+        
+        
+    def values_in_time(self, t, past_returns, **kwargs):
+        """We use yesterday's value of the cash return here while in the simulator
+        we use today's. In the US, updates to the FED rate are published outside
+        of trading hours so we might as well use the actual value for today's. The difference
+        is very small so for now we do this. 
+        """
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+                               
+        cash_return = past_returns.iloc[-1,-1]
+        # self.cash_return_parameter.value = cash_return
+        
+        # if not (self.spread_on_long_positions_percent is None):
+        #     self.long_cost_stocks.value = np.ones(returns.shape[1] - 1) * cash_return + \
+        #         self.spread_on_long_positions_percent.current_value / (100 * 252)
+        if not (self.spread_on_borrowing_stocks_percent is None):
+            self.borrow_cost_stocks.value = np.ones(past_returns.shape[1] - 1) * (cash_return) + \
+                self.spread_on_borrowing_stocks_percent.current_value / (100 * 252)
+        #if not (self.spread_on_cash_percent is None):
+        #    self.cash_cost.value = self.spread_on_cash_percent.current_value / (100 * 252)
+        # if not (self.spread_on_lending_cash_percent is None):
+        #     self.cash_lending_parameter.value = np.maximum(cash_return -
+        #         self.spread_on_lending_cash_percent.current_value / (100 * 252), 0.)
+        # if not (self.spread_on_borrowing_cash_percent is None):
+        #     self.cash_borrowing_parameter.value = cash_return + \
+        #         self.spread_on_borrowing_cash_percent.current_value / (100 * 252)
+        
 
-        self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.value
-        self.last_cost -= h_plus.iloc[:-1] * self.dividends.value
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile cost to cvxpy expression."""
+        
+        # we need to take this out
+        # because we re-add it below
+        expression = 0. # - w_plus[-1] * self.cash_return_parameter 
+        
+        # the real cash position is without the shorts
+        # however, when using it we get a QCQP program
+        # approx_cash = cvx.pos(w_plus[-1])
+        # real_cash = w_plus[-1] - cvx.sum(cvx.neg(w_plus)[:-1])
+        
+        # if not (self.spread_on_long_positions_percent is None):
+        #     expression -= cvx.multiply(self.long_cost_stocks, cvx.pos(w_plus)[:-1])
+        
+        if not (self.spread_on_borrowing_stocks_percent is None):
+           expression += cvx.multiply(self.borrow_cost_stocks, cvx.neg(w_plus)[:-1])
+        
+        #if not (self.spread_on_cash_percent is None):
+        #    expression += self.cash_cost * cvx.abs(w_plus[-1])
+        
+        # expression += self.cash_lending_parameter * cvx.pos(real_cash if self.make_dqcp else approx_cash)
+        # expression -= self.cash_borrowing_parameter * cvx.neg(real_cash)
+        
+        if not (self.dividends is None):
+            expression -= cvx.multiply(self.dividends, w_plus[:-1])
+        assert cvx.sum(expression).is_convex()
+        return cvx.sum(expression)
 
-        return sum(self.last_cost)
-
-    def optimization_log(self, t):
-        return self.expression.value
-
-    def simulation_log(self, t):
-        return self.last_cost
+    # def value_expr(self, t, h_plus, u):
+    #     """Placeholder method as we update the rest of the stack to new interface."""
+    #
+    #     #if not self.INITIALIZED:
+    #     self.pre_evaluation(None, None, t, None)
+    #     wplus = cvx.Variable(len(h_plus))
+    #     z = cvx.Variable(len(h_plus))
+    #     v = cvx.Parameter(nonneg=True)
+    #     self.compile_to_cvxpy(wplus, z, v)
+    #     self.values_in_time(t, None, None, None, None)
+    #
+    #     self.last_cost = -np.minimum(0, h_plus.iloc[:-1]) * self.borrow_costs.value
+    #     self.last_cost -= h_plus.iloc[:-1] * self.dividends.value
+    #
+    #     return sum(self.last_cost)
+    #
+    # def optimization_log(self, t):
+    #     return self.expression.value
+    #
+    # def simulation_log(self, t):
+    #     return self.last_cost
 
 
 class TcostModel(BaseCost):

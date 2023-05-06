@@ -146,7 +146,7 @@ class ReturnsForecast(BaseReturnsModel):
     """    
 
     def __init__(self, r_hat=None, #rolling=None, halflife=None, 
-                lastforcash=True):
+                lastforcash=True, subtractshorts=True):
         
         if not r_hat is None:
             self.r_hat = DataEstimator(r_hat)
@@ -158,6 +158,10 @@ class ReturnsForecast(BaseReturnsModel):
         #self.rolling = rolling
         #self.halflife = halflife
         self.lastforcash = True
+        self.subtractshorts = subtractshorts
+        
+        if self.subtractshorts:
+            self.cash_return = cvx.Parameter(nonneg=True)
         
         #self.full = self.r_hat is None and self.rolling is None and self.halflife is None
     
@@ -213,6 +217,9 @@ class ReturnsForecast(BaseReturnsModel):
             self.r_hat_parameter.value = tmp.values
         else:
             self.r_hat_parameter.value = self.r_hat.current_value
+            
+        if self.subtractshorts:
+            self.cash_return.value = self.r_hat_parameter.value[-1]
 
         # if self.full:
         #     self.last_fullmean_estimation, self.last_fullmean_counts, self.last_fullmean_time = \
@@ -226,7 +233,14 @@ class ReturnsForecast(BaseReturnsModel):
         # super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        return w_plus.T @ self.r_hat_parameter
+        if self.subtractshorts:
+            noncash = w_plus[:-1].T @ self.r_hat_parameter[:-1]
+            cash = (w_plus[-1] - cvx.sum(cvx.neg(w_plus[:-1]))) * self.cash_return
+            print(cash)
+            assert cash.is_concave()
+            return noncash + cash
+        else:
+            return w_plus.T @ self.r_hat_parameter
         
    
         
