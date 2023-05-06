@@ -220,6 +220,44 @@ class TestPolicies(unittest.TestCase):
             np.ones(self.returns.shape[1]-1)/(self.returns.shape[1]-1)))
         
 
+    def test_proportional_rebalance(self):
+
+        target = pd.Series(np.random.uniform(size=self.returns.shape[1]), self.returns.columns)
+        target /= sum(target)
+        target_matching_times = self.returns.index[::3]
+
+        policy = ProportionalRebalance(target, target_matching_times=target_matching_times)
+        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+
+        init = pd.Series(np.random.randn(self.returns.shape[1]), self.returns.columns)
+
+        trade = policy.values_in_time(t=self.returns.index[1], current_weights=init)
+        init += trade
+        trade2 = policy.values_in_time(t=self.returns.index[2], current_weights=init)
+        self.assertTrue(np.allclose(trade, trade2))
+        self.assertTrue(np.allclose(trade + trade2 + init, target))
+    
+    def test_adaptive_rebalance(self):
+        np.random.seed(0)
+        target = pd.Series(
+            np.random.uniform(
+                size=self.returns.shape[1]),
+            self.returns.columns)
+        target /= sum(target)
+        target = pd.DataFrame({ind: target for ind in self.returns.index}).T
+
+        init = pd.Series(np.random.uniform(size=self.returns.shape[1]), self.returns.columns)
+        init /= sum(init)
+
+        for tracking_error in [0.01, .02, .05, .1]:
+            policy = AdaptiveRebalance(target, tracking_error=tracking_error)
+            trade = policy.values_in_time(t=self.returns.index[1], current_weights=init)
+            self.assertTrue(np.allclose(init + trade, target.iloc[0]))
+
+        for tracking_error in [.2, .5]:
+            policy = AdaptiveRebalance(target, tracking_error=tracking_error)
+            trade = policy.values_in_time(t=self.returns.index[1], current_weights=init)
+            self.assertTrue(np.allclose(trade, 0.))
 
 if __name__ == '__main__':
     unittest.main()
@@ -233,49 +271,10 @@ if __name__ == '__main__':
 
 
 
-def test_proportional_rebalance(returns):
-
-    target = pd.Series(
-        np.random.uniform(
-            size=returns.shape[1]),
-        returns.columns)
-    target /= sum(target)
-    target_matching_times = returns.index[::3]
-
-    policy = ProportionalRebalance(
-        target, target_matching_times=target_matching_times)
-    policy.pre_evaluation(returns, None, None, None)
-
-    init = pd.Series(np.random.randn(returns.shape[1]), returns.columns)
-
-    trade = policy.values_in_time(returns.index[1], init, None, None, None)
-    init += trade
-    trade2 = policy.values_in_time(returns.index[2], init, None, None, None)
-    assert np.allclose(trade, trade2)
-    assert np.allclose(trade + trade2 + init, target)
 
 
-def test_adaptive_rebalance(returns):
-    np.random.seed(0)
-    target = pd.Series(
-        np.random.uniform(
-            size=returns.shape[1]),
-        returns.columns)
-    target /= sum(target)
-    target = pd.DataFrame({ind: target for ind in returns.index}).T
 
-    init = pd.Series(np.random.uniform(size=returns.shape[1]), returns.columns)
-    init /= sum(init)
 
-    for tracking_error in [0.01, .02, .05, .1]:
-        policy = AdaptiveRebalance(target, tracking_error=tracking_error)
-        trade = policy.values_in_time(returns.index[1], init, None, None, None)
-        assert np.allclose(init + trade, target.iloc[0])
-
-    for tracking_error in [.2, .5]:
-        policy = AdaptiveRebalance(target, tracking_error=tracking_error)
-        trade = policy.values_in_time(returns.index[1], init, None, None, None)
-        assert np.allclose(trade, 0.)
 
 
 def test_single_period_optimization(returns, volumes):

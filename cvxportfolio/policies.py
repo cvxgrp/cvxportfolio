@@ -283,33 +283,33 @@ class AdaptiveRebalance(BaseTradingPolicy):
     """Rebalance portfolio when deviates too far from target.
 
     We use the 2-norm as trigger for rebalance. You may want to
-    calibrate the `max_tracking_error` for your application
-    by backtesting this policy, e.g., to get your desired turnover.
+    calibrate ``tracking_error`` for your application
+    by backtesting this policy, *e.g.*, to get your desired turnover.
 
-    Args:
-        target (pd.Series or pd.DataFrame): target weights to rebalance to.
-            It is assumed a constant if it is a Series. If it varies in
-            time (you must specify it for every trading day) pass a
-            DataFrame indexed by time.
-        tracking_error (float or pd.Series): we trade to match the target
-            weights whenever the 2-norm of our weights minus the
-            target is larger than this. Pass a Series if you want to vary it in
-            time.
+    :param target: target weights to rebalance to.
+        It is assumed a constant if it is a Series. If it varies in
+        time (you must specify it for every trading day) pass a
+        DataFrame indexed by time.
+    :type target: pd.Series or pd.DataFrame
+    :param tracking_error: we trade to match the target
+        weights whenever the 2-norm of our weights minus the
+        target is larger than this. Pass a Series if you want to vary it in
+        time.
+    :type tracking_error: pd.Series or pd.DataFrame
+    
     """
 
     def __init__(self, target, tracking_error):
         self.target = DataEstimator(target)
         self.tracking_error = DataEstimator(tracking_error)
 
-    def values_in_time(self, t, current_weights, *args, **kwargs):
-        super().values_in_time(t, current_weights, *args, **kwargs)
-        if (
-            np.linalg.norm(current_weights - self.target.current_value)
-            > self.tracking_error.current_value
-        ):
+    def values_in_time(self, t, current_weights, **kwargs):
+        super().values_in_time(t=t, current_weights=current_weights, **kwargs)
+        if np.linalg.norm(current_weights - self.target.current_value) > \
+          self.tracking_error.current_value:
             return self.target.current_value - current_weights
         else:
-            return pd.Series(0.0, current_weights.index)
+            return pd.Series(0., current_weights.index)
 
 
 

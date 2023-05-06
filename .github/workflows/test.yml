@@ -55,5 +55,5 @@ jobs:
       
       - name: Run tests
         run: |
-              poetry run pytest
+              poetry run python -m unittest cvxportfolio/tests/*.py
   
