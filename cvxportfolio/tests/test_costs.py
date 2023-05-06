@@ -13,67 +13,130 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+from pathlib import Path
 
 import cvxpy as cvx
 import numpy as np
 import pandas as pd
-import pytest
 
-from cvxportfolio.costs import HcostModel, TcostModel
+from cvxportfolio.costs import *
 from cvxportfolio.returns import *
-from cvxportfolio.risks import FullCovariance
-from cvxportfolio.legacy import LegacyReturnsForecast #, MultipleReturnsForecasts
+from cvxportfolio.risks import *
+# from cvxportfolio.legacy import LegacyReturnsForecast #, MultipleReturnsForecasts
 
 
-def test_alpha(returns):
-    """Test alpha models."""
 
-    universe = returns.columns
-    times = returns.index
+class TestCosts(unittest.TestCase):
+    
+    @classmethod
+    def setUpClass(cls):
+        """Load the data and initialize cvxpy vars."""
+        # cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
+        cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
+        # cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
+        cls.w_plus = cvx.Variable(cls.returns.shape[1])
+        cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
+        cls.z = cvx.Variable(cls.returns.shape[1])
+        cls.N = cls.returns.shape[1]
+        
+        
+    def test_cost_algebra(self):
+        # n = len(self.returns.columns)
+        # wplus = cvx.Variable(n)
+        self.w_plus_minus_w_bm.value = np.random.uniform(size=self.N)
+        self.w_plus_minus_w_bm.value /= sum(self.w_plus_minus_w_bm.value)
+        t = self.returns.index[1]
 
-    # Alpha source
-    w = cvx.Variable(len(universe))
-    source = LegacyReturnsForecast(returns)
-    t = times[1]
-    alpha = source.weight_expr(t, w)
-    w.value = np.ones(len(universe))
-    assert alpha.value == pytest.approx(returns.loc[t].sum())
+        cost1 = DiagonalCovariance()
+        cost2 = FullCovariance(self.returns.iloc[:, :].T @ self.returns.iloc[:, :] / len(self.returns))
+        cost3 = cost1 + cost2
 
-    # with delta
-    source = LegacyReturnsForecast(returns, returns / 10)
-    alpha = source.weight_expr(t, w)
-    tmp = np.ones(len(universe))
-    tmp[0] = -1
-    w.value = tmp
-    value = returns.loc[t].sum() - 2 * returns.loc[t].values[0]
-    value -= returns.loc[t].sum() / 10
+        cost3.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr1 = cost1.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr2 = cost2.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        cost3.values_in_time(t=t, past_returns=self.returns.loc[self.returns.index < t])
+        self.assertTrue(expr3.value == expr1.value + expr2.value)
 
-    assert alpha.value == pytest.approx(value)
+        cost4 = cost1 * 2
+        expr4 = cost4.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        self.assertTrue(expr4.value == expr1.value * 2)
 
-    # alpha stream
-    source1 = LegacyReturnsForecast(returns)
-    source2 = LegacyReturnsForecast(-returns)
-    stream = MultipleReturnsForecasts([source1, source2], [1, 1])
-    alpha = stream.weight_expr(t, w)
-    assert alpha.value == 0
+        cost3 = cost1 - cost2
+        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        self.assertTrue(expr3.value == expr1.value - expr2.value)
 
-    stream = MultipleReturnsForecasts([source1, source2], [-1, 1])
-    alpha = stream.weight_expr(t, w)
-    value = returns.loc[t].sum()
-    w.value = np.ones(len(universe))
-    assert alpha.value == -2 * value
+        cost3 = -cost1 + 2 * cost2
+        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        self.assertTrue( expr3.value == -expr1.value + 2 * expr2.value)
 
-    # with exp decay
-    w = cvx.Variable(len(universe))
-    source = LegacyReturnsForecast(returns, gamma_decay=2)
-    t = times[1]
-    tau = times[3]
-    diff = (tau - t).days
-    w.value = np.ones(len(universe))
-    alpha_t = source.weight_expr(t, w)
-    alpha_tau = source.weight_expr_ahead(t, tau, w)
-    decay = diff ** (-2)
-    assert alpha_tau.value == pytest.approx(decay * alpha_t.value)
+        cost3 = -cost1 + 2 * (cost2 + cost1)
+        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        self.assertTrue( np.isclose(expr3.value, -expr1.value + 2 * (expr2.value + expr1.value)))
+
+        cost3 = cost1 - 2 * (cost2 + cost1)
+        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        self.assertTrue( expr3.value == expr1.value - 2 * (expr2.value + expr1.value))
+        
+
+if __name__ == '__main__':
+    unittest.main()
+        
+
+
+
+
+
+# def test_alpha(returns):
+#     """Test alpha models."""
+#
+#     universe = returns.columns
+#     times = returns.index
+#
+#     # Alpha source
+#     w = cvx.Variable(len(universe))
+#     source = LegacyReturnsForecast(returns)
+#     t = times[1]
+#     alpha = source.weight_expr(t, w)
+#     w.value = np.ones(len(universe))
+#     assert alpha.value == pytest.approx(returns.loc[t].sum())
+#
+#     # with delta
+#     source = LegacyReturnsForecast(returns, returns / 10)
+#     alpha = source.weight_expr(t, w)
+#     tmp = np.ones(len(universe))
+#     tmp[0] = -1
+#     w.value = tmp
+#     value = returns.loc[t].sum() - 2 * returns.loc[t].values[0]
+#     value -= returns.loc[t].sum() / 10
+#
+#     assert alpha.value == pytest.approx(value)
+#
+#     # alpha stream
+#     source1 = LegacyReturnsForecast(returns)
+#     source2 = LegacyReturnsForecast(-returns)
+#     stream = MultipleReturnsForecasts([source1, source2], [1, 1])
+#     alpha = stream.weight_expr(t, w)
+#     assert alpha.value == 0
+#
+#     stream = MultipleReturnsForecasts([source1, source2], [-1, 1])
+#     alpha = stream.weight_expr(t, w)
+#     value = returns.loc[t].sum()
+#     w.value = np.ones(len(universe))
+#     assert alpha.value == -2 * value
+#
+#     # with exp decay
+#     w = cvx.Variable(len(universe))
+#     source = LegacyReturnsForecast(returns, gamma_decay=2)
+#     t = times[1]
+#     tau = times[3]
+#     diff = (tau - t).days
+#     w.value = np.ones(len(universe))
+#     alpha_t = source.weight_expr(t, w)
+#     alpha_tau = source.weight_expr_ahead(t, tau, w)
+#     decay = diff ** (-2)
+#     assert alpha_tau.value == pytest.approx(decay * alpha_t.value)
 
 
 def test_tcost_value_expr(returns, sigma, volumes):
@@ -210,42 +273,7 @@ def test_tcost(returns, volumes, sigma):
     assert tcost_tau.value == pytest.approx(tcost_t.value)
 
 
-def test_cost_algebra(returns):
-    n = len(returns.columns)
-    wplus = cvx.Variable(n)
-    wplus.value = np.arange(n) - n / 2
-    t = returns.index[1]
 
-    cost1 = HcostModel(1, 2)
-    cost2 = FullCovariance(returns.iloc[:, :-1].T @ returns.iloc[:, :-1] / len(returns))
-    cost3 = cost1 + cost2
-
-    cost3.pre_evaluation(returns, None, t, None)
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
-    expr1 = cost1.compile_to_cvxpy(wplus, None, 1e6)
-    expr2 = cost2.compile_to_cvxpy(wplus, None, 1e6)
-    cost3.values_in_time(t, None, None, None, None)
-    assert expr3.value == expr1.value + expr2.value
-
-    cost4 = cost1 * 2
-    expr4 = cost4.compile_to_cvxpy(wplus, None, 1e6)
-    assert expr4.value == expr1.value * 2
-
-    cost3 = cost1 - cost2
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
-    assert expr3.value == expr1.value - expr2.value
-
-    cost3 = -cost1 + 2 * cost2
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
-    assert expr3.value == -expr1.value + 2 * expr2.value
-
-    cost3 = -cost1 + 2 * (cost2 + cost1)
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
-    assert np.isclose(expr3.value, -expr1.value + 2 * (expr2.value + expr1.value))
-
-    cost3 = cost1 - 2 * (cost2 + cost1)
-    expr3 = cost3.compile_to_cvxpy(wplus, None, 1e6)
-    assert expr3.value == expr1.value - 2 * (expr2.value + expr1.value)
 
 
 def test_hcost(returns):

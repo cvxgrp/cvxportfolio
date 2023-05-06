@@ -15,14 +15,10 @@
 
 """This module implements cost functions used by optimization-based policies.
 
-Currently these are two: TransactionCostModel and HoldingCostModel.
+Currently these are two: :class:`TransactionCost` and :class:`HoldingCost`.
 
-(In previous versions of Cvxportfolio these were used in the simulator as well,
-but now instead we include their logic in the simulator itself.)
-
-We do our best to include parameters that are accurate for the real market.
-It should be easy to adjust these to other settings by following the description
-provided in the class definitions.
+The default parameters are chosen to approximate real market costs as well as
+possible. 
 """
 
 import cvxpy as cvx
@@ -34,16 +30,14 @@ import copy
 # from .utils import null_checker, values_in_time
 from .estimator import CvxpyExpressionEstimator, ParameterEstimator
 
-__all__ = ["HcostModel", "TcostModel"]
+# __all__ = ["HoldingCost", "TransactionCost"]
 
 
 class BaseCost(CvxpyExpressionEstimator):
-    """Base class for cost objects.
+    """Base class for cost objects (and also risks).
 
-    It will use the CvxpyExpressionEstimator to compile the cost object to
-    a cvxpy expression for optimization-based policies.
-
-    It also overloads the values_in_time method to be used by simulator classes.
+    Here there is some logic used to implement the algebraic operations.
+    See also :class:`CombinedCost`.
     """
 
     # gamma = 1. # this will be removed
@@ -109,18 +103,19 @@ class BaseCost(CvxpyExpressionEstimator):
 
 
 class CombinedCosts(BaseCost):
-    """Class obtained by algebraic combination of Cost classes.
+    """Algebraic combination of :class:`BaseCost` instances.
 
-    Attributes:
-        costs (list): a list of BaseCost instances
+    :var costs: instances of :class:`BaseCost`
+    :type var: list 
+    :var multipliers: floats that multiply the ``costs``
+    :type var: list
     """
 
     def __init__(self, costs, multipliers):
         for cost in costs:
             if not isinstance(cost, BaseCost):
                 raise SyntaxError(
-                    "You can only sum `BaseCost` instances to other `BaseCost` instances."
-                )
+      "You can only sum `BaseCost` instances to other `BaseCost` instances.")
         self.costs = costs
         self.multipliers = multipliers
         
@@ -133,17 +128,13 @@ class CombinedCosts(BaseCost):
     def __add__(self, other):
         """Add other (combined) cost to self."""
         if isinstance(other, CombinedCosts):
-            self.costs += other.costs
-            self.multipliers += other.multipliers
+            return CombinedCosts(self.costs + other.costs, self.multipliers + other.multipliers)
         else:
-            self.costs += [other]
-            self.multipliers += [1.0]
-        return self
+            return CombinedCosts(self.costs + [other], self.multipliers + [1.0])
 
     def __mul__(self, other):
         """Multiply by constant."""
-        self.multipliers = [el * other for el in self.multipliers]
-        return self
+        return CombinedCosts(self.costs, [el * other for el in self.multipliers])
 
     def pre_evaluation(self, *args, **kwargs):
         """Iterate over constituent costs."""
