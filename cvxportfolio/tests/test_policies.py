@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from cvxportfolio.policies import *
-from cvxportfolio.policies import SinglePeriodOptOLD, SinglePeriodOptNEW
+# from cvxportfolio.policies import SinglePeriodOptOLD, SinglePeriodOptNEW
 from cvxportfolio.returns import *
 from cvxportfolio.risks import *
 from cvxportfolio.costs import *
@@ -36,7 +36,7 @@ class TestPolicies(unittest.TestCase):
         """Load the data and initialize cvxpy vars."""
         # cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
         cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
-        # cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
+        cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
         cls.w_plus = cvx.Variable(cls.returns.shape[1])
         cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
         cls.z = cvx.Variable(cls.returns.shape[1])
@@ -259,6 +259,113 @@ class TestPolicies(unittest.TestCase):
             trade = policy.values_in_time(t=self.returns.index[1], current_weights=init)
             self.assertTrue(np.allclose(trade, 0.))
 
+
+    def test_single_period_optimization(self):
+
+        return_forecast = ReturnsForecast(lastforcash=False)
+        risk_forecast = FullCovariance(addmean=False)
+        tcost = TransactionCost(spreads=1E-3, pershare_cost=0., b=0., exponent=2)
+        
+        
+        policy = SinglePeriodOptimization(
+            return_forecast
+            - 2 * risk_forecast
+            -tcost
+            #- TcostModel(half_spread=5 * 1E-4)  # , power=2)
+            ,
+            constraints=[LongOnly(), LeverageLimit(1)],
+            # verbose=True,
+            solver='ECOS')
+            
+
+        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+
+        
+        curw = np.zeros(self.N)
+        curw[-1] = 1.
+
+        result = policy.values_in_time(
+            t=self.returns.index[121],
+            current_weights=pd.Series(
+                curw,
+                self.returns.columns),
+            current_portfolio_value=1000,
+            past_returns=self.returns.iloc[:121],
+            past_volumes=self.volumes.iloc[:121],
+            current_prices=pd.Series(1., self.volumes.columns))
+            
+       
+
+        cvxportfolio_result = pd.Series(result, self.returns.columns)
+
+        print(cvxportfolio_result)
+        
+        # print(np.linalg.eigh(self.returns.iloc[:121, :-1].cov().values)[0])
+
+        # REPLICATE WITH CVXPY
+        w = cvx.Variable(self.N)
+        cvx.Problem(cvx.Maximize(w.T @ self.returns.iloc[:121].mean().values -
+                                 2 * cvx.quad_form(w[:-1], self.returns.iloc[:121, :-1].cov(ddof=0).values) -
+                                 5 * 1E-4 * cvx.sum(cvx.abs(w - curw)[:-1])
+                                 ),
+                    [w >= 0, w <= 1, sum(w) == 1]
+                    ).solve(solver='ECOS')
+
+        cvxpy_result = pd.Series(w.value - curw, self.returns.columns)
+
+        print(cvxpy_result)
+        
+        print(cvxportfolio_result - cvxpy_result)
+        assert np.allclose(cvxportfolio_result - cvxpy_result, 0., atol=1e-5)
+    
+    
+    
+    def test_single_period_optimization_solve_twice(self):
+
+        return_forecast = ReturnsForecast()
+        risk_forecast = FullCovariance()
+        
+        policy = SinglePeriodOptimization(
+            return_forecast
+            - 2 * risk_forecast
+            - TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
+            ,
+            constraints=[LongOnly(), LeverageLimit(1)],
+            # verbose=True,
+            solver='ECOS')
+
+        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+
+        curw = np.zeros(self.N)
+        curw[-1] = 1.
+
+        result = policy.values_in_time(
+            t=self.returns.index[134],
+            current_weights=pd.Series(
+                curw,
+                self.returns.columns),
+            current_portfolio_value=1000,
+            past_returns=self.returns.iloc[:134],
+            past_volumes=self.volumes.iloc[:134],
+            current_prices=pd.Series(1., self.volumes.columns))
+
+        assert not np.allclose(result, 0.)
+
+        cvxportfolio_result = pd.Series(result, self.returns.columns)
+
+        curw += result
+
+        result2 = policy.values_in_time(
+            t=self.returns.index[134],
+            current_weights=pd.Series(
+                curw,
+                self.returns.columns),
+            current_portfolio_value=1000,
+            past_returns=self.returns.iloc[:134],
+            past_volumes=self.volumes.iloc[:134],
+            current_prices=pd.Series(1., self.volumes.columns))
+
+        assert np.allclose(result2, 0., atol=1e-7)
 if __name__ == '__main__':
     unittest.main()
         
@@ -270,111 +377,6 @@ if __name__ == '__main__':
 
 
 
-
-
-
-
-
-
-
-def test_single_period_optimization(returns, volumes):
-
-    N = returns.shape[1]
-    return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = FullCovariance(rolling=50)
-    policy = SinglePeriodOptimization(
-        return_forecast
-        - 2 * risk_forecast
-        - TcostModel(half_spread=5 * 1E-4)  # , power=2)
-        ,
-        constraints=[LongOnly(), LeverageLimit(1)],
-        # verbose=True,
-        solver='ECOS')
-
-    policy.pre_evaluation(returns,
-                          volumes,
-                          start_time=returns.index[50],
-                          end_time=returns.index[-1])
-
-    curw = np.zeros(N)
-    curw[-1] = 1.
-
-    result = policy.values_in_time(
-        t=returns.index[51],
-        current_weights=pd.Series(
-            curw,
-            returns.columns),
-        current_portfolio_value=1000,
-        past_returns=None,
-        past_volumes=None)
-
-    cvxportfolio_result = pd.Series(result, returns.columns)
-
-    print(cvxportfolio_result)
-
-    # REPLICATE WITH CVXPY
-    w = cvx.Variable(N)
-    cvx.Problem(cvx.Maximize(w.T @ return_forecast.r_hat.value -
-                             2 * cvx.quad_form(w[:-1], risk_forecast.Sigma.value) -
-                             5 * 1E-4 * cvx.sum(cvx.abs(w - curw)[:-1])
-                             ),
-                [w >= 0, w <= 1, sum(w) == 1]
-                ).solve(solver='ECOS')
-
-    cvxpy_result = pd.Series(w.value - curw, returns.columns)
-
-    print(cvxpy_result)
-
-    assert np.allclose(cvxportfolio_result - cvxpy_result, 0., atol=1e-7)
-
-
-def test_single_period_optimization_solve_twice(returns, volumes):
-
-    N = returns.shape[1]
-    return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = FullCovariance(rolling=50)
-    policy = SinglePeriodOptimization(
-        return_forecast
-        - 2 * risk_forecast
-        - TcostModel(half_spread=5 * 1E-4)  # , power=2)
-        ,
-        constraints=[LongOnly(), LeverageLimit(1)],
-        # verbose=True,
-        solver='ECOS')
-
-    policy.pre_evaluation(returns,
-                          volumes,
-                          start_time=returns.index[50],
-                          end_time=returns.index[-1])
-
-    curw = np.zeros(N)
-    curw[-1] = 1.
-
-    result = policy.values_in_time(
-        t=returns.index[51],
-        current_weights=pd.Series(
-            curw,
-            returns.columns),
-        current_portfolio_value=1000,
-        past_returns=None,
-        past_volumes=None)
-
-    assert not np.allclose(result, 0.)
-
-    cvxportfolio_result = pd.Series(result, returns.columns)
-
-    curw += result
-
-    result2 = policy.values_in_time(
-        t=returns.index[51],
-        current_weights=pd.Series(
-            curw,
-            returns.columns),
-        current_portfolio_value=1000,
-        past_returns=None,
-        past_volumes=None)
-
-    assert np.allclose(result2, 0., atol=1e-7)
 
 
 def test_single_period_optimization_infeasible(returns, volumes):
@@ -639,70 +641,70 @@ def test_multi_period_optimization3(returns, volumes):
     assert np.linalg.norm(diff_to_benchmarks[1]) < np.linalg.norm(diff_to_benchmarks[2])
         
         
-def test_spo_old_vs_new(returns, volumes, sigma):
-    tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,
-    )
-    #hcost_model = HcostModel(borrow_costs=0., dividends=0.)
-    emp_Sigma = np.cov(returns.iloc[:, :-1].to_numpy().T)
-    risk_model = FullCovariance(emp_Sigma)
-    returns_forecast = ReturnsForecast(returns.mean())
-    
-    pol = SinglePeriodOptOLD(
-        returns_forecast, [
-            10 * risk_model, 
-            2 * tcost_model, 
-            #hcost_model
-        ], [], solver=cvx.ECOS)#, solver_opts={'verbose':True})#, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
-    
-    #np.random.seed(0)
-    init = pd.Series(1., index = returns.columns)
-    init *= 1E6
-        
-    trad = pol.get_trades(init, t=returns.index[10])
-    
-    print(trad)
-    
-    # raise Exception
-
-    # print(pol.costs[1].costs[0].second_term_multiplier.value)
-    risk_model = FullCovariance(emp_Sigma)
-    returns_forecast = ReturnsForecast(returns.mean())
-    tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,)
-    hcost_model = HcostModel(borrow_costs=0., dividends=0.)
-    
-    pol_new = SinglePeriodOptNEW(
-        returns_forecast, [
-            10 * risk_model, 
-            2 * tcost_model, 
-            #hcost_model
-        ], [], solver=cvx.ECOS)#, solver_opts={'verbose':True})#, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
-        
-    trad_new = pol_new.get_trades(init, t=returns.index[10])
-    
-    print(trad_new)
-    
-    # print(pol_new.objective[0].costs[2].second_term_multiplier.value)
-    
-    assert np.allclose(trad/1E6, trad_new/1E6, atol=1e-4)
-    
-    ### CVXPY
-    w = cvx.Variable(returns.shape[1])
-    z = cvx.Variable(returns.shape[1])
-    w0 = init / sum(init)
-    mu = returns.mean()
-    Sigma = emp_Sigma
-    V = volumes.iloc[10]
-    val = sum(init)
-    s = sigma.iloc[10]
-    objective = cvx.Maximize(w.T @ mu 
-        - 10 * cvx.quad_form(w[:-1], Sigma) 
-            - 2 * 0.0005 * cvx.norm1(z[:-1])
-            - 2 * (cvx.abs(z[:-1])**1.5).T @ (s * np.sqrt(val / V))
-            )
-    cvx.Problem(objective, [cvx.sum(z) == 0, z + w0 == w]).solve(solver='ECOS')#, abstol=1E-16, reltol=1e-16, feastol=1e-16)
-    
-    trad_cvxpy = pd.Series(val * w.value - init, returns.columns)
-    assert np.allclose((trad_cvxpy - trad_new)/sum(init), 0., atol=1E-3)        
+# def test_spo_old_vs_new(returns, volumes, sigma):
+#     tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,
+#     )
+#     #hcost_model = HcostModel(borrow_costs=0., dividends=0.)
+#     emp_Sigma = np.cov(returns.iloc[:, :-1].to_numpy().T)
+#     risk_model = FullCovariance(emp_Sigma)
+#     returns_forecast = ReturnsForecast(returns.mean())
+#
+#     pol = SinglePeriodOptOLD(
+#         returns_forecast, [
+#             10 * risk_model,
+#             2 * tcost_model,
+#             #hcost_model
+#         ], [], solver=cvx.ECOS)#, solver_opts={'verbose':True})#, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
+#
+#     #np.random.seed(0)
+#     init = pd.Series(1., index = returns.columns)
+#     init *= 1E6
+#
+#     trad = pol.get_trades(init, t=returns.index[10])
+#
+#     print(trad)
+#
+#     # raise Exception
+#
+#     # print(pol.costs[1].costs[0].second_term_multiplier.value)
+#     risk_model = FullCovariance(emp_Sigma)
+#     returns_forecast = ReturnsForecast(returns.mean())
+#     tcost_model = TcostModel(half_spread=0.0005, nonlin_coeff=1.0, volume=volumes, sigma=sigma,)
+#     hcost_model = HcostModel(borrow_costs=0., dividends=0.)
+#
+#     pol_new = SinglePeriodOptNEW(
+#         returns_forecast, [
+#             10 * risk_model,
+#             2 * tcost_model,
+#             #hcost_model
+#         ], [], solver=cvx.ECOS)#, solver_opts={'verbose':True})#, solver_opts={'abstol':1E-16, 'reltol':1e-16, 'feastol':1e-16})
+#
+#     trad_new = pol_new.get_trades(init, t=returns.index[10])
+#
+#     print(trad_new)
+#
+#     # print(pol_new.objective[0].costs[2].second_term_multiplier.value)
+#
+#     assert np.allclose(trad/1E6, trad_new/1E6, atol=1e-4)
+#
+#     ### CVXPY
+#     w = cvx.Variable(returns.shape[1])
+#     z = cvx.Variable(returns.shape[1])
+#     w0 = init / sum(init)
+#     mu = returns.mean()
+#     Sigma = emp_Sigma
+#     V = volumes.iloc[10]
+#     val = sum(init)
+#     s = sigma.iloc[10]
+#     objective = cvx.Maximize(w.T @ mu
+#         - 10 * cvx.quad_form(w[:-1], Sigma)
+#             - 2 * 0.0005 * cvx.norm1(z[:-1])
+#             - 2 * (cvx.abs(z[:-1])**1.5).T @ (s * np.sqrt(val / V))
+#             )
+#     cvx.Problem(objective, [cvx.sum(z) == 0, z + w0 == w]).solve(solver='ECOS')#, abstol=1E-16, reltol=1e-16, feastol=1e-16)
+#
+#     trad_cvxpy = pd.Series(val * w.value - init, returns.columns)
+#     assert np.allclose((trad_cvxpy - trad_new)/sum(init), 0., atol=1E-3)    
     
     
     

@@ -280,6 +280,8 @@ class FullCovariance(BaseRiskModel):
         #     current_Sigma = past_returns.iloc[:,:-1].cov()
             
         eigval, eigvec = np.linalg.eigh(Sigma)
+        # print('EIGVAL')
+        # print(eigval)
         eigval = np.maximum(eigval, 0.)
         
         self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
