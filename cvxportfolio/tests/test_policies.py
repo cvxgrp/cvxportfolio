@@ -316,7 +316,7 @@ class TestPolicies(unittest.TestCase):
         print(cvxpy_result)
         
         print(cvxportfolio_result - cvxpy_result)
-        assert np.allclose(cvxportfolio_result - cvxpy_result, 0., atol=1e-5)
+        self.assertTrue(np.allclose(cvxportfolio_result - cvxpy_result, 0., atol=1e-5))
     
     
     
@@ -349,7 +349,7 @@ class TestPolicies(unittest.TestCase):
             past_volumes=self.volumes.iloc[:134],
             current_prices=pd.Series(1., self.volumes.columns))
 
-        assert not np.allclose(result, 0.)
+        self.assertFalse(np.allclose(result, 0.))
 
         cvxportfolio_result = pd.Series(result, self.returns.columns)
 
@@ -365,280 +365,273 @@ class TestPolicies(unittest.TestCase):
             past_volumes=self.volumes.iloc[:134],
             current_prices=pd.Series(1., self.volumes.columns))
 
-        assert np.allclose(result2, 0., atol=1e-7)
+        self.assertTrue(np.allclose(result2, 0., atol=1e-7))
+        
+        
+    def test_single_period_optimization_infeasible(self):
+
+        return_forecast = ReturnsForecast()
+        risk_forecast = FullCovariance()
+        policy = SinglePeriodOptimization(
+            return_forecast
+            - 2 * risk_forecast
+            - TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
+            ,
+            constraints=[LongOnly(), LeverageLimit(1), MaxWeights(-1)],
+            # verbose=True,
+            solver='ECOS')
+
+        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+
+
+        curw = np.zeros(self.N)
+        curw[-1] = 1.
+
+        with self.assertRaises(PortfolioOptimizationError):
+            result = policy.values_in_time(
+                t=self.returns.index[134],
+                current_weights=pd.Series(
+                    curw,
+                    self.returns.columns),
+                current_portfolio_value=1000,
+                past_returns=self.returns.iloc[:134],
+                past_volumes=self.volumes.iloc[:134],
+                current_prices=pd.Series(1., self.volumes.columns))
+            
+    def test_single_period_optimization_unbounded(self):
+
+        return_forecast = ReturnsForecast()
+        risk_forecast = FullCovariance()
+        policy = SinglePeriodOptimization(
+            return_forecast
+            #- 2 * risk_forecast
+            #- TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
+            ,
+            constraints=[LongOnly(), #LeverageLimit(1), MaxWeights(-1)
+        ],
+            # verbose=True,
+            solver='ECOS')
+
+        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+
+
+        curw = np.zeros(self.N)
+        curw[-1] = 1.
+
+        with self.assertRaises(PortfolioOptimizationError):
+            result = policy.values_in_time(
+                t=self.returns.index[134],
+                current_weights=pd.Series(
+                    curw,
+                    self.returns.columns),
+                current_portfolio_value=1000,
+                past_returns=self.returns.iloc[:134],
+                past_volumes=self.volumes.iloc[:134],
+                current_prices=pd.Series(1., self.volumes.columns))
+     
+    def test_multi_period_optimization2(self):
+        """Test that MPO1 and MPO2 and MPO5 return same if no tcost, and diff if tcost"""
+
+        results = []
+        for planning_horizon in [1,2,5]:
+            return_forecast = ReturnsForecast()
+            risk_forecast = FullCovariance()
+            policy = MultiPeriodOptimization(
+                return_forecast
+                - 10 * risk_forecast
+                #- TcostModel(half_spread=5 * 1E-4)  # , power=2)
+                ,
+                constraints=[LongOnly(), LeverageLimit(1)],
+                # verbose=True,
+                planning_horizon=planning_horizon,
+                solver='ECOS')
+
+            policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+
+
+            curw = np.zeros(self.N)
+            curw[-1] = 1.
+
+            results.append(policy.values_in_time(
+                t=self.returns.index[67],
+                current_weights=pd.Series(
+                    curw,
+                    self.returns.columns),
+                current_portfolio_value=1000,
+                past_returns=self.returns.iloc[:67],
+                past_volumes=self.volumes.iloc[:67],
+                current_prices=pd.Series(1., self.volumes.columns)))
+
+        self.assertTrue(np.allclose(results[0], results[1], atol=1e-4))
+        self.assertTrue(np.allclose(results[1], results[2], atol=1e-4))
+
+        # with tcost
+
+        results = []
+        for planning_horizon in [1,2,5]:
+            return_forecast = ReturnsForecast()
+            risk_forecast = FullCovariance()
+            policy = MultiPeriodOptimization(
+                return_forecast
+                - 10 * risk_forecast
+                - TransactionCost(spreads=50 * 1E-4, pershare_cost=0., b=0.)
+                #- TcostModel(half_spread=5 * 1E-4)  # , power=2)
+                ,
+                constraints=[LongOnly(), LeverageLimit(1)],
+                # verbose=True,
+                planning_horizon=planning_horizon,
+                solver='ECOS')
+
+            policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+
+            curw = np.zeros(self.N)
+            curw[-1] = 1.
+
+            results.append(policy.values_in_time(
+                t=self.returns.index[67],
+                current_weights=pd.Series(
+                    curw,
+                    self.returns.columns),
+                current_portfolio_value=1000,
+                past_returns=self.returns.iloc[:67],
+                past_volumes=self.volumes.iloc[:67],
+                current_prices=pd.Series(1., self.volumes.columns)))
+
+        self.assertFalse(np.allclose(results[0], results[1], atol=1e-4))
+        self.assertFalse(np.allclose(results[1], results[2], atol=1e-4))
+        
+    def test_multi_period_optimization_syntax(self):
+        with self.assertRaises(SyntaxError):
+            MultiPeriodOptimization([ReturnsForecast()], [])
+        with self.assertRaises(SyntaxError):
+            MultiPeriodOptimization([ReturnsForecast()], [[],[]])
+        with self.assertRaises(SyntaxError):
+            MultiPeriodOptimization([ReturnsForecast()], None)
+        with self.assertRaises(SyntaxError):
+            MultiPeriodOptimization(ReturnsForecast())
+        MultiPeriodOptimization(ReturnsForecast(), planning_horizon = 1)
+        
+    def test_multi_period_optimization3(self):
+        """Check that terminal constraint brings closer to benchmark."""
+    
+        np.random.seed(0)
+        benchmark = np.random.uniform(size=self.returns.shape[1])
+        benchmark /= sum(benchmark)
+        benchmark = pd.Series(benchmark, self.returns.columns)
+    
+        diff_to_benchmarks = []
+        for planning_horizon in [1,2,5]:
+
+            return_forecast = ReturnsForecast()
+            risk_forecast = FullCovariance()
+            policy = MultiPeriodOptimization(
+                return_forecast
+                - 10 * risk_forecast
+                - TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
+                ,
+                constraints=[LongOnly(), LeverageLimit(1)],
+                #verbose=True,
+                terminal_constraint=benchmark,
+                planning_horizon=planning_horizon,
+                solver='ECOS')
+
+            policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+
+            curw = np.zeros(self.N)
+            curw[-1] = 1.
+
+            diff_to_benchmarks.append(policy.values_in_time(
+                t=self.returns.index[67],
+                current_weights=pd.Series(
+                    curw,
+                    self.returns.columns),
+                current_portfolio_value=1000,
+                past_returns=self.returns.iloc[:67],
+                past_volumes=self.volumes.iloc[:67],
+                current_prices=pd.Series(1., self.volumes.columns)) + curw - benchmark)
+                                        
+        self.assertTrue(np.isclose(np.linalg.norm(diff_to_benchmarks[0]), 0.))
+        self.assertTrue(np.linalg.norm(diff_to_benchmarks[0]) < np.linalg.norm(diff_to_benchmarks[1]))
+        self.assertTrue(np.linalg.norm(diff_to_benchmarks[1]) < np.linalg.norm(diff_to_benchmarks[2]))
+    
+    
 if __name__ == '__main__':
     unittest.main()
         
 
 
-
-
-
-
-
-
-
-
-def test_single_period_optimization_infeasible(returns, volumes):
-
-    N = returns.shape[1]
-    return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = FullCovariance(rolling=50)
-    policy = SinglePeriodOptimization(
-        return_forecast
-        - 2 * risk_forecast
-        - TcostModel(half_spread=5 * 1E-4)  # , power=2)
-        ,
-        constraints=[LongOnly(), LeverageLimit(1), MaxWeights(-1)],
-        # verbose=True,
-        solver='ECOS')
-
-    policy.pre_evaluation(returns,
-                          volumes,
-                          start_time=returns.index[50],
-                          end_time=returns.index[-1])
-
-    curw = np.zeros(N)
-    curw[-1] = 1.
-
-    with pytest.raises(PortfolioOptimizationError):
-        result = policy.values_in_time(
-            t=returns.index[51],
-            current_weights=pd.Series(
-                curw,
-                returns.columns),
-            current_portfolio_value=1000,
-            past_returns=None,
-            past_volumes=None)
-
-
-def test_single_period_optimization_unbounded(returns, volumes):
-
-    N = returns.shape[1]
-    return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = FullCovariance(rolling=50)
-    policy = SinglePeriodOptimization(
-        return_forecast        # - 2 * risk_forecast
-        # - TcostModel(half_spread=5*1E-4)#, power=2)
-        ,
-        constraints=[LongOnly()],
-        # verbose=True,
-        solver='ECOS')
-
-    policy.pre_evaluation(returns,
-                          volumes,
-                          start_time=returns.index[50],
-                          end_time=returns.index[-1])
-
-    curw = np.zeros(N)
-    curw[-1] = 1.
-
-    with pytest.raises(PortfolioOptimizationError) as e:
-        result = policy.values_in_time(
-            t=returns.index[51],
-            current_weights=pd.Series(
-                curw,
-                returns.columns),
-            current_portfolio_value=1000,
-            past_returns=None,
-            past_volumes=None)
             
 
-def test_multi_period_optimization_syntax():
-    with pytest.raises(SyntaxError):
-        MultiPeriodOptimization([ReturnsForecast(rolling=50)], [])
-    with pytest.raises(SyntaxError):
-        MultiPeriodOptimization([ReturnsForecast(rolling=50)], [[],[]])
-    with pytest.raises(SyntaxError):
-        MultiPeriodOptimization([ReturnsForecast(rolling=50)], None)
-    with pytest.raises(SyntaxError):
-        MultiPeriodOptimization(ReturnsForecast(rolling=50))
-    MultiPeriodOptimization(ReturnsForecast(rolling=50), planning_horizon = 1)
+
     
     
-def test_multi_period_optimization1(returns, volumes):
-    """Test that SPO and MPO1 return same"""
-    N = returns.shape[1]
-    return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = FullCovariance(rolling=50)
-    policy = MultiPeriodOptimization(
-        return_forecast
-        - 2 * risk_forecast
-        - TcostModel(half_spread=5 * 1E-4)  # , power=2)
-        ,
-        constraints=[LongOnly(), LeverageLimit(1)],
-        # verbose=True,
-        planning_horizon=1,
-        solver='ECOS')
-
-    policy.pre_evaluation(returns,
-                          volumes,
-                          start_time=returns.index[51],
-                          end_time=returns.index[-1])
-
-    curw = np.zeros(N)
-    curw[-1] = 1.
-
-    result = policy.values_in_time(
-        t=returns.index[51],
-        current_weights=pd.Series(
-            curw,
-            returns.columns),
-        current_portfolio_value=1000,
-        past_returns=None,
-        past_volumes=None)
-
-    cvxportfolio_result = pd.Series(result, returns.columns)
+# def test_multi_period_optimization1(returns, volumes):
+#     """Test that SPO and MPO1 return same"""
+#     N = returns.shape[1]
+#     return_forecast = ReturnsForecast(rolling=50)
+#     risk_forecast = FullCovariance(rolling=50)
+#     policy = MultiPeriodOptimization(
+#         return_forecast
+#         - 2 * risk_forecast
+#         - TcostModel(half_spread=5 * 1E-4)  # , power=2)
+#         ,
+#         constraints=[LongOnly(), LeverageLimit(1)],
+#         # verbose=True,
+#         planning_horizon=1,
+#         solver='ECOS')
+#
+#     policy.pre_evaluation(returns,
+#                           volumes,
+#                           start_time=returns.index[51],
+#                           end_time=returns.index[-1])
+#
+#     curw = np.zeros(N)
+#     curw[-1] = 1.
+#
+#     result = policy.values_in_time(
+#         t=returns.index[51],
+#         current_weights=pd.Series(
+#             curw,
+#             returns.columns),
+#         current_portfolio_value=1000,
+#         past_returns=None,
+#         past_volumes=None)
+#
+#     cvxportfolio_result = pd.Series(result, returns.columns)
+#
+#     return_forecast = ReturnsForecast(rolling=50)
+#     risk_forecast = FullCovariance(rolling=50)
+#
+#     policy1 = SinglePeriodOptimization(
+#         return_forecast
+#         - 2 * risk_forecast
+#         - TcostModel(half_spread=5 * 1E-4)  # , power=2)
+#         ,
+#         constraints=[LongOnly(), LeverageLimit(1)],
+#         # verbose=True,
+#         solver='ECOS')
+#
+#     policy1.pre_evaluation(returns,
+#                           volumes,
+#                           start_time=returns.index[51],
+#                           end_time=returns.index[-1])
+#
+#     result1 = policy1.values_in_time(
+#         t=returns.index[51],
+#         current_weights=pd.Series(
+#             curw,
+#             returns.columns),
+#         current_portfolio_value=1000,
+#         past_returns=None,
+#         past_volumes=None)
+#
+#     cvxportfolio_result1 = pd.Series(result1, returns.columns)
+#
+#     assert np.allclose(cvxportfolio_result - cvxportfolio_result1, 0., atol=1e-7)
     
-    return_forecast = ReturnsForecast(rolling=50)
-    risk_forecast = FullCovariance(rolling=50)
-    
-    policy1 = SinglePeriodOptimization(
-        return_forecast
-        - 2 * risk_forecast
-        - TcostModel(half_spread=5 * 1E-4)  # , power=2)
-        ,
-        constraints=[LongOnly(), LeverageLimit(1)],
-        # verbose=True,
-        solver='ECOS')
+
         
-    policy1.pre_evaluation(returns,
-                          volumes,
-                          start_time=returns.index[51],
-                          end_time=returns.index[-1])
 
-    result1 = policy1.values_in_time(
-        t=returns.index[51],
-        current_weights=pd.Series(
-            curw,
-            returns.columns),
-        current_portfolio_value=1000,
-        past_returns=None,
-        past_volumes=None)
-        
-    cvxportfolio_result1 = pd.Series(result1, returns.columns)
-        
-    assert np.allclose(cvxportfolio_result - cvxportfolio_result1, 0., atol=1e-7)
-    
-def test_multi_period_optimization2(returns, volumes):
-    """Test that MPO1 and MPO2 and MPO5 return same if no tcost, and diff if tcost"""
-    
-    results = []
-    for planning_horizon in [1,2,5]:
-        N = returns.shape[1]
-        return_forecast = ReturnsForecast(rolling=50)
-        risk_forecast = FullCovariance(rolling=50)
-        policy = MultiPeriodOptimization(
-            return_forecast
-            - 10 * risk_forecast
-            #- TcostModel(half_spread=5 * 1E-4)  # , power=2)
-            ,
-            constraints=[LongOnly(), LeverageLimit(1)],
-            # verbose=True,
-            planning_horizon=planning_horizon,
-            solver='ECOS')
-
-        policy.pre_evaluation(returns,
-                              volumes,
-                              start_time=returns.index[50],
-                              end_time=returns.index[-1])
-
-        curw = np.zeros(N)
-        curw[-1] = 1.
-
-        results.append(policy.values_in_time(
-            t=returns.index[51],
-            current_weights=pd.Series(
-                curw,
-                returns.columns),
-            current_portfolio_value=1000,
-            past_returns=None,
-            past_volumes=None))
-            
-    assert np.allclose(results[0], results[1], atol=1e-4)
-    assert np.allclose(results[1], results[2], atol=1e-4)
-        
-    # with tcost
-    
-    results = []
-    for planning_horizon in [1,2,5]:
-        N = returns.shape[1]
-        return_forecast = ReturnsForecast(rolling=50)
-        risk_forecast = FullCovariance(rolling=50)
-        policy = MultiPeriodOptimization(
-            return_forecast
-            - 10 * risk_forecast
-            - TcostModel(half_spread=25 * 1E-4)  # , power=2)
-            ,
-            constraints=[LongOnly(), LeverageLimit(1)],
-            # verbose=True,
-            planning_horizon=planning_horizon,
-            solver='ECOS')
-
-        policy.pre_evaluation(returns,
-                              volumes,
-                              start_time=returns.index[50],
-                              end_time=returns.index[-1])
-
-        curw = np.zeros(N)
-        curw[-1] = 1.
-
-        results.append(policy.values_in_time(
-            t=returns.index[51],
-            current_weights=pd.Series(
-                curw,
-                returns.columns),
-            current_portfolio_value=1000,
-            past_returns=None,
-            past_volumes=None))
-            
-    assert not np.allclose(results[0], results[1], atol=1e-4)
-    assert not np.allclose(results[1], results[2], atol=1e-4)
-        
-def test_multi_period_optimization3(returns, volumes):
-    """Check that terminal constraint brings closer to benchmark."""
-    
-    np.random.seed(0)
-    benchmark = np.random.uniform(size=returns.shape[1])
-    benchmark /= sum(benchmark)
-    benchmark = pd.Series(benchmark, returns.columns)
-    
-    diff_to_benchmarks = []
-    for planning_horizon in [1,2,5]:
-        N = returns.shape[1]
-        return_forecast = ReturnsForecast(rolling=50)
-        risk_forecast = FullCovariance(rolling=50)
-        policy = MultiPeriodOptimization(
-            return_forecast
-            - 10 * risk_forecast
-            - TcostModel(half_spread=5 * 1E-4)  # , power=2)
-            ,
-            constraints=[LongOnly(), LeverageLimit(1)],
-            #verbose=True,
-            terminal_constraint=benchmark,
-            planning_horizon=planning_horizon,
-            solver='ECOS')
-
-        policy.pre_evaluation(returns,
-                              volumes,
-                              start_time=returns.index[50],
-                              end_time=returns.index[-1])
-
-        curw = np.zeros(N)
-        curw[-1] = 1.
-
-        diff_to_benchmarks.append(policy.values_in_time(
-            t=returns.index[51],
-            current_weights=pd.Series(
-                curw,
-                returns.columns),
-            current_portfolio_value=1000,
-            past_returns=None,
-            past_volumes=None) + curw - benchmark)
-                        
-    assert np.isclose(np.linalg.norm(diff_to_benchmarks[0]), 0.)
-    assert np.linalg.norm(diff_to_benchmarks[0]) < np.linalg.norm(diff_to_benchmarks[1])
-    assert np.linalg.norm(diff_to_benchmarks[1]) < np.linalg.norm(diff_to_benchmarks[2])
         
         
 # def test_spo_old_vs_new(returns, volumes, sigma):
