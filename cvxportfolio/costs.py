@@ -30,9 +30,7 @@ import copy
 # from .utils import null_checker, values_in_time
 from .estimator import CvxpyExpressionEstimator, ParameterEstimator, DataEstimator
 
-__all__ = ["HoldingCost", 
-#"TransactionCost"
-]
+__all__ = ["HoldingCost", "TransactionCost"]
 
 
 class BaseCost(CvxpyExpressionEstimator):
@@ -322,7 +320,7 @@ class HoldingCost(BaseCost):
     #     return self.last_cost
 
 
-class TcostModel(BaseCost):
+class TransactionCost(BaseCost):
     """A model for transaction costs.
 
     (See section pages 10-11 in the paper
@@ -343,54 +341,76 @@ class TcostModel(BaseCost):
       power (float): The nonlinear tcost exponent. Default 1.5.
     """
 
-    def __init__(self, half_spread=0.0, nonlin_coeff=0.0, sigma=0.0, volume=1.0, power=1.5):
+    def __init__(self, spreads=0., pershare_cost=0.005, b=1.0, window_sigma_est=250, window_volume_est=250, exponent=1.5):
         # self.compile_first_term = not np.isscalar(half_spread) or half_spread > 0.0
         # self.compile_second_term = (not np.isscalar(nonlin_coeff) or nonlin_coeff > 0.0) and (not np.isscalar(sigma) or sigma > 0.0)
         # if self.compile_first_term:
-        self.half_spread = ParameterEstimator(half_spread, non_negative=True)
+        # if spreads is None:
+        #     self.spreads = None
+        # else:
+        self.spreads = DataEstimator(spreads)#, non_negative=True)
+        self.pershare_cost = DataEstimator(pershare_cost)
         # self.sigma = DataEstimator(sigma) #, non_negative=True)
         # self.volume = DataEstimator(volume) #, non_negative=True)
         # self.nonlin_coeff = DataEstimator(nonlin_coeff) #, non_negative=True)
         #if self.compile_second_term:
-        self.base_second_term_multiplier = ParameterEstimator(sigma * nonlin_coeff / (volume**(power - 1)))#, non_negative=True)
-        self.power: float = power
+        self.b = DataEstimator(b)
+        self.window_sigma_est = window_sigma_est
+        self.window_volume_est = window_volume_est
+        #self.base_second_term_multiplier = ParameterEstimator(sigma * nonlin_coeff / (volume**(power - 1)))#, non_negative=True)
+        self.exponent = exponent
             
-    def pre_evaluation(self, *args, **kwargs):
-        super().pre_evaluation(*args, **kwargs)
-        #if self.compile_second_term:
-        self.second_term_multiplier = cvx.Parameter(shape=self.base_second_term_multiplier.shape, nonneg=True)
+    def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
+        self.first_term_multiplier = cvx.Parameter(len(universe)-1, nonneg=True)
+        self.second_term_multiplier = cvx.Parameter(len(universe)-1, nonneg=True)
 
-    def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, 
-        past_volumes, **kwargs):
-        """We patch here to apply current portfolio value to tcost."""
-        super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+    def values_in_time(self, t,  current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
+        
+        super().values_in_time(t=t, current_portfolio_value=current_portfolio_value, 
+            past_returns=past_returns, past_volumes=past_volumes, 
+            current_prices=current_prices, **kwargs)
+            
+        self.first_term_multiplier.value = self.spreads.current_value/2. + self.pershare_cost.current_value / current_prices.values
+        sigma_est = np.sqrt((past_returns.iloc[-self.window_sigma_est:, :-1]**2).mean()).values
+        volume_est = past_volumes.iloc[-self.window_volume_est:].mean().values
         # self.second_term_multiplier.value *= current_portfolio_value ** (self.power - 1)
         #if self.compile_second_term:
-        self.second_term_multiplier.value = self.base_second_term_multiplier.value * current_portfolio_value ** (self.power - 1)
+        self.second_term_multiplier.value = self.b.current_value * sigma_est * \
+            (current_portfolio_value / volume_est) ** (self.exponent - 1)
+        
+        #self.base_second_term_multiplier.value * current_portfolio_value ** (self.power - 1)
 
-    def compile_to_cvxpy(self, w_plus, z, value):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         #if self.compile_first_term:
         #first_term = (cvx.multiply(self.half_spread, cvx.abs(z[:-1])) if self.compile_first_term else 0.0)
-        first_term = cvx.multiply(self.half_spread, cvx.abs(z[:-1]))
-        assert cvx.sum(first_term).is_convex()
-        #else:
-        #    first_term = 0.
-        #if self.compile_second_term:
-            # second_term = cvx.multiply(self.nonlin_coeff, self.sigma)
-            # second_term = cvx.multiply(
-            #     second_term, (value / self.volume) ** (self.power - 1)
-            # )
-        second_term = cvx.multiply(self.second_term_multiplier, cvx.abs(z[:-1]) ** self.power)
-        assert cvx.sum(second_term).is_convex()
-        assert cvx.sum(second_term).is_dcp(dpp=True)
-        #else:
-        #    second_term = 0.0
-
-        self.expression = first_term + second_term
-        self.expression = cvx.sum(self.expression)
-        assert self.expression.is_dcp(dpp=True)
-        assert self.expression.is_convex()
-        return self.expression
+        expression = cvx.abs(z[:-1]).T @ self.first_term_multiplier
+        assert expression.is_convex()
+        expression += (cvx.abs(z[:-1]) ** self.exponent).T @ self.second_term_multiplier
+        assert expression.is_convex()
+        return expression
+        
+        # if not (self.spreads is None):
+        #     expression += cvx.multiply(self.spreads, cvx.abs(z[:-1]))/2.
+        #     assert cvx.sum(expression).is_convex()
+        # #else:
+        # #    first_term = 0.
+        # #if self.compile_second_term:
+        #     # second_term = cvx.multiply(self.nonlin_coeff, self.sigma)
+        #     # second_term = cvx.multiply(
+        #     #     second_term, (value / self.volume) ** (self.power - 1)
+        #     # )
+        # expression += cvx.multiply(self.second_term_multiplier, cvx.abs(z[:-1]) ** self.exponent)
+        # assert cvx.sum(expression).is_convex()
+        # assert cvx.sum(expression).is_dcp(dpp=True)
+        # #else:
+        # #    second_term = 0.0
+        #
+        # # self.expression = first_term + second_term
+        # # self.expression = cvx.sum(self.expression)
+        # # assert self.expression.is_dcp(dpp=True)
+        # # assert self.expression.is_convex()
+        # return cvx.sum(self.expression)
 
     # def _estimate(self, t, w_plus, z, value):
     #     """Estimate tcosts given trades.

@@ -34,7 +34,7 @@ class TestCosts(unittest.TestCase):
         """Load the data and initialize cvxpy vars."""
         # cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
         cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
-        # cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
+        cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
         cls.w_plus = cvx.Variable(cls.returns.shape[1])
         cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
         cls.z = cvx.Variable(cls.returns.shape[1])
@@ -107,8 +107,144 @@ class TestCosts(unittest.TestCase):
                 #+ np.abs(self.w_plus.value[-1])* 0.5/(100 * 252)
                - self.w_plus.value[:-1].T @ dividends
             ))
-                            
 
+
+    def test_tcost(self):
+        """Test tcost model."""
+        value = 1e6
+        
+        pershare_cost = pd.Series([0., 0.005, 0.], [self.returns.index[12], self.returns.index[23], self.returns.index[34]])
+        b = pd.Series([0., 0., 1.], [self.returns.index[12], self.returns.index[23], self.returns.index[34]])
+        
+        tcost = TransactionCost(
+            spreads=0.001, pershare_cost=pershare_cost, b=b, window_sigma_est=250, window_volume_est=250, exponent=1.5)
+        
+        t = self.returns.index[12]
+        
+        tcost.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        expression = tcost.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        
+        # only spread
+        
+        tcost.values_in_time(t=self.returns.index[12], 
+            current_portfolio_value = value,
+            past_returns=self.returns.iloc[:12], 
+            past_volumes=self.volumes.iloc[:12],
+            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]))
+        
+        
+        self.z.value = np.random.randn(self.returns.shape[1])
+        self.z.value[-1] = -np.sum(self.z.value[:-1])
+        
+        est_tcost_lin = sum(np.abs(self.z.value[:-1]) * 0.0005)
+        print(est_tcost_lin)
+        print(expression.value)
+        self.assertTrue(np.isclose(expression.value, est_tcost_lin))
+        
+        
+        # spread and fixed cost
+        
+        prices = pd.Series(np.random.uniform(1, 100, size=self.returns.shape[1]-1), self.returns.columns[:-1])
+        
+        tcost.values_in_time(t=self.returns.index[23], 
+            current_portfolio_value = value,
+            past_returns=self.returns.iloc[:23], 
+            past_volumes=self.volumes.iloc[:23],
+            current_prices=prices)
+        
+        
+        self.z.value = np.random.randn(self.returns.shape[1])
+        self.z.value[-1] = -np.sum(self.z.value[:-1])
+        
+        est_tcost_lin = sum(np.abs(self.z.value[:-1]) * 0.0005)
+        est_tcost_lin += np.abs(self.z.value[:-1]) @ (0.005 / prices.values)
+        print(est_tcost_lin)
+        print(expression.value)
+        self.assertTrue(np.isclose(expression.value, est_tcost_lin))
+        
+        # spread and nonlin cost
+        
+        tcost.values_in_time(t=self.returns.index[34], 
+            current_portfolio_value = value,
+            past_returns=self.returns.iloc[:34], 
+            past_volumes=self.volumes.iloc[:34],
+            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]))
+        
+        
+        self.z.value = np.random.randn(self.returns.shape[1])
+        self.z.value[-1] = -np.sum(self.z.value[:-1])
+        
+        est_tcost_lin = sum(np.abs(self.z.value[:-1]) * 0.0005)
+        volumes_est = self.volumes.iloc[:34].mean().values
+        sigmas_est = np.sqrt((self.returns.iloc[:34, :-1]**2).mean()).values
+        est_tcost_nonnlin = (np.abs(self.z.value[:-1])**(3/2)) @ (sigmas_est * np.sqrt(value / volumes_est))
+        print(est_tcost_lin)
+        print(est_tcost_nonnlin)
+        print(expression.value)
+        self.assertTrue(np.isclose(expression.value, est_tcost_lin+est_tcost_nonnlin))
+        
+        
+        
+        # raise Exception
+        #
+        #
+        # self.z.value
+        #
+        # est_tcost_lin = sum(np.abs(self.z[:-1]) * 0.0005)
+        # assert tcost.value == pytest.approx(est_tcost_lin)
+        #
+        #
+        # raise Exception
+        #
+        # t = returns.index[1]
+        # z = np.arange(n) - n / 2
+        # z_var = cvx.Variable(n)
+        # z_var.value = z
+        # tcost, _ = model.weight_expr(t, None, z_var, value)
+        # est_tcost_lin = sum(np.abs(z[:-1]) * 0.0005)
+        # assert tcost.value == pytest.approx(est_tcost_lin)
+        #
+        # model = TcostModel(
+        #     half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=2
+        # )
+        # tcost, _ = model.weight_expr(t, None, z_var, value)
+        # coeff = 1.0 * sigma.loc[t] * (value / volumes.loc[t])
+        # est_tcost_nonlin = np.square(z[:-1]).dot(coeff.values)
+        # assert tcost.value == pytest.approx(est_tcost_nonlin)
+        #
+        # model = TcostModel(
+        #     half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=1.5
+        # )
+        # tcost, _ = model.weight_expr(t, None, z_var, value)
+        # coeff = 1.0 * sigma.loc[t] * np.sqrt(value / volumes.loc[t])
+        # est_tcost_nonlin = np.power(np.abs(z[:-1]), 1.5).dot(coeff.values)
+        #
+        # assert tcost.value == pytest.approx(est_tcost_nonlin)
+        #
+        # model = TcostModel(
+        #     half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
+        # )
+        #
+        # tcost, _ = model.weight_expr(t, None, z_var, value)
+        # assert tcost.value == pytest.approx(est_tcost_nonlin + est_tcost_lin)
+        #
+        # # with tau
+        # model = TcostModel(
+        #     half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
+        # )
+        # tau = returns.index[2]
+        # tcost, _ = model.weight_expr_ahead(t, tau, None, z_var, value)
+        # assert tcost.value == pytest.approx(est_tcost_nonlin + est_tcost_lin)
+        #
+        # tau = t + 10 * pd.Timedelta("1 days")
+        # tcost_tau, _ = model.est_period(t, t, tau, None, z_var, value)
+        # tcost_t, _ = model.weight_expr(t, None, z_var / 10, value)
+        # tcost_t *= 10
+        # assert tcost_tau.value == pytest.approx(tcost_t.value)
+        #
+        #
+        #
+        #
 
 if __name__ == '__main__':
     unittest.main()
@@ -168,168 +304,114 @@ if __name__ == '__main__':
 #     decay = diff ** (-2)
 #     assert alpha_tau.value == pytest.approx(decay * alpha_t.value)
 
-
-def test_tcost_value_expr(returns, sigma, volumes):
-    """Test the value expression of the tcost."""
-    n = len(returns.columns)
-    value = 1e6
-    model = TcostModel(
-        half_spread=0.0005, nonlin_coeff=0.0, sigma=sigma, volume=volumes
-    )
-    t = returns.index[1]
-    z = np.arange(n) - n / 2
-    z_var = cvx.Variable(n)
-    z_var.value = z
-    tcost, _ = model.weight_expr(t, None, z_var, value)
-    u = pd.Series(index=returns.columns, data=z_var.value * value)
-    value_expr = model.value_expr(t, None, u)
-
-    assert tcost.value == pytest.approx(value_expr / value)
-
-    model = TcostModel(
-        half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=2
-    )
-
-    tcost, _ = model.weight_expr(t, None, z_var, value)
-    assert np.isclose(
-        tcost.value *
-        value,
-        np.sum(
-            1.0 *
-            sigma.loc[t] /
-            volumes.loc[t] *
-            u**2))
-
-    model = TcostModel(
-        half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=2
-    )
-
-    value_expr = model.value_expr(t, None, u)
-
-    assert tcost.value == pytest.approx(value_expr / value)
-
-    # self.assertAlmostEqual(tcost.value, value_expr/value)
-
-    model = TcostModel(
-        half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=1.5
-    )
-    tcost, _ = model.weight_expr(t, None, z_var, value)
-    1.0 * sigma.loc[t] * np.sqrt(value / volumes.loc[t])
-
-    model = TcostModel(
-        half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=1.5
-    )
-    value_expr = model.value_expr(t, None, u)
-    assert tcost.value == pytest.approx(value_expr / value)
-
-    model = TcostModel(
-        half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
-    )
-    tcost, _ = model.weight_expr(t, None, z_var, value)
-
-    model = TcostModel(
-        half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
-    )
-
-    value_expr = model.value_expr(t, None, u)
-    assert tcost.value == pytest.approx(value_expr / value)
-
-    # with tau
-    model = TcostModel(
-        half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
-    )
-    tau = returns.index[2]
-    tcost, _ = model.weight_expr_ahead(t, tau, None, z_var, value)
-
-    model = TcostModel(
-        half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
-    )
-
-    value_expr = model.value_expr(t, None, u)
-    assert tcost.value == pytest.approx(value_expr / value)
-
-
-def test_tcost(returns, volumes, sigma):
-    """Test tcost model."""
-    n = len(returns.columns)
-    value = 1e6
-    model = TcostModel(
-        half_spread=0.0005, nonlin_coeff=0.0, sigma=sigma, volume=volumes
-    )
-    t = returns.index[1]
-    z = np.arange(n) - n / 2
-    z_var = cvx.Variable(n)
-    z_var.value = z
-    tcost, _ = model.weight_expr(t, None, z_var, value)
-    est_tcost_lin = sum(np.abs(z[:-1]) * 0.0005)
-    assert tcost.value == pytest.approx(est_tcost_lin)
-
-    model = TcostModel(
-        half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=2
-    )
-    tcost, _ = model.weight_expr(t, None, z_var, value)
-    coeff = 1.0 * sigma.loc[t] * (value / volumes.loc[t])
-    est_tcost_nonlin = np.square(z[:-1]).dot(coeff.values)
-    assert tcost.value == pytest.approx(est_tcost_nonlin)
-
-    model = TcostModel(
-        half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=1.5
-    )
-    tcost, _ = model.weight_expr(t, None, z_var, value)
-    coeff = 1.0 * sigma.loc[t] * np.sqrt(value / volumes.loc[t])
-    est_tcost_nonlin = np.power(np.abs(z[:-1]), 1.5).dot(coeff.values)
-
-    assert tcost.value == pytest.approx(est_tcost_nonlin)
-
-    model = TcostModel(
-        half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
-    )
-
-    tcost, _ = model.weight_expr(t, None, z_var, value)
-    assert tcost.value == pytest.approx(est_tcost_nonlin + est_tcost_lin)
-
-    # with tau
-    model = TcostModel(
-        half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
-    )
-    tau = returns.index[2]
-    tcost, _ = model.weight_expr_ahead(t, tau, None, z_var, value)
-    assert tcost.value == pytest.approx(est_tcost_nonlin + est_tcost_lin)
-
-    tau = t + 10 * pd.Timedelta("1 days")
-    tcost_tau, _ = model.est_period(t, t, tau, None, z_var, value)
-    tcost_t, _ = model.weight_expr(t, None, z_var / 10, value)
-    tcost_t *= 10
-    assert tcost_tau.value == pytest.approx(tcost_t.value)
-
-
-
-
-
-
-
-def test_hcost_value_expr(returns):
-    """Test the value expression of the hcost."""
-    div = 0.0
-    n = len(returns.columns)
-    wplus = cvx.Variable(n)
-    wplus.value = np.arange(n) - n / 2
-    t = returns.index[1]
-    model = HcostModel(0.0)
-    hcost, _ = model.weight_expr(t, wplus, None, None)
-
-    value = 1000.0
-    h_plus = pd.Series(index=returns.columns, data=wplus.value * 1000)
-    value_expr = model.value_expr(t, h_plus, None)
-
-    assert hcost.value == pytest.approx(value_expr / value)
-
-    model = HcostModel(0.0, div)
-    hcost, _ = model.weight_expr(t, wplus, None, None)
-    value_expr = model.value_expr(t, h_plus, None)
-    assert -hcost.value == pytest.approx(value_expr / value)
-
-    model = HcostModel(0.0, div)
-    hcost, _ = model.weight_expr(t, wplus, None, None)
-    value_expr = model.value_expr(t, h_plus, None)
-    assert hcost.value == pytest.approx(value_expr / value)
+#
+# def test_tcost_value_expr(returns, sigma, volumes):
+#     """Test the value expression of the tcost."""
+#     n = len(returns.columns)
+#     value = 1e6
+#     model = TcostModel(
+#         half_spread=0.0005, nonlin_coeff=0.0, sigma=sigma, volume=volumes
+#     )
+#     t = returns.index[1]
+#     z = np.arange(n) - n / 2
+#     z_var = cvx.Variable(n)
+#     z_var.value = z
+#     tcost, _ = model.weight_expr(t, None, z_var, value)
+#     u = pd.Series(index=returns.columns, data=z_var.value * value)
+#     value_expr = model.value_expr(t, None, u)
+#
+#     assert tcost.value == pytest.approx(value_expr / value)
+#
+#     model = TcostModel(
+#         half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=2
+#     )
+#
+#     tcost, _ = model.weight_expr(t, None, z_var, value)
+#     assert np.isclose(
+#         tcost.value *
+#         value,
+#         np.sum(
+#             1.0 *
+#             sigma.loc[t] /
+#             volumes.loc[t] *
+#             u**2))
+#
+#     model = TcostModel(
+#         half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=2
+#     )
+#
+#     value_expr = model.value_expr(t, None, u)
+#
+#     assert tcost.value == pytest.approx(value_expr / value)
+#
+#     # self.assertAlmostEqual(tcost.value, value_expr/value)
+#
+#     model = TcostModel(
+#         half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=1.5
+#     )
+#     tcost, _ = model.weight_expr(t, None, z_var, value)
+#     1.0 * sigma.loc[t] * np.sqrt(value / volumes.loc[t])
+#
+#     model = TcostModel(
+#         half_spread=0, nonlin_coeff=1.0, sigma=sigma, volume=volumes, power=1.5
+#     )
+#     value_expr = model.value_expr(t, None, u)
+#     assert tcost.value == pytest.approx(value_expr / value)
+#
+#     model = TcostModel(
+#         half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
+#     )
+#     tcost, _ = model.weight_expr(t, None, z_var, value)
+#
+#     model = TcostModel(
+#         half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
+#     )
+#
+#     value_expr = model.value_expr(t, None, u)
+#     assert tcost.value == pytest.approx(value_expr / value)
+#
+#     # with tau
+#     model = TcostModel(
+#         half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
+#     )
+#     tau = returns.index[2]
+#     tcost, _ = model.weight_expr_ahead(t, tau, None, z_var, value)
+#
+#     model = TcostModel(
+#         half_spread=0.0005, nonlin_coeff=1.0, sigma=sigma, volume=volumes
+#     )
+#
+#     value_expr = model.value_expr(t, None, u)
+#     assert tcost.value == pytest.approx(value_expr / value)
+#
+#
+#
+#
+#
+#
+#
+# def test_hcost_value_expr(returns):
+#     """Test the value expression of the hcost."""
+#     div = 0.0
+#     n = len(returns.columns)
+#     wplus = cvx.Variable(n)
+#     wplus.value = np.arange(n) - n / 2
+#     t = returns.index[1]
+#     model = HcostModel(0.0)
+#     hcost, _ = model.weight_expr(t, wplus, None, None)
+#
+#     value = 1000.0
+#     h_plus = pd.Series(index=returns.columns, data=wplus.value * 1000)
+#     value_expr = model.value_expr(t, h_plus, None)
+#
+#     assert hcost.value == pytest.approx(value_expr / value)
+#
+#     model = HcostModel(0.0, div)
+#     hcost, _ = model.weight_expr(t, wplus, None, None)
+#     value_expr = model.value_expr(t, h_plus, None)
+#     assert -hcost.value == pytest.approx(value_expr / value)
+#
+#     model = HcostModel(0.0, div)
+#     hcost, _ = model.weight_expr(t, wplus, None, None)
+#     value_expr = model.value_expr(t, h_plus, None)
+#     assert hcost.value == pytest.approx(value_expr / value)
