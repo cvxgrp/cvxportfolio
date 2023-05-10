@@ -216,6 +216,25 @@ class TestSimulator(unittest.TestCase):
         
         print(result)
             
+    def test_multiple_backtest(self):
+        
+        pol = cp.SinglePeriodOptimization(cp.ReturnsForecast() -
+            cp.ReturnsForecastError() -
+            .5 * cp.FullCovariance(),
+            [#cp.LongOnly(),
+            cp.LeverageLimit(1)], verbose=True)
+            
+        pol1 = cp.Uniform()
+        
+        sim = cp.MarketSimulator(['AAPL', 'MSFT'],#', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
+         base_location=self.datadir)
+         
+        with self.assertRaises(SyntaxError):
+            result = sim.backtest([pol, pol1], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'), h=['hello'])
+        
+        # result, result1 =  sim.backtest([pol, pol1], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
+         
+         
                 
 if __name__ == '__main__':
     unittest.main()

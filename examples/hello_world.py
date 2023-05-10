@@ -21,42 +21,53 @@ policy = cp.SinglePeriodOptimization(objective =
         #)
         
         
-        - 10 * cp.FactorModelCovariance(num_factors=5)
+        # - 10 * cp.FactorModelCovariance(num_factors=5)
        # - 10 * cp.DiagonalCovariance() 
-        # - 10 * cp.FullCovariance()
+        - .5 * (cp.FullCovariance() + .05 * cp.RiskForecastError())
         
         
         #- 1 * cp.RiskForecastError()
-        
+        -cp.TransactionCost(exponent=2)
+        -cp.HoldingCost()
         ,#, kappa=.25), #addmean=True
+        
         #)
         
         # 5 * cp.RollingWindowFactorModelRisk(LOOKBACK, num_factors=5, forecast_error_kappa = 0.5), 
-        constraints = [#cp.LeverageLimit(.1), cp.MaxWeights(0.02), #cp.MinWeights(-0.02), #cp.DollarNeutral(),
+        constraints = [cp.LeverageLimit(1),
+         cp.MaxWeights(0.05), 
+         cp.MinWeights(-0.05), #cp.DollarNeutral(),
     ],verbose=True
         )
         
 # define a market simulator, which downloads stock market data and stores it locally
 # in ~/cvxportfolio/        
 simulator = cp.MarketSimulator(sorted(set(["AMZN", "AAPL", "MSFT", "GOOGL", "TSLA", "GM", 'NKE', 'MCD', 'GE', 'CVX', 
-                              'XOM', 'MMM', 'UNH', 'HD', 'WMT',# 'ORCL', 'INTC', 'JPM', 'BLK', 'BA', 'NVDA', 
+                              'XOM', 'MMM', 'UNH', 'HD', 'WMT', 'ORCL', 'INTC', 'JPM', 'BLK', 'BA', 'NVDA', 
                                'F', 'GS', 'AMD', 'CSCO', 'KO', 'HON', 'DIS', 'FRC', # 'DOW',
                                 'V', 'ADBE', 'AMGN', 'CAT', 'BA', 'HON', 'JNJ', 'AXP', 'PG', 'JPM', 
                            'IBM', 'MRK', 'MMM', 'VZ', 'WBA', 'INTC', 'PEP', 'AVGO',
                             'COST', 'TMUS', 'CMCSA', 'TXN', 'NFLX', 'SBUX', 'GILD',
                             'ISRG', 'MDLZ', 'BKNG', 'AMAT', 'ADI', 'ADP', 'VRTX', 
                             'REGN', #'PYPL',
-                             'FISV', 'LRCX'
-                        
-                        ]
-                            )),
-                             rolling_window_sigma_estimator=250)
+                             'FISV', 'LRCX']
+                            )))
 
 #signal = simulator.returns.data.iloc[:, :-1].ewm(halflife=10000).mean().shift(1)
 #policy = cp.RankAndLongShort(signal, num_long=10, num_short=0, target_leverage=.1)
 #policy = cp.Uniform()
 # perform a backtest (by default it starts with 1E6 USD cash)
-backtest = cp.BackTest(policy, simulator, '2012-01-01', '2023-04-21')
+backtest = simulator.backtest(policy,
+#cp.Uniform(),
+ '2012-01-01', '2023-04-21')
+
+print(backtest)
+
+
+import numpy as np
+import pandas as pd
+
+(np.exp(pd.DataFrame({'GR':backtest.growth_rates, 'CASH':backtest.cash_returns}).cumsum())-1).plot(); plt.show()
 
 # plot value of the portfolio in time
 backtest.v.plot(figsize=(12, 5), label='Single Period Optimization')

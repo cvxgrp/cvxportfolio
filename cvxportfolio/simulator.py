@@ -22,20 +22,24 @@ import copy
 import logging
 import time
 from pathlib import Path
+from multiprocessing import Pool
 
-
-import multiprocess
+# import multiprocess
 import numpy as np
 import pandas as pd
 import cvxpy as cvx
 
 from .result import SimulationResult
 from .costs import BaseCost
-from .data import FredRate, Yfinance, TimeSeries, BASE_LOCATION
+from .data import Yfinance, TimeSeries, BASE_LOCATION
 from .returns import ReturnsForecast #, MultipleReturnsForecasts
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
 
+
+def parallel_worker(policy, simulator, start_time, end_time, h):
+    return simulator._single_backtest(policy, start_time, end_time, h)
+    
 
 class MarketSimulator(Estimator):
     """This class implements a simulator of market performance for trading strategies.
@@ -400,21 +404,8 @@ class MarketSimulator(Estimator):
         policy.pre_evaluation(universe = self.returns.data.columns, 
                              backtest_times = self.returns.data.index[(self.returns.data.index<end_time) & 
                                  (self.returns.data.index>=start_time)])
-                  
                                  
-    def backtest(self, policy, start_time, end_time=None, initial_value = 1E6, h=None):
-        
-        start_time = pd.Series(self.returns.data.index >= start_time, self.returns.data.index).idxmax()
-        if end_time is None:
-            end_time  = self.returns.data.index[-1]
-        else:
-            end_time = self.returns.data.index[self.returns.data.index <= end_time][-1]
-        
-        self.initialize_policy(policy, start_time, end_time)
-        
-        if h is None:
-            h = pd.Series(0., self.returns.data.columns)
-            h[-1] = initial_value
+    def _single_backtest(self, policy, start_time, end_time, h):
         
         h_df = pd.DataFrame(columns=self.returns.data.columns)
         u = pd.DataFrame(columns=self.returns.data.columns)
@@ -431,7 +422,71 @@ class MarketSimulator(Estimator):
         h_df.loc[pd.Timestamp(end_time)] = h  
         
         return BacktestResult(h=h_df, u=u, z=z, tcost=tcost, hcost_stocks=hcost_stocks, hcost_cash=hcost_cash, 
-            cash_returns=self.returns.data[self.cash_key].loc[u.index])  
+            cash_returns=self.returns.data[self.cash_key].loc[u.index])
+        
+                  
+                                 
+    def backtest(self, policy, start_time, end_time=None, initial_value = 1E6, h=None, parallel=True):
+        
+        # turn policy and h into lists
+        if not hasattr(policy, '__len__'):
+            policy = [policy]
+        
+        if not hasattr(h, '__len__'):
+            h = [h]*len(policy)
+            
+        if not (len(policy) == len(h)):
+            raise SyntaxError("If passing lists of policies and initial portfolios they must have the same length.")
+        
+        # discover start and end times
+        start_time = pd.Series(self.returns.data.index >= start_time, self.returns.data.index).idxmax()
+        if end_time is None:
+            end_time  = self.returns.data.index[-1]
+        else:
+            end_time = self.returns.data.index[self.returns.data.index <= end_time][-1]
+        
+        # initialize policies and get initial portfolios
+        for i in range(len(policy)):
+            self.initialize_policy(policy[i], start_time, end_time)
+        
+            if h[i] is None:
+                h[i] = pd.Series(0., self.returns.data.columns)
+                h[i][-1] = initial_value
+                
+        def parallel_runner(zipped):
+            return self._single_backtest(zipped[0], start_time, end_time, zipped[1])
+            
+        # parallel_worker(policy, simulator, start_time, end_time, h)
+        
+        
+        # decide if run in parallel or not
+        if (not parallel) or len(policy) == 1:
+            result = list(map(parallel_runner, zip(policy, h)))
+        else:
+            with Pool() as p:
+                result = p.starmap(parallel_worker, zip(policy, [self] * len(policy), [start_time] * len(policy), [end_time] * len(policy), h))
+                
+        if len(result) == 1:
+            return result[0]
+        return result
+        
+                
+        # h_df = pd.DataFrame(columns=self.returns.data.columns)
+        # u = pd.DataFrame(columns=self.returns.data.columns)
+        # z = pd.DataFrame(columns=self.returns.data.columns)
+        # tcost = pd.Series(dtype=float)
+        # hcost_stocks = pd.Series(dtype=float)
+        # hcost_cash = pd.Series(dtype=float)
+        #
+        # for t in self.returns.data.index[(self.returns.data.index >= start_time) & (self.returns.data.index < end_time)]:
+        #     h_df.loc[t] = h
+        #     h, z.loc[t], u.loc[t], tcost.loc[t], hcost_stocks.loc[t], hcost_cash.loc[t] = \
+        #         self.simulate(t=t, h=h, policy=policy)
+        #
+        # h_df.loc[pd.Timestamp(end_time)] = h
+        #
+        # return BacktestResult(h=h_df, u=u, z=z, tcost=tcost, hcost_stocks=hcost_stocks, hcost_cash=hcost_cash,
+        #     cash_returns=self.returns.data[self.cash_key].loc[u.index])
         
         # self.PPY = 252
         # self.timedelta = pd.Timedelta('1d')
