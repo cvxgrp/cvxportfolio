@@ -5,13 +5,12 @@
 [![Documentation Status](https://readthedocs.org/projects/cvxportfolio/badge/?version=latest)](https://cvxportfolio.readthedocs.io/en/latest/?badge=latest)
 
 
-**WORK IN PROGRESS. Cvxportfolio is currently under development. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3. The script `hello_world.py` now runs with the new interface (see below).**
+**WORK IN PROGRESS. Cvxportfolio is currently under development. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
 
 
 `cvxportfolio` is a python library for portfolio optimization and simulation
-based on the book [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
-It is written in Python, its main dependencies are [`cvxpy`](https://github.com/cvxgrp/cvxpy)
-and [`pandas`](https://github.com/pandas-dev/pandas). 
+based on the book [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf)
+(also [available in print](https://www.amazon.com/Multi-Period-Trading-Convex-Optimization-Foundations/dp/1680833286/)).
 
 The documentation of the package is at [cvxportfolio.readthedocs.io](https://cvxportfolio.readthedocs.io/en/latest/).
 
@@ -20,7 +19,7 @@ Installation
 ------------
 
 ```
-pip install cvxportfolio
+pip install -U cvxportfolio
 ```
 
 Testing
