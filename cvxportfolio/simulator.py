@@ -31,7 +31,7 @@ import cvxpy as cvx
 
 from .result import SimulationResult
 from .costs import BaseCost
-from .data import FredRate, Yfinance, TimeSeries
+from .data import FredRate, Yfinance, TimeSeries, BASE_LOCATION
 from .returns import ReturnsForecast #, MultipleReturnsForecasts
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
@@ -145,8 +145,7 @@ class MarketSimulator(Estimator):
             spread_on_lending_cash_percent=.5,
             spread_on_borrowing_cash_percent=.5,
             cash_key="USDOLLAR",
-            base_location=Path.home() /
-            "cvxportfolio"):
+            base_location=BASE_LOCATION):
         """Initialize the Simulator and download data if necessary."""
         if not len(universe):
             if costs is None: # we allow old simulator syntax for the time being

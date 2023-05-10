@@ -26,13 +26,8 @@ pip install cvxportfolio
 Testing
 ------------
 
-To test it locally, for example, you can set up the development environment with [`poetry`](https://python-poetry.org/) and run [`pytest`](https://pytest.org/). 
-
 ```
-git clone https://github.com/cvxgrp/cvxportfolio.git
-cd cvxportfolio
-poetry install
-poetry run pytest --cov
+python -m unittest discover cvxportfolio
 ```
 
 
@@ -90,7 +85,7 @@ Academic
 
 If you use `cvxportfolio` in your academic work please cite our book:
 ```
-@article{BBDKKNS:17,
+@book{BBDKKNS:17,
     author       = {S. Boyd and E. Busseti and S. Diamond and R. Kahn and K. Koh and P. Nystrup and J. Speth},
     title        = {Multi-Period Trading via Convex Optimization},
     journal      = {Foundations and Trends in Optimization},

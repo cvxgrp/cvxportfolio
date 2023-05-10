@@ -21,8 +21,9 @@ import sqlite3
 
 from .estimator import DataEstimator
 
-__all__ = ["TimeSeries"]
+__all__ = ["TimeSeries", "BASE_LOCATION"]
 
+BASE_LOCATION = Path.home() / ".cvxportfolio"
 
 class BaseData:
     """Base class for Cvxportfolio database interface.
@@ -193,7 +194,7 @@ class SqliteDataStore(BaseDataStore):
             is ~/cvxportfolio/
     """
 
-    def __init__(self, base_location=Path.home() / "cvxportfolio"):
+    def __init__(self, base_location=BASE_LOCATION):
         """Initialize sqlite connection and if necessary create database."""
         self.base_location = base_location
 
@@ -286,13 +287,13 @@ class PickleStore(BaseDataStore):
 
     """
 
-    base_location = Path.home() / "cvxportfolio"
+    # base_location = BASE_LOCATION
 
     @property
     def location(self):
         return self.base_location / self.__class__.__name__
 
-    def __init__(self, base_location=Path.home() / "cvxportfolio"):
+    def __init__(self, base_location=BASE_LOCATION):
         self.base_location = base_location
 
     def __create_if_not_existent(self):
@@ -321,13 +322,13 @@ class LocalDataStore(BaseDataStore):
 
     """
 
-    base_location = Path.home() / "cvxportfolio"
+    # base_location = Path.home() / "cvxportfolio"
 
     @property
     def location(self):
         return self.base_location / self.__class__.__name__
 
-    def __init__(self, base_location=Path.home() / "cvxportfolio"):
+    def __init__(self, base_location=BASE_LOCATION):
         self.base_location = base_location
 
     def __create_if_not_existent(self):
