@@ -1,11 +1,11 @@
-SPHINXBUILD   = poetry run sphinx-build -E
+SPHINXBUILD   = sphinx-build -E
 BUILDDIR      = build
 TESTRUNNER	  = poetry run python -m unittest 
 
 
 .PHONY: docs clean test
 	
-test:
+tests:
 	$(TESTRUNNER) cvxportfolio/tests/*.py
 
 clean:
