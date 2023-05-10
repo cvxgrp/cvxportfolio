@@ -50,8 +50,19 @@ def getFiscalQuarter(dt):
 class BacktestResult(Estimator):
     # """Temporary while having both old and new interface."""
     
-    def __init__(self):
-        pass
+    # Periods per year.
+    # When we generalize to intra- or multi-day 
+    # trading we won't have this constant.
+    PPY = 252
+    
+    def __init__(self, h, u, z, tcost, hcost_stocks, hcost_cash, cash_returns):
+        self.h = h
+        self.u = u
+        self.z = z
+        self.tcost = tcost
+        self.hcost_stocks = hcost_stocks
+        self.hcost_cash = hcost_cash
+        self.cash_returns = cash_returns
 
     @property
     def v(self):
@@ -101,7 +112,6 @@ class BacktestResult(Estimator):
         """The growth rate log(v_{t+1}/v_t)"""
         return np.log(self.excess_returns + 1)
     
-
     @property
     def annual_growth_rate(self):
         """The annualized growth rate PPY/T sum_{t=1}^T log(v_{t+1}/v_t)"""
@@ -142,8 +152,7 @@ class BacktestResult(Estimator):
     @property
     def turnover(self):
         """Turnover ||u_t||_1/v_t"""
-        noncash_trades = self.u.drop(self.cash_key, axis=1)
-        return np.abs(noncash_trades).sum(axis=1) / self.v.loc[self.u.index]
+        return np.abs(self.u.iloc[:,:-1]).sum(axis=1) / self.v.loc[self.u.index]
 
     @property
     def trading_days(self):
@@ -165,8 +174,28 @@ class BacktestResult(Estimator):
         
     @property
     def excess_returns(self):
-        return self.returns - self.simulator.returns.data[self.cash_key].loc[self.returns.index]
+        return self.returns - self.cash_returns
 
+
+    def __repr__(self):
+        data = collections.OrderedDict({
+            "Number of periods": self.u.shape[0],
+            "Initial timestamp": self.h.index[0],
+            "Final timestamp": self.h.index[-1],
+            "Total profit (PnL)": self.profit,
+            "Annualized portfolio return (%)": self.returns.mean() * 100 * self.PPY,
+            "Annualized excess return (%)": self.excess_returns.mean() * 100 * self.PPY,
+            "Annualized excess risk (%)": self.excess_returns.std() * 100 * np.sqrt(self.PPY),
+            "Sharpe ratio": self.sharpe_ratio,
+            "Max. drawdown (%)": self.max_drawdown,
+            "Annualized Turnover (%)": self.turnover.mean() * 100 * self.PPY,
+            #"Average policy time (sec)": self.policy_time.mean(),
+            #"Average simulator time (sec)": self.simulation_time.mean(),
+            })
+
+        return 'Backtest Result:\n' + pd.Series(data=data).to_string(float_format="{:,.3f}".format)
+        
+        
 
 class SimulationResult:
     """A container for the result of a simulation.
@@ -206,27 +235,10 @@ class SimulationResult:
         self.simulator = simulator
         self.policy = policy
 
-    def summary(self):
-        print(self._summary_string())
+    #def summary(self):
+    #    print(self._summary_string())
 
-    def _summary_string(self):
-        data = collections.OrderedDict(
-            {
-                "Number of periods": self.u.shape[0],
-                "Initial timestamp": self.h.index[0],
-                "Final timestamp": self.h.index[-1],
-                "Portfolio return (%)": self.returns.mean() * 100 * self.PPY,
-                "Excess return (%)": self.excess_returns.mean() * 100 * self.PPY,
-                "Excess risk (%)": self.excess_returns.std() * 100 * np.sqrt(self.PPY),
-                "Sharpe ratio": self.sharpe_ratio,
-                "Max. drawdown": self.max_drawdown,
-                "Turnover (%)": self.turnover.mean() * 100 * self.PPY,
-                "Average policy time (sec)": self.policy_time.mean(),
-                "Average simulator time (sec)": self.simulation_time.mean(),
-            }
-        )
 
-        return pd.Series(data=data).to_string(float_format="{:,.3f}".format)
 
     def log_data(self, name, t, entry):
         try:
@@ -263,19 +275,19 @@ class SimulationResult:
                 t,
                 cost.simulation_log(t))
 
-    @property
-    def h(self):
-        """
-        Concatenate initial portfolio and h_next dataframe.
-
-        """
-        tmp = self.h_next.copy()
-        tmp.loc["last"] = np.nan
-        tmp = self.h_next.shift(1)
-        tmp.iloc[0] = self.initial_portfolio
-        # TODO fix ?
-        # tmp.loc[self.h_next.index[-1] + self.timedelta]=self.h_next.iloc[-1]
-        return tmp
+    # @property
+    # def h(self):
+    #     """
+    #     Concatenate initial portfolio and h_next dataframe.
+    #
+    #     """
+    #     tmp = self.h_next.copy()
+    #     tmp.loc["last"] = np.nan
+    #     tmp = self.h_next.shift(1)
+    #     tmp.iloc[0] = self.initial_portfolio
+    #     # TODO fix ?
+    #     # tmp.loc[self.h_next.index[-1] + self.timedelta]=self.h_next.iloc[-1]
+    #     return tmp
 
     
         

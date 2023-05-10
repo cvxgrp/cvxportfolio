@@ -34,7 +34,7 @@ from .costs import BaseCost
 from .data import FredRate, Yfinance, TimeSeries
 from .returns import ReturnsForecast #, MultipleReturnsForecasts
 from .estimator import Estimator, DataEstimator
-
+from .result import BacktestResult
 
 
 class MarketSimulator(Estimator):
@@ -414,10 +414,10 @@ class MarketSimulator(Estimator):
         self.initialize_policy(policy, start_time, end_time)
         
         if h is None:
-            h = pd.Series(0., simulator.returns.data.columns)
-            h[-1] = value_init
+            h = pd.Series(0., self.returns.data.columns)
+            h[-1] = initial_value
         
-        h = pd.DataFrame(columns=self.returns.data.columns)
+        h_df = pd.DataFrame(columns=self.returns.data.columns)
         u = pd.DataFrame(columns=self.returns.data.columns)
         z = pd.DataFrame(columns=self.returns.data.columns)
         tcost = pd.Series(dtype=float)
@@ -425,11 +425,14 @@ class MarketSimulator(Estimator):
         hcost_cash = pd.Series(dtype=float)
         
         for t in self.returns.data.index[(self.returns.data.index >= start_time) & (self.returns.data.index < end_time)]:
-            h.loc[t] = h
+            h_df.loc[t] = h
             h, z.loc[t], u.loc[t], tcost.loc[t], hcost_stocks.loc[t], hcost_cash.loc[t] = \
-                simulator.simulate(t=t, h=h, policy=policy)
+                self.simulate(t=t, h=h, policy=policy)
         
-        h.loc[pd.Timestamp(end_time)] = h    
+        h_df.loc[pd.Timestamp(end_time)] = h  
+        
+        return BacktestResult(h=h_df, u=u, z=z, tcost=tcost, hcost_stocks=hcost_stocks, hcost_cash=hcost_cash, 
+            cash_returns=self.returns.data[self.cash_key].loc[u.index])  
         
         # self.PPY = 252
         # self.timedelta = pd.Timedelta('1d')

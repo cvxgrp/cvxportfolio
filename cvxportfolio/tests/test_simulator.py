@@ -204,16 +204,18 @@ class TestSimulator(unittest.TestCase):
             
             self.assertTrue(np.all(np.abs(h[:-1]) < simulator.prices.data.loc[end_time]))
             
-    # def test_backtest(self):
-    #     pol = cp.SinglePeriodOptimization(cp.ReturnsForecast(rolling=2000) -
-    #         cp.ReturnsForecastErrorRisk(rolling=2000) -
-    #         .5 * cp.FullCovariance(rolling=2000),
-    #         [#cp.LongOnly(),
-    #         cp.LeverageLimit(1)], verbose=True)
-    #     sim = cp.MarketSimulator(['AAPL', 'MSFT'],#', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
-    #      base_location=self.datadir)
-    #     backt = BackTest(pol, sim, pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
-    
+    def test_backtest(self):
+        pol = cp.SinglePeriodOptimization(cp.ReturnsForecast() -
+            cp.ReturnsForecastError() -
+            .5 * cp.FullCovariance(),
+            [#cp.LongOnly(),
+            cp.LeverageLimit(1)], verbose=True)
+        sim = cp.MarketSimulator(['AAPL', 'MSFT'],#', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
+         base_location=self.datadir)
+        result = sim.backtest(pol, pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
+        
+        print(result)
+            
                 
 if __name__ == '__main__':
     unittest.main()
