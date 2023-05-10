@@ -42,18 +42,12 @@ jobs:
         with:
             python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1.3.3
-        with:
-            virtualenvs-create: true
-            virtualenvs-in-project: true
               
       - name: Install dependencies
-        run: | 
-              poetry --version
-              poetry install -vv
+        run: |
+              make env
       
       - name: Run tests
         run: |
-              poetry run python -m unittest cvxportfolio/tests/*.py
+              env/bin/python -m unittest cvxportfolio/tests/*.py
   

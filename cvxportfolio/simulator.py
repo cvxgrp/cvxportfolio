@@ -352,7 +352,6 @@ class MarketSimulator(Estimator):
         past_volumes = self.volumes.data.loc[self.volumes.data.index < t]
 
         # update internal estimators (spreads, dividends, volumes, ..., )
-        # TODO maybe drop this and avoid using DataEstimators in the simulator?
         super().values_in_time(t=t)
 
         # evaluate the policy
@@ -398,13 +397,44 @@ class MarketSimulator(Estimator):
         
     def initialize_policy(self, policy, start_time, end_time):
         """Initialize the policy object.
-        
-        This method differs from other Estimators because it is the Simulator
-        that initializes the policy and all its dependents. It is called by Backtest.
         """
         policy.pre_evaluation(universe = self.returns.data.columns, 
                              backtest_times = self.returns.data.index[(self.returns.data.index<end_time) & 
                                  (self.returns.data.index>=start_time)])
+                  
+                                 
+    def backtest(self, policy, start_time, end_time=None, initial_value = 1E6, h=None):
+        
+        start_time = pd.Series(self.returns.data.index >= start_time, self.returns.data.index).idxmax()
+        if end_time is None:
+            end_time  = self.returns.data.index[-1]
+        else:
+            end_time = self.returns.data.index[self.returns.data.index <= end_time][-1]
+        
+        self.initialize_policy(policy, start_time, end_time)
+        
+        if h is None:
+            h = pd.Series(0., simulator.returns.data.columns)
+            h[-1] = value_init
+        
+        h = pd.DataFrame(columns=self.returns.data.columns)
+        u = pd.DataFrame(columns=self.returns.data.columns)
+        z = pd.DataFrame(columns=self.returns.data.columns)
+        tcost = pd.Series(dtype=float)
+        hcost_stocks = pd.Series(dtype=float)
+        hcost_cash = pd.Series(dtype=float)
+        
+        for t in self.returns.data.index[(self.returns.data.index >= start_time) & (self.returns.data.index < end_time)]:
+            h.loc[t] = h
+            h, z.loc[t], u.loc[t], tcost.loc[t], hcost_stocks.loc[t], hcost_cash.loc[t] = \
+                simulator.simulate(t=t, h=h, policy=policy)
+        
+        h.loc[pd.Timestamp(end_time)] = h    
+        
+        # self.PPY = 252
+        # self.timedelta = pd.Timedelta('1d')
+        # self.cash_key = self.h.columns[-1]
+        
         
         
     ### THE FOLLOWING METHODS ARE FROM THE ORIGINAL SIMULATOR (PRE-2023)
