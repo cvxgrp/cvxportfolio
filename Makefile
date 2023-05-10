@@ -1,10 +1,9 @@
-SPHINXBUILD   = sphinx-build -E
 BUILDDIR      = build
 PYTHON		  = python
 ENVDIR        = env
 
 
-.PHONY: docs clean test env
+.PHONY: docs clean test env cleanenv
 	
 env:
 	$(PYTHON) -m venv $(ENVDIR)
@@ -15,7 +14,9 @@ test:
 
 clean:
 	-rm -rf $(BUILDDIR)/* 
+	
+cleanenv:
 	-rm -rf $(ENVDIR)/*
 
 docs:
-	$(SPHINXBUILD) docs $(BUILDDIR); open build/index.html
+	$(ENVDIR)/bin/sphinx-build -E docs $(BUILDDIR); open build/index.html
