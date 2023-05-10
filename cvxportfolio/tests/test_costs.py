@@ -130,7 +130,7 @@ class TestCosts(unittest.TestCase):
             current_portfolio_value = value,
             past_returns=self.returns.iloc[:12], 
             past_volumes=self.volumes.iloc[:12],
-            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]))
+            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]).values)
         
         
         self.z.value = np.random.randn(self.returns.shape[1])
@@ -144,7 +144,7 @@ class TestCosts(unittest.TestCase):
         
         # spread and fixed cost
         
-        prices = pd.Series(np.random.uniform(1, 100, size=self.returns.shape[1]-1), self.returns.columns[:-1])
+        prices = pd.Series(np.random.uniform(1, 100, size=self.returns.shape[1]-1), self.returns.columns[:-1]).values
         
         tcost.values_in_time(t=self.returns.index[23], 
             current_portfolio_value = value,
@@ -157,7 +157,7 @@ class TestCosts(unittest.TestCase):
         self.z.value[-1] = -np.sum(self.z.value[:-1])
         
         est_tcost_lin = sum(np.abs(self.z.value[:-1]) * 0.0005)
-        est_tcost_lin += np.abs(self.z.value[:-1]) @ (0.005 / prices.values)
+        est_tcost_lin += np.abs(self.z.value[:-1]) @ (0.005 / prices)
         print(est_tcost_lin)
         print(expression.value)
         self.assertTrue(np.isclose(expression.value, est_tcost_lin))
@@ -168,7 +168,7 @@ class TestCosts(unittest.TestCase):
             current_portfolio_value = value,
             past_returns=self.returns.iloc[:34], 
             past_volumes=self.volumes.iloc[:34],
-            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]))
+            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]).values)
         
         
         self.z.value = np.random.randn(self.returns.shape[1])

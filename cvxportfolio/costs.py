@@ -371,7 +371,7 @@ class TransactionCost(BaseCost):
             past_returns=past_returns, past_volumes=past_volumes, 
             current_prices=current_prices, **kwargs)
             
-        self.first_term_multiplier.value = self.spreads.current_value/2. + self.pershare_cost.current_value / current_prices.values
+        self.first_term_multiplier.value = self.spreads.current_value/2. + self.pershare_cost.current_value / current_prices
         sigma_est = np.sqrt((past_returns.iloc[-self.window_sigma_est:, :-1]**2).mean()).values
         volume_est = past_volumes.iloc[-self.window_volume_est:].mean().values
         # self.second_term_multiplier.value *= current_portfolio_value ** (self.power - 1)

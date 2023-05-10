@@ -8,6 +8,7 @@ ENVDIR        = env
 env:
 	$(PYTHON) -m venv $(ENVDIR)
 	$(ENVDIR)/bin/$(PYTHON) -m pip install -r requirements.txt
+	$(ENVDIR)/bin/$(PYTHON) -m pip install --editable .
 	
 test: env
 	$(ENVDIR)/bin/$(PYTHON) -m unittest cvxportfolio/tests/*.py
