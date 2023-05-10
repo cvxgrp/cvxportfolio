@@ -1,5 +1,6 @@
-numpydoc
-myst-parser
+setuptools
+twine
+sphinx
 multiprocess
 numpy
 pandas

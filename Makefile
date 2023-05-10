@@ -3,13 +3,13 @@ PYTHON		  = python
 ENVDIR        = env
 
 
-.PHONY: docs clean test env cleanenv
+.PHONY: env docs clean test cleanenv
 	
 env:
 	$(PYTHON) -m venv $(ENVDIR)
 	$(ENVDIR)/bin/$(PYTHON) -m pip install -r requirements.txt
 	
-test:
+test: env
 	$(ENVDIR)/bin/$(PYTHON) -m unittest cvxportfolio/tests/*.py
 
 clean:
@@ -18,5 +18,5 @@ clean:
 cleanenv:
 	-rm -rf $(ENVDIR)/*
 
-docs:
+docs: env
 	$(ENVDIR)/bin/sphinx-build -E docs $(BUILDDIR); open build/index.html
