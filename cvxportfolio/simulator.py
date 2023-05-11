@@ -1,4 +1,4 @@
-# Copyright 2016-2023 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+# Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,10 +30,12 @@ import cvxpy as cvx
 
 from .result import SimulationResult
 from .costs import BaseCost
-from .data import Yfinance, TimeSeries, BASE_LOCATION
+from .data import FredRateTimeSeries, YfinanceTimeSeries, BASE_LOCATION
 from .returns import ReturnsForecast #, MultipleReturnsForecasts
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
+
+__all__ = ['MarketSimulator']
 
 
 def parallel_worker(policy, simulator, start_time, end_time, h):
@@ -205,14 +207,11 @@ class MarketSimulator(Estimator):
         print('Updating data')
         for stock in self.universe:
             print('.')
-            self.database_accesses[stock] = TimeSeries(
-                stock, base_location=self.base_location)
+            self.database_accesses[stock] = YfinanceTimeSeries(stock, base_location=self.base_location)
             self.database_accesses[stock].pre_evaluation()
         if not self.cash_key == 'USDOLLAR':
-            raise NotImplementedError(
-                'Currently the only data pipeline built is for USDOLLAR cash')
-        self.database_accesses[self.cash_key] = TimeSeries(
-            'DFF', source='fred', base_location=self.base_location)
+            raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
+        self.database_accesses[self.cash_key] = FredRateTimeSeries('DFF', base_location=self.base_location)
         self.database_accesses[self.cash_key].pre_evaluation()
         # print()
 

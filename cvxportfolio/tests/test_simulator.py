@@ -1,4 +1,4 @@
-# Copyright 2016-2023 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+# Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -233,8 +233,12 @@ class TestSimulator(unittest.TestCase):
          
         with self.assertRaises(SyntaxError):
             result = sim.backtest([pol, pol1], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'), h=['hello'])
+            
+        result =  sim.backtest([pol1], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
         
-        # result, result1 =  sim.backtest([pol, pol1], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
+        result2, result3 =  sim.backtest([pol, pol1], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
+        
+        self.assertTrue(np.all(result.h == result3.h))
          
          
                 

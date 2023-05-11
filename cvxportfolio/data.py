@@ -1,4 +1,4 @@
-# Copyright 2016-2023 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+# Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import sqlite3
 
 from .estimator import DataEstimator
 
-__all__ = ["TimeSeries", "BASE_LOCATION"]
+__all__ = ["YfinanceTimeSeries", "FredTimeSeries", "FredRateTimeSeries", "BASE_LOCATION"]
 
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
 
@@ -435,13 +435,40 @@ class Yfinance(YfinanceBase, LocalDataStore):
 class FredRate(FredBase, RateBase, SqliteDataStore):
     """Load and store FRED rates like DFF."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    pass
 
-    def update_and_load(self, symbol):
-        """Update data for symbol and load it."""
-        return super().update_and_load(symbol)
 
+class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
+    
+    def __init__(self, symbol, use_last_available_time=False, base_location=None):
+        self.symbol = symbol
+        self.base_location = base_location
+        self.use_last_available_time = use_last_available_time
+
+    def pre_evaluation(self, *args, **kwargs):
+        self.data = self.update_and_load(self.symbol)
+        
+        
+class FredTimeSeries(DataEstimator, FredBase, PickleStore):
+    
+    def __init__(self, symbol, use_last_available_time=False, base_location=None):
+        self.symbol = symbol
+        self.base_location = base_location
+        self.use_last_available_time = use_last_available_time
+
+    def pre_evaluation(self, *args, **kwargs):
+        self.data = self.update_and_load(self.symbol)
+    
+class FredRateTimeSeries(DataEstimator, FredBase, RateBase, PickleStore):
+    
+    def __init__(self, symbol, use_last_available_time=False, base_location=None):
+        self.symbol = symbol
+        self.base_location = base_location
+        self.use_last_available_time = use_last_available_time
+
+    def pre_evaluation(self, *args, **kwargs):
+        self.data = self.update_and_load(self.symbol)    
+        
 
 class TimeSeries(DataEstimator):
     """Class for time series data managed by Cvxportfolio.
