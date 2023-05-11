@@ -1,5 +1,5 @@
 BUILDDIR      = build
-PYTHON		  = python
+PYTHON        = python
 ENVDIR        = env
 
 
@@ -10,7 +10,7 @@ env:
 	$(ENVDIR)/bin/$(PYTHON) -m pip install -r requirements.txt
 	$(ENVDIR)/bin/$(PYTHON) -m pip install --editable .
 	
-test: env
+test:
 	$(ENVDIR)/bin/$(PYTHON) -m unittest cvxportfolio/tests/*.py
 
 clean:
@@ -19,5 +19,5 @@ clean:
 cleanenv:
 	-rm -rf $(ENVDIR)/*
 
-docs: env
+docs:
 	$(ENVDIR)/bin/sphinx-build -E docs $(BUILDDIR); open build/index.html

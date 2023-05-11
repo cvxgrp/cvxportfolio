@@ -22,8 +22,9 @@ Installation
 pip install -U cvxportfolio
 ```
 
-Testing
+Testing locally
 ------------
+We ship our unit test suite with the pip package. After installing you can test in you local environment by
 
 ```
 python -m unittest discover cvxportfolio

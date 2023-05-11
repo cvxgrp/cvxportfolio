@@ -1,5 +1,4 @@
-# Copyright 2016-2020 Stephen Boyd, Enzo Busseti, Steven Diamond, BlackRock Inc.
-# Copyright 2023- The Cvxportfolio Contributors
+# Copyright 2016-2023 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Unit tests for the risk objects."""
 
 import unittest
 from pathlib import Path
