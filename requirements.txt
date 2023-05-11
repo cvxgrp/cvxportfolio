@@ -7,3 +7,4 @@ cvxpy
 yfinance
 pandas_datareader
 matplotlib
+wheel

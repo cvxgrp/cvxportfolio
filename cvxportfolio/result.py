@@ -17,27 +17,11 @@ import collections
 import numpy as np
 import pandas as pd
 import copy
-# from .legacy import *
-# from .policies import SinglePeriodOpt, MultiPeriodOpt
+
 from .estimator import Estimator
 
 __all__ = ['BacktestResult']
 
-# class BacktestResult(Estimator):
-#     """This will be the class returned by the simulator.
-#
-#     It defines a bunch of metrics (Sharpe, ...) that are properties
-#     computed from its attribytes. It uses the Estimator logic to update
-#     its values by running its registered Simulator class.
-#
-#     Attributes:
-#         w (pd.DataFrame): pre-trade weights
-#         z (pd.DataFrame): trade weights
-#         v (pd.Series): value of the portfolio
-#
-#     """
-#
-#     pass
 
 
 def getFiscalQuarter(dt):
@@ -48,7 +32,6 @@ def getFiscalQuarter(dt):
     
     
 class BacktestResult(Estimator):
-    # """Temporary while having both old and new interface."""
     
     # Periods per year.
     # When we generalize to intra- or multi-day 
@@ -195,141 +178,5 @@ class BacktestResult(Estimator):
 
         return 'Backtest Result:\n' + pd.Series(data=data).to_string(float_format="{:,.3f}".format)
         
-        
-
-class SimulationResult:
-    """A container for the result of a simulation.
-
-    Attributes:
-        h_next: A dataframe of holdings over time.
-        u: A dataframe of trades over time.
-        tcosts: A series of transaction costs over time.
-        borrow_costs: A series of borrow costs over time.
-    """
-
-    def __init__(
-        self,
-        initial_portfolio,
-        policy,
-        cash_key,
-        simulator,
-        simulation_times=None,
-        PPY=252,
-        timedelta=pd.Timedelta("1 days"),
-    ):
-        """
-        Initialize the result object.
-
-        Args:
-            initial_portfolio:
-            policy:
-            simulator:
-            simulation_times:
-            PPY:
-        """
-        self.PPY = PPY
-        self.timedelta = timedelta
-        self.initial_val = sum(initial_portfolio)
-        self.initial_portfolio = copy.copy(initial_portfolio)
-        self.cash_key = cash_key
-        self.simulator = simulator
-        self.policy = policy
-
-    #def summary(self):
-    #    print(self._summary_string())
-
-
-
-    def log_data(self, name, t, entry):
-        try:
-            getattr(self, name).loc[t] = entry
-        except AttributeError:
-            setattr(
-                self,
-                name,
-                (pd.Series if np.isscalar(entry) else pd.DataFrame)(
-                    index=[t], data=[entry]
-                ),
-            )
-
-    def log_policy(self, t, exec_time):
-        self.log_data("policy_time", t, exec_time)
-        # TODO mpo policy requires changes in the optimization_log methods
-        if (not isinstance(self.policy, MultiPeriodOpt)) and hasattr(self.policy, 'costs'):
-            for cost in self.policy.costs:
-                self.log_data(
-                    "policy_" +
-                    cost.__class__.__name__,
-                    t,
-                    cost.optimization_log(t))
-
-    def log_simulation(self, t, u, h_next, risk_free_return, exec_time):
-        self.log_data("simulation_time", t, exec_time)
-        self.log_data("u", t, u)
-        self.log_data("h_next", t, h_next)
-        self.log_data("risk_free_returns", t, risk_free_return)
-        for cost in self.simulator.costs:
-            self.log_data(
-                "simulator_" +
-                cost.__class__.__name__,
-                t,
-                cost.simulation_log(t))
-
-    # @property
-    # def h(self):
-    #     """
-    #     Concatenate initial portfolio and h_next dataframe.
-    #
-    #     """
-    #     tmp = self.h_next.copy()
-    #     tmp.loc["last"] = np.nan
-    #     tmp = self.h_next.shift(1)
-    #     tmp.iloc[0] = self.initial_portfolio
-    #     # TODO fix ?
-    #     # tmp.loc[self.h_next.index[-1] + self.timedelta]=self.h_next.iloc[-1]
-    #     return tmp
-
-    
-        
-        
-# class BackTest(CommonComputations):
-#     """Perform a backtest and hold the results."""
-#
-#     def __init__(self, policy, simulator, start_time, end_time=None, value_init = 1E6, h=None):
-#
-#         self.policy = policy
-#         self.simulator = simulator
-#         self.start_time = pd.Series(simulator.returns.data.index >= start_time, simulator.returns.data.index).idxmax()
-#         if end_time is None:
-#             self.end_time  = simulator.returns.data.index[-1]
-#         else:
-#             self.end_time = simulator.returns.data.index[simulator.returns.data.index <= end_time][-1]
-#
-#         self.end_time = end_time
-#         simulator.initialize_policy(policy, self.start_time , self.end_time)
-#
-#         if h is None:
-#             h = pd.Series(0., simulator.returns.data.columns)
-#             h[-1] = value_init
-#
-#         self.h = pd.DataFrame(columns=simulator.returns.data.columns)
-#         self.u = pd.DataFrame(columns=simulator.returns.data.columns)
-#         self.z = pd.DataFrame(columns=simulator.returns.data.columns)
-#         self.tcost = pd.Series(dtype=float)
-#         self.hcost_stocks = pd.Series(dtype=float)
-#         self.hcost_cash = pd.Series(dtype=float)
-#
-#         for t in simulator.returns.data.index[(simulator.returns.data.index >= self.start_time) & (simulator.returns.data.index < self.end_time)]:
-#             self.h.loc[t] = h
-#             h, self.z.loc[t], self.u.loc[t], self.tcost.loc[t], self.hcost_stocks.loc[t], self.hcost_cash.loc[t] = \
-#                 simulator.simulate(t=t, h=h, policy=self.policy)
-#
-#         self.h.loc[pd.Timestamp(self.end_time)] = h
-#
-#         self.PPY = 252
-#         self.timedelta = pd.Timedelta('1d')
-#         self.cash_key = self.h.columns[-1]
-#
-
 
         
