@@ -22,6 +22,7 @@ import logging
 import time
 from pathlib import Path
 from multiprocessing import Pool
+# from multiprocess import Pool
 
 # import multiprocess
 import numpy as np
@@ -39,6 +40,11 @@ __all__ = ['MarketSimulator']
 
 
 def parallel_worker(policy, simulator, start_time, end_time, h):
+    # print(policy)
+    # print(simulator)
+    # print(start_time)
+    # print(end_time)
+    # print(h)
     return simulator._single_backtest(policy, start_time, end_time, h)
     
 
@@ -462,6 +468,8 @@ class MarketSimulator(Estimator):
             result = list(map(parallel_runner, zip(policy, h)))
         else:
             with Pool() as p:
+                # if not __name__ == '__main__':
+                #     raise SyntaxError('When executing parallel backtests, the Simulator should be instantiated ')
                 result = p.starmap(parallel_worker, zip(policy, [self] * len(policy), [start_time] * len(policy), [end_time] * len(policy), h))
                 
         if len(result) == 1:

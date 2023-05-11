@@ -17,7 +17,6 @@ setup(
     install_requires=["pandas",
                       "numpy",
                       "matplotlib",
-                      "multiprocess",
                       "yfinance",
                       "pandas_datareader",
                       "cvxpy>=1.0.6"],

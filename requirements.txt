@@ -1,7 +1,6 @@
 setuptools
 twine
 sphinx
-multiprocess
 numpy
 pandas
 cvxpy

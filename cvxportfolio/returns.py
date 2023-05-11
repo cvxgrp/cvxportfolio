@@ -235,7 +235,7 @@ class ReturnsForecast(BaseReturnsModel):
         if self.subtractshorts:
             noncash = w_plus[:-1].T @ self.r_hat_parameter[:-1]
             cash = (w_plus[-1] - cvx.sum(cvx.neg(w_plus[:-1]))) * self.cash_return
-            print(cash)
+            # print(cash)
             assert cash.is_concave()
             return noncash + cash
         else:
