@@ -366,8 +366,8 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             if not np.isscalar(planning_horizon):
                 raise SyntaxError('If `objective` and `constraints` are the same for all steps you must specify `planning_horizon`.')
             self.planning_horizon = planning_horizon
-            self.objective = [copy.deepcopy(objective) for i in range(planning_horizon)]
-            self.constraints = [copy.deepcopy(constraints) for i in range(planning_horizon)]
+            self.objective = [copy.deepcopy(objective) for i in range(planning_horizon)] if planning_horizon > 1 else [objective]
+            self.constraints = [copy.deepcopy(constraints) for i in range(planning_horizon)] if planning_horizon > 1 else [constraints]
                 
         self.terminal_constraint = terminal_constraint
         self.cvxpy_kwargs = kwargs
