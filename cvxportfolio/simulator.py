@@ -411,6 +411,9 @@ class MarketSimulator(Estimator):
                                  
     def _single_backtest(self, policy, start_time, end_time, h):
         
+        if hasattr(policy, 'compile_to_cvxpy'):
+            policy.compile_to_cvxpy()
+        
         h_df = pd.DataFrame(columns=self.returns.data.columns)
         u = pd.DataFrame(columns=self.returns.data.columns)
         z = pd.DataFrame(columns=self.returns.data.columns)

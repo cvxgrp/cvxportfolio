@@ -14,9 +14,11 @@
 """This module contains trading policies that can be backtested."""
 
 import datetime as dt
+import copy
+import logging
+
 import pandas as pd
 import numpy as np
-import logging
 import cvxpy as cvx
 
 from .costs import BaseCost
@@ -364,8 +366,8 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             if not np.isscalar(planning_horizon):
                 raise SyntaxError('If `objective` and `constraints` are the same for all steps you must specify `planning_horizon`.')
             self.planning_horizon = planning_horizon
-            self.objective = [objective for i in range(planning_horizon)]
-            self.constraints = [constraints for i in range(planning_horizon)]
+            self.objective = [copy.deepcopy(objective) for i in range(planning_horizon)]
+            self.constraints = [copy.deepcopy(constraints) for i in range(planning_horizon)]
                 
         self.terminal_constraint = terminal_constraint
         self.cvxpy_kwargs = kwargs
@@ -413,7 +415,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         self.w_plus_at_lags = [cvx.Variable(len(universe)) for i in range(self.planning_horizon)]
         self.w_plus_minus_w_bm_at_lags = [cvx.Variable(len(universe)) for i in range(self.planning_horizon)]
 
-        self.compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
+        # self.compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
         
 
 

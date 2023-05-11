@@ -24,12 +24,12 @@ if __name__ == '__main__':
         
             # - 10 * FactorModelCovariance
            # - 10 * cp.DiagonalCovariance() 
-            #- 3 * (cp.FullCovariance() + .1 * cp.RiskForecastError())
-            - 3 * (cp.FactorModelCovariance(num_factors=2) + .1 * cp.RiskForecastError())
+            - 3 * (cp.FullCovariance() + .1 * cp.RiskForecastError())
+            #- 3 * (cp.FactorModelCovariance(num_factors=2) + .1 * cp.RiskForecastError())
         
         
             #- 1 * cp.RiskForecastError()
-            -cp.TransactionCost()#exponent=2)
+            -cp.TransactionCost(exponent=2)
             -cp.HoldingCost()
             ,#, kappa=.25), #addmean=True
         
@@ -54,12 +54,12 @@ if __name__ == '__main__':
         
             # - 10 * FactorModelCovariance
            # - 10 * cp.DiagonalCovariance() 
-           #- 3 * (cp.FullCovariance() + .1 * cp.RiskForecastError())
-            - 3 * (cp.FactorModelCovariance(num_factors=2) + .1 * cp.RiskForecastError())
+           - 3 * (cp.FullCovariance() + .1 * cp.RiskForecastError())
+           # - 3 * (cp.FactorModelCovariance(num_factors=2) + .1 * cp.RiskForecastError())
         
         
             #- 1 * cp.RiskForecastError()
-            -cp.TransactionCost()#exponent=2)
+            -cp.TransactionCost(exponent=2)
             -cp.HoldingCost()
             ,#, kappa=.25), #addmean=True
         
@@ -74,7 +74,7 @@ if __name__ == '__main__':
         
     # define a market simulator, which downloads stock market data and stores it locally
     # in ~/cvxportfolio/        
-    simulator = cp.MarketSimulator(sorted(set(["AMZN", "AAPL", "MSFT", "GOOGL", "TSLA", "GM", 'NKE', 'MCD', 'GE', 'CVX',]
+    simulator = cp.MarketSimulator(sorted(set(["AMZN", "AAPL", "MSFT"],#, "GOOGL", "TSLA", "GM", 'NKE', 'MCD', 'GE', 'CVX',]
                                #    'XOM', 'MMM', 'UNH', 'HD', 'WMT', 'ORCL', 'INTC', 'JPM', 'BLK', 'BA', 'NVDA',
                                #     'F', 'GS', 'AMD', 'CSCO', 'KO', 'HON', 'DIS', 'FRC', # 'DOW',
                                #      'V', 'ADBE', 'AMGN', 'CAT', 'BA', 'HON', 'JNJ', 'AXP', 'PG', 'JPM',
@@ -89,16 +89,16 @@ if __name__ == '__main__':
     #policy = cp.RankAndLongShort(signal, num_long=10, num_short=0, target_leverage=.1)
     #policy = cp.Uniform()
     # perform a backtest (by default it starts with 1E6 USD cash)
-    backtest1, backtest3 = simulator.backtest([policy, 
-    #policy2, 
+    backtest1,backtest2, backtest3 = simulator.backtest([policy, 
+    policy2, 
     cp.Uniform()],
     #cp.Uniform(),
-     '2020-01-01')
+     '2023-01-01')
 
     print('SPO')
     print(backtest1)
-    # print('MPO')
-    # print(backtest2)
+    print('MPO')
+    print(backtest2)
     print('UNIFORM')
     print(backtest3)
 
