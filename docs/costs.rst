@@ -6,8 +6,10 @@ WORK IN PROGRESS
 .. toctree::
 	:maxdepth: 2
 
+.. automodule:: cvxportfolio.costs
+
 .. py:module:: cvxportfolio
 
-.. autoclass:: HcostModel
+.. autoclass:: HoldingCost
 
-.. autoclass:: TcostModel
+.. autoclass:: TransactionCost

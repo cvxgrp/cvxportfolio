@@ -5,6 +5,8 @@ WORK IN PROGRESS
 .. toctree::
 	:maxdepth: 2
 
+.. automodule:: cvxportfolio.risks
+
 .. py:module:: cvxportfolio
 
 .. autoclass:: DiagonalCovariance
@@ -13,9 +15,13 @@ WORK IN PROGRESS
 
 .. autoclass:: FactorModelCovariance
 
-.. autoclass:: ReturnForecastError
+.. autoclass:: WorstCaseRisk
 
-.. autoclass:: CovarianceForecastError
 
-.. autoclass:: WorstCase
+Forecast error risks
+--------------------
+
+.. autoclass:: ReturnsForecastError
+
+.. autoclass:: RiskForecastError
 

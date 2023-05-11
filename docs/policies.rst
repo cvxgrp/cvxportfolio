@@ -6,6 +6,8 @@ WORK IN PROGRESS
 .. toctree::
 	:maxdepth: 2
 
+.. automodule:: cvxportfolio.policies
+
 .. py:module:: cvxportfolio
 
 Optimization-based policies
@@ -36,14 +38,3 @@ Simple policies
 .. autoclass:: RankAndLongShort
 
 .. autoclass:: FixedWeights
-
-
-Legacy policies
----------------
-
-.. autoclass:: SinglePeriodOpt
-
-.. autoclass:: MultiPeriodOpt
-
-    .. automethod:: get_trades
-	

@@ -11,10 +11,4 @@ WORK IN PROGRESS
 
 .. autoclass:: MarketSimulator
 
-    .. automethod:: legacy_run_backtest
-
-    .. automethod:: legacy_run_multiple_backtest
-
-    .. automethod:: what_if
-
-    .. automethod:: attribute
+    .. automethod:: backtest

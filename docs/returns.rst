@@ -7,6 +7,7 @@ WORK IN PROGRESS
 	:maxdepth: 2
 
 .. automodule:: cvxportfolio.returns
+
 .. py:module:: cvxportfolio
 
 .. autoclass:: ReturnsForecast
