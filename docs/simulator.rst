@@ -1,8 +1,6 @@
 Simulator
 =========
 
-WORK IN PROGRESS
-
 .. toctree::
 	
 	:maxdepth: 2

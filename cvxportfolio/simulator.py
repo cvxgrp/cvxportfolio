@@ -48,86 +48,83 @@ class MarketSimulator(Estimator):
 
     We strive to make the parameters here as accurate as possible. The following is
     accurate as of 2023 using numbers obtained on the public website of a
-    [large US-based broker](https://www.interactivebrokers.com/).
+    `large US-based broker <https://www.interactivebrokers.com/>`_.
 
 
-    Args:
-
-        universe (list): list of [Yahoo Finance](https://finance.yahoo.com/) tickers on which to
-            simulate performance of the trading strategy. If left unspecified you should at least
-            pass `returns` and `volumes`. If you define a different market data access interface
-            (look in cvxportfolio.data for how to do it) you should pass instead
-            the symbol names for that data provider. Default is empty list.
-
-        returns (pandas.DataFrame): historical open-to-open returns. Default is None, it is ignored
-            if universe is specified.
-
-        volumes (pandas.DataFrame): historical market volumes expressed in value (e.g., US dollars).
+    :param universe: list of `Yahoo Finance <https://finance.yahoo.com/>`_ tickers on which to
+        simulate performance of the trading strategy. If left unspecified you should at least
+        pass `returns` and `volumes`. If you define a different market data access interface
+        (look in `cvxportfolio.data` for how to do it) you should pass instead
+        the symbol names for that data provider. Default is empty list.
+    :type universe: list or None
+    :param returns: historical open-to-open returns. Default is None, it is ignored
+        if universe is specified.
+    :type returns: pandas.DataFrame 
+    :param volumes: historical market volumes expressed in value (e.g., US dollars).
             Default is None, it is ignored if universe is specified.
-
-        prices (pandas.DataFrame): historical open prices. Default is None, it is ignored
-            if universe is specified. These are used to round the trades to integer number of stocks
-            if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
-            is greater than zero).
-
-        spreads (pandas.DataFrame): historical bid-ask spreads expressed as (ask-bid)/bid. Default is None,
-            equivalent to 0.0. Practical spreads are negligible on US liquid stocks.
-
-        round_trades (bool): round the trade weights provided by a policy so they correspond to an integer
-            number of stocks traded. Default is True using Yahoo Finance open prices.
-
-        per_share_fixed_cost (float): transaction cost per share traded. Default value is 0.005 (USD), uses
-             Yahoo Finance open prices to simulate the number of stocks traded. See
-            https://www.interactivebrokers.com/en/pricing/commissions-home.php
-
-        transaction_cost_coefficient_b (float, pd.Series, or pd.DataFrame): coefficient that multiplies the non-linear
-            term of the transaction cost. Default value is 1, you can pass any other constant value, a per-stock Series,
-            or a per-day and per-stock DataFrame
-
-        transaction_cost_exponent (float): exponent of the non-linear term of the transaction cost model. Default value 1.5,
-             this is applied to the trade volume (in US dollars) over the total market volume (in US dollars). See the
-            paper for more details; this model is supported by a long tradition of research in market microstructure.
-
-        rolling_window_sigma_estimator (int): we use an historical rolling standard deviation to estimate the average
-            size of the return on a stock on each day, and this multiplies the second term of the transaction cost model.
-             See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
-             default is 1000.
-
-        spread_on_borrowing_stocks_percent (float, pd.Series, pd.DataFrame): when shorting a stock,
-            you will pay a rate on the value
-            of the position equal to the cash return plus this spread, expressed in percent annualized. These
-            values are hard to find historically, if you are unsure consider long-only portfolios or look
-            at CFDs/futures instead. We set the default value to 0.5 (percent annualized) which is probably OK
-            for US large cap stocks. See https://www.interactivebrokers.com/en/pricing/short-sale-cost.php
-
-        spread_on_long_positions_percent (float, None, pd.Series, pd.DataFrame): if you trade CFDs you will pay interest
-            on your long positions
-            as well as your short positions, equal to the cash return plus this value (percent annualized). If
-             instead this is None, the default value, you pay nothing on your long positions (as you do if you trade
-            stocks). We don't consider dividend payments because those are already incorporated in the
-            open-to-open returns as we compute them from the Yahoo Finance data. See cvxportfolio.data for details.
-
-        dividends (float, pd.DataFrame): if not included in the returns (as they are by the default data interface,
-            based on `yfinance`), you can pass a DataFrame of dividend payments which will be credited to the cash
-            account (or debited, if short) at each round. Default is 0., corresponding to no dividends.
-
-        spread_on_lending_cash_percent (float, pd.Series): the cash account will generate annualized
-            return equal to the cash return minus this number, expressed in percent annualized, or zero if
-            the spread is larger than the cash return. For example with USDOLLAR cash,
-            if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5
-            (the default value), then the uninvested cash in the portfolio generates annualized
-            return of 4.3%. See https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php
-
-        spread_on_borrowing_cash_percent (float, pd.Series): if we instead borrow cash we pay the
-            cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
-            See https://www.interactivebrokers.com/en/trading/margin-rates.php
-
-        cash_key (str or None): name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
-            as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
-            along with the stock returns as its last column.
-
-        base_location (pathlib.Path): base location for (by default, sqlite) storage of data.
-            Default is `Path.home() / "cvxportfolio"`. Unused if passing `returns` and `volumes`.
+    :type volumes: pandas.DataFrame
+    :param prices: historical open prices. Default is None, it is ignored
+        if universe is specified. These are used to round the trades to integer number of stocks
+        if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
+        is greater than zero).
+    :type prices: pandas.DataFrame
+    :param spreads: historical bid-ask spreads expressed as (ask-bid)/bid. Default is None,
+        equivalent to 0.0. Practical spreads are negligible on US liquid stocks.
+    :type spreads: pandas.DataFrame
+    :param round_trades: round the trade weights provided by a policy so they correspond to an integer
+        number of stocks traded. Default is True using Yahoo Finance open prices.
+    :type round_trades: bool
+    :param per_share_fixed_cost: transaction cost per share traded. Default value is 0.005 (USD), uses
+        Yahoo Finance open prices to simulate the number of stocks traded. See 
+        `this page <https://www.interactivebrokers.com/en/pricing/commissions-home.php>`_.
+    :type per_share_fixed_cost: float
+    :param transaction_cost_coefficient_b: coefficient that multiplies the non-linear
+        term of the transaction cost. Default value is 1, you can pass any other constant value, a per-stock Series,
+        or a per-day and per-stock DataFrame
+    :type transaction_cost_coefficient_b: float, pd.Series, or pd.DataFrame
+    :param transaction_cost_exponent: exponent of the non-linear term of the transaction cost model. Default value 1.5,
+        this is applied to the trade volume (in US dollars) over the total market volume (in US dollars). See the
+        paper for more details; this model is supported by a long tradition of research in market microstructure.
+    :type transaction_cost_exponent: float
+    :param window_sigma_estimate: we use an historical rolling standard deviation to estimate the average
+        size of the return on a stock on each day, and this multiplies the second term of the transaction cost model.
+        See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
+        default is 252 (typical number of trading days in a year).
+    :type window_sigma_estimate: int
+    :param spread_on_borrowing_stocks_percent: when shorting a stock,
+        one pays a rate on the value of the position equal to the cash return plus this spread, 
+        expressed in percent annualized. These values are hard to find historically, if you are unsure consider 
+        long-only portfolios or look at CFDs/futures instead. We set the default value to 0.5 (percent annualized) 
+        which is probably OK for US large cap stocks. See `this page <https://www.interactivebrokers.com/en/pricing/short-sale-cost.php>`_.
+    :type spread_on_borrowing_stocks_percent: float, pd.Series, pd.DataFrame
+    :param spread_on_long_positions_percent: if you trade CFDs one pays interest on long positions  as well as your short positions, 
+        equal to the cash return plus this value (percent annualized). If
+        instead this is None, the default value, you pay nothing on your long positions (as you do if you trade
+        stocks). We don't consider dividend payments because those are already incorporated in the
+        open-to-open returns as we compute them from the Yahoo Finance data. See cvxportfolio.data for details.
+    :type spread_on_long_positions_percent: float, None, pd.Series, pd.DataFrame
+    :param dividends: if not included in the returns (as they are by the default data interface,
+        based on `yfinance`), you can pass a DataFrame of dividend payments which will be credited to the cash
+        account (or debited, if short) at each round. Default is 0., corresponding to no dividends.
+    :type dividends: float, pd.DataFrame
+    :param spread_on_lending_cash_percent: the cash account will generate annualized
+        return equal to the cash return minus this number, expressed in percent annualized, or zero if
+        the spread is larger than the cash return. For example with USDOLLAR cash,
+        if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5
+        (the default value), then the uninvested cash in the portfolio generates annualized
+        return of 4.3%. See `this page <https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php>_`.
+    :type spread_on_lending_cash_percent: float, pd.Series
+    :param spread_on_borrowing_cash_percent: if one instead borrows cash he pays the
+        cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
+        See `this page <https://www.interactivebrokers.com/en/trading/margin-rates.php>_`.
+    :type spread_on_borrowing_cash_percent: float, pd.Series 
+    :param cash_key: name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
+        as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
+        along with the stock returns as its last column.
+    :type cash_key: str or None
+    :param base_location: base location for storage of data.
+        Default is `Path.home() / "cvxportfolio_data"`. Unused if passing `returns` and `volumes`.
+    :type base_location: pathlib.Path or str: 
     """
 
     periods_per_year = 252
@@ -427,6 +424,39 @@ class MarketSimulator(Estimator):
                   
                                  
     def backtest(self, policy, start_time, end_time=None, initial_value = 1E6, h=None, parallel=True):
+        """Backtest one or more trading policy.
+        
+        If runnning in parallel you must be careful at how you use this method. If 
+        you use this in a script, you should define the MarketSimulator
+        *in* the `if __name__ == '__main__:'` clause, and call this method there as well.
+        
+        The default initial portfolio is all cash, or you can pass any portfolio with
+        the `h` argument, or a list of those if running multiple backtests.
+        
+        :param policy: if passing a single trading policy it performs a single backtest 
+            in the main process. If passing a list, it uses Python multiprocessing to
+            create multiple processes and run many policies in parallel.
+        :type policy: cvx.BaseTradingPolicy or list
+        :param start_time: start time of the backtest(s), if holiday, the first trading day
+             after it is selected
+        :type start_time: str or datetime 
+        :param end_time: end time of the backtest(s), if holiday, the last trading day
+             before it is selected
+        :type end_time: str or datetime or None
+        :param initial_value: initial value in dollar of the portfolio, if not specifying
+            `h` it is assumed the initial portfolio is all cash
+        :type initial_value: float
+        :param h: initial portfolio `h` expressed in dollar positions, or list of those 
+            for multiple backtests
+        :type h: list or pd.Series or None
+        :param parallel: whether to run in parallel if there are multiple policies or not.
+            If not, it just iterates through the policies in the main process.
+        :type parallel: bool
+        
+        :returns result: instance of :class:`BacktestResult` which has all relevant backtest
+            data and logic to compute metrics, generate plots, ...
+        :rtype result: cvx.BacktestResult or list
+        """
         
         # turn policy and h into lists
         if not hasattr(policy, '__len__'):

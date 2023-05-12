@@ -41,12 +41,13 @@ with `cvxportfolio >= 0.3.0`
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 
-objective = cvx.ReturnsForecast() - 5 * (cvx.FullCovariance() + 0.1 * cvx.RiskForecastError()) - cvx.TransactionCost()
-constraints = [cvx.LongOnly(), cvx.LeverageLimit(1)]
+objective = cvx.ReturnsForecast() - 3 * (cvx.FullCovariance() + \
+	0.05 * cvx.RiskForecastError()) - cvx.TransactionCost()
+constraints = [cvx.LeverageLimit(3)]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=2)
 
-simulator = cvx.MarketSimulator(['AAPL', 'AMZN', 'MSFT', 'TSLA'])
+simulator = cvx.MarketSimulator(['AAPL', 'AMZN', 'TSLA', 'GM', 'CVX', 'NKE'])
 
 result = simulator.backtest(policy, start_time='2020-01-01')
 
@@ -66,7 +67,13 @@ plt.show()
 print('\ntotal tcost ($)', result.tcost.sum())
 print('total borrow cost ($)', result.hcost_stocks.sum())
 print('total cash return + cost ($)', result.hcost_cash.sum())
+
 ```
+
+Examples from the book
+--------------------
+In branch [0.0.X](https://github.com/cvxgrp/cvxportfolio/tree/0.0.X) you can find the original material used to generate plots
+and results in the book. 
 
 
 Academic

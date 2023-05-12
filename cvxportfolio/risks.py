@@ -61,69 +61,79 @@ class BaseRiskModel(BaseCost):
 
 
 class FullCovariance(BaseRiskModel):
-    r"""Quadratic risk model with full covariance matrix.
+    """Quadratic risk model with full covariance matrix.
     
-    This class represents the term :math:`\Sigma_t`, *i.e.,*
-    the :math:`(n-1) \times (n-1)` positive semi-definite matrix
-    which estimates the covariance of the (non-cash) assets' returns.
-    :ref:`Optimization-based policies` use this, as is explained 
-    in Chapter 4 and 5 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
-    
-    The user can either supply a :class:`pandas.DataFrame` with the covariance matrix
-    (constant or varying in time) computed externally (for example
-    with some machine learning technique) or let this class estimate the covariance from the data. 
-    The latter is the default behavior.
-    
-    This class implements three ways to compute the covariance matrix from the past returns. The
-    computation is repeated at each point in time :math:`t` of a :class:`BackTest` using only
-    the past returns available at that point: :math:`r_{t-1}, r_{t-2}, \ldots`.
-    
-    * *rolling covariance*, using :class:`pandas.DataFrame.rolling.cov`. This is done
-      if the user specifies the ``rolling`` argument.
-    * *exponential moving window covariance*, using :class:`pandas.DataFrame.ewm.cov`. This is done
-      if the user specifies the ``halflife`` argument (``rolling`` takes precedence).
-    * *full historical covariance*, using :class:`pandas.DataFrame.cov`. This is the default
-      behavior if no arguments are specified.
-    
-    If there are missing data in the historical returns the estimated covariance may not
-    be positive semi-definite. We correct it by projecting on the positive semi-definite 
-    cone (*i.e.*, we set the negative eigenvalues of the resulting :math:`\Sigma_t` to zero). 
-
-    :param Sigma: :class:`pandas.DataFrame` of covariance matrices 
-        supplied by the user. The DataFrame either represents a single (constant) covariance matrix
-        or one for each point in time. In the latter case the DataFrame must have a :class:`pandas.MultiIndex`
-        where the first level is a :class:`pandas.DatetimeIndex`. If ``None`` (the default)
-        the covariance matrix is computed from past returns.
+    :param Sigma: DataFrame of covariance matrices
+        supplied by the user, or None if fitting from the past data.
+        The DataFrame can either represents a single constant covariance matrix
+        or one for each point in time.
     :type Sigma: pandas.DataFrame or None
-    :param rolling: if it is not ``None`` the covariance matrix will be estimated
-        on a rolling window of size ``rolling`` of the past returns.
-    :type rolling: int or None
-    :param halflife: if it is not ``None`` the covariance matrix will be estimated
-        on an exponential moving window of the past returns with half-life ``halflife``. 
-        If ``rolling`` is specified it takes precedence over ``halflife``. If both are ``None`` the full history 
-        will be used for estimation.
-    :type halflife: int or None
-    :param kappa: the multiplier for the associated forecast error risk 
-        (see pages 32-33 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_).
-        If ``float`` a passed it is treated as a constant, if ``pandas.Series`` with ``pandas.DateTime`` index
-        it varies in time, if ``None`` the forecast error risk term will not be compiled.
-    :type kappa: float or pandas.Series or None
-    :param addmean: correct the covariance matrix with the term :math:`\mu\mu^T`, as is explained
-        in page 28 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_, 
-        to match the second term of the Taylor expansion of the portfolio log-return. Default
-        is ``False``, corresponding to classical mean-variance optimization. If ``True``, it 
-        estimates :math:`\mu` with the same technique as :math:`\Sigma`, *i.e.*, with rolling window
-        average, exponential moving window average, or an average of the full history.
-    :type addmean: bool
+    
+    
     """
+    # r"""Quadratic risk model with full covariance matrix.
+    #
+    # This class represents the term :math:`\Sigma_t`, *i.e.,*
+    # the :math:`(n-1) \times (n-1)` positive semi-definite matrix
+    # which estimates the covariance of the (non-cash) assets' returns.
+    # :ref:`Optimization-based policies` use this, as is explained
+    # in Chapter 4 and 5 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+    #
+    # The user can either supply a :class:`pandas.DataFrame` with the covariance matrix
+    # (constant or varying in time) computed externally (for example
+    # with some machine learning technique) or let this class estimate the covariance from the data.
+    # The latter is the default behavior.
+    #
+    # This class implements three ways to compute the covariance matrix from the past returns. The
+    # computation is repeated at each point in time :math:`t` of a :class:`BackTest` using only
+    # the past returns available at that point: :math:`r_{t-1}, r_{t-2}, \ldots`.
+    #
+    # * *rolling covariance*, using :class:`pandas.DataFrame.rolling.cov`. This is done
+    #   if the user specifies the ``rolling`` argument.
+    # * *exponential moving window covariance*, using :class:`pandas.DataFrame.ewm.cov`. This is done
+    #   if the user specifies the ``halflife`` argument (``rolling`` takes precedence).
+    # * *full historical covariance*, using :class:`pandas.DataFrame.cov`. This is the default
+    #   behavior if no arguments are specified.
+    #
+    # If there are missing data in the historical returns the estimated covariance may not
+    # be positive semi-definite. We correct it by projecting on the positive semi-definite
+    # cone (*i.e.*, we set the negative eigenvalues of the resulting :math:`\Sigma_t` to zero).
+    #
+    # :param Sigma: :class:`pandas.DataFrame` of covariance matrices
+    #     supplied by the user. The DataFrame either represents a single (constant) covariance matrix
+    #     or one for each point in time. In the latter case the DataFrame must have a :class:`pandas.MultiIndex`
+    #     where the first level is a :class:`pandas.DatetimeIndex`. If ``None`` (the default)
+    #     the covariance matrix is computed from past returns.
+    # :type Sigma: pandas.DataFrame or None
+    # :param rolling: if it is not ``None`` the covariance matrix will be estimated
+    #     on a rolling window of size ``rolling`` of the past returns.
+    # :type rolling: int or None
+    # :param halflife: if it is not ``None`` the covariance matrix will be estimated
+    #     on an exponential moving window of the past returns with half-life ``halflife``.
+    #     If ``rolling`` is specified it takes precedence over ``halflife``. If both are ``None`` the full history
+    #     will be used for estimation.
+    # :type halflife: int or None
+    # :param kappa: the multiplier for the associated forecast error risk
+    #     (see pages 32-33 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_).
+    #     If ``float`` a passed it is treated as a constant, if ``pandas.Series`` with ``pandas.DateTime`` index
+    #     it varies in time, if ``None`` the forecast error risk term will not be compiled.
+    # :type kappa: float or pandas.Series or None
+    # :param addmean: correct the covariance matrix with the term :math:`\mu\mu^T`, as is explained
+    #     in page 28 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_,
+    #     to match the second term of the Taylor expansion of the portfolio log-return. Default
+    #     is ``False``, corresponding to classical mean-variance optimization. If ``True``, it
+    #     estimates :math:`\mu` with the same technique as :math:`\Sigma`, *i.e.*, with rolling window
+    #     average, exponential moving window average, or an average of the full history.
+    # :type addmean: bool
+    # """
 
-    def __init__(self, Sigma=None, zeroforcash=True, addmean=True):
+    def __init__(self, Sigma=None, addmean=True):
 
         if not Sigma is None:
             self.Sigma = DataEstimator(Sigma)
         else:
             self.Sigma = Sigma
-        self.zeroforcash = zeroforcash
+        self.zeroforcash = True
         self.addmean = addmean
 
 
@@ -184,17 +194,24 @@ class FullCovariance(BaseRiskModel):
         return self.cvxpy_expression
 
 class RiskForecastError(BaseRiskModel):
-    """Risk forecast error.
+    """Risk forecast error. 
+    
+    Implements the model defined in page 31 of the book. Takes same arguments
+    as :class:`DiagonalCovariance`.
+    
+    :param sigma_squares: per-stock variances, indexed by time if DataFrame.
+        If None it will be fitted on past data.
+    :type sigma_squares: pd.DataFrame or pd.Series or None
     """
 
-    def __init__(self, sigma_squares=None, zeroforcash=True, addmean=True):
+    def __init__(self, sigma_squares=None):
         if sigma_squares is None:
             self.sigma_squares = None
         else:
             self.sigma_squares = DataEstimator(sigma_squares)
         # self.standard_deviations = ParameterEstimator(standard_deviations)
-        self.zeroforcash=zeroforcash
-        self.addmean=addmean
+        self.zeroforcash=True
+        self.addmean=True
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
@@ -225,21 +242,20 @@ class RiskForecastError(BaseRiskModel):
 
 
 class DiagonalCovariance(BaseRiskModel):
-    """Risk model using diagonal covariance matrix.
+    """Diagonal covariance matrix, user-provided or fit from data.
 
-    Args:
-        standard_deviations (pd.DataFrame or pd.Series): per-stock standard
-            deviations, defined as square roots of covariances.
-            Indexed by time if DataFrame.
+    :param sigma_squares: per-stock variances, indexed by time if DataFrame.
+        If None it will be fitted on past data.
+    :type sigma_squares: pd.DataFrame or pd.Series or None 
     """
 
-    def __init__(self, sigma_squares=None, zeroforcash=True, addmean=True):
+    def __init__(self, sigma_squares=None):
         if not sigma_squares is None:
             self.sigma_squares = DataEstimator(sigma_squares)
         else:
             self.sigma_squares = None
-        self.zeroforcash = zeroforcash
-        self.addmean = addmean
+        self.zeroforcash = True
+        self.addmean = True
         # self.standard_deviations = ParameterEstimator(standard_deviations)
         
     def pre_evaluation(self, universe, backtest_times):
@@ -270,10 +286,22 @@ class DiagonalCovariance(BaseRiskModel):
 
 
 class FactorModelCovariance(BaseRiskModel):
-    """Factor model covariance.
+    """Factor model covariance, either user-provided or fitted from the data.
     
-    F @ F.T + np.diag(d)
+    It has the structure
     
+    :math:`F F^T + \mathbf{diag}(d)`
+    
+    where :math:`F` is a *tall* matrix (many more rows than columns) and the vector
+    :math:`d` is all non-negative. 
+    
+    :param F: exposure matrices either constant or varying in time; if so, use a pandas multiindexed
+         dataframe. If None it will be fitted.
+    :type F: pd.DataFrame or None
+    :param d: idyosyncratic variances either constant or varying in time; If None it will be fitted.
+    :type d: pd.Series or pd.DataFrame or None
+    :param num_factors: number of factors (columns of F), used if fitting the model
+    :type num_factors: int    
     """
 
     # Args:
@@ -293,12 +321,12 @@ class FactorModelCovariance(BaseRiskModel):
 
     factor_Sigma = None
 
-    def __init__(self, F=None, d=None, num_factors=1, addmean=True, zeroforcash=True, normalize=False):
+    def __init__(self, F=None, d=None, num_factors=1, normalize=False):
         self.F = F if F is None else ParameterEstimator(F) 
         self.d = d if d is None else DataEstimator(d) 
         self.num_factors = num_factors
-        self.addmean = addmean
-        self.zeroforcash = zeroforcash
+        self.addmean = True
+        self.zeroforcash = True
         self.normalize = normalize
 
     @staticmethod
@@ -382,10 +410,9 @@ class WorstCaseRisk(BaseRiskModel):
     one with highest risk value at the solution point. If uncertain about
     which risk model to use this procedure can be an easy solution.
 
-        Args:
-            riskmodels (BaseRiskModel): list of BaseRiskModel classes. If using
-                non-cash benchmarks, they should be set to each risk model
-                individually. Calling set_benchmark on this class has no effect.
+    :param riskmodels: risk model instances on which to compute the worst-case
+        risk.
+    :type riskmodels: list 
     """
 
     def __init__(self, riskmodels):

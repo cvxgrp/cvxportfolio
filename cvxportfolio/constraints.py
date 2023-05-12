@@ -59,12 +59,12 @@ class BaseWeightConstraint(BaseConstraint):
 
 class ParticipationRateLimit(BaseTradeConstraint):
     """A limit on maximum trades size as a fraction of market volumes.
+    
 
-    Attributes:
-        self.volumes (ParameterEstimator): ParameterEstimator with point-in-time market volumes estimations
-        self.max_fraction_of_volumes (ParameterEstimator): ParameterEstimator with point-in-time,
-             and also possibly per-stock, requirements of maximum participation rate
-
+    :param volumes: per-stock and per-day market volume estimates, or constant in time
+    :type volumes: pd.Series or pd.DataFrame
+    :param max_fraction_of_volumes: max fraction of market volumes that we're allowed to trade
+    :type max_fraction_of_volumes: float, pd.Series, pd.DataFrame
     """
 
     def __init__(self, volumes, max_fraction_of_volumes=0.05):
@@ -85,7 +85,11 @@ class ParticipationRateLimit(BaseTradeConstraint):
 
 
 class LongOnly(BaseWeightConstraint):
-    """A long only constraint."""
+    """A long only constraint.
+    
+    Imposes that at each point in time the post-trade
+    weights are non-negative.
+    """
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
@@ -94,9 +98,13 @@ class LongOnly(BaseWeightConstraint):
 
 class LeverageLimit(BaseWeightConstraint):
     """A limit on leverage.
+    
+    Leverage is defined as the :math:`\ell_1` norm of non-cash
+    post-trade weights. Here we require that it is smaller than
+    a given value
 
-    Attributes:
-      limit: A (time) series or scalar giving the leverage limit.
+    :param limit: constant or varying in time leverage limit
+    :type limit: float or pd.Series
     """
 
     def __init__(self, limit):

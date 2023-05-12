@@ -1,12 +1,12 @@
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 
-objective = cvx.ReturnsForecast() - 5 * (cvx.FullCovariance() + 0.1 * cvx.RiskForecastError()) - cvx.TransactionCost()
-constraints = [cvx.LongOnly(), cvx.LeverageLimit(1)]
+objective = cvx.ReturnsForecast() - 3 * (cvx.FullCovariance() + 0.05 * cvx.RiskForecastError()) - cvx.TransactionCost()
+constraints = [cvx.LeverageLimit(3)]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=2)
 
-simulator = cvx.MarketSimulator(['AAPL', 'AMZN', 'MSFT', 'TSLA'])
+simulator = cvx.MarketSimulator(['AAPL', 'AMZN', 'TSLA', 'GM', 'CVX', 'NKE'])
 
 result = simulator.backtest(policy, start_time='2020-01-01')
 

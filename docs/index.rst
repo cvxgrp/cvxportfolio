@@ -41,12 +41,15 @@ run a backtest, and show its result.
 	import cvxportfolio as cvx
 	import matplotlib.pyplot as plt
 
-	objective = cvx.ReturnsForecast() - 5 * (cvx.FullCovariance() + 0.1 * cvx.RiskForecastError()) - cvx.TransactionCost()
-	constraints = [cvx.LongOnly(), cvx.LeverageLimit(1)]
+	objective = cvx.ReturnsForecast() - 3 * (cvx.FullCovariance() + \
+		0.05 * cvx.RiskForecastError()) - cvx.TransactionCost()
+	constraints = [cvx.LeverageLimit(3)]
 
-	policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=2)
+	policy = cvx.MultiPeriodOptimization(
+		objective, constraints, planning_horizon=2)
 
-	simulator = cvx.MarketSimulator(['AAPL', 'AMZN', 'MSFT', 'TSLA'])
+	simulator = cvx.MarketSimulator(
+		['AAPL', 'AMZN', 'TSLA', 'GM', 'CVX', 'NKE'])
 
 	result = simulator.backtest(policy, start_time='2020-01-01')
 
@@ -66,6 +69,7 @@ run a backtest, and show its result.
 	print('\ntotal tcost ($)', result.tcost.sum())
 	print('total borrow cost ($)', result.hcost_stocks.sum())
 	print('total cash return + cost ($)', result.hcost_cash.sum())
+
 	
 	
 Licensing
@@ -105,8 +109,6 @@ Table of Contents
    policies
    simulator
    returns
-   costs
-   risks
    constraints
    result
    data
