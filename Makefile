@@ -26,16 +26,16 @@ revision:
 	$(ENVDIR)/bin/$(PYTHON) bumpversion.py revision	
 	git push
 	$(ENVDIR)/bin/$(PYTHON) setup.py sdist bdist_wheel
-	twine upload dist/*
+	$(ENVDIR)/bin/twine upload dist/*
 
 minor:
 	$(ENVDIR)/bin/$(PYTHON) bumpversion.py minor	
 	git push
 	$(ENVDIR)/bin/$(PYTHON) setup.py sdist bdist_wheel
-	twine upload dist/*
+	$(ENVDIR)/bin/twine upload dist/*
 
 major:
 	$(ENVDIR)/bin/$(PYTHON) bumpversion.py major	
 	git push
 	$(ENVDIR)/bin/$(PYTHON) setup.py sdist bdist_wheel
-	twine upload dist/*
+	$(ENVDIR)/bin/twine upload dist/*
