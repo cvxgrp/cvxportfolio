@@ -1,0 +1,10 @@
+setuptools
+twine
+sphinx
+numpy
+pandas
+cvxpy
+yfinance
+pandas_datareader
+matplotlib
+wheel
