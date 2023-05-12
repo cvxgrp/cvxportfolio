@@ -7,11 +7,11 @@ ENVDIR        = env
 	
 env:
 	$(PYTHON) -m venv $(ENVDIR)
-	$(ENVDIR)/bin/$(PYTHON) -m pip install -r requirements.txt
-	$(ENVDIR)/bin/$(PYTHON) -m pip install --editable .
+	$(ENVDIR)/bin/python -m pip install -r requirements.txt
+	$(ENVDIR)/bin/python -m pip install --editable .
 	
 test:
-	$(ENVDIR)/bin/$(PYTHON) -m unittest cvxportfolio/tests/*.py
+	$(ENVDIR)/bin/python -m unittest cvxportfolio/tests/*.py
 
 clean:
 	-rm -rf $(BUILDDIR)/* 
@@ -23,19 +23,19 @@ docs:
 	$(ENVDIR)/bin/sphinx-build -E docs $(BUILDDIR); open build/index.html
 	
 revision:
-	$(ENVDIR)/bin/$(PYTHON) bumpversion.py revision	
+	$(ENVDIR)/bin/python bumpversion.py revision	
 	git push
-	$(ENVDIR)/bin/$(PYTHON) setup.py sdist bdist_wheel
+	$(ENVDIR)/bin/python setup.py sdist bdist_wheel
 	$(ENVDIR)/bin/twine upload dist/*
 
 minor:
-	$(ENVDIR)/bin/$(PYTHON) bumpversion.py minor	
+	$(ENVDIR)/bin/python bumpversion.py minor	
 	git push
-	$(ENVDIR)/bin/$(PYTHON) setup.py sdist bdist_wheel
+	$(ENVDIR)/bin/python setup.py sdist bdist_wheel
 	$(ENVDIR)/bin/twine upload dist/*
 
 major:
-	$(ENVDIR)/bin/$(PYTHON) bumpversion.py major	
+	$(ENVDIR)/bin/python bumpversion.py major	
 	git push
-	$(ENVDIR)/bin/$(PYTHON) setup.py sdist bdist_wheel
+	$(ENVDIR)/bin/python setup.py sdist bdist_wheel
 	$(ENVDIR)/bin/twine upload dist/*
