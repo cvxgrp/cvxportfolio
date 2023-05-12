@@ -32,6 +32,7 @@ def getFiscalQuarter(dt):
     
     
 class BacktestResult(Estimator):
+    """Holds the data from a Backtest and producs metrics and plots."""
     
     # Periods per year.
     # When we generalize to intra- or multi-day 

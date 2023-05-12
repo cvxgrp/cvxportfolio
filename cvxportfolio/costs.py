@@ -124,15 +124,6 @@ class CombinedCosts(BaseCost):
 
 class HoldingCost(BaseCost):
     """A model for holding costs.
-    
-    In normal use cases you should not pass any argument to the constructur, but
-    rather to :class:`Backtest` (unless you're happy with the default values there).
-    That will take care of populating the values for the various holding 
-    costs in this class during each backtest. 
-    Regarding dividends, by default they are already included in each stock's return. 
-    Legacy applications might instead account for stock returns and dividends separately.
-    That is not advised: it would introduce small biases in the estimation of historical
-    mean returns and covariances.
 
     :param borrow_spread: spread on top of cash return payed for borrowing assets,
         including cash. If ``None``, the default, it gets from :class:`Backtest` the
@@ -198,22 +189,22 @@ class HoldingCost(BaseCost):
 class TransactionCost(BaseCost):
     """A model for transaction costs.
 
-    (See section pages 10-11 in the paper
-    https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
+    See pages 10-11 in `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
     We don't include the short-term alpha term `c` here because it
-    can be expressed with a separate `ReturnsForecast` object. If
-    any term that appears in
+    can be expressed with a separate `ReturnsForecast` object. 
 
-    Args:
-      half_spread (float or pd.Series or pd.DataFrame): Half the bid ask spread, either
-        fixed per (non-cash) assets, or varying in time.
-      nonlin_coeff (float or pd.Series or pd.DataFrame): Coefficients
-            for the nonlinear cost term. This is the coefficient `b` in the paper.
-            It can be constant, constant per-stock, or varying in time and stocks. Default 0.
-      sigma (floar or pd.Series or pd.DataFrame): Daily volatilities. Default 0.
-      volume (float or pd.Series or pd.DataFrame): Market volumes expressed in value (e.g., dollars).
-            Default 1 to avoid NaN.
-      power (float): The nonlinear tcost exponent. Default 1.5.
+    :param spreads:
+    :type spreads: float or pd.Series or pd.DataFrame
+    :param pershare_cost: per-share trade cost, as as in :class:`MarketSimulator`
+    :type pershare_cost: float or pd.Series or pd.DataFrame
+    :param b: coefficient of the second term
+    :type b: float or pd.Series or pd.DataFrame
+    :param window_sigma_est: length of the window standard deviation of past returns used to estimate :math:`\sigma`
+    :type window_sigma_est: int
+    :param window_volume_est: length of the window mean of past volumes used as volume estimate
+    :type window_volume_est: int
+    :param exponent: exponent of the non-linear term, default 1.5
+    :type exponent: float
     """
 
     def __init__(self, spreads=0., pershare_cost=0.005, b=1.0, window_sigma_est=250, window_volume_est=250, exponent=1.5):
