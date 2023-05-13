@@ -10,3 +10,4 @@ matplotlib
 wheel
 numpydoc
 myst_parser
+coverage
