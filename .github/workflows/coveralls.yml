@@ -5,27 +5,27 @@ name: Test Coveralls
 jobs:
 
   coverage:
-
+	name: Coverage
     runs-on: ubuntu-latest
     steps:
 
-      - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
-        with:
-            python-version: 3.11
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
 
-       - name: Install dependencies
-         run: |
-               make env
-			   pip install pytest pytest-cov
+     - name: Install dependencies
+       run: |
+         make env
+		 pip install pytest pytest-cov
       
-       - name: Run tests
-         run: |
-               env/bin/python pytest --cov
+     - name: Run tests
+       run: |
+         env/bin/python pytest --cov
        
-	   - name: Coveralls
-         uses: coverallsapp/github-action@v2
+	 - name: Coveralls
+       uses: coverallsapp/github-action@v2
 
 
