@@ -49,7 +49,9 @@ jobs:
       
       - name: Run tests
         run: |
-              env/bin/python -m unittest cvxportfolio/tests/*.py
+              env/bin/coverage run -m unittest cvxportfolio/tests/*.py
+              env/bin/coverage lcov
+              
               
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@v1
