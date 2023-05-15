@@ -333,47 +333,52 @@ class FactorModelCovariance(BaseRiskModel):
     def __init__(self, F=None, d=None, num_factors=1, normalize=False):
         self.F = F if F is None else ParameterEstimator(F) 
         self.d = d if d is None else DataEstimator(d) 
+        if (self.F is None) or (self.d is None):
+            self.fit = True
+            self.Sigma = HistoricalFactorizedCovariance(zeroforcash=True, addmean=True) #Sigma
+        else:
+            self.fit = False
         self.num_factors = num_factors
-        self.addmean = True
-        self.zeroforcash = True
-        self.normalize = normalize
+        # self.addmean = True
+        # self.zeroforcash = True
+        # self.normalize = normalize
 
-    @staticmethod
-    def build_low_rank_model(rets, num_factors=10, iters=10, normalize=True, shrink=True):
-        r"""Build a low rank risk model from past returns that include NaNs.
-    
-        This is an experimental procedure that may work well on past returns
-        matrices with few NaN values (say, below 20% of the total entries). 
-        If there are (many) NaNs, one should probably also use a rather 
-        large risk forecast error.
-        """
-        # rets = past_returns.iloc[:,:-1] # drop cash
-        nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
-        normalizer = np.sqrt((rets**2).mean()) 
-        if normalize:
-            normalized = rets/(normalizer + 1E-8)
-        else:
-            normalized = rets
-        if nan_fraction:
-            if nan_fraction > 0.1 and not shrink:
-                warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
-            nan_implicit_imputation = pd.DataFrame(0., columns=normalized.columns, index = normalized.index)
-            for i in range(iters):
-                u, s, v = np.linalg.svd(normalized.fillna(nan_implicit_imputation), full_matrices=False)
-                nan_implicit_imputation = pd.DataFrame(
-                    (u[:, :num_factors] * (s[:num_factors] - s[num_factors] * shrink)) @ v[:num_factors], 
-                    columns = normalized.columns, index = normalized.index) 
-        else:
-            u, s, v = np.linalg.svd(normalized, full_matrices=False)
-        F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
-        if normalize:
-            F = pd.DataFrame(F.T * (normalizer.values + 1E-8), columns=normalizer.index)
-        else:
-            F = pd.DataFrame(F.T, columns=normalizer.index)
-        idyosyncratic = normalizer**2 - (F**2).sum(0)
-        if not np.all(idyosyncratic >= 0.):
-            raise ForeCastError("Low rank risk estimation with iterative SVD did not work.")
-        return F, idyosyncratic
+    # @staticmethod
+    # def build_low_rank_model(rets, num_factors=10, iters=10, normalize=True, shrink=True):
+    #     r"""Build a low rank risk model from past returns that include NaNs.
+    #
+    #     This is an experimental procedure that may work well on past returns
+    #     matrices with few NaN values (say, below 20% of the total entries).
+    #     If there are (many) NaNs, one should probably also use a rather
+    #     large risk forecast error.
+    #     """
+    #     # rets = past_returns.iloc[:,:-1] # drop cash
+    #     nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
+    #     normalizer = np.sqrt((rets**2).mean())
+    #     if normalize:
+    #         normalized = rets/(normalizer + 1E-8)
+    #     else:
+    #         normalized = rets
+    #     if nan_fraction:
+    #         if nan_fraction > 0.1 and not shrink:
+    #             warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
+    #         nan_implicit_imputation = pd.DataFrame(0., columns=normalized.columns, index = normalized.index)
+    #         for i in range(iters):
+    #             u, s, v = np.linalg.svd(normalized.fillna(nan_implicit_imputation), full_matrices=False)
+    #             nan_implicit_imputation = pd.DataFrame(
+    #                 (u[:, :num_factors] * (s[:num_factors] - s[num_factors] * shrink)) @ v[:num_factors],
+    #                 columns = normalized.columns, index = normalized.index)
+    #     else:
+    #         u, s, v = np.linalg.svd(normalized, full_matrices=False)
+    #     F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
+    #     if normalize:
+    #         F = pd.DataFrame(F.T * (normalizer.values + 1E-8), columns=normalizer.index)
+    #     else:
+    #         F = pd.DataFrame(F.T, columns=normalizer.index)
+    #     idyosyncratic = normalizer**2 - (F**2).sum(0)
+    #     if not np.all(idyosyncratic >= 0.):
+    #         raise ForeCastError("Low rank risk estimation with iterative SVD did not work.")
+    #     return F, idyosyncratic
 
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
@@ -387,18 +392,24 @@ class FactorModelCovariance(BaseRiskModel):
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
-        if self.F is None:
-            if not self.addmean:
-                past_returns = past_returns - past_returns.mean()
-            if self.zeroforcash:
-                past_returns = pd.DataFrame(past_returns, copy=True)
-                past_returns.iloc[:, -1] = 0.
-            F, d = self.build_low_rank_model(past_returns, num_factors=self.num_factors, normalize=self.normalize)
-            self.F_parameter.value = F.values
-            d = d.values
+        # if self.F is None:
+        #     if not self.addmean:
+        #         past_returns = past_returns - past_returns.mean()
+        #     if self.zeroforcash:
+        #         past_returns = pd.DataFrame(past_returns, copy=True)
+        #         past_returns.iloc[:, -1] = 0.
+        #     F, d = self.build_low_rank_model(past_returns, num_factors=self.num_factors, normalize=self.normalize)
+        #     self.F_parameter.value = F.values
+        #     d = d.values
+        # else:
+        #     d = self.d.current_value
+        if self.fit:
+            Sigmasqrt = self.Sigma.current_value
+            # numpy eigendecomposition has largest eigenvalues last
+            self.F_parameter.value = Sigmasqrt[:, -self.num_factors:].T
+            d = (Sigmasqrt[:, :-self.num_factors]**2).sum(1)
         else:
             d = self.d.current_value
-    
         self.idyosync_sqrt_parameter.value = np.sqrt(d)
 
 
