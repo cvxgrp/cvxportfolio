@@ -8,3 +8,6 @@ yfinance
 pandas_datareader
 matplotlib
 wheel
+numpydoc
+myst_parser
+coverage

@@ -14,20 +14,28 @@ Cvxportfolio is based on the book `Multi-Period Trading via Convex Optimization 
    Cvxportfolio is under active development. We target the end of 2023 Q3 for 
    the first stable release.
    
+
    
 Installation
 ------------
 
-Cvxportolio is written in pure Python and depends on popular libraries such as
-`Cvxpy <https://cvxpy.org/>`_, 
-`Pandas <https://pandas.pydata.org/>`_, 
-and `Yfinance <https://github.com/ranaroussi/yfinance>`_.
-As such, it can be easily installed in your favorite environment by simple:
+Cvxportolio is written in pure Python and can be easily installed in your favorite environment by simple:
 
 .. code-block:: console
 
 	pip install -U cvxportfolio
 	
+
+	
+Testing locally
+---------------
+We ship our unit test suite with the software package, so after installing you can test with:
+
+.. code-block:: console
+
+	python -m unittest discover cvxportfolio
+	
+
 	
 Example
 -------
