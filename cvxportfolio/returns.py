@@ -23,6 +23,7 @@ import pandas as pd
 from .costs import BaseCost, CombinedCosts
 from .risks import BaseRiskModel
 from .estimator import DataEstimator, ParameterEstimator
+from .forecast import HistoricalMeanReturn, HistoricalMeanError
 
 __all__ = [
     "ReturnsForecast",
@@ -147,27 +148,27 @@ class ReturnsForecast(BaseReturnsModel):
         if not r_hat is None:
             self.r_hat = DataEstimator(r_hat)
         else:
-            self.r_hat = None
+            self.r_hat = HistoricalMeanReturn(lastforcash=lastforcash)
             
-        self.lastforcash = True
+        # self.lastforcash = True
         self.subtractshorts = subtractshorts
         
         if self.subtractshorts:
             self.cash_return = cvx.Parameter(nonneg=True)
         
        
-    @classmethod # we make it a classmethod so that also covariances can use it
-    def update_full_mean(cls, past_returns, last_estimation, last_counts, last_time):
-
-        if last_time is None: # full estimation
-            estimation = past_returns.sum()
-            counts = past_returns.count()
-        else:
-            assert last_time == past_returns.index[-2]
-            estimation = last_estimation * last_counts + past_returns.iloc[-1].fillna(0.)
-            counts = last_counts + past_returns.iloc[-1:].count()
-
-        return estimation/counts, counts, past_returns.index[-1]
+    # @classmethod # we make it a classmethod so that also covariances can use it
+    # def update_full_mean(cls, past_returns, last_estimation, last_counts, last_time):
+    #
+    #     if last_time is None: # full estimation
+    #         estimation = past_returns.sum()
+    #         counts = past_returns.count()
+    #     else:
+    #         assert last_time == past_returns.index[-2]
+    #         estimation = last_estimation * last_counts + past_returns.iloc[-1].fillna(0.)
+    #         counts = last_counts + past_returns.iloc[-1:].count()
+    #
+    #     return estimation/counts, counts, past_returns.index[-1]
             
         
     def pre_evaluation(self, universe, backtest_times):
@@ -179,13 +180,15 @@ class ReturnsForecast(BaseReturnsModel):
         
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
-        if self.r_hat is None:
-            tmp = past_returns.mean()
-            if self.lastforcash:
-                tmp.iloc[-1] = past_returns.iloc[-1, -1]
-            self.r_hat_parameter.value = tmp.values
-        else:
-            self.r_hat_parameter.value = self.r_hat.current_value
+        # if self.r_hat is None:
+        #     tmp = past_returns.mean()
+        #     if self.lastforcash:
+        #         tmp.iloc[-1] = past_returns.iloc[-1, -1]
+        #     self.r_hat_parameter.value = tmp.values
+        # else:
+        #     self.r_hat_parameter.value = self.r_hat.current_value
+        
+        self.r_hat_parameter.value = self.r_hat.current_value
             
         if self.subtractshorts:
             self.cash_return.value = self.r_hat_parameter.value[-1]
@@ -227,8 +230,8 @@ class ReturnsForecastError(BaseRiskModel):
         if not deltas is None:
             self.deltas = DataEstimator(deltas)
         else:
-            self.deltas = None
-        self.zeroforcash = zeroforcash
+            self.deltas = HistoricalMeanError(zeroforcash)
+        # self.zeroforcash = zeroforcash
 
             
     def pre_evaluation(self, universe, backtest_times):
@@ -238,14 +241,15 @@ class ReturnsForecastError(BaseRiskModel):
 
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
-        if self.deltas is None:
-            # if self.mode == 'full':
-            tmp = (past_returns.iloc[:,:].std() / np.sqrt(past_returns.iloc[:,:].count())).values
-            if self.zeroforcash:
-                tmp[-1] = 0.
-            self.deltas_parameter.value = tmp
-        else:
-            self.deltas_parameter.value = self.deltas.current_value
+        # if self.deltas is None:
+        #     # if self.mode == 'full':
+        #     tmp = (past_returns.iloc[:,:].std() / np.sqrt(past_returns.iloc[:,:].count())).values
+        #     if self.zeroforcash:
+        #         tmp[-1] = 0.
+        #     self.deltas_parameter.value = tmp
+        # else:
+        #     self.deltas_parameter.value = self.deltas.current_value
+        self.deltas_parameter.value = self.deltas.current_value
 
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
