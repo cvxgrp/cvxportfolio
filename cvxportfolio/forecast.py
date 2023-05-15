@@ -26,9 +26,9 @@ from .estimator import Estimator
 class BaseForecast(Estimator):
     """Base class for forecasters."""
     
-    def pre_evaluation(self, universe, backtest_times):
-        self.universe = universe
-        self.backtest_times = backtest_times
+    # def pre_evaluation(self, universe, backtest_times):
+    #     self.universe = universe
+    #     self.backtest_times = backtest_times
 
 
 class HistoricalMeanReturn(BaseForecast):
@@ -71,7 +71,74 @@ class HistoricalMeanError(BaseForecast):
             self.current_value[-1] = 0.
         return self.current_value  
         
+        
+class HistoricalVariance(BaseForecast):
+    """Historical variances."""
+
+    def __init__(self, zeroforcash, addmean):
+        self.zeroforcash = zeroforcash
+        self.addmean = addmean
+    
+    def values_in_time(self, t, past_returns, **kwargs):
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+        
+        tmp  = past_returns.var(ddof=0) 
+        
+        if self.addmean:
+            tmp += past_returns.mean()**2
+        
+        tmp = tmp.values
+        
+        if self.zeroforcash:
+            tmp[-1] = 0.
+            
+        self.current_value = tmp
+        return self.current_value  
+        
           
 class HistoricalFactorizedCovariance(BaseForecast):
     """Historical covariance matrix, sqrt factorized."""
-    pass
+    
+    def __init__(self, addmean, zeroforcash):
+        self.addmean = addmean
+        self.zeroforcash = zeroforcash
+    
+    @classmethod
+    def get_count_matrix(cls, past_returns):
+        """We obtain the matrix of non-null joint counts."""
+        tmp = ~past_returns.isnull()
+        return len(past_returns) * (tmp.cov(ddof=0) + np.outer(tmp.mean(), tmp.mean()))
+
+    @classmethod # we make it a classmethod so that also covariances can use it
+    def update_full_covariance(cls, past_returns, last_estimation, last_counts, last_time):
+
+        if last_time is None: # full estimation
+            estimation = past_returns.iloc[:,:-1].cov()
+            counts = self.get_count_matrix(past_returns)
+        else:
+            assert last_time == past_returns.index[-2]
+
+            estimation = last_estimation * last_counts + past_returns.iloc[-1:].fillna(0.)
+            counts = last_counts + past_returns.iloc[-1:].count()
+
+        return estimation, counts, past_returns.index[-1]
+    
+    
+    def values_in_time(self, t, past_returns, **kwargs):
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+    
+        Sigma = past_returns.cov(ddof=0)
+        if self.addmean:
+            mean = past_returns.mean()
+            Sigma += np.outer(mean, mean)
+        if self.zeroforcash:
+            Sigma.iloc[:, -1] = 0
+            Sigma.iloc[-1, :] = 0
+
+        eigval, eigvec = np.linalg.eigh(Sigma)
+
+        eigval = np.maximum(eigval, 0.)
+    
+        self.current_value = eigvec @ np.diag(np.sqrt(eigval))
+        
+        return self.current_value

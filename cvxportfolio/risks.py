@@ -24,6 +24,7 @@ import pandas as pd
 
 from .costs import BaseCost
 from .errors import ForeCastError
+from .forecast import HistoricalVariance, HistoricalFactorizedCovariance
 
 logger = logging.getLogger(__name__)
 
@@ -131,10 +132,13 @@ class FullCovariance(BaseRiskModel):
 
         if not Sigma is None:
             self.Sigma = DataEstimator(Sigma)
+            self.alreadyfactorized = False
         else:
-            self.Sigma = Sigma
-        self.zeroforcash = True
-        self.addmean = addmean
+            self.Sigma = HistoricalFactorizedCovariance(zeroforcash=True, addmean=addmean) #Sigma
+            self.alreadyfactorized = True
+            
+        # self.zeroforcash = True
+        # self.addmean = addmean
 
 
     def pre_evaluation(self, universe, backtest_times):
@@ -169,23 +173,24 @@ class FullCovariance(BaseRiskModel):
         """Update forecast error risk here, and take square root of Sigma."""
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
-        if self.Sigma is None:
-            Sigma = past_returns.cov(ddof=0)
-            if self.addmean:
-                mean = past_returns.mean()
-                Sigma += np.outer(mean, mean)
-            if self.zeroforcash:
-                Sigma.iloc[:, -1] = 0
-                Sigma.iloc[-1, :] = 0
+        # if self.Sigma is None:
+        #     Sigma = past_returns.cov(ddof=0)
+        #     if self.addmean:
+        #         mean = past_returns.mean()
+        #         Sigma += np.outer(mean, mean)
+        #     if self.zeroforcash:
+        #         Sigma.iloc[:, -1] = 0
+        #         Sigma.iloc[-1, :] = 0
+        # else:
+        #     Sigma = self.Sigma.current_value
+
+        if self.alreadyfactorized:
+            self.Sigma_sqrt.value = self.Sigma.current_value
         else:
             Sigma = self.Sigma.current_value
-
-            
-        eigval, eigvec = np.linalg.eigh(Sigma)
-
-        eigval = np.maximum(eigval, 0.)
-        
-        self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
+            eigval, eigvec = np.linalg.eigh(Sigma)
+            eigval = np.maximum(eigval, 0.)
+            self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         # TODO change benchmark weights passing
@@ -206,12 +211,12 @@ class RiskForecastError(BaseRiskModel):
 
     def __init__(self, sigma_squares=None):
         if sigma_squares is None:
-            self.sigma_squares = None
+            self.sigma_squares = HistoricalVariance(zeroforcash=True, addmean=True) #None None
         else:
             self.sigma_squares = DataEstimator(sigma_squares)
         # self.standard_deviations = ParameterEstimator(standard_deviations)
-        self.zeroforcash=True
-        self.addmean=True
+        # self.zeroforcash=True
+        # self.addmean=True
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
@@ -221,16 +226,18 @@ class RiskForecastError(BaseRiskModel):
         """Update forecast error risk here, and take square root of Sigma."""
         super().values_in_time(t=t, past_returns=past_returns)
         
-        if self.sigma_squares is None:
-            sigma_squares = past_returns.var(ddof=0)
-            if self.addmean:
-                mean = past_returns.mean()
-                sigma_squares += mean**2
-            if self.zeroforcash:
-                sigma_squares.iloc[-1] = 0.
-            sigma_squares = sigma_squares.values
-        else:
-            sigma_squares = self.sigma_squares.current_value
+        # if self.sigma_squares is None:
+        #     sigma_squares = past_returns.var(ddof=0)
+        #     if self.addmean:
+        #         mean = past_returns.mean()
+        #         sigma_squares += mean**2
+        #     if self.zeroforcash:
+        #         sigma_squares.iloc[-1] = 0.
+        #     sigma_squares = sigma_squares.values
+        # else:
+        #     sigma_squares = self.sigma_squares.current_value
+            
+        sigma_squares = self.sigma_squares.current_value
         
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
@@ -253,9 +260,9 @@ class DiagonalCovariance(BaseRiskModel):
         if not sigma_squares is None:
             self.sigma_squares = DataEstimator(sigma_squares)
         else:
-            self.sigma_squares = None
-        self.zeroforcash = True
-        self.addmean = True
+            self.sigma_squares = HistoricalVariance(zeroforcash=True, addmean=True) #None
+        #self.zeroforcash = True
+        #self.addmean = True
         # self.standard_deviations = ParameterEstimator(standard_deviations)
         
     def pre_evaluation(self, universe, backtest_times):
@@ -267,16 +274,18 @@ class DiagonalCovariance(BaseRiskModel):
         #super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
-        if self.sigma_squares is None:
-            sigma_squares = past_returns.var(ddof=0)
-            if self.addmean:
-                mean = past_returns.mean()       
-                sigma_squares += mean**2
-            if self.zeroforcash:
-                sigma_squares[-1] = 0.
-            sigma_squares = sigma_squares.values
-        else:
-            sigma_squares = self.sigma_squares.current_value
+        # if self.sigma_squares is None:
+        #     sigma_squares = past_returns.var(ddof=0)
+        #     if self.addmean:
+        #         mean = past_returns.mean()
+        #         sigma_squares += mean**2
+        #     if self.zeroforcash:
+        #         sigma_squares[-1] = 0.
+        #     sigma_squares = sigma_squares.values
+        # else:
+        #     sigma_squares = self.sigma_squares.current_value
+        
+        sigma_squares = self.sigma_squares.current_value
 
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
