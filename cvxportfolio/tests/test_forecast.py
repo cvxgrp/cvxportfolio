@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 
-from cvxportfolio.forecast import HistoricalMeanReturn, HistoricalMeanError, HistoricalVariance
+from cvxportfolio.forecast import HistoricalMeanReturn, HistoricalMeanError, HistoricalVariance, HistoricalFactorizedCovariance
 
 class TestEstimators(unittest.TestCase):
     
@@ -85,6 +85,72 @@ class TestEstimators(unittest.TestCase):
             print(val)
             #self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(val, past_returns.std(ddof=0)[:-1] / np.sqrt(past_returns.count()[:-1]) ))  
+            
+    def test_counts_matrix(self):
+        forecaster = HistoricalFactorizedCovariance()#addmean=True)
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:20, 3:10] = np.nan
+        returns.iloc[10:15, 10:20] = np.nan
+        
+        count_matrix = forecaster.get_count_matrix(returns)
+        
+        for indexes in [(1,2), (4,5), (1,5), (7, 18), (7,24), (1,15), (13,22)]:
+            print(count_matrix.iloc[indexes[0], indexes[1]])
+            print(len((returns.iloc[:,indexes[0]] * returns.iloc[:,indexes[1]]).dropna()))
+            self.assertTrue(np.isclose(count_matrix.iloc[indexes[0], indexes[1]],
+                len((returns.iloc[:,indexes[0]] * returns.iloc[:,indexes[1]]).dropna())))
+                
+    def test_sum_matrix(self):
+        forecaster = HistoricalFactorizedCovariance()#addmean=True)
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:20, 3:10] = np.nan
+        returns.iloc[10:15, 10:20] = np.nan
+        
+        forecaster.values_in_time(t=pd.Timestamp('2022-01-01'), past_returns=returns)
+         
+        sum_matrix = forecaster.last_sum_matrix
+        
+        for indexes in [(1,2), (4,5), (1,5), (7, 18), (7,24), (1,15), (13,22)]:
+            print()
+            print(sum_matrix[indexes[0], indexes[1]])
+            print( (returns.iloc[:,indexes[0]] * returns.iloc[:,indexes[1]]).sum())
+            self.assertTrue(np.isclose(
+                sum_matrix[indexes[0], indexes[1]],
+                (returns.iloc[:,indexes[0]] * returns.iloc[:,indexes[1]]).sum()
+                ))
+        
+    def test_covariance_update(self):
+        
+        forecaster = HistoricalFactorizedCovariance()#addmean=False)
+        
+        returns = pd.DataFrame(self.returns.iloc[:, :4], copy=True)
+        returns.iloc[:20, 1] = np.nan
+        returns.iloc[10:30, 0] = np.nan
+        returns.iloc[25:40, 2] = np.nan
+        
+        def compute_Sigma(rets):
+            res = np.zeros((3,3))
+            res[0,0] = np.nanmean(rets.iloc[:, 0] * rets.iloc[:, 0])
+            res[1,1] = np.nanmean(rets.iloc[:, 1] * rets.iloc[:, 1])
+            res[2,2] = np.nanmean(rets.iloc[:, 2] * rets.iloc[:, 2])
+            res[0,1] = np.nanmean(rets.iloc[:, 0] * rets.iloc[:, 1])
+            res[0,2] = np.nanmean(rets.iloc[:, 0] * rets.iloc[:, 2])
+            res[1,2] = np.nanmean(rets.iloc[:, 1] * rets.iloc[:, 2])
+            res[1,0] = res[0,1]
+            res[2,0] = res[0,2]
+            res[2,1] = res[1,2]
+            return res
+        
+        for tidx in [50,51,52,55,56,57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index<t]
+            val = forecaster.values_in_time(t=t, past_returns=past_returns)
+            Sigma = val @ val.T
+            self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
+
+            
+        
+        
     
 if __name__ == '__main__':
     unittest.main()

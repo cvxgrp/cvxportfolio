@@ -305,9 +305,11 @@ class TestPolicies(unittest.TestCase):
         # print(np.linalg.eigh(self.returns.iloc[:121, :-1].cov().values)[0])
 
         # REPLICATE WITH CVXPY
+        
+        COV = self.returns.iloc[:121, :-1].cov(ddof=0).values #+ np.outer(self.returns.iloc[:121, :-1].mean(), self.returns.iloc[:121, :-1].mean())
         w = cvx.Variable(self.N)
         cvx.Problem(cvx.Maximize(w.T @ self.returns.iloc[:121].mean().values -
-                                 2 * cvx.quad_form(w[:-1], self.returns.iloc[:121, :-1].cov(ddof=0).values) -
+                                 2 * cvx.quad_form(w[:-1], COV) -
                                  5 * 1E-4 * cvx.sum(cvx.abs(w - curw)[:-1])
                                  ),
                     [w >= 0, w <= 1, sum(w) == 1]

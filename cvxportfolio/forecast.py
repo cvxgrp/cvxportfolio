@@ -121,19 +121,10 @@ class HistoricalVariance(BaseForecast):
         self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
         
         self.current_value = (self.last_sum / self.last_counts).values
-        
-        # tmp  = past_returns.iloc[:, :-1].var(ddof=0) 
-        
+                
         if not self.addmean:
             self.current_value -= self.meanforecaster.current_value**2
-            # tmp += past_returns.iloc[:, :-1].mean()**2
-        
-        # tmp = tmp.values
-        
-        # if self.zeroforcash:
-        #     tmp[-1] = 0.
-            
-        # self.current_value = tmp
+
         return self.current_value  
         
     def compute_from_scratch(self, t, past_returns):
@@ -150,47 +141,49 @@ class HistoricalVariance(BaseForecast):
 class HistoricalFactorizedCovariance(BaseForecast):
     """Historical covariance matrix, sqrt factorized."""
     
-    def __init__(self, addmean, # zeroforcash
-        ):
+    def __init__(self, addmean=True):
+        #assert addmean == True
         self.addmean = addmean
-        # self.zeroforcash = zeroforcash
+        if not self.addmean:
+            self.meanforecaster = HistoricalMeanReturn(lastforcash=False)
+        
+        self.last_time = None
+        self.last_counts_matrix = None
+        self.last_sum_matrix = None
     
-    @classmethod
-    def get_count_matrix(cls, past_returns):
+    def get_count_matrix(self, past_returns):
         """We obtain the matrix of non-null joint counts."""
         tmp = ~past_returns.isnull()
         return len(past_returns) * (tmp.cov(ddof=0) + np.outer(tmp.mean(), tmp.mean()))
 
-    @classmethod # we make it a classmethod so that also covariances can use it
-    def update_full_covariance(cls, past_returns, last_estimation, last_counts, last_time):
 
-        if last_time is None: # full estimation
-            estimation = past_returns.iloc[:,:-1].cov()
-            counts = self.get_count_matrix(past_returns)
-        else:
-            assert last_time == past_returns.index[-2]
-
-            estimation = last_estimation * last_counts + past_returns.iloc[-1:].fillna(0.)
-            counts = last_counts + past_returns.iloc[-1:].count()
-
-        return estimation, counts, past_returns.index[-1]
+    @staticmethod
+    def factorize(Sigma):
+        eigval, eigvec = np.linalg.eigh(Sigma)
+        eigval = np.maximum(eigval, 0.)
+        return eigvec @ np.diag(np.sqrt(eigval))
+        
+    def compute_from_scratch(self, t, past_returns):
+        self.last_counts_matrix = self.get_count_matrix(past_returns).values
+        filled = past_returns.fillna(0.).values
+        self.last_sum_matrix = filled.T @ filled
+        self.last_time = t
+        
+    def update(self, t, past_returns): #, last_estimation, last_counts, last_time):
+        nonnull = ~(past_returns.iloc[-1].isnull())
+        self.last_counts_matrix += np.outer(nonnull, nonnull)
+        last_ret = past_returns.iloc[-1].fillna(0.)
+        self.last_sum_matrix += np.outer(last_ret, last_ret)
+        self.last_time = t
     
     
     def values_in_time(self, t, past_returns, **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
-    
-        Sigma = past_returns.iloc[:, :-1].cov(ddof=0)
-        if self.addmean:
-            mean = past_returns.iloc[:, :-1].mean()
-            Sigma += np.outer(mean, mean)
-        # if self.zeroforcash:
-        #     Sigma.iloc[:, -1] = 0
-        #     Sigma.iloc[-1, :] = 0
-
-        eigval, eigvec = np.linalg.eigh(Sigma)
-
-        eigval = np.maximum(eigval, 0.)
-    
-        self.current_value = eigvec @ np.diag(np.sqrt(eigval))
+        super().values_in_time(t=t, past_returns=past_returns.iloc[:, :-1], **kwargs)
+        self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
+        Sigma = self.last_sum_matrix / self.last_counts_matrix 
+        
+        if not self.addmean:
+            Sigma -= np.outer(self.meanforecaster.current_value, self.meanforecaster.current_value)   
+        self.current_value = self.factorize(Sigma) 
         
         return self.current_value
