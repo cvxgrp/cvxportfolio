@@ -39,7 +39,7 @@ class BacktestResult(Estimator):
     # trading we won't have this constant.
     PPY = 252
     
-    def __init__(self, h, u, z, tcost, hcost_stocks, hcost_cash, cash_returns):
+    def __init__(self, h, u, z, tcost, hcost_stocks, hcost_cash, cash_returns, policy_times, simulator_times):
         self.h = h
         self.u = u
         self.z = z
@@ -47,6 +47,8 @@ class BacktestResult(Estimator):
         self.hcost_stocks = hcost_stocks
         self.hcost_cash = hcost_cash
         self.cash_returns = cash_returns
+        self.policy_times = policy_times
+        self.simulator_times = simulator_times
 
     @property
     def v(self):
@@ -66,7 +68,7 @@ class BacktestResult(Estimator):
     @property
     def leverage(self):
         """Portfolio leverage"""
-        return np.abs(self.w).sum(1)
+        return np.abs(self.w.iloc[:, :-1]).sum(1)
 
     @property
     def volatility(self):
@@ -142,19 +144,23 @@ class BacktestResult(Estimator):
     def trading_days(self):
         """The fraction of days with nonzero turnover."""
         return (self.turnover.values > 0).sum() / self.turnover.size
-
+        
     @property
-    def max_drawdown(self):
-        """The maximum peak to trough drawdown in percent."""
-        val_arr = self.v.values
-        max_dd_so_far = 0
-        cur_max = val_arr[0]
-        for val in val_arr[1:]:
-            if val >= cur_max:
-                cur_max = val
-            elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
-                max_dd_so_far = 100 * (cur_max - val) / cur_max
-        return max_dd_so_far
+    def drawdown(self):
+        return (1 - (self.v / self.v.cummax()))
+
+    # @property
+    # def max_drawdown(self):
+    #     """The maximum peak to trough drawdown in percent."""
+    #     val_arr = self.v.values
+    #     max_dd_so_far = 0
+    #     cur_max = val_arr[0]
+    #     for val in val_arr[1:]:
+    #         if val >= cur_max:
+    #             cur_max = val
+    #         elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
+    #             max_dd_so_far = 100 * (cur_max - val) / cur_max
+    #     return max_dd_so_far
         
     @property
     def excess_returns(self):
@@ -171,10 +177,24 @@ class BacktestResult(Estimator):
             "Annualized excess return (%)": self.excess_returns.mean() * 100 * self.PPY,
             "Annualized excess risk (%)": self.excess_returns.std() * 100 * np.sqrt(self.PPY),
             "Sharpe ratio": self.sharpe_ratio,
-            "Max. drawdown (%)": self.max_drawdown,
+            "Max. drawdown (%)": self.drawdown.max() * 100,
+            "Average drawdown (%)": self.drawdown.mean() * 100,
+            "Daily Turnover (%)": self.turnover.mean() * 100,
             "Annualized Turnover (%)": self.turnover.mean() * 100 * self.PPY,
-            #"Average policy time (sec)": self.policy_time.mean(),
-            #"Average simulator time (sec)": self.simulation_time.mean(),
+            "Average leverage (%)": self.leverage.mean() * 100,
+            "Max leverage (%)": self.leverage.max() * 100,
+            
+            "Average daily tcost (bp)": (self.tcost / self.v).mean()*1E4,
+            "Average daily tcost ($)": (self.tcost).mean(),
+            "Average daily stock borrow cost (bp)": (self.hcost_stocks / self.v).mean()*1E4,
+            "Average daily stock borrow cost ($)": (self.hcost_stocks).mean(),
+            "Average daily stock cash return or cost (bp)": (self.hcost_cash / self.v).mean()*1E4,
+             "Average daily stock cash return or cost ($)": (self.hcost_cash).mean(),
+            
+            "Average policy time (sec)": self.policy_times.mean(),
+            "Average simulator time (sec)": self.simulator_times.mean(),
+            
+            
             })
 
         return 'Backtest Result:\n' + pd.Series(data=data).to_string(float_format="{:,.3f}".format)

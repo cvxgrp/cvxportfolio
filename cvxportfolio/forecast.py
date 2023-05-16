@@ -33,9 +33,9 @@ class BaseForecast(Estimator):
     def update_chooser(self, t, past_returns):
         if (self.last_time is None) or (self.last_time != past_returns.index[-1]):
             self.compute_from_scratch(t=t, past_returns=past_returns)
-            print('FROM SCRATCH!', t)
+            # print('FROM SCRATCH!', t)
         else:
-            print('UPDATING!', t)
+            # print('UPDATING!', t)
             self.update(t=t, past_returns=past_returns)
     
     def compute_from_scratch(self, t, past_returns):

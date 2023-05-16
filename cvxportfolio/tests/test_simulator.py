@@ -178,7 +178,7 @@ class TestSimulator(unittest.TestCase):
             simulator.initialize_policy(policy, start_time, end_time)
             for t in simulator.returns.data.index[(simulator.returns.data.index >= start_time) & (simulator.returns.data.index <= end_time)]:
                 oldcash = h[-1]
-                h, z, u, tcost, stock_hcost, cash_hcost = simulator.simulate(t=t, h=h, policy=policy)
+                h, z, u, tcost, stock_hcost, cash_hcost, timer = simulator.simulate(t=t, h=h, policy=policy)
                 assert tcost == 0.
                 if np.all(h0[:2] > 0):
                     assert stock_hcost == 0.
@@ -200,7 +200,7 @@ class TestSimulator(unittest.TestCase):
             simulator.initialize_policy(policy, start_time, end_time)
             for t in simulator.returns.data.index[(simulator.returns.data.index >= start_time) & (simulator.returns.data.index <= end_time)]:
                 oldcash = h[-1]
-                h, z, u, tcost, stock_hcost, cash_hcost = simulator.simulate(t=t, h=h, policy=policy)
+                h, z, u, tcost, stock_hcost, cash_hcost, timer = simulator.simulate(t=t, h=h, policy=policy)
                 print(h)
                 print(tcost, stock_hcost, cash_hcost)
             

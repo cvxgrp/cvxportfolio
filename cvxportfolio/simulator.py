@@ -345,15 +345,22 @@ class MarketSimulator(Estimator):
         # print(t, current_portfolio_value)
 
         # get view of past data
-        past_returns = self.returns.data.loc[self.returns.data.index < t]
-        past_volumes = self.volumes.data.loc[self.volumes.data.index < t]
+        tidx = self.returns.data.index.get_loc(t)
+        # past_returns = self.returns.data.loc[self.returns.data.index < t]
+        #assert np.all(past_returns.fillna(0.) == self.returns.data.iloc[:tidx].fillna(0.))
+        past_returns = self.returns.data.iloc[:tidx]
+        #past_volumes = self.volumes.data.loc[self.volumes.data.index < t]
+        #assert np.all(past_volumes.fillna(0.) == self.volumes.data.iloc[:tidx].fillna(0.))
+        past_volumes = self.volumes.data.iloc[:tidx]
 
         # update internal estimators (spreads, dividends, volumes, ..., )
         super().values_in_time(t=t)
 
         # evaluate the policy
+        s = time.time()
         z = policy.values_in_time(t=t, current_weights=current_weights, current_portfolio_value=current_portfolio_value, 
             past_returns=past_returns, past_volumes=past_volumes, current_prices=self.prices.current_value, **kwargs)
+        policy_time = time.time() - s
         
         # for safety recompute cash
         z[-1] = -sum(z[:-1])
@@ -390,7 +397,7 @@ class MarketSimulator(Estimator):
         # credit costs to cash (includes cash return)
         h_next[-1] = h_plus[-1] + (transaction_costs + holding_costs + cash_holding_costs)
             
-        return h_next, z, u, transaction_costs, holding_costs, cash_holding_costs, 
+        return h_next, z, u, transaction_costs, holding_costs, cash_holding_costs, policy_time
         
     def initialize_policy(self, policy, start_time, end_time):
         """Initialize the policy object.
@@ -410,16 +417,22 @@ class MarketSimulator(Estimator):
         tcost = pd.Series(dtype=float)
         hcost_stocks = pd.Series(dtype=float)
         hcost_cash = pd.Series(dtype=float)
+        policy_times = pd.Series(dtype=float)
+        simulator_times = pd.Series(dtype=float)
         
         for t in self.returns.data.index[(self.returns.data.index >= start_time) & (self.returns.data.index < end_time)]:
             h_df.loc[t] = h
-            h, z.loc[t], u.loc[t], tcost.loc[t], hcost_stocks.loc[t], hcost_cash.loc[t] = \
+            s = time.time()
+            h, z.loc[t], u.loc[t], tcost.loc[t], hcost_stocks.loc[t], hcost_cash.loc[t], policy_times.loc[t] = \
                 self.simulate(t=t, h=h, policy=policy)
+            simulator_times.loc[t] = time.time() - s - policy_times.loc[t]
         
         h_df.loc[pd.Timestamp(end_time)] = h  
         
+        
         return BacktestResult(h=h_df, u=u, z=z, tcost=tcost, hcost_stocks=hcost_stocks, hcost_cash=hcost_cash, 
-            cash_returns=self.returns.data[self.cash_key].loc[u.index])
+            cash_returns=self.returns.data[self.cash_key].loc[u.index], 
+                policy_times=policy_times, simulator_times=simulator_times)
         
                   
                                  
@@ -463,7 +476,7 @@ class MarketSimulator(Estimator):
             policy = [policy]
         
         if not hasattr(h, '__len__'):
-            h = [h]*len(policy)
+            h = [h] * len(policy)
             
         if not (len(policy) == len(h)):
             raise SyntaxError("If passing lists of policies and initial portfolios they must have the same length.")
@@ -483,7 +496,7 @@ class MarketSimulator(Estimator):
                 h[i] = pd.Series(0., self.returns.data.columns)
                 h[i][-1] = initial_value
                 
-        def parallel_runner(zipped):
+        def nonparallel_runner(zipped):
             return self._single_backtest(zipped[0], start_time, end_time, zipped[1])
             
         # parallel_worker(policy, simulator, start_time, end_time, h)
@@ -491,7 +504,7 @@ class MarketSimulator(Estimator):
         
         # decide if run in parallel or not
         if (not parallel) or len(policy) == 1:
-            result = list(map(parallel_runner, zip(policy, h)))
+            result = list(map(nonparallel_runner, zip(policy, h)))
         else:
             with Pool() as p:
                 # if not __name__ == '__main__':
