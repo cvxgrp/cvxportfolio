@@ -181,6 +181,7 @@ class BacktestResult(Estimator):
             "Average drawdown (%)": self.drawdown.mean() * 100,
             "Daily Turnover (%)": self.turnover.mean() * 100,
             "Annualized Turnover (%)": self.turnover.mean() * 100 * self.PPY,
+            
             "Average leverage (%)": self.leverage.mean() * 100,
             "Max leverage (%)": self.leverage.max() * 100,
             
@@ -188,8 +189,8 @@ class BacktestResult(Estimator):
             "Average daily tcost ($)": (self.tcost).mean(),
             "Average daily stock borrow cost (bp)": (self.hcost_stocks / self.v).mean()*1E4,
             "Average daily stock borrow cost ($)": (self.hcost_stocks).mean(),
-            "Average daily stock cash return or cost (bp)": (self.hcost_cash / self.v).mean()*1E4,
-             "Average daily stock cash return or cost ($)": (self.hcost_cash).mean(),
+            "Average daily cash return or cost (bp)": (self.hcost_cash / self.v).mean()*1E4,
+            "Average daily cash return or cost ($)": (self.hcost_cash).mean(),
             
             "Average policy time (sec)": self.policy_times.mean(),
             "Average simulator time (sec)": self.simulator_times.mean(),

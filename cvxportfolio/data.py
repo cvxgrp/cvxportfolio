@@ -116,6 +116,17 @@ class YfinanceBase(BaseData):
     @staticmethod
     def internal_process(data):
         """Manipulate yfinance data for better storing."""
+        
+        # nan-out nonpositive prices
+        data.loc[data["Open"] <= 0, 'Open'] = np.nan
+        data.loc[data["Close"] <= 0, "Close"] = np.nan
+        data.loc[data["High"] <= 0, "High"] = np.nan
+        data.loc[data["Low"] <= 0, "Low"] = np.nan
+        data.loc[data["Adj Close"] <= 0, "Adj Close"] = np.nan
+        
+        # nan-out negative volumes
+        data.loc[data["Volume"] < 0, 'Volume'] = np.nan
+        
         intraday_logreturn = np.log(data["Close"]) - np.log(data["Open"])
         close_to_close_logreturn = np.log(data["Adj Close"]).diff().shift(-1)
         open_to_open_logreturn = (
@@ -124,8 +135,7 @@ class YfinanceBase(BaseData):
         data["Return"] = np.exp(open_to_open_logreturn) - 1
         del data["Adj Close"]
         # eliminate intraday data
-        data.loc[data.index[-1], ["High", "Low",
-                                  "Close", "Return", "Volume"]] = np.nan
+        data.loc[data.index[-1], ["High", "Low", "Close", "Return", "Volume"]] = np.nan
         return data
 
     @classmethod
@@ -170,8 +180,8 @@ class YfinanceBase(BaseData):
         # remove infty values
         data.iloc[:, :] = np.nan_to_num(data.values, copy=True, nan=np.nan, posinf=np.nan, neginf=np.nan)
         # remove extreme values
-        data.loc[data["Return"] < -.99, "Return"] = np.nan
-        data.loc[data["Return"] > .99, "Return"] = np.nan
+        # data.loc[data["Return"] < -.99, "Return"] = np.nan
+        # data.loc[data["Return"] > .99, "Return"] = np.nan
         return data
 
 

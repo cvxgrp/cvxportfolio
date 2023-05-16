@@ -147,6 +147,7 @@ class MarketSimulator(Estimator):
             dividends=0.,
             spread_on_lending_cash_percent=.5,
             spread_on_borrowing_cash_percent=.5,
+            min_history_for_inclusion=250,
             cash_key="USDOLLAR",
             base_location=BASE_LOCATION):
         """Initialize the Simulator and download data if necessary."""
@@ -190,6 +191,7 @@ class MarketSimulator(Estimator):
         self.spread_on_long_positions_percent = spread_on_long_positions_percent
         self.spread_on_lending_cash_percent = spread_on_lending_cash_percent
         self.spread_on_borrowing_cash_percent = spread_on_borrowing_cash_percent
+        self.min_history_for_inclusion = min_history_for_inclusion
 
         # compute my DataEstimator(s)
         self.sigma_estimate = DataEstimator(
@@ -229,7 +231,7 @@ class MarketSimulator(Estimator):
         # build prices
         self.prices = pd.DataFrame(
             {stock: self.database_accesses[stock].data['Open'] for stock in self.universe})
-        
+            
         
         # yfinance has some issues with most recent data; we patch it here but this
         # logic should go in .data
@@ -487,6 +489,9 @@ class MarketSimulator(Estimator):
             end_time  = self.returns.data.index[-1]
         else:
             end_time = self.returns.data.index[self.returns.data.index <= end_time][-1]
+            
+        # discard names that don't meet the min_history_for_inclusion
+        # history = (~self.returns.data.loc[self.returns.data.index < start_time].isnull()).sum()
         
         # initialize policies and get initial portfolios
         for i in range(len(policy)):
@@ -498,9 +503,7 @@ class MarketSimulator(Estimator):
                 
         def nonparallel_runner(zipped):
             return self._single_backtest(zipped[0], start_time, end_time, zipped[1])
-            
-        # parallel_worker(policy, simulator, start_time, end_time, h)
-        
+                    
         
         # decide if run in parallel or not
         if (not parallel) or len(policy) == 1:
