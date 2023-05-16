@@ -91,7 +91,7 @@ class TestRisks(unittest.TestCase):
         # N = returns.shape[1]
         # returns.iloc[:, -1] = 0.
 
-        historical_variances = self.returns.rolling(50).var().shift(1).dropna()
+        historical_variances = self.returns.iloc[:,:-1].rolling(50).var().shift(1).dropna()
         risk_model = DiagonalCovariance(historical_variances)
         cvxpy_expression = self.boilerplate(risk_model)
         self.assertTrue(cvxpy_expression.is_convex())
@@ -101,8 +101,8 @@ class TestRisks(unittest.TestCase):
 
         risk_model.values_in_time(t, past_returns='hello')
 
-        self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus_minus_w_bm.value @
-                          np.diag(historical_variances.loc[t]) @ self.w_plus_minus_w_bm.value))
+        self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus_minus_w_bm.value[:-1] @
+                          np.diag(historical_variances.loc[t]) @ self.w_plus_minus_w_bm.value[:-1]))
 
     def test_full_diagonal_covariance(self):
 
@@ -124,7 +124,7 @@ class TestRisks(unittest.TestCase):
 
     def test_forecast_error(self):
 
-        historical_variances = (self.returns**2).rolling(50).mean().shift(1).dropna()
+        historical_variances = (self.returns.iloc[:, :-1]**2).rolling(50).mean().shift(1).dropna()
         
         risk_model = RiskForecastError(historical_variances)
         cvxpy_expression = self.boilerplate(risk_model)
@@ -138,10 +138,10 @@ class TestRisks(unittest.TestCase):
         risk_model.values_in_time(t, past_returns='hello')
 
         print(cvxpy_expression.value)
-        print((np.abs(self.w_plus_minus_w_bm.value) @ np.sqrt(historical_variances.loc[t]))**2)
+        print((np.abs(self.w_plus_minus_w_bm.value[:-1]) @ np.sqrt(historical_variances.loc[t]))**2)
         self.assertTrue(np.isclose(cvxpy_expression.value, 
         
-        (np.abs(self.w_plus_minus_w_bm.value) @ np.sqrt(historical_variances.loc[t]))**2
+        (np.abs(self.w_plus_minus_w_bm.value[:-1]) @ np.sqrt(historical_variances.loc[t]))**2
         
         ))
 

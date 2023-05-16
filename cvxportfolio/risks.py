@@ -212,7 +212,7 @@ class RiskForecastError(BaseRiskModel):
 
     def __init__(self, sigma_squares=None):
         if sigma_squares is None:
-            self.sigma_squares = HistoricalVariance(zeroforcash=True, addmean=True) #None None
+            self.sigma_squares = HistoricalVariance(addmean=True) #None None
         else:
             self.sigma_squares = DataEstimator(sigma_squares)
         # self.standard_deviations = ParameterEstimator(standard_deviations)
@@ -221,7 +221,7 @@ class RiskForecastError(BaseRiskModel):
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
-        self.sigmas_parameter = cvx.Parameter(len(universe), nonneg=True)#+self.addmean))
+        self.sigmas_parameter = cvx.Parameter(len(universe)-1, nonneg=True)#+self.addmean))
 
     def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
@@ -244,7 +244,7 @@ class RiskForecastError(BaseRiskModel):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
-        return cvx.square(cvx.abs(w_plus_minus_w_bm).T @ self.sigmas_parameter)
+        return cvx.square(cvx.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
                 
                 
 
@@ -261,14 +261,14 @@ class DiagonalCovariance(BaseRiskModel):
         if not sigma_squares is None:
             self.sigma_squares = DataEstimator(sigma_squares)
         else:
-            self.sigma_squares = HistoricalVariance(zeroforcash=True, addmean=True) #None
+            self.sigma_squares = HistoricalVariance(addmean=True) #None
         #self.zeroforcash = True
         #self.addmean = True
         # self.standard_deviations = ParameterEstimator(standard_deviations)
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
-        self.sigmas_parameter = cvx.Parameter(len(universe)) #+self.addmean))
+        self.sigmas_parameter = cvx.Parameter(len(universe)-1) #+self.addmean))
 
     def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
@@ -292,7 +292,7 @@ class DiagonalCovariance(BaseRiskModel):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
-        return cvx.sum_squares(cvx.multiply(w_plus_minus_w_bm, self.sigmas_parameter))
+        return cvx.sum_squares(cvx.multiply(w_plus_minus_w_bm[:-1], self.sigmas_parameter))
 
 
 class FactorModelCovariance(BaseRiskModel):

@@ -75,22 +75,21 @@ class HistoricalMeanError(BaseForecast):
 class HistoricalVariance(BaseForecast):
     """Historical variances."""
 
-    def __init__(self, zeroforcash, addmean):
-        self.zeroforcash = zeroforcash
+    def __init__(self, addmean):
         self.addmean = addmean
     
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
-        tmp  = past_returns.var(ddof=0) 
+        tmp  = past_returns.iloc[:, :-1].var(ddof=0) 
         
         if self.addmean:
-            tmp += past_returns.mean()**2
+            tmp += past_returns.iloc[:, :-1].mean()**2
         
         tmp = tmp.values
         
-        if self.zeroforcash:
-            tmp[-1] = 0.
+        # if self.zeroforcash:
+        #     tmp[-1] = 0.
             
         self.current_value = tmp
         return self.current_value  
