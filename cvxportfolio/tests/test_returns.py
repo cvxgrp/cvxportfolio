@@ -71,15 +71,15 @@ class TestReturns(unittest.TestCase):
         
     def test_returns_forecast_error(self):
 
-        delta = self.returns.std() / np.sqrt(len(self.returns))
-        delta.iloc[-1] = 0
+        delta = self.returns.iloc[:, :-1].std(ddof=0) / np.sqrt(len(self.returns))
+        # delta.iloc[-1] = 0
 
         error_risk = ReturnsForecastError(delta)
         cvxpy_expression = self.boilerplate(error_risk)
         error_risk.values_in_time(t='ciao', past_returns='hello')
 
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
-        self.assertTrue(np.isclose(cvxpy_expression.value, np.abs(self.w_plus_minus_w_bm.value) @ delta))
+        self.assertTrue(np.isclose(cvxpy_expression.value, np.abs(self.w_plus_minus_w_bm.value[:-1]) @ delta))
 
 
     def test_full_returns_forecast_error(self):
@@ -92,7 +92,7 @@ class TestReturns(unittest.TestCase):
         error_risk.values_in_time(t=t, past_returns = past_returns)
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
         
-        delta = past_returns.std() / np.sqrt(past_returns.count())
+        delta = past_returns.std(ddof=0) / np.sqrt(past_returns.count())
 
         print(cvxpy_expression.value)
         print(np.abs(self.w_plus_minus_w_bm.value[:-1]) @ delta[:-1])

@@ -53,7 +53,7 @@ class TestEstimators(unittest.TestCase):
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
             mean = forecaster.values_in_time(t=t, past_returns=past_returns)
-            # print(mean)
+            print(mean)
             self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(mean[:-1], past_returns.iloc[:,:-1].mean()))
         
@@ -71,6 +71,20 @@ class TestEstimators(unittest.TestCase):
             print(var)
             #self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(var, past_returns.var(ddof=0)[:-1]))    
+            
+    def test_meanerror_update(self):
+        forecaster = HistoricalMeanError()
+        
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:20, 3:10] = np.nan
+        
+        for tidx in [50,51,52,55,56,57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index<t]
+            val = forecaster.values_in_time(t=t, past_returns=past_returns)
+            print(val)
+            #self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
+            self.assertTrue(np.allclose(val, past_returns.std(ddof=0)[:-1] / np.sqrt(past_returns.count()[:-1]) ))  
     
 if __name__ == '__main__':
     unittest.main()

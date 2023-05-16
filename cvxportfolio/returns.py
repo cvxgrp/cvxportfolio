@@ -224,19 +224,18 @@ class ReturnsForecastError(BaseRiskModel):
     :type deltas_errors: pd.DataFrame or pd.Series or None
     """
 
-    def __init__(self, deltas=None, zeroforcash=True, # rolling=None, halflife=None
-        ):
+    def __init__(self, deltas=None):#, zeroforcash=True, # rolling=None, halflife=None
         
         if not deltas is None:
             self.deltas = DataEstimator(deltas)
         else:
-            self.deltas = HistoricalMeanError(zeroforcash)
+            self.deltas = HistoricalMeanError()#zeroforcash)
         # self.zeroforcash = zeroforcash
 
             
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe=universe, backtest_times=backtest_times)
-        self.deltas_parameter = cvx.Parameter(len(universe), nonneg=True)
+        self.deltas_parameter = cvx.Parameter(len(universe)-1, nonneg=True)
 
 
     def values_in_time(self, t, past_returns, **kwargs):
@@ -254,7 +253,7 @@ class ReturnsForecastError(BaseRiskModel):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile to cvxpy expression."""
-        return cvx.abs(w_plus_minus_w_bm).T @ self.deltas_parameter
+        return cvx.abs(w_plus_minus_w_bm[:-1]).T @ self.deltas_parameter
 
 
 

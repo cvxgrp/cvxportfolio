@@ -90,14 +90,17 @@ class HistoricalMeanReturn(BaseForecast):
 class HistoricalMeanError(BaseForecast):
     """Historical standard deviations of the mean."""
 
-    def __init__(self, zeroforcash):
-        self.zeroforcash = zeroforcash
+    def __init__(self):#, zeroforcash):
+        # self.zeroforcash = zeroforcash
+        # assert zeroforcash=True
+        self.varianceforecaster = HistoricalVariance(addmean=False)
     
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
-        self.current_value  = (past_returns.std() / np.sqrt(past_returns.count())).values
-        if self.zeroforcash:
-            self.current_value[-1] = 0.
+                
+        self.current_value  = np.sqrt(self.varianceforecaster.current_value / self.varianceforecaster.last_counts.values)
+        # if self.zeroforcash:
+        #     self.current_value[-1] = 0.
         return self.current_value  
         
         
