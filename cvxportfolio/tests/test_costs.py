@@ -50,7 +50,7 @@ class TestCosts(unittest.TestCase):
         t = self.returns.index[1]
 
         cost1 = DiagonalCovariance()
-        cost2 = FullCovariance(self.returns.iloc[:, :].T @ self.returns.iloc[:, :] / len(self.returns))
+        cost2 = FullCovariance(self.returns.iloc[:, :-1].T @ self.returns.iloc[:, :-1] / len(self.returns))
         cost3 = cost1 + cost2
 
         cost3.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)

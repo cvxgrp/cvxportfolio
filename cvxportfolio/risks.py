@@ -134,7 +134,8 @@ class FullCovariance(BaseRiskModel):
             self.Sigma = DataEstimator(Sigma)
             self.alreadyfactorized = False
         else:
-            self.Sigma = HistoricalFactorizedCovariance(zeroforcash=True, addmean=addmean) #Sigma
+            self.Sigma = HistoricalFactorizedCovariance(# zeroforcash=True, 
+                addmean=addmean) #Sigma
             self.alreadyfactorized = True
             
         # self.zeroforcash = True
@@ -145,7 +146,7 @@ class FullCovariance(BaseRiskModel):
         super().pre_evaluation(universe, backtest_times)
         
         
-        self.Sigma_sqrt = cvx.Parameter((len(universe), len(universe)))#+self.addmean))
+        self.Sigma_sqrt = cvx.Parameter((len(universe)-1, len(universe)-1))#+self.addmean))
 
         #super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
@@ -194,7 +195,7 @@ class FullCovariance(BaseRiskModel):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         # TODO change benchmark weights passing
-        self.cvxpy_expression = cvx.sum_squares(self.Sigma_sqrt.T @ w_plus_minus_w_bm)
+        self.cvxpy_expression = cvx.sum_squares(self.Sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
     
         return self.cvxpy_expression
 
@@ -330,12 +331,12 @@ class FactorModelCovariance(BaseRiskModel):
 
     factor_Sigma = None
 
-    def __init__(self, F=None, d=None, num_factors=1, normalize=False):
+    def __init__(self, F=None, d=None, num_factors=1):#, normalize=False):
         self.F = F if F is None else ParameterEstimator(F) 
         self.d = d if d is None else DataEstimator(d) 
         if (self.F is None) or (self.d is None):
             self.fit = True
-            self.Sigma = HistoricalFactorizedCovariance(zeroforcash=True, addmean=True) #Sigma
+            self.Sigma = HistoricalFactorizedCovariance(addmean=True) #Sigma
         else:
             self.fit = False
         self.num_factors = num_factors
@@ -383,8 +384,8 @@ class FactorModelCovariance(BaseRiskModel):
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
         # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-        self.idyosync_sqrt_parameter = cvx.Parameter(len(universe))
-        self.F_parameter = cvx.Parameter((self.num_factors, len(universe))) if self.F is None else self.F
+        self.idyosync_sqrt_parameter = cvx.Parameter(len(universe)-1)
+        self.F_parameter = cvx.Parameter((self.num_factors, len(universe)-1)) if self.F is None else self.F
         # if not (self.factor_Sigma is None):
         #     self.factor_Sigma_sqrt = cvx.Parameter(self.factor_Sigma.shape, PSD=True)
         # self.forecast_error_penalizer = cvx.Parameter(returns.shape[1], nonneg=True)
@@ -414,10 +415,10 @@ class FactorModelCovariance(BaseRiskModel):
 
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt_parameter, w_plus_minus_w_bm))
+        self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
         assert self.expression.is_dcp(dpp=True)
 
-        self.expression += cvx.sum_squares(self.F_parameter @ w_plus_minus_w_bm)
+        self.expression += cvx.sum_squares(self.F_parameter @ w_plus_minus_w_bm[:-1])
         assert self.expression.is_dcp(dpp=True)
 
         return self.expression

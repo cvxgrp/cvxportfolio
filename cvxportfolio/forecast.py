@@ -99,9 +99,10 @@ class HistoricalVariance(BaseForecast):
 class HistoricalFactorizedCovariance(BaseForecast):
     """Historical covariance matrix, sqrt factorized."""
     
-    def __init__(self, addmean, zeroforcash):
+    def __init__(self, addmean, # zeroforcash
+        ):
         self.addmean = addmean
-        self.zeroforcash = zeroforcash
+        # self.zeroforcash = zeroforcash
     
     @classmethod
     def get_count_matrix(cls, past_returns):
@@ -127,13 +128,13 @@ class HistoricalFactorizedCovariance(BaseForecast):
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
     
-        Sigma = past_returns.cov(ddof=0)
+        Sigma = past_returns.iloc[:, :-1].cov(ddof=0)
         if self.addmean:
-            mean = past_returns.mean()
+            mean = past_returns.iloc[:, :-1].mean()
             Sigma += np.outer(mean, mean)
-        if self.zeroforcash:
-            Sigma.iloc[:, -1] = 0
-            Sigma.iloc[-1, :] = 0
+        # if self.zeroforcash:
+        #     Sigma.iloc[:, -1] = 0
+        #     Sigma.iloc[-1, :] = 0
 
         eigval, eigvec = np.linalg.eigh(Sigma)
 

@@ -42,7 +42,7 @@ class TestRisks(unittest.TestCase):
 
 
     def test_full_sigma(self):
-        historical_covariances = self.returns.rolling(50).cov(ddof=0).dropna()
+        historical_covariances = self.returns.iloc[:, :-1].rolling(50).cov(ddof=0).dropna()
         risk_model = FullCovariance(historical_covariances)
         
         cvxpy_expression = self.boilerplate(risk_model)
@@ -54,8 +54,8 @@ class TestRisks(unittest.TestCase):
 
         risk_model.values_in_time(t=t, past_returns='Hello!')
 
-        self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus_minus_w_bm.value @
-                          historical_covariances.loc[t] @ self.w_plus_minus_w_bm.value))
+        self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus_minus_w_bm.value[:-1] @
+                          historical_covariances.loc[t] @ self.w_plus_minus_w_bm.value[:-1]))
                                
     def test_full_estimated_sigma(self):
 
@@ -168,8 +168,8 @@ class TestRisks(unittest.TestCase):
         
     def test_low_rank_covariance(self):
         
-        F = pd.DataFrame(np.random.randn(2, self.N), columns=self.returns.columns)
-        d = pd.Series(np.random.uniform(self.N), self.returns.columns)
+        F = pd.DataFrame(np.random.randn(2, self.N-1), columns=self.returns.columns[:-1])
+        d = pd.Series(np.random.uniform(size=(self.N-1)), self.returns.columns[:-1])
         risk_model = FactorModelCovariance(F=F, d=d)
         
         cvxpy_expression = self.boilerplate(risk_model)
@@ -179,12 +179,12 @@ class TestRisks(unittest.TestCase):
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
         
         self.assertTrue(np.isclose(cvxpy_expression.value, 
-            self.w_plus_minus_w_bm.value @ np.diag(d) @ self.w_plus_minus_w_bm.value + \
-                ((F @ self.w_plus_minus_w_bm.value)**2).sum()))
+            self.w_plus_minus_w_bm.value[:-1] @ np.diag(d) @ self.w_plus_minus_w_bm.value[:-1] + \
+                ((F @ self.w_plus_minus_w_bm.value[:-1])**2).sum()))
                 
     def test_estimated_low_rank_covariance(self):
         
-        risk_model = FactorModelCovariance(normalize=False)
+        risk_model = FactorModelCovariance()#normalize=False)
         
         cvxpy_expression = self.boilerplate(risk_model)
         self.assertTrue(cvxpy_expression.is_convex())

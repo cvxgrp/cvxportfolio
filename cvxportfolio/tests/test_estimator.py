@@ -170,3 +170,7 @@ class TestEstimators(unittest.TestCase):
         self.assertTrue( hasattr(estimator, "value"))
         estimator.values_in_time("2022-01-05")
         self.assertTrue( np.all(estimator.value == data.loc["2022-01-05"]))
+        
+if __name__ == '__main__':
+    unittest.main()
+    
