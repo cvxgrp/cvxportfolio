@@ -79,7 +79,7 @@ if __name__ == "__main__":
     print(new_version) 
 
     replaceversion(new_version, version)
-    subprocess.run(['git', 'commit', '-m', f"'version {new_version}'"])
+    subprocess.run(['git', 'commit', '-m', f"version {new_version}"])
     subprocess.run(['git', 'tag', new_version])
     subprocess.run(['git', 'push', 'origin', new_version])
     

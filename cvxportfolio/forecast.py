@@ -144,18 +144,14 @@ class HistoricalFactorizedCovariance(BaseForecast):
     def __init__(self, addmean=True):
         #assert addmean == True
         self.addmean = addmean
-        if not self.addmean:
-            self.meanforecaster = HistoricalMeanReturn(lastforcash=False)
-        
+        # if not self.addmean:
+        #     self.meanforecaster = HistoricalMeanReturn(lastforcash=False)
         self.last_time = None
-        self.last_counts_matrix = None
-        self.last_sum_matrix = None
     
     def get_count_matrix(self, past_returns):
         """We obtain the matrix of non-null joint counts."""
-        tmp = ~past_returns.isnull()
-        return len(past_returns) * (tmp.cov(ddof=0) + np.outer(tmp.mean(), tmp.mean()))
-
+        tmp = (~past_returns.isnull()) * 1.
+        return tmp.T @ tmp
 
     @staticmethod
     def factorize(Sigma):
@@ -167,6 +163,9 @@ class HistoricalFactorizedCovariance(BaseForecast):
         self.last_counts_matrix = self.get_count_matrix(past_returns).values
         filled = past_returns.fillna(0.).values
         self.last_sum_matrix = filled.T @ filled
+        # if not self.addmean:
+        #     self.last_meansum_matrix = self.last_sum_matrix/self.last_counts_matrix - past_returns.cov(ddof=0)
+        #     self.last_meansum_matrix *= self.last_counts_matrix**2
         self.last_time = t
         
     def update(self, t, past_returns): #, last_estimation, last_counts, last_time):
@@ -175,15 +174,19 @@ class HistoricalFactorizedCovariance(BaseForecast):
         last_ret = past_returns.iloc[-1].fillna(0.)
         self.last_sum_matrix += np.outer(last_ret, last_ret)
         self.last_time = t
+        # if not self.addmean:
+        #     self.last_meansum_matrix += np.outer(last_ret, last_ret)
     
     
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns.iloc[:, :-1], **kwargs)
-        self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
-        Sigma = self.last_sum_matrix / self.last_counts_matrix 
-        
-        if not self.addmean:
-            Sigma -= np.outer(self.meanforecaster.current_value, self.meanforecaster.current_value)   
+        if self.addmean:
+            self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
+            Sigma = self.last_sum_matrix / self.last_counts_matrix
+        else:
+            Sigma = past_returns.iloc[:,:-1].cov(ddof=0)
+        # if not self.addmean:
+        #     Sigma -= np.outer(self.meanforecaster.current_value, self.meanforecaster.current_value)   
         self.current_value = self.factorize(Sigma) 
         
         return self.current_value
