@@ -29,7 +29,20 @@ class BaseForecast(Estimator):
     # def pre_evaluation(self, universe, backtest_times):
     #     self.universe = universe
     #     self.backtest_times = backtest_times
+    
+    def update_chooser(self, t, past_returns):
+        if (self.last_time is None) or (self.last_time != past_returns.index[-1]):
+            self.compute_from_scratch(t=t, past_returns=past_returns)
+            print('FROM SCRATCH!', t)
+        else:
+            print('UPDATING!', t)
+            self.update(t=t, past_returns=past_returns)
+    
+    def compute_from_scratch(self, t, past_returns):
+        raise NotImplementedError
 
+    def update(self, t, past_returns):
+        raise NotImplementedError
 
 class HistoricalMeanReturn(BaseForecast):
     """Historical mean returns."""
@@ -43,10 +56,7 @@ class HistoricalMeanReturn(BaseForecast):
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
-        if (self.last_time is None) or not (self.last_time == past_returns.index[-2]):
-            self.compute_from_scratch(t=t, past_returns=past_returns)
-        else:
-            self.update(t=t, past_returns=past_returns)
+        self.update_chooser(t=t, past_returns=past_returns)
             
         self.current_value = (self.last_sum / self.last_counts).values
         # self.current_value = past_returns.mean().values
@@ -96,22 +106,42 @@ class HistoricalVariance(BaseForecast):
 
     def __init__(self, addmean):
         self.addmean = addmean
+        if not self.addmean:
+            self.meanforecaster = HistoricalMeanReturn(lastforcash=False)
+        self.last_time = None
+        self.last_counts = None
+        self.last_sum = None
     
     def values_in_time(self, t, past_returns, **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+        super().values_in_time(t=t, past_returns=past_returns.iloc[:,:-1], **kwargs)
         
-        tmp  = past_returns.iloc[:, :-1].var(ddof=0) 
+        self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
         
-        if self.addmean:
-            tmp += past_returns.iloc[:, :-1].mean()**2
+        self.current_value = (self.last_sum / self.last_counts).values
         
-        tmp = tmp.values
+        # tmp  = past_returns.iloc[:, :-1].var(ddof=0) 
+        
+        if not self.addmean:
+            self.current_value -= self.meanforecaster.current_value**2
+            # tmp += past_returns.iloc[:, :-1].mean()**2
+        
+        # tmp = tmp.values
         
         # if self.zeroforcash:
         #     tmp[-1] = 0.
             
-        self.current_value = tmp
+        # self.current_value = tmp
         return self.current_value  
+        
+    def compute_from_scratch(self, t, past_returns):
+        self.last_counts = past_returns.count()
+        self.last_sum = (past_returns**2).sum()
+        self.last_time = t
+        
+    def update(self, t, past_returns): #, last_estimation, last_counts, last_time):
+        self.last_counts += ~(past_returns.iloc[-1].isnull())
+        self.last_sum += past_returns.iloc[-1].fillna(0.)**2
+        self.last_time = t
         
           
 class HistoricalFactorizedCovariance(BaseForecast):

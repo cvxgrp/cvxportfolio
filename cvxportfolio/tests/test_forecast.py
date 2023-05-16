@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 
-from cvxportfolio.forecast import HistoricalMeanReturn, HistoricalMeanError
+from cvxportfolio.forecast import HistoricalMeanReturn, HistoricalMeanError, HistoricalVariance
 
 class TestEstimators(unittest.TestCase):
     
@@ -53,10 +53,24 @@ class TestEstimators(unittest.TestCase):
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
             mean = forecaster.values_in_time(t=t, past_returns=past_returns)
+            # print(mean)
             self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
-            self.assertTrue(np.all(mean[:-1] == past_returns.iloc[:,:-1].mean()))
+            self.assertTrue(np.allclose(mean[:-1], past_returns.iloc[:,:-1].mean()))
         
+    
+    def test_variance_update(self):
+        forecaster = HistoricalVariance(addmean=False)
         
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:20, 3:10] = np.nan
+        
+        for tidx in [50,51,52,55,56,57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index<t]
+            var = forecaster.values_in_time(t=t, past_returns=past_returns)
+            print(var)
+            #self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
+            self.assertTrue(np.allclose(var, past_returns.var(ddof=0)[:-1]))    
     
 if __name__ == '__main__':
     unittest.main()
