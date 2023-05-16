@@ -36,26 +36,45 @@ class HistoricalMeanReturn(BaseForecast):
     
     def __init__(self, lastforcash):
         self.lastforcash = lastforcash
+        self.last_time = None
+        self.last_counts = None
+        self.last_sum = None
     
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
-        self.current_value = past_returns.mean().values
+        
+        if (self.last_time is None) or not (self.last_time == past_returns.index[-2]):
+            self.compute_from_scratch(t=t, past_returns=past_returns)
+        else:
+            self.update(t=t, past_returns=past_returns)
+            
+        self.current_value = (self.last_sum / self.last_counts).values
+        # self.current_value = past_returns.mean().values
+        
         if self.lastforcash:
             self.current_value[-1] = past_returns.iloc[-1, -1]
+        
         return self.current_value
         
-    @classmethod # we make it a classmethod so that also covariances can use it
-    def update_full_mean(cls, past_returns, last_estimation, last_counts, last_time):
+    def compute_from_scratch(self, t, past_returns):
+        self.last_counts = past_returns.count()
+        self.last_sum = past_returns.sum()
+        self.last_time = t
+        
+    def update(self, t, past_returns): #, last_estimation, last_counts, last_time):
+        self.last_counts += ~(past_returns.iloc[-1].isnull())
+        self.last_sum += past_returns.iloc[-1].fillna(0.)
+        self.last_time = t
 
-        if last_time is None: # full estimation
-            estimation = past_returns.sum()
-            counts = past_returns.count()
-        else:
-            assert last_time == past_returns.index[-2]
-            estimation = last_estimation * last_counts + past_returns.iloc[-1].fillna(0.)
-            counts = last_counts + past_returns.iloc[-1:].count()
-
-        return estimation/counts, counts, past_returns.index[-1]
+        # if last_time is None: # full estimation
+        #     estimation = past_returns.sum()
+        #     counts = past_returns.count()
+        # else:
+        #     assert last_time == past_returns.index[-2]
+        #     estimation = last_estimation * last_counts + past_returns.iloc[-1].fillna(0.)
+        #     counts = last_counts + past_returns.iloc[-1:].count()
+        #
+        # return estimation/counts, counts, past_returns.index[-1]
         
         
 class HistoricalMeanError(BaseForecast):

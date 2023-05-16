@@ -14,15 +14,49 @@
 
 """Unit tests for the data and parameter estimator objects."""
 
+import unittest
+from pathlib import Path
+
+
 import cvxpy as cvx
 import numpy as np
 import pandas as pd
-import unittest
+
 
 from cvxportfolio.forecast import HistoricalMeanReturn, HistoricalMeanError
 
 class TestEstimators(unittest.TestCase):
-    pass
+    
+    @classmethod
+    def setUpClass(cls):
+        """Load the data and initialize cvxpy vars."""
+        # cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
+        cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
+        # cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
+        cls.w_plus = cvx.Variable(cls.returns.shape[1])
+        cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
+        cls.z = cvx.Variable(cls.returns.shape[1])
+        cls.N = cls.returns.shape[1]
+    
+    # def boilerplate(self, model):
+    #     model.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+    #     return model.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+         
+    
+    def test_mean_update(self):
+        forecaster = HistoricalMeanReturn(lastforcash=True)
+        
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:20, 3:10] = np.nan
+        
+        for tidx in [50,51,52,55,56,57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index<t]
+            mean = forecaster.values_in_time(t=t, past_returns=past_returns)
+            self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
+            self.assertTrue(np.all(mean[:-1] == past_returns.iloc[:,:-1].mean()))
+        
+        
     
 if __name__ == '__main__':
     unittest.main()
