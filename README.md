@@ -35,7 +35,12 @@ python -m unittest discover cvxportfolio
 Example
 ------------
 To get a sneak preview of `cvxportfolio` you may try the following code. This is available in `examples/hello_world.py` and runs 
-with `cvxportfolio >= 0.3.0`
+with `cvxportfolio >= 0.3.0`. All objects in `cvxportfolio` can either be provided data (in a variety of forms, but preferably pandas
+series or dataframes) or infer/download it. For example in the following example, market data is downloaded by a public source
+(Yahoo finance) and the forecasts are computed iteratively, at each point in the backtest, from past data. The logic used
+matches what is described in Chapter 7 of the book. For example, returns are forecasted as the historical mean returns 
+and covariances as historical covariances (both ignoring `np.nan`'s). The logic used is detailed in the `forecast` module. Many optimizations
+are applied to make sure the system works well with real data. 
 
 
 ```python
@@ -71,10 +76,41 @@ print('total cash return + cost ($)', result.hcost_cash.sum())
 
 ```
 
+Roadmap
+-------
+We plan to release the first stable version of cvxportfolio by the end of Summer 2023. Many new features are going to be added
+and extensive testing will be performed by then. Here's a rough list of what we think `cvxportfolio 1.0` will implement:
+
+- Automated hyperparameter search and tuning. Hyperparameters will be defined as cvxportfolio objects, with optional bounds and spacing,
+	so that the simulator can iterate automatically through HPs combinations. Optionally the user can define a metric to be optimized
+	(for example among the ones provided by BacktestResult) and let cvxportfolio use heuristics to get an (at least, local) optimal
+	HP combination. We'll make sure that the optimization routine can be subclassed and substituted with custom ones easily, as 
+	is the case with all other cvxportfolio objects. The same can also be done in a Pareto optimization fashion, so for example the user can 
+	request a list of HP combinations that are Pareto optimal (in backtest) for excess return and risk.
+- Online and offline caching. All expensive computations (including database accesses) are performed by cvxportfolio in a lazy fashion.
+	For example risk model estimations are done online, during a backtest, with a view of the past market data that is provided by the market
+	simulator. We will make sure that all expensive computations are done only once. Policy objects will provide an online cache 
+	for their estimators (e.g., risk models) to share. For example, MPO policies have separate estimator objects for each MPO step so they benefit
+	from this. Then, at the end of a backtest, the same data will be stored offline, in the `~/cvxportfolio_data/` folder, along with market
+	data and the backtest result itself. This all is done safely with respect to parallel execution (we use Python native multiprocessing module
+	for (potentially massive) parallelism). If the user asks for the same backtest twice, the saved result will be returned. If the user ask
+	for a backtest performed yesterday, today, the backtest will only be updated with the new market data available (i.e., one day). 
+- Documentation, auditability, code readability, ease of subclassing. With fast development come API breaks and lagging documentation. That's
+	why we have fixed a date for the stable release and we mean to stick with it. Especially for a piece of software that aims to automate
+	many functions of investment management we want everything in cvxportfolio to be clearly documented but mostly readable and auditable. 
+	We'll use Python logging functionalities to record every action performed in the simulation that is not documented in the book (for example,
+	cancel a trade order because the market data for the day has null volumes, or add/remove one symbol during a backtest because their market
+	data starts or ceases to exist) and those will be saved with the backtest result itself. The total number of lines of code will not exceed
+	significantly the current value (we'll maybe even reduce it). The object model used now (estimators) will probably remain, but with added
+	methods for caching, and be clearly documented for subclassing (so that custom classes can as well use all cvxportfolio functionalities). 
+
+
 Examples from the book
---------------------
+----------------------
 In branch [0.0.X](https://github.com/cvxgrp/cvxportfolio/tree/0.0.X) you can find the original material used to generate plots
-and results in the book. 
+and results in the book. Those are being restored, and (slowly) translated in the new framework. As you may see from those
+ipython notebooks a lot of the logic that was implemented there, outside of cvxportfolio proper, is being included and made automatic
+in newer versions of cvxportfolio. 
 
 
 Academic
@@ -85,12 +121,9 @@ If you use `cvxportfolio` in your academic work please cite our book:
 @book{BBDKKNS:17,
     author       = {S. Boyd and E. Busseti and S. Diamond and R. Kahn and K. Koh and P. Nystrup and J. Speth},
     title        = {Multi-Period Trading via Convex Optimization},
-    journal      = {Foundations and Trends in Optimization},
+    series       = {Foundations and Trends in Optimization},
     year         = {2017},
     month        = {August},
-    volume       = {3},
-    number       = {1},
-    pages        = {1--76},
     publisher    = {Now Publishers},
     url          = {http://stanford.edu/~boyd/papers/cvx_portfolio.html},
 }
