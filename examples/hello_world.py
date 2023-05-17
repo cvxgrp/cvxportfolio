@@ -18,7 +18,7 @@ for risk_multiplier in [2]:#,1,2,3,#4,5,6]:
     + 0.1 * cvx.RiskForecastError()) - cvx.TransactionCost(exponent=2)  - cvx.HoldingCost()
     constraints = [cvx.MarketNeutral()]#cvx.LongOnly(),cvx.LeverageLimit(1)]
 
-    policies.append(cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=1))#, solver='ECOS')
+    policies.append(cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=3))#, solver='ECOS')
 
 
 universe = sorted(set(["AMZN", "AAPL", "MSFT", "GOOGL", "TSLA", "GM", 
@@ -63,7 +63,7 @@ universe = sorted(set(["AMZN", "AAPL", "MSFT", "GOOGL", "TSLA", "GM",
 #universe = universe[:3]                          
 simulator = cvx.MarketSimulator(universe)
 
-result = simulator.backtest(policies, start_time='2020-01-01', initial_value=1E9)
+result = simulator.backtest(policies, start_time='2000-01-01', initial_value=1E9)
 
 # import numpy as np
 # x = [el.excess_returns.std() * 100 * np.sqrt(el.PPY) for el in results]
