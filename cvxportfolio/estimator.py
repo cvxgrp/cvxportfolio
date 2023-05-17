@@ -146,7 +146,7 @@ class DataEstimator(Estimator):
             if np.any(np.isnan(result)) and not self.allow_nans:
                 message = f"{self.__class__.__name__}.values_in_time result is an array with np.nan's."
                 if hasattr(self.data, 'columns') and len(self.data.columns) == len(result):
-                    message += "Specifically, the problem is with symbol(s)", list(self.data.columns[np.isnan(result)])
+                    message += "Specifically, the problem is with symbol(s): " + str(self.data.columns[np.isnan(result)])
                 raise MissingValuesError(message)
             else:
                 return result

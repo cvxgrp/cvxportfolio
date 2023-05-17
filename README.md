@@ -97,7 +97,7 @@ and extensive testing will be performed by then. Here's a rough list of what we 
 	for a backtest performed yesterday, today, the backtest will only be updated with the new market data available (i.e., one day). 
 - Documentation, auditability, code readability, ease of subclassing. With fast development come API breaks and lagging documentation. That's
 	why we have fixed a date for the stable release and we mean to stick with it. Especially for a piece of software that aims to automate
-	many functions of investment management we want everything in cvxportfolio to be clearly documented but mostly readable and auditable. 
+	many functions of investment management we want everything to be clearly documented, but mostly readable and auditable. 
 	We'll use Python logging functionalities to record every action performed in the simulation that is not documented in the book (for example,
 	cancel a trade order because the market data for the day has null volumes, or add/remove one symbol during a backtest because their market
 	data starts or ceases to exist) and those will be saved with the backtest result itself. The total number of lines of code will not exceed

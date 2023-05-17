@@ -410,6 +410,8 @@ class MarketSimulator(Estimator):
                                  
     def _single_backtest(self, policy, start_time, end_time, h):
         
+        # self.initialize_policy(policy, start_time, end_time)
+        
         if hasattr(policy, 'compile_to_cvxpy'):
             policy.compile_to_cvxpy()
         
@@ -490,8 +492,13 @@ class MarketSimulator(Estimator):
         else:
             end_time = self.returns.data.index[self.returns.data.index <= end_time][-1]
             
-        # discard names that don't meet the min_history_for_inclusion
-        # history = (~self.returns.data.loc[self.returns.data.index < start_time].isnull()).sum()
+        # TODO fix this - discard names that don't meet the min_history_for_inclusion
+        history = (~self.returns.data.loc[self.returns.data.index < start_time].isnull()).sum()
+        reduced_universe = self.returns.data.columns[history >= self.min_history_for_inclusion]
+        self.returns.data = self.returns.data[reduced_universe]
+        self.volumes.data = self.volumes.data[reduced_universe[:-1]]
+        self.prices.data = self.prices.data[reduced_universe[:-1]]
+        self.sigma_estimate.data = self.sigma_estimate.data[reduced_universe[:-1]]
         
         # initialize policies and get initial portfolios
         for i in range(len(policy)):

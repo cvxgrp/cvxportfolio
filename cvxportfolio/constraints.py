@@ -20,7 +20,7 @@ import cvxpy as cvx
 import numpy as np
 
 from .estimator import CvxpyExpressionEstimator, ParameterEstimator
-
+from .forecast import HistoricalFactorizedCovariance
 
 __all__ = [
     "LongOnly",
@@ -33,6 +33,7 @@ __all__ = [
     "FactorMaxLimit",
     "FactorMinLimit",
     "FixedFactorLoading",
+    "MarketNeutral",
 ]
 
 
@@ -56,6 +57,27 @@ class BaseWeightConstraint(BaseConstraint):
 
     pass
 
+class MarketNeutral(BaseWeightConstraint):
+    
+    def __init__(self):
+        self.covarianceforecaster = HistoricalFactorizedCovariance()
+    
+    def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
+        self.market_vector = cvx.Parameter(len(universe)-1)
+    
+    def values_in_time(self, t, past_volumes, past_returns, **kwargs):
+        super().values_in_time(past_volumes=past_volumes, past_returns=past_returns, t=t, **kwargs)
+        tmp = past_volumes.iloc[-250:].mean()
+        tmp /= sum(tmp)
+        
+        tmp2 = self.covarianceforecaster.current_value @ (self.covarianceforecaster.current_value.T @ tmp)
+        # print(tmp2)
+        self.market_vector.value = np.array(tmp2)
+        
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        return w_plus[:-1].T @ self.market_vector == 0
+        
 
 class ParticipationRateLimit(BaseTradeConstraint):
     """A limit on maximum trades size as a fraction of market volumes.
