@@ -13,7 +13,7 @@ h_init['USDOLLAR'] = 0.
 # w_april20 = pd.Series(1./len(universe), universe)
 # w_april20['USDOLLAR'] = 0.
 
-objective = cvx.ReturnsForecast() - 5 * (cvx.FullCovariance() + 0.05 * cvx.RiskForecastError()) - cvx.TransactionCost()  - cvx.HoldingCost()
+objective = cvx.ReturnsForecast() - .5 * (cvx.FullCovariance() + 0.05 * cvx.RiskForecastError()) - cvx.TransactionCost(exponent=2)  - cvx.HoldingCost()
 constraints = [cvx.MarketNeutral()] #cvx.LongOnly(),cvx.LeverageLimit(1)]
 
 constraints += [cvx.MinWeightsAtTimes(0., [pd.Timestamp('2023-04-20')])]
@@ -26,7 +26,7 @@ policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=25
 
 simulator = cvx.MarketSimulator(universe)
 
-result = simulator.backtest(policy, start_time='2023-01-01', h = [h_init])
+result = simulator.backtest(policy, start_time='2020-01-01', h = [h_init])
 
 print(result)
 

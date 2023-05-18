@@ -21,7 +21,7 @@ policies) the expensive evaluation is only done once.
 import numpy as np
 
 from .estimator import Estimator
-
+from dataclasses import dataclass
 
 class BaseForecast(Estimator):
     """Base class for forecasters."""
@@ -29,6 +29,8 @@ class BaseForecast(Estimator):
     # def pre_evaluation(self, universe, backtest_times):
     #     self.universe = universe
     #     self.backtest_times = backtest_times
+    #
+    
     
     def update_chooser(self, t, past_returns):
         if (self.last_time is None) or (self.last_time != past_returns.index[-1]):
@@ -44,25 +46,29 @@ class BaseForecast(Estimator):
     def update(self, t, past_returns):
         raise NotImplementedError
 
+@dataclass(unsafe_hash=True)
 class HistoricalMeanReturn(BaseForecast):
     """Historical mean returns."""
     
-    def __init__(self, lastforcash):
-        self.lastforcash = lastforcash
+    lastforcash: bool
+     
+    def __post_init__(self):
         self.last_time = None
         self.last_counts = None
         self.last_sum = None
     
-    def values_in_time(self, t, past_returns, **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+    def values_in_time(self, t, past_returns, cache=None, **kwargs):
+        super().values_in_time(t=t, past_returns=past_returns, cache=cache, **kwargs)
         
+
         self.update_chooser(t=t, past_returns=past_returns)
-            
         self.current_value = (self.last_sum / self.last_counts).values
         # self.current_value = past_returns.mean().values
-        
         if self.lastforcash:
             self.current_value[-1] = past_returns.iloc[-1, -1]
+        
+        # cache[self][t] = self.current_value
+            
         
         return self.current_value
         
@@ -85,7 +91,6 @@ class HistoricalMeanReturn(BaseForecast):
         #     counts = last_counts + past_returns.iloc[-1:].count()
         #
         # return estimation/counts, counts, past_returns.index[-1]
-        
         
 class HistoricalMeanError(BaseForecast):
     """Historical standard deviations of the mean."""
@@ -137,13 +142,15 @@ class HistoricalVariance(BaseForecast):
         self.last_sum += past_returns.iloc[-1].fillna(0.)**2
         self.last_time = t
         
-          
+@dataclass(unsafe_hash=True)
 class HistoricalFactorizedCovariance(BaseForecast):
     """Historical covariance matrix, sqrt factorized."""
     
-    def __init__(self, addmean=True):
+    addmean: bool = True
+    
+    def __post_init__(self):#, addmean=True):
         #assert addmean == True
-        self.addmean = addmean
+        # self.addmean = addmean
         # if not self.addmean:
         #     self.meanforecaster = HistoricalMeanReturn(lastforcash=False)
         self.last_time = None
@@ -178,15 +185,29 @@ class HistoricalFactorizedCovariance(BaseForecast):
         #     self.last_meansum_matrix += np.outer(last_ret, last_ret)
     
     
-    def values_in_time(self, t, past_returns, **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns.iloc[:, :-1], **kwargs)
-        if self.addmean:
-            self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
-            Sigma = self.last_sum_matrix / self.last_counts_matrix
+    def values_in_time(self, t, past_returns, cache=None, **kwargs):
+        super().values_in_time(t=t, past_returns=past_returns.iloc[:, :-1], cache=cache, **kwargs)
+        
+        if cache is None:
+            cache = {}
+            
+        if not (self in cache):
+            cache[self] = {}
+        
+        if t in cache[self]:
+            # print (t, 'hitting cache!')
+            self.current_value = cache[self][t]
         else:
-            Sigma = past_returns.iloc[:,:-1].cov(ddof=0)
-        # if not self.addmean:
-        #     Sigma -= np.outer(self.meanforecaster.current_value, self.meanforecaster.current_value)   
-        self.current_value = self.factorize(Sigma) 
+            # print (t, 'not hitting cache!')      
+            if self.addmean:
+                self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
+                Sigma = self.last_sum_matrix / self.last_counts_matrix
+            else:
+                Sigma = past_returns.iloc[:,:-1].cov(ddof=0)
+            # if not self.addmean:
+            #     Sigma -= np.outer(self.meanforecaster.current_value, self.meanforecaster.current_value)   
+            self.current_value = self.factorize(Sigma) 
+            
+            cache[self][t] = self.current_value
         
         return self.current_value
