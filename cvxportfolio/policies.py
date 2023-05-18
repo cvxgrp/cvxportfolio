@@ -400,17 +400,17 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         assert current_portfolio_value > 0
         assert np.isclose(sum(current_weights), 1)
                 
-        for obj in self.objective:
+        for i, obj in enumerate(self.objective):
             obj.values_in_time(t=t, current_weights=current_weights, 
                     current_portfolio_value=current_portfolio_value, 
                     past_returns=past_returns, past_volumes=past_volumes, 
-                    current_prices=current_prices, **kwargs)      
-        for constr_at_lag in self.constraints:
+                    current_prices=current_prices, mpo_step=i, **kwargs)      
+        for i, constr_at_lag in enumerate(self.constraints):
             for constr in constr_at_lag:
                 constr.values_in_time(t=t, current_weights=current_weights, 
                     current_portfolio_value=current_portfolio_value, 
                     past_returns=past_returns, past_volumes=past_volumes, 
-                    current_prices=current_prices, **kwargs)        
+                    current_prices=current_prices, mpo_step=i, **kwargs)        
 
         # self.portfolio_value.value = 1. # not used current_portfolio_value
         self.w_current.value = current_weights.values

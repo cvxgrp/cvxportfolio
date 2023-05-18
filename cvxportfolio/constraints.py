@@ -34,6 +34,8 @@ __all__ = [
     "FactorMinLimit",
     "FixedFactorLoading",
     "MarketNeutral",
+    "MinWeightsAtTimes",
+    "MaxWeightsAtTimes",
 ]
 
 
@@ -182,6 +184,43 @@ class MinWeights(BaseWeightConstraint):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] >= self.limit
 
+class MinMaxWeightsAtTimes(BaseWeightConstraint):
+
+    def __init__(self, limit, times):
+        self.base_limit = limit
+        self.times = times
+    
+    def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe=universe, backtest_times = backtest_times)
+        self.backtest_times = backtest_times
+        self.limit = cvx.Parameter()
+        
+    def values_in_time(self, t, mpo_step, **kwargs):
+        super().values_in_time(t=t, mpo_step=mpo_step, **kwargs)
+        tidx = self.backtest_times.get_loc(t)
+        nowtidx = tidx + mpo_step
+        if (nowtidx < len(self.backtest_times)) and self.backtest_times[nowtidx] in self.times:
+            self.limit.value = self.base_limit
+        else:
+            self.limit.value = 100 * self.sign
+
+
+class MinWeightsAtTimes(MinMaxWeightsAtTimes):
+    
+    sign = -1.
+
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Return a Cvxpy constraint."""
+        return w_plus[:-1] >= self.limit
+        
+class MaxWeightsAtTimes(MinMaxWeightsAtTimes):
+
+    sign = 1.
+    
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Return a Cvxpy constraint."""
+        return w_plus[:-1] <= self.limit
+        
 
 class FactorMaxLimit(BaseWeightConstraint):
     """A max limit on portfolio-wide factor (e.g. beta) exposure.

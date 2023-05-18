@@ -143,6 +143,7 @@ class ReturnsForecast(BaseReturnsModel):
 
     def __init__(self, r_hat=None, #rolling=None, halflife=None, 
                 lastforcash=True, 
+                halflife=None,
                 subtractshorts=True):
         
         if not r_hat is None:
@@ -176,9 +177,9 @@ class ReturnsForecast(BaseReturnsModel):
         self.r_hat_parameter = cvx.Parameter(len(universe))
         
     
-    def values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
         
-        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+        super().values_in_time(t=t, past_returns=past_returns, mpo_step=mpo_step, **kwargs)
         
         # if self.r_hat is None:
         #     tmp = past_returns.mean()
