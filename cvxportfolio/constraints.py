@@ -144,7 +144,9 @@ class LongCash(BaseWeightConstraint):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return w_plus[-1] >= 0
+        # TODO clarify this
+        realcash = (w_plus[-1] - 2 * cvx.sum(cvx.neg(w_plus[:-1])))
+        return realcash >= 0
 
 
 class DollarNeutral(BaseWeightConstraint):

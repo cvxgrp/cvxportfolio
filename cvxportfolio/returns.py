@@ -196,9 +196,12 @@ class ReturnsForecast(BaseReturnsModel):
 
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        if self.subtractshorts:
+        if self.subtractshorts: 
+            # TODO too complicated to have this here
+            # maybe remove and increase holdingcost (ignoring borrow/lend spreads?)
             noncash = w_plus[:-1].T @ self.r_hat_parameter[:-1]
-            cash = (w_plus[-1] - cvx.sum(cvx.neg(w_plus[:-1]))) * self.cash_return
+            realcash = (w_plus[-1] - 2 * cvx.sum(cvx.neg(w_plus[:-1])))
+            cash = realcash * self.cash_return
             # print(cash)
             assert cash.is_concave()
             return noncash + cash

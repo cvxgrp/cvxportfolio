@@ -54,7 +54,7 @@ class TestReturns(unittest.TestCase):
         ((self.w_plus[-1].value + np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1]))
         self.assertTrue(np.isclose(cvxpy_expression.value, 
             self.w_plus[:-1].value @ self.returns.iloc[123][:-1]
-                + ((self.w_plus[-1].value + np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1])
+                + ((self.w_plus[-1].value + 2 * np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1])
             ))
         
         

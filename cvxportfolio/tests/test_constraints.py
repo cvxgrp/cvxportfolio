@@ -60,6 +60,7 @@ class TestConstraints(unittest.TestCase):
         tmp = np.ones( self.N)
         tmp[-1] = -1
         self.w_plus.value = tmp
+        self.assertTrue(cons.is_dcp())
         self.assertFalse(cons.value())
         
     def test_dollar_neutral(self):

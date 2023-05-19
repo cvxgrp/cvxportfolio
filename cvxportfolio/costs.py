@@ -211,8 +211,10 @@ class TransactionCost(BaseCost):
 
         self.spreads = DataEstimator(spreads)
         self.pershare_cost = DataEstimator(pershare_cost)
-
-        self.b = DataEstimator(b)
+        if b is None:
+            self.b = b
+        else:
+            self.b = DataEstimator(b)
         self.window_sigma_est = window_sigma_est
         self.window_volume_est = window_volume_est
         self.exponent = exponent
@@ -220,7 +222,8 @@ class TransactionCost(BaseCost):
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.first_term_multiplier = cvx.Parameter(len(universe)-1, nonneg=True)
-        self.second_term_multiplier = cvx.Parameter(len(universe)-1, nonneg=True)
+        if not (self.b is None):
+            self.second_term_multiplier = cvx.Parameter(len(universe)-1, nonneg=True)
 
     def values_in_time(self, t,  current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
         
@@ -229,17 +232,19 @@ class TransactionCost(BaseCost):
             current_prices=current_prices, **kwargs)
             
         self.first_term_multiplier.value = self.spreads.current_value/2. + self.pershare_cost.current_value / current_prices
-        sigma_est = np.sqrt((past_returns.iloc[-self.window_sigma_est:, :-1]**2).mean()).values
-        volume_est = past_volumes.iloc[-self.window_volume_est:].mean().values
+        if not (self.b is None):
+            sigma_est = np.sqrt((past_returns.iloc[-self.window_sigma_est:, :-1]**2).mean()).values
+            volume_est = past_volumes.iloc[-self.window_volume_est:].mean().values
 
-        self.second_term_multiplier.value = self.b.current_value * sigma_est * \
-            (current_portfolio_value / volume_est) ** (self.exponent - 1)
+            self.second_term_multiplier.value = self.b.current_value * sigma_est * \
+                (current_portfolio_value / volume_est) ** (self.exponent - 1)
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
         expression = cvx.abs(z[:-1]).T @ self.first_term_multiplier
         assert expression.is_convex()
-        expression += (cvx.abs(z[:-1]) ** self.exponent).T @ self.second_term_multiplier
-        assert expression.is_convex()
+        if not (self.b is None):
+            expression += (cvx.abs(z[:-1]) ** self.exponent).T @ self.second_term_multiplier
+            assert expression.is_convex()
         return expression
         
