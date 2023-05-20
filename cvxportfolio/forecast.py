@@ -18,10 +18,39 @@ classes need access to the estimated value (as is the case in MultiPeriodOptimiz
 policies) the expensive evaluation is only done once. 
 """
 
+import logging
+from dataclasses import dataclass
+
 import numpy as np
 
 from .estimator import Estimator
-from dataclasses import dataclass
+
+
+def online_cache(values_in_time):
+    """A simple online cache that decorates values_in_time.
+    
+    The instance it is used on needs to be hashable (we currently
+    use the hash of its __repr__ via dataclass).
+    """
+    
+    def wrapped(self, t, cache=None, **kwargs):
+        
+        if cache is None: # temporary to not change tests
+            cache = {}
+            
+        if not (self in cache):
+            cache[self] = {}
+        
+        if t in cache[self]:
+            logging.debug(f'{self}.values_in_time at time {t} is retrieved from cache.')
+            self.current_value = cache[self][t]
+        else:
+            logging.debug(f'{self}.values_in_time at time {t} is stored in cache.')
+            values_in_time(self, t=t, cache=cache, **kwargs)  
+            cache[self][t] = self.current_value
+        return self.current_value
+        
+    return wrapped
 
 class BaseForecast(Estimator):
     """Base class for forecasters."""
@@ -34,11 +63,12 @@ class BaseForecast(Estimator):
     
     def update_chooser(self, t, past_returns):
         if (self.last_time is None) or (self.last_time != past_returns.index[-1]):
+            logging.debug(f'{self}.values_in_time at time {t} is computed from scratch.')
             self.compute_from_scratch(t=t, past_returns=past_returns)
-            # print('FROM SCRATCH!', t)
         else:
-            # print('UPDATING!', t)
+            logging.debug(f'{self}.values_in_time at time {t} is updated from previous value.')
             self.update(t=t, past_returns=past_returns)
+            
     
     def compute_from_scratch(self, t, past_returns):
         raise NotImplementedError
@@ -184,30 +214,32 @@ class HistoricalFactorizedCovariance(BaseForecast):
         # if not self.addmean:
         #     self.last_meansum_matrix += np.outer(last_ret, last_ret)
     
-    
-    def values_in_time(self, t, past_returns, cache=None, **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns.iloc[:, :-1], cache=cache, **kwargs)
+    @online_cache
+    def values_in_time(self, t, past_returns, #cache=None, 
+    **kwargs):
+        super().values_in_time(t=t, past_returns=past_returns.iloc[:, :-1], # cache=cache, 
+            **kwargs)
         
-        if cache is None:
-            cache = {}
+        #if cache is None:
+        #    cache = {}
             
-        if not (self in cache):
-            cache[self] = {}
+        #if not (self in cache):
+        #    cache[self] = {}
         
-        if t in cache[self]:
-            # print (t, 'hitting cache!')
-            self.current_value = cache[self][t]
-        else:
+        #if t in cache[self]:
+        #    # print (t, 'hitting cache!')
+        #    self.current_value = cache[self][t]
+        #else:
             # print (t, 'not hitting cache!')      
-            if self.addmean:
-                self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
-                Sigma = self.last_sum_matrix / self.last_counts_matrix
-            else:
-                Sigma = past_returns.iloc[:,:-1].cov(ddof=0)
-            # if not self.addmean:
-            #     Sigma -= np.outer(self.meanforecaster.current_value, self.meanforecaster.current_value)   
-            self.current_value = self.factorize(Sigma) 
+        if self.addmean:
+            self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
+            Sigma = self.last_sum_matrix / self.last_counts_matrix
+        else:
+            Sigma = past_returns.iloc[:,:-1].cov(ddof=0)
+        # if not self.addmean:
+        #     Sigma -= np.outer(self.meanforecaster.current_value, self.meanforecaster.current_value)   
+        self.current_value = self.factorize(Sigma) 
             
-            cache[self][t] = self.current_value
+        #    cache[self][t] = self.current_value
         
         return self.current_value

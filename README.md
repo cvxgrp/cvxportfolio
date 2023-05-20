@@ -76,6 +76,31 @@ print('total cash return + cost ($)', result.hcost_cash.sum())
 
 ```
 
+Development
+-----------
+Cvxportfolio is under development and things might change (quite fast), however you are (most) welcome to 
+read the code, play with it, and contribute. To set up a development environment locally you should
+
+```
+git clone https://github.com/cvxgrp/cvxportfolio.git
+cd cvxportfolio
+make env
+```
+This will replicate our [development environment](https://docs.python.org/3/library/venv.html). From there you can test with
+
+```
+make test
+```
+
+You activate the shell environment with one of scripts in `env/bin`, for example if you use bash
+```
+source env/bin/activate
+```
+and from the environment you can run any of the scripts in the examples (the cvxportfolio package is installed in [editable mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html)). 
+Or, if you don't want to activate the environment, you can just run scripts directly using `env/bin/python`, like we do in the Makefile.
+
+
+
 Roadmap
 -------
 We plan to release the first stable version of cvxportfolio by the end of Summer 2023. Many new features are going to be added
