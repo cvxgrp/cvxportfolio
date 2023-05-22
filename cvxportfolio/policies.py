@@ -24,7 +24,7 @@ import cvxpy as cvx
 from .costs import BaseCost
 from .returns import BaseReturnsModel
 from .constraints import BaseConstraint
-from .estimator import Estimator, DataEstimator
+from .estimator import PolicyEstimator, DataEstimator
 from .errors import MissingValuesError, PortfolioOptimizationError
 from .returns import ReturnsForecast
 
@@ -44,7 +44,7 @@ __all__ = [
 ]
 
 
-class BaseTradingPolicy(Estimator):
+class BaseTradingPolicy(PolicyEstimator):
     """Base class for a trading policy."""
 
 

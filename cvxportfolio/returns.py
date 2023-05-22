@@ -143,7 +143,7 @@ class ReturnsForecast(BaseReturnsModel):
 
     def __init__(self, r_hat=None, #rolling=None, halflife=None, 
                 lastforcash=True, 
-                halflife=None,
+                decayfactor=None,
                 subtractshorts=True):
         
         if not r_hat is None:
@@ -156,6 +156,8 @@ class ReturnsForecast(BaseReturnsModel):
         
         if self.subtractshorts:
             self.cash_return = cvx.Parameter(nonneg=True)
+            
+        self.decayfactor = decayfactor
         
        
     # @classmethod # we make it a classmethod so that also covariances can use it
@@ -189,7 +191,9 @@ class ReturnsForecast(BaseReturnsModel):
         # else:
         #     self.r_hat_parameter.value = self.r_hat.current_value
         
-        self.r_hat_parameter.value = self.r_hat.current_value
+        self.r_hat_parameter.value = self.r_hat.current_value * (self.decayfactor**(mpo_step)
+            if self.decayfactor else 1.)
+
             
         if self.subtractshorts:
             self.cash_return.value = self.r_hat_parameter.value[-1]

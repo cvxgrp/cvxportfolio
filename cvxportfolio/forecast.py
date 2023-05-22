@@ -23,7 +23,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .estimator import Estimator
+from .estimator import PolicyEstimator
 
 
 def online_cache(values_in_time):
@@ -52,7 +52,7 @@ def online_cache(values_in_time):
         
     return wrapped
 
-class BaseForecast(Estimator):
+class BaseForecast(PolicyEstimator):
     """Base class for forecasters."""
     
     # def pre_evaluation(self, universe, backtest_times):

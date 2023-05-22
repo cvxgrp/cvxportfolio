@@ -43,6 +43,360 @@ def parallel_worker(policy, simulator, start_time, end_time, h):
     return simulator._single_backtest(policy, start_time, end_time, h)
     
 
+
+class CostSimulator:
+    """Base class for simulator cost function.
+    
+    To implement your own your should define the 
+    compute_cost method, and optionally a __init__
+    method that accepts your named arguments and **kwargs: it
+    gets any argument you pass to the MarketSimulator
+    constructor that is not catched by it. 
+    
+    We follow the naming convention of calling subclasses as:
+    SomeName + 'CostSimulator', and this is used in the
+    MarketSimulator; the list of costs is given to it as, for 
+    example, `costs=['Transaction', 'StocksHolding', 'CashHolding']`
+    which resolves to TransactionCostSimulator, .... The capitalization
+    is ignored. You can as well pass instances rather than strings 
+    to the same costs list, so you don't have to follow this convention.
+    """
+    
+    def __init__(self, **kwargs):
+        """Dummy init.
+        
+        If you redefine it keep in mind that you should add the **kwargs catch-all
+        argument after any named argument you define,
+        if you are using MarketSimulator to initialize it.
+        """
+        pass
+    
+    def compute_cost(self, t, h, u, current_prices, current_and_past_volumes, current_and_past_returns):
+        """Compute the cost, returns a (usually negative) float."""
+        raise notImplementedError
+
+
+class CashHoldingCostSimulator(CostSimulator):
+    """Holding cost for cash. 
+    
+    Arguments are documented in MarketSimulator.
+    """
+    
+    def __init__(self, 
+            spread_on_lending_cash_percent=0.5, 
+            spread_on_borrowing_cash_percent=0.5, 
+            periods_per_year=252,
+            **kwargs):
+            
+        multiplier = 1 / (100 * periods_per_year)
+        self.lending_spread = DataEstimator(spread_on_lending_cash_percent * multiplier)
+        self.borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent * multiplier)
+
+
+    def compute_cost(self, t, h, u, current_prices, current_and_past_volumes, current_and_past_returns):
+        """Compute holding cost on cash (including cash return) for post trade holdings h_plus."""
+
+        cash_return = current_and_past_returns.iloc[-1,-1]
+        h_plus = h + u
+        real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
+
+        if real_cash > 0:
+            return real_cash * (max(cash_return - self.lending_spread.values_in_time(t), 0.) - cash_return)
+        else:
+            return real_cash * self.borrowing_spread.values_in_time(t)
+                
+
+class StocksHoldingCostSimulator(CostSimulator):
+    """Holding cost for stocks. 
+    
+    Arguments are documented in MarketSimulator.
+    """
+    
+    def __init__(self, 
+            spread_on_borrowing_stocks_percent=0.5, 
+            dividends=0.,
+            periods_per_year=252,
+            **kwargs):
+            
+        multiplier = 1 / (100 * periods_per_year)
+        self.borrowing_spread = DataEstimator(spread_on_borrowing_stocks_percent * multiplier) 
+        self.dividends = DataEstimator(dividends)
+
+    def compute_cost(self, t, h, u, current_prices, current_and_past_volumes, current_and_past_returns):
+        """Compute holding costs at current time for post trade holdings h_plus (only stocks).
+        """
+
+        result = 0.
+        h_plus = h + u
+        cash_return = current_and_past_returns.iloc[-1,-1]
+
+        # shorting stocks.
+        borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
+        result += np.sum((cash_return + self.borrowing_spread.values_in_time(t)) * borrowed_stock_positions)
+
+        # going long on stocks.
+        # if self.spread_on_long_positions_percent is not None:
+        #     long_positions = np.maximum(h_plus[:-1], 0.)
+        #     result -= np.sum((cash_return +
+        #                       (self.spread_on_long_positions_percent /100) / self.periods_per_year) *
+        #                      long_positions)
+
+        # dividends
+        result += np.sum(h_plus[:-1] * self.dividends.values_in_time(t))
+
+        return result
+              
+                
+class TransactionCostSimulator(CostSimulator):
+    """Transaction cost model for the market simulator.
+    
+    Arguments are documented in MarketSimulator
+    """
+    
+    def __init__(self, persharecost=0.005,
+        linearcost=0., nonlinearcoefficient=1.,
+        windowsigma=252, 
+        exponent=1.5, **kwargs):
+        
+        self.persharecost = DataEstimator(persharecost) if not \
+            (persharecost is None) else None
+        self.linearcost = DataEstimator(linearcost)
+        self.nonlinearcoefficient = DataEstimator(nonlinearcoefficient) if not \
+            (nonlinearcoefficient is None) else None
+        # self.variance_estimate = HistoricalVariance(addmean=False) 
+        self.windowsigma = windowsigma
+        self.exponent = exponent
+
+    # def values_in_time(self, past_returns, current_prices, **kwargs):
+    #     super().values_in_time(past_returns=past_returns, current_prices=current_prices, **kwargs)
+    #     self.sigma = past_returns.iloc[-self.windowsigma:, :-1].std()
+    #     self.current_prices = current_prices
+
+    def compute_cost(self, t, h, u, current_prices, current_and_past_volumes, current_and_past_returns):
+        """Compute transaction costs at time t for dollar trade vector u.
+
+        Returns a non-positive float.
+
+        """
+        
+        sigma = np.std(current_and_past_returns.iloc[-self.windowsigma:, :-1], axis=0)
+
+        result = 0.
+        if not (self.persharecost is None):
+            if current_prices is None:
+                raise SyntaxError("If you don't provide prices you should set persharecost to None")
+            result += self.persharecost.values_in_time(t) * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices))
+
+        result += sum(self.linearcost.values_in_time(t) * np.abs(u.iloc[:-1]))
+
+        if not (self.nonlinearcoefficient is None):
+            if current_and_past_volumes is None:
+                raise SyntaxError("If you don't provide volumes you should set nonlinearcoefficient to None")
+            # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
+            result += (np.abs(u.iloc[:-1])**self.exponent) @ (self.nonlinearcoefficient.values_in_time(t)  *
+                sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (self.exponent - 1)))
+
+        assert not np.isnan(result)
+        assert not np.isinf(result)
+
+        return -result
+        
+        
+class MarketData:
+    """Prepare, hold, and serve market data.
+    
+    Arguments are detailed in MarketSimulator, which initializes this.
+    """
+    
+    def __init__(self, 
+        universe = [], 
+        returns=None, volumes=None, prices=None, 
+        cash_key='USDOLLAR', base_location=BASE_LOCATION, 
+        periods_per_year=252, **kwargs):
+        
+        self.base_location = base_location
+        self.periods_per_year = periods_per_year
+        
+        if len(universe):
+            self.get_market_data(universe)
+            self.add_cash_column(cash_key)
+        else:
+            if returns is None:
+                raise SyntaxError("If you don't specify a universe you should pass `returns`.")
+            # if not returns.shape[1] == volumes.shape[1] + 1:
+            #     raise SyntaxError(
+            #         "In `returns` you must include the cash returns as the last column (and not in `volumes`).")
+            self.returns = returns
+            self.volumes = volumes
+            self.prices = prices
+            if cash_key != returns.columns[-1]:
+                self.add_cash_column(cash_key)
+        
+        self.set_read_only()
+        self.check_sizes()
+        
+        
+    @property
+    def universe(self):
+        return self.returns.columns
+    
+    
+    def check_sizes(self):
+        
+        if (not self.volumes is None) and (not (self.volumes.shape[1] == self.returns.shape[1] - 1) \
+            or not all(self.volumes.columns == self.returns.columns[:-1])):
+            raise SyntaxError('Volumes should have same columns as returns, minus cash_key.')
+        
+        if (not self.prices is None) and (not (self.prices.shape[1] == self.returns.shape[1] - 1) \
+            or not all(self.prices.columns == self.returns.columns[:-1])):
+            raise SyntaxError('Prices should have same columns as returns, minus cash_key.')            
+        
+        
+    def serve_data_policy(self, t):
+        """Give data to policy at time t."""
+        
+        tidx = self.returns.index.get_loc(t)
+        past_returns = pd.DataFrame(self.returns.iloc[:tidx])
+        if not self.volumes is None:
+            tidx = self.volumes.index.get_loc(t)
+            past_volumes = pd.DataFrame(self.volumes.iloc[:tidx]) 
+        else:
+            past_volumes = None
+        current_prices = pd.Series(self.prices.loc[t]) if not self.prices is None else None
+        
+        return past_returns, past_volumes, current_prices
+        
+    
+    def serve_data_simulator(self, t):
+        """Give data to simulator at time t."""
+        
+        tidx = self.returns.index.get_loc(t)
+        current_and_past_returns = pd.DataFrame(self.returns.iloc[:tidx+1])
+        if not self.volumes is None:
+            tidx = self.volumes.index.get_loc(t)
+            current_and_past_volumes = pd.DataFrame(self.volumes.iloc[:tidx+1])
+        else:
+            current_and_past_volumes = None
+        current_prices = pd.Series(self.prices.loc[t]) if not self.prices is None else None
+        
+        return current_and_past_returns, current_and_past_volumes, current_prices
+        
+        
+    def set_read_only(self):
+        """Set numpy array contained in dataframe to read only.
+        
+        This is enough to prevent direct assignement to the resulting 
+        dataframe. However it could still be accidentally corrupted by assigning
+        to columns or indices that are not present in the original.
+        We avoid that case as well by returning a wrapped dataframe (which doesn't
+        copy data on creation) in serve_data_policy and serve_data_simulator.
+        """
+        
+        def ro(df):
+            data = df.values
+            data.flags.writeable = False
+            return pd.DataFrame(data, index=df.index, columns=df.columns)
+            
+        self.returns = ro(self.returns)
+        
+        if not self.prices is None:
+            self.prices = ro(self.prices)
+            
+        if not self.volumes is None:
+            self.volumes = ro(self.volumes)
+            
+    def add_cash_column(self, cash_key):
+        
+        if not cash_key == 'USDOLLAR':
+            raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
+            
+        data = FredRateTimeSeries('DFF', base_location=self.base_location)
+        data.pre_evaluation()
+        self.returns[cash_key] = data.data
+        self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')
+        
+    
+    def get_market_data(self, universe):
+        
+        database_accesses = {}
+        print('Updating data')
+        for stock in universe:
+            print('.')
+            database_accesses[stock] = YfinanceTimeSeries(stock, base_location=self.base_location)
+            database_accesses[stock].pre_evaluation()
+
+        self.returns = pd.DataFrame({stock: database_accesses[stock].data['Return'] for stock in universe})
+        self.volumes = pd.DataFrame({stock: database_accesses[stock].data['ValueVolume'] for stock in universe})
+        self.prices = pd.DataFrame({stock: database_accesses[stock].data['Open'] for stock in universe})
+        
+        self.remove_missing_recent()
+        
+        
+    def remove_missing_recent(self):
+            
+        # yfinance has some issues with most recent data; 
+        # we remove recent days if there are NaNs
+        if self.prices.iloc[-5:].isnull().any().any():
+            drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
+            self.prices = self.prices.loc[self.prices.index<drop_at]
+            self.returns = self.returns.loc[self.returns.index<drop_at]
+            self.volumes = self.volumes.loc[self.volumes.index<drop_at]
+        
+        # for consistency we must also nan-out the last row of returns and volumes
+        self.returns.iloc[-1] = np.nan
+        self.volumes.iloc[-1] = np.nan
+        
+        
+        
+    
+# class SimulatorTransactionCost(SimulatorElement):
+#
+#     ## WORK IN PROGRESS
+#
+#     def __init__(self, persharecost=0.005,
+#         linearcost=0., nonlinearcoefficient=1.,
+#         windowsigma=252, exponent=1.5):
+#         self.persharecost = DataEstimator(persharecost)
+#         self.linearcost = DataEstimator(linearcost)
+#         self.nonlinearcoefficient = DataEstimator(nonlinearcoefficient)
+#         self.windowsigma = windowsigma
+#         self.exponent = exponent
+#
+#     def values_in_time(self, past_returns, current_prices, **kwargs):
+#         super().values_in_time(past_returns=past_returns, current_prices=current_prices, **kwargs)
+#         self.sigma = past_returns.iloc[-self.windowsigma:, :-1].std()
+#         self.current_prices = current_prices
+#
+#     def simulator_values_in_time(self, u, h, past_and_current_returns,
+#         past_and_current_volumes, current_prices):
+#         """Compute transaction costs at time t for dollar trade vector u.
+#
+#         Returns a non-positive float.
+#
+#         Args:
+#             u (pd.Series): dollar trade vector for all stocks including cash (but the cash
+#                 term is not used here).
+#         """
+#
+#         result = 0.
+#         if self.current_prices is not None:
+#             result += self.persharecost.current_value * int(sum(np.abs(u[:-1] + 1E-6) / self.current_prices))
+#
+#         # if self.linearcost is not None:
+#         result += sum(self.linearcost.current_value * np.abs(u[:-1]))/
+#
+#         result += (np.abs(u[:-1])**self.transaction_cost_exponent) @ (self.nonlinearcoefficient.current_value *
+#             self.sigma / ((self.volumes.current_value+1 # we add 1 to prevent 0 volumes error
+#              ) ** (self.transaction_cost_exponent - 1)))
+#
+#         assert not np.isnan(result)
+#         assert not np.isinf(result)
+#
+#         return -result
+        
+        
+        
+
 class MarketSimulator(Estimator):
     """This class implements a simulator of market performance for trading strategies.
 
@@ -249,12 +603,12 @@ class MarketSimulator(Estimator):
         self.volumes = DataEstimator(self.volumes)
         self.prices = DataEstimator(self.prices)
         
-        
-    def round_trade_vector(self, u):
+    @staticmethod
+    def round_trade_vector(u, current_prices):
         """Round dollar trade vector u.
         """
         result = pd.Series(u, copy=True)
-        result[:-1] = np.round(u[:-1] / self.prices.current_value) * self.prices.current_value
+        result[:-1] = np.round(u[:-1] / current_prices) * current_prices
         result[-1] = -sum(result[:-1])
         return result
 
@@ -378,7 +732,7 @@ class MarketSimulator(Estimator):
 
         # round trades
         if self.round_trades:
-            u = self.round_trade_vector(u)
+            u = self.round_trade_vector(u, self.prices.current_value)
             
         # for safety recompute cash
         u[-1] = -sum(u[:-1])

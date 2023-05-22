@@ -409,6 +409,8 @@ class FredBase(BaseData):
                 symbol, start="1900-01-01", end=pd.Timestamp.today()
             )[symbol]
         else:
+            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta('2d'):
+                return current
             new = pandas_datareader.get_data_fred(
                 symbol, start=current.index[-1], end=pd.Timestamp.today()
             )[symbol]

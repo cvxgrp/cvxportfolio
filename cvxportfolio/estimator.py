@@ -35,18 +35,6 @@ class Estimator:
     on them.
     """
 
-    def pre_evaluation(self, universe, backtest_times):
-        """Initialize estimator and its sub-estimators.
-
-        :param universe: names of assets to be traded 
-        :type universe: pandas.Index
-        :param backtest_times: times at which the estimator will be evaluated
-        :type backtest_time: pandas.DatetimeIndex
-        """
-        for _, subestimator in self.__dict__.items():
-            if hasattr(subestimator, "pre_evaluation"):
-                subestimator.pre_evaluation(universe, backtest_times)
-
     def values_in_time(self, **kwargs):
         """Evaluates estimator at a point in time recursively on its sub-estimators.
 
@@ -64,7 +52,24 @@ class Estimator:
                 subestimator.values_in_time(**kwargs)
 
 
-class CvxpyExpressionEstimator(Estimator):
+class PolicyEstimator(Estimator):
+    """Base class for (most) estimators that are part of policy objects."""
+    
+
+    def pre_evaluation(self, universe, backtest_times):
+        """Initialize estimator and its sub-estimators.
+
+        :param universe: names of assets to be traded 
+        :type universe: pandas.Index
+        :param backtest_times: times at which the estimator will be evaluated
+        :type backtest_time: pandas.DatetimeIndex
+        """
+        for _, subestimator in self.__dict__.items():
+            if hasattr(subestimator, "pre_evaluation"):
+                subestimator.pre_evaluation(universe, backtest_times)
+    
+
+class CvxpyExpressionEstimator(PolicyEstimator):
     """Base class for estimators that are Cvxpy expressions."""
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -224,7 +229,7 @@ class DataEstimator(Estimator):
 #         raise NotImplementedError
 
 
-class ParameterEstimator(cvxpy.Parameter, DataEstimator):
+class ParameterEstimator(cvxpy.Parameter, DataEstimator, PolicyEstimator):
     """Data estimator of point-in-time values that contains a Cvxpy Parameter.
 
     Attributes:
