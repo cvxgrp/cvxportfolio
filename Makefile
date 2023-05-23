@@ -1,7 +1,7 @@
 BUILDDIR      = build
 PYTHON        = python
 ENVDIR        = env
-BINDIR        = $(BINDIR)
+BINDIR        = $(ENVDIR)/bin
 
 ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
