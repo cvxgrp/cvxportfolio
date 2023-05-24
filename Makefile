@@ -1,6 +1,6 @@
 BUILDDIR      = build
 PYTHON        = python
-PROJECT		  = cvxportfolio
+PROJECT       = cvxportfolio
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
 
