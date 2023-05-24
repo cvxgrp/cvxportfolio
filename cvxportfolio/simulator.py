@@ -76,6 +76,7 @@ class CostSimulator:
         raise notImplementedError
 
 
+    
 class CashHoldingCostSimulator(CostSimulator):
     """Holding cost for cash. 
     

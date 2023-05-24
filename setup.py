@@ -18,6 +18,5 @@ setup(
                       "numpy",
                       "matplotlib",
                       "yfinance",
-                      "pandas_datareader",
                       "cvxpy>=1.0.6"],
 )

@@ -16,7 +16,6 @@ from pathlib import Path
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import pandas_datareader
 import sqlite3
 
 from .estimator import DataEstimator
@@ -400,22 +399,23 @@ class LocalDataStore(BaseDataStore):
 
 class FredBase(BaseData):
     """Base class for FRED data access."""
+    
+    URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+    
+    @classmethod
+    def _download(cls, symbol):
+        return pd.read_csv(cls.URL + f'?id={symbol}', index_col=0, parse_dates=[0])[symbol]
 
-    @staticmethod
-    def download(symbol="DFF", current=None):
-        if current is None:
+    @classmethod
+    def download(cls, symbol="DFF", current=None):
+        if current is None or ((pd.Timestamp.today() - current.index[-1]) > pd.Timedelta('2d')):
             end = pd.Timestamp.today()
-            return pandas_datareader.get_data_fred(
-                symbol, start="1900-01-01", end=pd.Timestamp.today()
-            )[symbol]
+            return cls._download(symbol)
         else:
-            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta('2d'):
-                return current
-            new = pandas_datareader.get_data_fred(
-                symbol, start=current.index[-1], end=pd.Timestamp.today()
-            )[symbol]
-            assert new.index[0] == current.index[-1]
-            return pd.concat([current.iloc[:-1], new])
+            new = cls._download(symbol)
+            new = new.loc[new.index > current.index[-1]]
+            assert new.index[0] > current.index[-1]
+            return pd.concat([current, new])
 
 
 class RateBase(BaseData):
@@ -452,7 +452,7 @@ class FredRate(FredBase, RateBase, SqliteDataStore):
 
 class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
     
-    def __init__(self, symbol, use_last_available_time=False, base_location=None):
+    def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
         self.symbol = symbol
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
@@ -463,7 +463,7 @@ class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
         
 class FredTimeSeries(DataEstimator, FredBase, PickleStore):
     
-    def __init__(self, symbol, use_last_available_time=False, base_location=None):
+    def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
         self.symbol = symbol
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
@@ -473,7 +473,7 @@ class FredTimeSeries(DataEstimator, FredBase, PickleStore):
     
 class FredRateTimeSeries(DataEstimator, FredBase, RateBase, PickleStore):
     
-    def __init__(self, symbol, use_last_available_time=False, base_location=None):
+    def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
         self.symbol = symbol
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
