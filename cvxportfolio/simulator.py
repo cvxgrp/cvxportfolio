@@ -73,7 +73,7 @@ class CostSimulator:
     
     def compute_cost(self, t, h, u, current_prices, current_and_past_volumes, current_and_past_returns):
         """Compute the cost, returns a (usually negative) float."""
-        raise notImplementedError
+        raise NotImplementedError
 
 
     
