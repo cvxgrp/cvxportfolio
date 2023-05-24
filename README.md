@@ -92,7 +92,7 @@ This will replicate our [development environment](https://docs.python.org/3/libr
 make test
 ```
 
-You activate the shell environment with one of scripts in `env/bin`, for example if you use bash
+You activate the shell environment with one of scripts in `env/bin` (or `env\Scripts` on windows), for example if you use bash on POSIX
 ```
 source env/bin/activate
 ```
