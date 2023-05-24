@@ -45,7 +45,9 @@ jobs:
               
       - name: Install dependencies
         run: |
-              make env
+              python -m venv env
+              pip install .
+              pip install coverage
       
       - name: Run tests
         run: |
