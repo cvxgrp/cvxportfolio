@@ -46,8 +46,8 @@ jobs:
       - name: Install dependencies
         run: |
               python -m venv env
-              pip install .
-              pip install coverage
+              env/bin/python -m pip install .
+              env/bin/python -m pip install coverage
       
       - name: Run tests
         run: |
