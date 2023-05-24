@@ -1,5 +1,6 @@
 BUILDDIR      = build
 PYTHON        = python
+PROJECT		  = cvxportfolio
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
 
@@ -15,7 +16,7 @@ env:
 	$(BINDIR)/python -m pip install --editable .
 	
 test:
-	$(BIN)/python -m unittest cvxportfolio/tests/*.py
+	$(BINDIR)/python -m unittest $(PROJECT)/tests/*.py
 
 clean:
 	-rm -rf $(BUILDDIR)/* 
