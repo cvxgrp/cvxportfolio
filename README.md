@@ -97,7 +97,7 @@ You activate the shell environment with one of scripts in `env/bin` (or `env\Scr
 source env/bin/activate
 ```
 and from the environment you can run any of the scripts in the examples (the cvxportfolio package is installed in [editable mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html)). 
-Or, if you don't want to activate the environment, you can just run scripts directly using `env/bin/python`, like we do in the Makefile.
+(Or, if you don't want to activate the environment, you can just run scripts directly using `env/bin/python` or `env\Scripts\python` on windows, like we do in the Makefile.)
 
 
 
