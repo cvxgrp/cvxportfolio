@@ -47,8 +47,11 @@ are applied to make sure the system works well with real data.
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 
-objective = cvx.ReturnsForecast() - 3 * (cvx.FullCovariance() + \
-	0.05 * cvx.RiskForecastError()) - cvx.TransactionCost()
+gamma = 3  		# risk aversion parameter (Chapter 4.2)
+kappa = 0.05	# covariance forecast error risk parameter (Chapter 4.3)
+objective = cvx.ReturnsForecast() - gamma * (
+	cvx.FullCovariance() + kappa * cvx.RiskForecastError()
+) - cvx.TransactionCost()
 constraints = [cvx.LeverageLimit(3)]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=2)
