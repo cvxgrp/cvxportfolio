@@ -137,8 +137,7 @@ class YfinanceBase(BaseData):
         data.loc[data.index[-1], ["High", "Low", "Close", "Return", "Volume"]] = np.nan
         return data
 
-    @classmethod
-    def download(cls, symbol, current=None, overlap=5, **kwargs):
+    def download(self, symbol, current=None, overlap=5, **kwargs):
         """Download single stock from Yahoo Finance.
 
         If data was already downloaded we only download
@@ -157,12 +156,12 @@ class YfinanceBase(BaseData):
         """
         if (current is None) or (len(current) < overlap):
             updated = yf.download(symbol, progress=False, **kwargs)
-            return cls.internal_process(updated)
+            return self.internal_process(updated)
         else:
             if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta('5d'):
                 return current
             new = yf.download(symbol, progress=False, start=current.index[-overlap], **kwargs)
-            new = cls.internal_process(new)
+            new = self.internal_process(new)
             return pd.concat([current.iloc[:-overlap], new])
 
     @staticmethod
@@ -402,17 +401,15 @@ class FredBase(BaseData):
     
     URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
     
-    @classmethod
-    def _download(cls, symbol):
-        return pd.read_csv(cls.URL + f'?id={symbol}', index_col=0, parse_dates=[0])[symbol]
+    def _download(self, symbol):
+        return pd.read_csv(self.URL + f'?id={symbol}', index_col=0, parse_dates=[0])[symbol]
 
-    @classmethod
-    def download(cls, symbol="DFF", current=None):
+    def download(self, symbol="DFF", current=None):
         if current is None or ((pd.Timestamp.today() - current.index[-1]) > pd.Timedelta('2d')):
             end = pd.Timestamp.today()
-            return cls._download(symbol)
+            return self._download(symbol)
         else:
-            new = cls._download(symbol)
+            new = self._download(symbol)
             new = new.loc[new.index > current.index[-1]]
             assert new.index[0] > current.index[-1]
             return pd.concat([current, new])
@@ -423,9 +420,8 @@ class RateBase(BaseData):
 
     trading_days = 252
 
-    @classmethod
-    def preload(cls, data):
-        return np.exp(np.log(1 + data / 100) / cls.trading_days) - 1
+    def preload(self, data):
+        return np.exp(np.log(1 + data / 100) / self.trading_days) - 1
 
 
 class Yfinance(YfinanceBase, LocalDataStore):
@@ -436,8 +432,6 @@ class Yfinance(YfinanceBase, LocalDataStore):
         base_location (pathlib.Path): filesystem directory where to store files.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     def update_and_load(self, symbol):
         """Update data for symbol and load it."""

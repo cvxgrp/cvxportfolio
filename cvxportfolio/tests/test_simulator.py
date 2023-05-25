@@ -24,8 +24,7 @@ import numpy as np
 import pandas as pd
 
 from cvxportfolio.simulator import MarketSimulator, MarketData, \
-    CashHoldingCostSimulator, StocksHoldingCostSimulator, \
-    TransactionCostSimulator
+    simulate_stocks_holding_cost, simulate_transaction_cost, simulate_cash_holding_cost
 from cvxportfolio.estimator import DataEstimator
 
 from copy import deepcopy
@@ -213,27 +212,21 @@ class TestSimulator(unittest.TestCase):
         
     def test_cash_holding_cost(self):
         
-        #md = MarketData(['AAPL', 'AMZN', 'GOOG'], base_location=self.datadir)
-        
         t = self.returns.index[-40]
         
         current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
-        
-        cost = CashHoldingCostSimulator()
         
         cash_return = self.returns.loc[t, 'cash']
         
         for i in range(10):
             np.random.seed(i)
-            h = np.random.randn(4)*10000
-            h[3] = 10000 - sum(h[:3])
-            u = np.zeros(4)
+            h_plus = np.random.randn(self.returns.shape[1])*1000
+            h_plus = pd.Series(h_plus, self.returns.columns)
+            h_plus[-1] = 1000 - sum(h_plus[:-1])
         
-            sim_cash_hcost = cost.compute_cost(t, h=pd.Series(h), u=pd.Series(u), current_prices=current_prices, 
-                current_and_past_volumes=current_and_past_volumes, 
-                current_and_past_returns=current_and_past_returns)
+            sim_cash_hcost = simulate_cash_holding_cost(t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
 
-            real_cash_position = h[3] + sum(np.minimum(h[:-1],0.))
+            real_cash_position = h_plus[-1] + sum(np.minimum(h_plus[:-1],0.))
             if real_cash_position > 0:
                 cash_hcost = real_cash_position * (np.maximum(cash_return - 0.005/252, 0.) - cash_return)
             if real_cash_position < 0:
@@ -243,70 +236,56 @@ class TestSimulator(unittest.TestCase):
 
 
     def test_stocks_holding_cost(self):
-        
-        #md = MarketData(['AAPL', 'AMZN', 'GOOG'], base_location=self.datadir)
-        
+                
         t = self.returns.index[-20]
         
         current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
         
-        
-        
         cash_return = self.returns.loc[t, 'cash']
         
-        ## stock & cash holding cost
+        ## stock holding cost
         for i in range(10):
             np.random.seed(i)
-            h = np.random.randn(4)*10000
-            h[3] = 10000 - sum(h[:3])
-            u = np.zeros(4)
+            h_plus = np.random.randn(4)*10000
+            h_plus[3] = 10000 - sum(h_plus[:-1])
+            h_plus = pd.Series(h_plus)
             
-            dividends = np.random.uniform(size=3) * 1E-4
-            cost = StocksHoldingCostSimulator(dividends = dividends)
-    
-            sim_hcost = cost.compute_cost(t, 
-                h=pd.Series(h), u=pd.Series(u), current_prices=current_prices, 
-                current_and_past_volumes=current_and_past_volumes, 
-                current_and_past_returns=current_and_past_returns)
-    
+            dividends = np.random.uniform(size=len(h_plus)-1) * 1E-4
+            
+            sim_hcost = simulate_stocks_holding_cost(t=t, h_plus = h_plus, dividends=dividends, current_and_past_returns=current_and_past_returns)
+            
             total_borrow_cost = cash_return + (0.005)/252
-            hcost = -total_borrow_cost * sum(-np.minimum(h,0.)[:3])
-            hcost += cost.dividends.data @ h[:-1]
+            hcost = -total_borrow_cost * sum(-np.minimum(h_plus,0.)[:-1])
+            hcost += dividends @ h_plus[:-1]
             
             self.assertTrue(np.isclose(hcost, sim_hcost))
     
     
     def test_transaction_cost_syntax(self):
-        
-        #md = MarketData(['AAPL', 'AMZN', 'GOOG'], base_location=self.datadir)
-        
+                
         t = self.returns.index[-20]
         
         current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
         
-        cost = TransactionCostSimulator()
-        
         u = pd.Series(np.ones(len(current_prices)+1), self.universe)
-        
         
         # syntax checks
         with self.assertRaises(SyntaxError):
-            cost.compute_cost(t, h=None, u=u, current_prices=None, 
+            simulate_transaction_cost(t, u=u, current_prices=None, 
                             current_and_past_volumes=current_and_past_volumes, 
                             current_and_past_returns=current_and_past_returns)
                             
-        cost1 = TransactionCostSimulator(persharecost=None)
-        cost1.compute_cost(t, h=None, u=u, current_prices=None, 
+        simulate_transaction_cost(t, u=u, current_prices=None, persharecost=None,
                         current_and_past_volumes=current_and_past_volumes, 
                         current_and_past_returns=current_and_past_returns)
                         
         with self.assertRaises(SyntaxError):
-            cost.compute_cost(t, h=None, u=u, current_prices=current_prices, 
+            simulate_transaction_cost(t, u=u, current_prices=current_prices, 
                             current_and_past_volumes=None, 
                             current_and_past_returns=current_and_past_returns)
                             
-        cost2 = TransactionCostSimulator(nonlinearcoefficient=None)
-        cost2.compute_cost(t, h=None, u=u, current_prices=current_prices, 
+        simulate_transaction_cost(t, h=None, u=u, current_prices=current_prices, 
+                        nonlinearcoefficient=None,
                         current_and_past_volumes=None, 
                         current_and_past_returns=current_and_past_returns)
         
@@ -327,13 +306,10 @@ class TestSimulator(unittest.TestCase):
             u[-1] = -sum(u[:-1])
             u = pd.Series(u, self.universe)
             u = MarketSimulator.round_trade_vector(u, current_prices)
-            
-
-            cost = TransactionCostSimulator(linearcost=spreads/2.)
-            
-            sim_cost = cost.compute_cost(t, h=None, u=u, current_prices=current_prices, 
+                        
+            sim_cost = simulate_transaction_cost(t, u=u, current_prices=current_prices, 
                             current_and_past_volumes=current_and_past_volumes, 
-                            current_and_past_returns=current_and_past_returns)
+                            current_and_past_returns=current_and_past_returns, linearcost=spreads/2.)
 
             shares = sum(np.abs(u[:-1] / current_prices))
             tcost = -0.005 * shares
