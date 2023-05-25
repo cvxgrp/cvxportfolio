@@ -24,8 +24,7 @@ import numpy as np
 import pandas as pd
 
 from cvxportfolio.simulator import MarketSimulator, MarketData, \
-    simulate_stocks_holding_cost, \
-    TransactionCostSimulator, simulate_cash_holding_cost
+    simulate_stocks_holding_cost, simulate_transaction_cost, simulate_cash_holding_cost
 from cvxportfolio.estimator import DataEstimator
 
 from copy import deepcopy
@@ -263,36 +262,30 @@ class TestSimulator(unittest.TestCase):
     
     
     def test_transaction_cost_syntax(self):
-        
-        #md = MarketData(['AAPL', 'AMZN', 'GOOG'], base_location=self.datadir)
-        
+                
         t = self.returns.index[-20]
         
         current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
         
-        cost = TransactionCostSimulator()
-        
         u = pd.Series(np.ones(len(current_prices)+1), self.universe)
-        
         
         # syntax checks
         with self.assertRaises(SyntaxError):
-            cost.compute_cost(t, h=None, u=u, current_prices=None, 
+            simulate_transaction_cost(t, u=u, current_prices=None, 
                             current_and_past_volumes=current_and_past_volumes, 
                             current_and_past_returns=current_and_past_returns)
                             
-        cost1 = TransactionCostSimulator(persharecost=None)
-        cost1.compute_cost(t, h=None, u=u, current_prices=None, 
+        simulate_transaction_cost(t, u=u, current_prices=None, persharecost=None,
                         current_and_past_volumes=current_and_past_volumes, 
                         current_and_past_returns=current_and_past_returns)
                         
         with self.assertRaises(SyntaxError):
-            cost.compute_cost(t, h=None, u=u, current_prices=current_prices, 
+            simulate_transaction_cost(t, u=u, current_prices=current_prices, 
                             current_and_past_volumes=None, 
                             current_and_past_returns=current_and_past_returns)
                             
-        cost2 = TransactionCostSimulator(nonlinearcoefficient=None)
-        cost2.compute_cost(t, h=None, u=u, current_prices=current_prices, 
+        simulate_transaction_cost(t, h=None, u=u, current_prices=current_prices, 
+                        nonlinearcoefficient=None,
                         current_and_past_volumes=None, 
                         current_and_past_returns=current_and_past_returns)
         
@@ -313,13 +306,10 @@ class TestSimulator(unittest.TestCase):
             u[-1] = -sum(u[:-1])
             u = pd.Series(u, self.universe)
             u = MarketSimulator.round_trade_vector(u, current_prices)
-            
-
-            cost = TransactionCostSimulator(linearcost=spreads/2.)
-            
-            sim_cost = cost.compute_cost(t, h=None, u=u, current_prices=current_prices, 
+                        
+            sim_cost = simulate_transaction_cost(t, u=u, current_prices=current_prices, 
                             current_and_past_volumes=current_and_past_volumes, 
-                            current_and_past_returns=current_and_past_returns)
+                            current_and_past_returns=current_and_past_returns, linearcost=spreads/2.)
 
             shares = sum(np.abs(u[:-1] / current_prices))
             tcost = -0.005 * shares

@@ -42,40 +42,6 @@ def parallel_worker(policy, simulator, start_time, end_time, h):
 
     return simulator._single_backtest(policy, start_time, end_time, h)
     
-
-
-class CostSimulator:
-    """Base class for simulator cost function.
-    
-    To implement your own your should define the 
-    compute_cost method, and optionally a __init__
-    method that accepts your named arguments and **kwargs: it
-    gets any argument you pass to the MarketSimulator
-    constructor that is not catched by it. 
-    
-    We follow the naming convention of calling subclasses as:
-    SomeName + 'CostSimulator', and this is used in the
-    MarketSimulator; the list of costs is given to it as, for 
-    example, `costs=['Transaction', 'StocksHolding', 'CashHolding']`
-    which resolves to TransactionCostSimulator, .... The capitalization
-    is ignored. You can as well pass instances rather than strings 
-    to the same costs list, so you don't have to follow this convention.
-    """
-    
-    def __init__(self, **kwargs):
-        """Dummy init.
-        
-        If you redefine it keep in mind that you should add the **kwargs catch-all
-        argument after any named argument you define,
-        if you are using MarketSimulator to initialize it.
-        """
-        pass
-    
-    def compute_cost(self, t, h, u, current_prices, current_and_past_volumes, current_and_past_returns):
-        """Compute the cost, returns a (usually negative) float."""
-        raise notImplementedError
-
-
     
 def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
                                 spread_on_lending_cash_percent=0.5, 
@@ -117,60 +83,42 @@ def simulate_stocks_holding_cost(t, h_plus, current_and_past_returns,
     result += np.sum(h_plus[:-1] * DataEstimator(dividends).values_in_time(t))
     return result
               
-                
-class TransactionCostSimulator(CostSimulator):
+            
+def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
+                            current_and_past_returns, persharecost=0.005,
+                            linearcost=0., nonlinearcoefficient=1.,
+                            windowsigma=252, exponent=1.5, **kwargs):    
     """Transaction cost model for the market simulator.
     
-    Arguments are documented in MarketSimulator
+    TODO move arguments documentation from MarketSimulator
     """
-    
-    def __init__(self, persharecost=0.005,
-        linearcost=0., nonlinearcoefficient=1.,
-        windowsigma=252, 
-        exponent=1.5, **kwargs):
         
-        self.persharecost = DataEstimator(persharecost) if not \
-            (persharecost is None) else None
-        self.linearcost = DataEstimator(linearcost)
-        self.nonlinearcoefficient = DataEstimator(nonlinearcoefficient) if not \
-            (nonlinearcoefficient is None) else None
-        # self.variance_estimate = HistoricalVariance(addmean=False) 
-        self.windowsigma = windowsigma
-        self.exponent = exponent
-
-    # def values_in_time(self, past_returns, current_prices, **kwargs):
-    #     super().values_in_time(past_returns=past_returns, current_prices=current_prices, **kwargs)
-    #     self.sigma = past_returns.iloc[-self.windowsigma:, :-1].std()
-    #     self.current_prices = current_prices
-
-    def compute_cost(self, t, h, u, current_prices, current_and_past_volumes, current_and_past_returns):
-        """Compute transaction costs at time t for dollar trade vector u.
-
-        Returns a non-positive float.
-
-        """
+    persharecost = DataEstimator(persharecost).values_in_time(t) if not \
+        (persharecost is None) else None
+    nonlinearcoefficient = DataEstimator(nonlinearcoefficient).values_in_time(t) if not \
+        (nonlinearcoefficient is None) else None
         
-        sigma = np.std(current_and_past_returns.iloc[-self.windowsigma:, :-1], axis=0)
+    sigma = np.std(current_and_past_returns.iloc[-windowsigma:, :-1], axis=0)
 
-        result = 0.
-        if not (self.persharecost is None):
-            if current_prices is None:
-                raise SyntaxError("If you don't provide prices you should set persharecost to None")
-            result += self.persharecost.values_in_time(t) * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices))
+    result = 0.
+    if not (persharecost is None):
+        if current_prices is None:
+            raise SyntaxError("If you don't provide prices you should set persharecost to None")
+        result += persharecost * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices))
 
-        result += sum(self.linearcost.values_in_time(t) * np.abs(u.iloc[:-1]))
+    result += sum(DataEstimator(linearcost).values_in_time(t) * np.abs(u.iloc[:-1]))
 
-        if not (self.nonlinearcoefficient is None):
-            if current_and_past_volumes is None:
-                raise SyntaxError("If you don't provide volumes you should set nonlinearcoefficient to None")
-            # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
-            result += (np.abs(u.iloc[:-1])**self.exponent) @ (self.nonlinearcoefficient.values_in_time(t)  *
-                sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (self.exponent - 1)))
+    if not (nonlinearcoefficient is None):
+        if current_and_past_volumes is None:
+            raise SyntaxError("If you don't provide volumes you should set nonlinearcoefficient to None")
+        # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
+        result += (np.abs(u.iloc[:-1])**exponent) @ (nonlinearcoefficient  *
+            sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (exponent - 1)))
 
-        assert not np.isnan(result)
-        assert not np.isinf(result)
+    assert not np.isnan(result)
+    assert not np.isinf(result)
 
-        return -result
+    return -result
         
         
 class MarketData:
@@ -317,55 +265,7 @@ class MarketData:
         self.returns.iloc[-1] = np.nan
         self.volumes.iloc[-1] = np.nan
         
-        
-        
-    
-# class SimulatorTransactionCost(SimulatorElement):
-#
-#     ## WORK IN PROGRESS
-#
-#     def __init__(self, persharecost=0.005,
-#         linearcost=0., nonlinearcoefficient=1.,
-#         windowsigma=252, exponent=1.5):
-#         self.persharecost = DataEstimator(persharecost)
-#         self.linearcost = DataEstimator(linearcost)
-#         self.nonlinearcoefficient = DataEstimator(nonlinearcoefficient)
-#         self.windowsigma = windowsigma
-#         self.exponent = exponent
-#
-#     def values_in_time(self, past_returns, current_prices, **kwargs):
-#         super().values_in_time(past_returns=past_returns, current_prices=current_prices, **kwargs)
-#         self.sigma = past_returns.iloc[-self.windowsigma:, :-1].std()
-#         self.current_prices = current_prices
-#
-#     def simulator_values_in_time(self, u, h, past_and_current_returns,
-#         past_and_current_volumes, current_prices):
-#         """Compute transaction costs at time t for dollar trade vector u.
-#
-#         Returns a non-positive float.
-#
-#         Args:
-#             u (pd.Series): dollar trade vector for all stocks including cash (but the cash
-#                 term is not used here).
-#         """
-#
-#         result = 0.
-#         if self.current_prices is not None:
-#             result += self.persharecost.current_value * int(sum(np.abs(u[:-1] + 1E-6) / self.current_prices))
-#
-#         # if self.linearcost is not None:
-#         result += sum(self.linearcost.current_value * np.abs(u[:-1]))/
-#
-#         result += (np.abs(u[:-1])**self.transaction_cost_exponent) @ (self.nonlinearcoefficient.current_value *
-#             self.sigma / ((self.volumes.current_value+1 # we add 1 to prevent 0 volumes error
-#              ) ** (self.transaction_cost_exponent - 1)))
-#
-#         assert not np.isnan(result)
-#         assert not np.isinf(result)
-#
-#         return -result
-        
-        
+
         
 
 class MarketSimulator(Estimator):
