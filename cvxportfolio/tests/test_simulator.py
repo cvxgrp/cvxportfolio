@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 
 from cvxportfolio.simulator import MarketSimulator, MarketData, \
-    StocksHoldingCostSimulator, \
+    simulate_stocks_holding_cost, \
     TransactionCostSimulator, simulate_cash_holding_cost
 from cvxportfolio.estimator import DataEstimator
 
@@ -237,35 +237,27 @@ class TestSimulator(unittest.TestCase):
 
 
     def test_stocks_holding_cost(self):
-        
-        #md = MarketData(['AAPL', 'AMZN', 'GOOG'], base_location=self.datadir)
-        
+                
         t = self.returns.index[-20]
         
         current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
         
-        
-        
         cash_return = self.returns.loc[t, 'cash']
         
-        ## stock & cash holding cost
+        ## stock holding cost
         for i in range(10):
             np.random.seed(i)
-            h = np.random.randn(4)*10000
-            h[3] = 10000 - sum(h[:3])
-            u = np.zeros(4)
+            h_plus = np.random.randn(4)*10000
+            h_plus[3] = 10000 - sum(h_plus[:-1])
+            h_plus = pd.Series(h_plus)
             
-            dividends = np.random.uniform(size=3) * 1E-4
-            cost = StocksHoldingCostSimulator(dividends = dividends)
-    
-            sim_hcost = cost.compute_cost(t, 
-                h=pd.Series(h), u=pd.Series(u), current_prices=current_prices, 
-                current_and_past_volumes=current_and_past_volumes, 
-                current_and_past_returns=current_and_past_returns)
-    
+            dividends = np.random.uniform(size=len(h_plus)-1) * 1E-4
+            
+            sim_hcost = simulate_stocks_holding_cost(t=t, h_plus = h_plus, dividends=dividends, current_and_past_returns=current_and_past_returns)
+            
             total_borrow_cost = cash_return + (0.005)/252
-            hcost = -total_borrow_cost * sum(-np.minimum(h,0.)[:3])
-            hcost += cost.dividends.data @ h[:-1]
+            hcost = -total_borrow_cost * sum(-np.minimum(h_plus,0.)[:-1])
+            hcost += dividends @ h_plus[:-1]
             
             self.assertTrue(np.isclose(hcost, sim_hcost))
     

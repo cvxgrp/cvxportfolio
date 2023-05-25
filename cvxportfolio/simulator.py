@@ -97,47 +97,25 @@ def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
         return real_cash * (max(cash_return - lending_spread, 0.) - cash_return)
     else:
         return real_cash * borrowing_spread
-                
 
-class StocksHoldingCostSimulator(CostSimulator):
+
+def simulate_stocks_holding_cost(t, h_plus, current_and_past_returns,
+                                spread_on_borrowing_stocks_percent=0.5, 
+                                dividends=0., periods_per_year=252, **kwargs):
     """Holding cost for stocks. 
     
-    Arguments are documented in MarketSimulator.
+    TODO move arguments documentation from MarketSimulator.
     """
-    
-    def __init__(self, 
-            spread_on_borrowing_stocks_percent=0.5, 
-            dividends=0.,
-            periods_per_year=252,
-            **kwargs):
-            
-        multiplier = 1 / (100 * periods_per_year)
-        self.borrowing_spread = DataEstimator(spread_on_borrowing_stocks_percent * multiplier) 
-        self.dividends = DataEstimator(dividends)
-
-    def compute_cost(self, t, h, u, current_prices, current_and_past_volumes, current_and_past_returns):
-        """Compute holding costs at current time for post trade holdings h_plus (only stocks).
-        """
-
-        result = 0.
-        h_plus = h + u
-        cash_return = current_and_past_returns.iloc[-1,-1]
-
-        # shorting stocks.
-        borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
-        result += np.sum((cash_return + self.borrowing_spread.values_in_time(t)) * borrowed_stock_positions)
-
-        # going long on stocks.
-        # if self.spread_on_long_positions_percent is not None:
-        #     long_positions = np.maximum(h_plus[:-1], 0.)
-        #     result -= np.sum((cash_return +
-        #                       (self.spread_on_long_positions_percent /100) / self.periods_per_year) *
-        #                      long_positions)
-
-        # dividends
-        result += np.sum(h_plus[:-1] * self.dividends.values_in_time(t))
-
-        return result
+                                
+    multiplier = 1 / (100 * periods_per_year)
+    borrowing_spread = DataEstimator(spread_on_borrowing_stocks_percent).values_in_time(t) * multiplier
+    dividends = DataEstimator(dividends).values_in_time(t)
+    result = 0.
+    cash_return = current_and_past_returns.iloc[-1,-1]
+    borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
+    result += np.sum((cash_return + borrowing_spread) * borrowed_stock_positions)
+    result += np.sum(h_plus[:-1] * DataEstimator(dividends).values_in_time(t))
+    return result
               
                 
 class TransactionCostSimulator(CostSimulator):
