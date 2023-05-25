@@ -77,34 +77,26 @@ class CostSimulator:
 
 
     
-class CashHoldingCostSimulator(CostSimulator):
-    """Holding cost for cash. 
+def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
+                                spread_on_lending_cash_percent=0.5, 
+                                spread_on_borrowing_cash_percent=0.5, 
+                                periods_per_year=252, **kwargs):
+    """Simulate holding cost for the cash account. 
     
-    Arguments are documented in MarketSimulator.
+    TODO move arguments documentation from MarketSimulator.
     """
-    
-    def __init__(self, 
-            spread_on_lending_cash_percent=0.5, 
-            spread_on_borrowing_cash_percent=0.5, 
-            periods_per_year=252,
-            **kwargs):
-            
-        multiplier = 1 / (100 * periods_per_year)
-        self.lending_spread = DataEstimator(spread_on_lending_cash_percent * multiplier)
-        self.borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent * multiplier)
+                                
+    multiplier = 1 / (100 * periods_per_year)
+    lending_spread = DataEstimator(spread_on_lending_cash_percent).values_in_time(t) * multiplier
+    borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent).values_in_time(t) * multiplier
 
+    cash_return = current_and_past_returns.iloc[-1,-1]
+    real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
 
-    def compute_cost(self, t, h, u, current_prices, current_and_past_volumes, current_and_past_returns):
-        """Compute holding cost on cash (including cash return) for post trade holdings h_plus."""
-
-        cash_return = current_and_past_returns.iloc[-1,-1]
-        h_plus = h + u
-        real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
-
-        if real_cash > 0:
-            return real_cash * (max(cash_return - self.lending_spread.values_in_time(t), 0.) - cash_return)
-        else:
-            return real_cash * self.borrowing_spread.values_in_time(t)
+    if real_cash > 0:
+        return real_cash * (max(cash_return - lending_spread, 0.) - cash_return)
+    else:
+        return real_cash * borrowing_spread
                 
 
 class StocksHoldingCostSimulator(CostSimulator):

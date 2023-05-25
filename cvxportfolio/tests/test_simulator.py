@@ -24,8 +24,8 @@ import numpy as np
 import pandas as pd
 
 from cvxportfolio.simulator import MarketSimulator, MarketData, \
-    CashHoldingCostSimulator, StocksHoldingCostSimulator, \
-    TransactionCostSimulator
+    StocksHoldingCostSimulator, \
+    TransactionCostSimulator, simulate_cash_holding_cost
 from cvxportfolio.estimator import DataEstimator
 
 from copy import deepcopy
@@ -213,27 +213,21 @@ class TestSimulator(unittest.TestCase):
         
     def test_cash_holding_cost(self):
         
-        #md = MarketData(['AAPL', 'AMZN', 'GOOG'], base_location=self.datadir)
-        
         t = self.returns.index[-40]
         
         current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
-        
-        cost = CashHoldingCostSimulator()
         
         cash_return = self.returns.loc[t, 'cash']
         
         for i in range(10):
             np.random.seed(i)
-            h = np.random.randn(4)*10000
-            h[3] = 10000 - sum(h[:3])
-            u = np.zeros(4)
+            h_plus = np.random.randn(self.returns.shape[1])*1000
+            h_plus = pd.Series(h_plus, self.returns.columns)
+            h_plus[-1] = 1000 - sum(h_plus[:-1])
         
-            sim_cash_hcost = cost.compute_cost(t, h=pd.Series(h), u=pd.Series(u), current_prices=current_prices, 
-                current_and_past_volumes=current_and_past_volumes, 
-                current_and_past_returns=current_and_past_returns)
+            sim_cash_hcost = simulate_cash_holding_cost(t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
 
-            real_cash_position = h[3] + sum(np.minimum(h[:-1],0.))
+            real_cash_position = h_plus[-1] + sum(np.minimum(h_plus[:-1],0.))
             if real_cash_position > 0:
                 cash_hcost = real_cash_position * (np.maximum(cash_return - 0.005/252, 0.) - cash_return)
             if real_cash_position < 0:
