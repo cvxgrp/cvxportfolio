@@ -18,9 +18,10 @@ objective = cvx.ReturnsForecast() - gamma * (
 
 constraints = [cvx.MarketNeutral()] #cvx.LongOnly(),cvx.LeverageLimit(1)]
 
-# zero out the portfolio on 4/20/23
-constraints += [cvx.MinWeightsAtTimes(0., [pd.Timestamp('2023-04-20')])]
-constraints += [cvx.MaxWeightsAtTimes(0., [pd.Timestamp('2023-04-20')])]
+# We can impose constraints on the portfolio weights at a given time,
+# the multiperiod policy will plan in advance to optimize on tcosts
+constraints += [cvx.MinWeightsAtTimes(0., [pd.Timestamp('2023-04-19')])]
+constraints += [cvx.MaxWeightsAtTimes(0., [pd.Timestamp('2023-04-19')])]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=25)
 
