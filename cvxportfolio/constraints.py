@@ -36,6 +36,7 @@ __all__ = [
     "MarketNeutral",
     "MinWeightsAtTimes",
     "MaxWeightsAtTimes",
+    "TurnoverLimit"
 ]
 
 
@@ -60,6 +61,13 @@ class BaseWeightConstraint(BaseConstraint):
     pass
 
 class MarketNeutral(BaseWeightConstraint):
+    """Initial implementation of market neutrality.
+    
+    The benchmark portfolio weights are computed here 
+    (weighting by rolling averages of the market volumes)
+    but instead should be their own class (used as well
+    by risk models, ...).
+    """
     
     def __init__(self):
         self.covarianceforecaster = HistoricalFactorizedCovariance()
@@ -79,6 +87,22 @@ class MarketNeutral(BaseWeightConstraint):
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         return w_plus[:-1].T @ self.market_vector == 0
+        
+        
+class TurnoverLimit(BaseTradeConstraint):
+    """Turnover limit as a fraction of the portfolio value.
+    
+    See page 37 of the book.
+    
+    :param delta: constant or changing in time turnover limit 
+    :type delta: float or pd.Series 
+    """
+    
+    def __init__(self, delta):
+        self.delta = ParameterEstimator(delta)
+        
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        return .5 * cvx.norm1(z[:-1]) <= self.delta
         
 
 class ParticipationRateLimit(BaseTradeConstraint):

@@ -228,6 +228,21 @@ class TestConstraints(unittest.TestCase):
         tmp[1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
+        
+    def test_turnover_limit(self):
+        model = cp.TurnoverLimit(0.1)
+        cons = self.build_constraint(model)
+        self.z.value = np.zeros(self.N)
+        self.z.value[-1] = -sum(self.z.value[:-1])
+        self.assertTrue(cons.value())
+        
+        self.z.value[1] = 0.2
+        self.z.value[-1] = -sum(self.z.value[:-1])
+        self.assertTrue(cons.value())
+        
+        self.z.value[2] = -0.01
+        self.z.value[-1] = -sum(self.z.value[:-1])
+        self.assertFalse(cons.value())
 
         
     def test_participation_rate(self):

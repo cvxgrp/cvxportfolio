@@ -137,8 +137,8 @@ class BacktestResult(Estimator):
 
     @property
     def turnover(self):
-        """Turnover ||u_t||_1/v_t"""
-        return np.abs(self.u.iloc[:,:-1]).sum(axis=1) / self.v.loc[self.u.index]
+        """Turnover ||u_t||_1/(2*v_t)"""
+        return np.abs(self.u.iloc[:,:-1]).sum(axis=1) / (2*self.v.loc[self.u.index])
 
     @property
     def trading_days(self):
