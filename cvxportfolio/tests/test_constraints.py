@@ -40,7 +40,7 @@ class TestConstraints(unittest.TestCase):
         """Initialize constraint, build expression, and point it to given time."""
         constraint.pre_evaluation(self.returns.columns, self.returns.index)
         cvxpy_expression = constraint.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
-        constraint.values_in_time(t=pd.Timestamp("2020-01-01") if t is None else t)
+        constraint.values_in_time(t=pd.Timestamp("2020-01-01") if t is None else t, current_portfolio_value=1000)
         return cvxpy_expression
         
     def test_long_only(self):
@@ -63,6 +63,17 @@ class TestConstraints(unittest.TestCase):
         self.assertTrue(cons.is_dcp())
         self.assertFalse(cons.value())
         
+    def test_min_cash(self):
+        model = cvx.MinCashBalance(10000) # USD
+        cons = self.build_constraint(model)
+        self.w_plus.value = np.zeros( self.N)
+        self.w_plus.value[-1] = 1
+        model.values_in_time(t=pd.Timestamp("2020-01-01"), current_portfolio_value=10001)
+        self.assertTrue(cons.value())
+        model.values_in_time(t=pd.Timestamp("2020-01-01"), current_portfolio_value=9999)
+        self.assertFalse(cons.value())        
+        
+
     def test_dollar_neutral(self):
         model = cvx.DollarNeutral()
         cons = self.build_constraint(model)

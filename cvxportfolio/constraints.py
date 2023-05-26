@@ -19,7 +19,7 @@ and MultiPeriodOptimization policies, or other Cvxpy-based policies.
 import cvxpy as cp
 import numpy as np
 
-from .estimator import CvxpyExpressionEstimator, ParameterEstimator
+from .estimator import CvxpyExpressionEstimator, ParameterEstimator, DataEstimator
 from .forecast import HistoricalFactorizedCovariance
 
 __all__ = [
@@ -36,7 +36,8 @@ __all__ = [
     "MarketNeutral",
     "MinWeightsAtTimes",
     "MaxWeightsAtTimes",
-    "TurnoverLimit"
+    "TurnoverLimit",
+    "MinCashBalance"
 ]
 
 
@@ -163,14 +164,34 @@ class LeverageLimit(BaseWeightConstraint):
         return cp.norm(w_plus[:-1], 1) <= self.limit
 
 
-class LongCash(BaseWeightConstraint):
-    """Requires that cash be non-negative."""
-
+class MinCashBalance(BaseWeightConstraint):
+    """Requires that the cash account is larger than c_min dollars.
+    
+    This uses logic to subtract cash used as margin for the short 
+    positions that is not documented in the book but is
+    equivalent to the book definition's for long-only stock positions.
+    """
+    
+    def __init__(self, c_min):
+        self.c_min = DataEstimator(c_min)
+        self.rhs = cp.Parameter()
+    
+    def values_in_time(self, current_portfolio_value, **kwargs):
+        super().values_in_time(current_portfolio_value=current_portfolio_value, **kwargs)
+        self.rhs.value = self.c_min.current_value/current_portfolio_value
+    
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         # TODO clarify this
         realcash = (w_plus[-1] - 2 * cp.sum(cp.neg(w_plus[:-1])))
-        return realcash >= 0
+        return realcash >= self.rhs
+        
+    
+class LongCash(MinCashBalance):
+    """Requires that cash be non-negative."""
+    
+    def __init__(self):
+        super().__init__(0.)
 
 
 class DollarNeutral(BaseWeightConstraint):
