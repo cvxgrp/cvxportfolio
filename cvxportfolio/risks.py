@@ -18,7 +18,7 @@ import warnings
 
 import scipy.linalg
 
-import cvxpy as cvx
+import cvxpy as cp
 import numpy as np
 import pandas as pd
 
@@ -146,7 +146,7 @@ class FullCovariance(BaseRiskModel):
         super().pre_evaluation(universe, backtest_times)
         
         
-        self.Sigma_sqrt = cvx.Parameter((len(universe)-1, len(universe)-1))#+self.addmean))
+        self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))#+self.addmean))
 
         #super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
@@ -195,7 +195,7 @@ class FullCovariance(BaseRiskModel):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         # TODO change benchmark weights passing
-        self.cvxpy_expression = cvx.sum_squares(self.Sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
+        self.cvxpy_expression = cp.sum_squares(self.Sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
     
         return self.cvxpy_expression
 
@@ -221,7 +221,7 @@ class RiskForecastError(BaseRiskModel):
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
-        self.sigmas_parameter = cvx.Parameter(len(universe)-1, nonneg=True)#+self.addmean))
+        self.sigmas_parameter = cp.Parameter(len(universe)-1, nonneg=True)#+self.addmean))
 
     def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
@@ -244,7 +244,7 @@ class RiskForecastError(BaseRiskModel):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
-        return cvx.square(cvx.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
+        return cp.square(cp.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
                 
                 
 
@@ -268,7 +268,7 @@ class DiagonalCovariance(BaseRiskModel):
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
-        self.sigmas_parameter = cvx.Parameter(len(universe)-1) #+self.addmean))
+        self.sigmas_parameter = cp.Parameter(len(universe)-1) #+self.addmean))
 
     def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
@@ -292,7 +292,7 @@ class DiagonalCovariance(BaseRiskModel):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
-        return cvx.sum_squares(cvx.multiply(w_plus_minus_w_bm[:-1], self.sigmas_parameter))
+        return cp.sum_squares(cp.multiply(w_plus_minus_w_bm[:-1], self.sigmas_parameter))
 
 
 class FactorModelCovariance(BaseRiskModel):
@@ -384,11 +384,11 @@ class FactorModelCovariance(BaseRiskModel):
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
         # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-        self.idyosync_sqrt_parameter = cvx.Parameter(len(universe)-1)
-        self.F_parameter = cvx.Parameter((self.num_factors, len(universe)-1)) if self.F is None else self.F
+        self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
+        self.F_parameter = cp.Parameter((self.num_factors, len(universe)-1)) if self.F is None else self.F
         # if not (self.factor_Sigma is None):
-        #     self.factor_Sigma_sqrt = cvx.Parameter(self.factor_Sigma.shape, PSD=True)
-        # self.forecast_error_penalizer = cvx.Parameter(returns.shape[1], nonneg=True)
+        #     self.factor_Sigma_sqrt = cp.Parameter(self.factor_Sigma.shape, PSD=True)
+        # self.forecast_error_penalizer = cp.Parameter(returns.shape[1], nonneg=True)
 
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
@@ -415,10 +415,10 @@ class FactorModelCovariance(BaseRiskModel):
 
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        self.expression = cvx.sum_squares(cvx.multiply(self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
+        self.expression = cp.sum_squares(cp.multiply(self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
         assert self.expression.is_dcp(dpp=True)
 
-        self.expression += cvx.sum_squares(self.F_parameter @ w_plus_minus_w_bm[:-1])
+        self.expression += cp.sum_squares(self.F_parameter @ w_plus_minus_w_bm[:-1])
         assert self.expression.is_dcp(dpp=True)
 
         return self.expression
@@ -452,4 +452,4 @@ class WorstCaseRisk(BaseRiskModel):
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         risks = [risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
                  for risk in self.riskmodels]
-        return cvx.max(cvx.hstack(risks))
+        return cp.max(cp.hstack(risks))

@@ -14,7 +14,6 @@
 
 """Unit tests for the data and parameter estimator objects."""
 
-import cvxpy as cvx
 import numpy as np
 import pandas as pd
 import unittest

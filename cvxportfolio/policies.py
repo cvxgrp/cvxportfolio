@@ -19,7 +19,7 @@ import logging
 
 import pandas as pd
 import numpy as np
-import cvxpy as cvx
+import cvxpy as cp
 
 from .costs import BaseCost
 from .returns import BaseReturnsModel
@@ -360,7 +360,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
                 for constr in el]
             for i, el in enumerate(self.constraints)]
         self.cvxpy_constraints = sum(self.cvxpy_constraints, [])
-        self.cvxpy_constraints += [cvx.sum(z) == 0 for z in self.z_at_lags]
+        self.cvxpy_constraints += [cp.sum(z) == 0 for z in self.z_at_lags]
         w = self.w_current
         for i in range(self.planning_horizon):
             self.cvxpy_constraints.append(self.w_plus_at_lags[i] == self.z_at_lags[i] + w)
@@ -368,7 +368,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             w = self.w_plus_at_lags[i]
         if not self.terminal_constraint is None:
             self.cvxpy_constraints.append(w == self.terminal_constraint)
-        self.problem = cvx.Problem(cvx.Maximize(self.cvxpy_objective), self.cvxpy_constraints)
+        self.problem = cp.Problem(cp.Maximize(self.cvxpy_objective), self.cvxpy_constraints)
         assert self.problem.is_dcp()  # dpp=True)
 
     def pre_evaluation(self, universe, backtest_times):
@@ -384,11 +384,11 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         self.w_bm[-1] = 1.
         
         # initialize the problem
-        # self.portfolio_value = cvx.Parameter(nonneg=True)
-        self.w_current = cvx.Parameter(len(universe))
-        self.z_at_lags = [cvx.Variable(len(universe)) for i in range(self.planning_horizon)] 
-        self.w_plus_at_lags = [cvx.Variable(len(universe)) for i in range(self.planning_horizon)]
-        self.w_plus_minus_w_bm_at_lags = [cvx.Variable(len(universe)) for i in range(self.planning_horizon)]
+        # self.portfolio_value = cp.Parameter(nonneg=True)
+        self.w_current = cp.Parameter(len(universe))
+        self.z_at_lags = [cp.Variable(len(universe)) for i in range(self.planning_horizon)] 
+        self.w_plus_at_lags = [cp.Variable(len(universe)) for i in range(self.planning_horizon)]
+        self.w_plus_minus_w_bm_at_lags = [cp.Variable(len(universe)) for i in range(self.planning_horizon)]
         self.cache = {}
 
         # self.compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
@@ -418,7 +418,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         try:
             self.problem.solve(#ignore_dpp=True, 
                 **self.cvxpy_kwargs)
-        except cvx.SolverError:
+        except cp.SolverError:
             raise PortfolioOptimizationError(
                 f"Numerical solver for policy {self.__class__.__name__} at time {t} failed;"
                 "try changing it, relaxing some constraints, or dropping some costs.")

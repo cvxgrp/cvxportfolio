@@ -22,12 +22,9 @@ import logging
 import time
 from pathlib import Path
 from multiprocessing import Pool
-# from multiprocess import Pool
 
-# import multiprocess
 import numpy as np
 import pandas as pd
-import cvxpy as cvx
 
 from .costs import BaseCost
 from .data import FredRateTimeSeries, YfinanceTimeSeries, BASE_LOCATION

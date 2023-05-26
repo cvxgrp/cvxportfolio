@@ -19,8 +19,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import cvxpy as cvx
-import cvxportfolio as cp
+import cvxpy as cp
+import cvxportfolio as cvx
 
 
 class TestConstraints(unittest.TestCase):
@@ -31,9 +31,9 @@ class TestConstraints(unittest.TestCase):
         cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
         cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
         cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
-        cls.w_plus = cvx.Variable(cls.returns.shape[1])
-        cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
-        cls.z = cvx.Variable(cls.returns.shape[1])
+        cls.w_plus = cp.Variable(cls.returns.shape[1])
+        cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
+        cls.z = cp.Variable(cls.returns.shape[1])
         cls.N = cls.returns.shape[1]
         
     def build_constraint(self, constraint, t=None):
@@ -44,7 +44,7 @@ class TestConstraints(unittest.TestCase):
         return cvxpy_expression
         
     def test_long_only(self):
-        model = cp.LongOnly()
+        model = cvx.LongOnly()
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones(self.N)
         self.assertTrue(cons.value())
@@ -53,7 +53,7 @@ class TestConstraints(unittest.TestCase):
         
     
     def test_long_cash(self):
-        model = cp.LongCash()
+        model = cvx.LongCash()
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones( self.N)
         self.assertTrue(cons.value())
@@ -64,7 +64,7 @@ class TestConstraints(unittest.TestCase):
         self.assertFalse(cons.value())
         
     def test_dollar_neutral(self):
-        model = cp.DollarNeutral()
+        model = cvx.DollarNeutral()
         cons = self.build_constraint(model)
         tmpvalue = np.zeros( self.N)
         tmpvalue[-1] = 1 - sum(tmpvalue[:-1])
@@ -76,7 +76,7 @@ class TestConstraints(unittest.TestCase):
         self.assertFalse(cons.value())
         
     def test_leverage_limit(self):
-        model = cp.LeverageLimit(2)
+        model = cvx.LeverageLimit(2)
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones(self.N) / self.N
         self.assertTrue(cons.value())
@@ -85,7 +85,7 @@ class TestConstraints(unittest.TestCase):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertFalse(cons.value())
-        model = cp.LeverageLimit(7)
+        model = cvx.LeverageLimit(7)
         cons = self.build_constraint(model)
         tmp = np.zeros(self.N)
         tmp[0] = 4
@@ -96,7 +96,7 @@ class TestConstraints(unittest.TestCase):
     def test_leverage_limit_in_time(self):
         limits = pd.Series(index=self.returns.index, data=2)
         limits.iloc[1] = 7
-        model = cp.LeverageLimit(limits)
+        model = cvx.LeverageLimit(limits)
         cons = self.build_constraint(model, t=self.returns.index[1])
         tmp = np.zeros(self.N)
         tmp[0] = 4
@@ -107,7 +107,7 @@ class TestConstraints(unittest.TestCase):
         self.assertFalse(cons.value())
         
     def test_max_weights(self):
-        model = cp.MaxWeights(2)
+        model = cvx.MaxWeights(2)
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones(self.N) / self.N
         self.assertTrue(cons.value())
@@ -117,7 +117,7 @@ class TestConstraints(unittest.TestCase):
         self.w_plus.value = tmp
         self.assertFalse(cons.value())
 
-        model = cp.MaxWeights(7)
+        model = cvx.MaxWeights(7)
         cons = self.build_constraint(model)
 
         tmp = np.zeros(self.N)
@@ -129,7 +129,7 @@ class TestConstraints(unittest.TestCase):
         limits = pd.Series(index=self.returns.index, data=2)
         limits.iloc[1] = 7
 
-        model = cp.MaxWeights(limits)
+        model = cvx.MaxWeights(limits)
         cons = self.build_constraint(model, t=self.returns.index[1])
 
         tmp = np.zeros(self.N)
@@ -141,7 +141,7 @@ class TestConstraints(unittest.TestCase):
         self.assertFalse(cons.value())
         
     def test_min_weights(self):
-        model = cp.MinWeights(2)
+        model = cvx.MinWeights(2)
         cons = self.build_constraint(model, self.returns.index[1])
 
         self.w_plus.value = np.ones(self.N) / self.N
@@ -151,7 +151,7 @@ class TestConstraints(unittest.TestCase):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertFalse(cons.value())
-        model = cp.MinWeights(-3)
+        model = cvx.MinWeights(-3)
         cons = self.build_constraint(model, self.returns.index[1])
         tmp = np.zeros(self.N)
         tmp[0] = 4
@@ -161,7 +161,7 @@ class TestConstraints(unittest.TestCase):
 
         limits = pd.Series(index=self.returns.index, data=2)
         limits.iloc[1] = -3
-        model = cp.MinWeights(limits)
+        model = cvx.MinWeights(limits)
         cons = self.build_constraint(model, t=self.returns.index[1])
         tmp = np.zeros(self.N)
         tmp[0] = 4
@@ -173,7 +173,7 @@ class TestConstraints(unittest.TestCase):
 
     def test_factor_max_limit(self):
         
-        model = cp.FactorMaxLimit(np.ones((self.N - 1, 2)), np.array([0.5, 1]))
+        model = cvx.FactorMaxLimit(np.ones((self.N - 1, 2)), np.array([0.5, 1]))
         cons = self.build_constraint(model, self.returns.index[1])
 
         self.w_plus.value = np.ones(self.N) / self.N
@@ -185,7 +185,7 @@ class TestConstraints(unittest.TestCase):
         self.assertFalse(cons.value())
         
 
-        model = cp.FactorMaxLimit(np.ones((self.N - 1, 2)), np.array([4, 4]))
+        model = cvx.FactorMaxLimit(np.ones((self.N - 1, 2)), np.array([4, 4]))
         cons = self.build_constraint(model,self.returns.index[1])
 
         tmp = np.zeros(self.N)
@@ -196,7 +196,7 @@ class TestConstraints(unittest.TestCase):
 
     def test_factor_min_limit(self):
         
-        model = cp.FactorMinLimit(np.ones((self.N - 1, 2)), np.array([0.5, 1]))
+        model = cvx.FactorMinLimit(np.ones((self.N - 1, 2)), np.array([0.5, 1]))
         cons = self.build_constraint(model, self.returns.index[1])
 
         self.w_plus.value = np.ones(self.N) / self.N
@@ -208,7 +208,7 @@ class TestConstraints(unittest.TestCase):
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
         
-        model = cp.FactorMinLimit(np.ones((self.N - 1, 2)), np.array([4, 4]))
+        model = cvx.FactorMinLimit(np.ones((self.N - 1, 2)), np.array([4, 4]))
         cons = self.build_constraint(model, self.returns.index[1])
         # cons = model.weight_expr(t, self.w_plus, None, None)[0]
         tmp = np.zeros(self.N)
@@ -218,7 +218,7 @@ class TestConstraints(unittest.TestCase):
         self.assertTrue(cons.value())
 
     def test_fixed_alpha(self):
-        model = cp.FixedFactorLoading(np.ones((self.N - 1, 1)), 1)
+        model = cvx.FixedFactorLoading(np.ones((self.N - 1, 1)), 1)
         cons = self.build_constraint(model, self.returns.index[1])
 
         self.w_plus.value = np.ones(self.N) / self.N
@@ -230,7 +230,7 @@ class TestConstraints(unittest.TestCase):
         self.assertTrue(cons.value())
         
     def test_turnover_limit(self):
-        model = cp.TurnoverLimit(0.1)
+        model = cvx.TurnoverLimit(0.1)
         cons = self.build_constraint(model)
         self.z.value = np.zeros(self.N)
         self.z.value[-1] = -sum(self.z.value[:-1])
@@ -252,7 +252,7 @@ class TestConstraints(unittest.TestCase):
 
         # avg daily value limits.
         value = 1e6
-        model = cp.ParticipationRateLimit(self.volumes, max_fraction_of_volumes=0.1)
+        model = cvx.ParticipationRateLimit(self.volumes, max_fraction_of_volumes=0.1)
         model.pre_evaluation(self.returns.columns, self.returns.index)
         cons = model.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         model.values_in_time(t=t, current_portfolio_value=value)

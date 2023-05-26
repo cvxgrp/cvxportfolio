@@ -17,8 +17,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import cvxpy as cvx
-import cvxportfolio as cp
+import cvxpy as cp
+import cvxportfolio as cvx
 
 
 class BaseTestClass(unittest.TestCase):
@@ -29,9 +29,9 @@ class BaseTestClass(unittest.TestCase):
         cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
         cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
         cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
-        cls.w_plus = cvx.Variable(cls.returns.shape[1])
-        cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
-        cls.z = cvx.Variable(cls.returns.shape[1])
+        cls.w_plus = cp.Variable(cls.returns.shape[1])
+        cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
+        cls.z = cp.Variable(cls.returns.shape[1])
         cls.N = cls.returns.shape[1]
     
     def boilerplate(self, model):

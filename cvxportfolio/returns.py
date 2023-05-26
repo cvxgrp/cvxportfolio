@@ -15,7 +15,7 @@
 portfolio optimization policies, and related objects.
 """
 
-import cvxpy as cvx
+import cvxpy as cp
 import numpy as np
 import pandas as pd
 
@@ -45,13 +45,13 @@ class BaseReturnsModel(BaseCost):
 #         self.rolling = rolling
 #
 #     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-#         self.past_returns = cvx.Parameter((returns.shape[1], self.rolling))
+#         self.past_returns = cp.Parameter((returns.shape[1], self.rolling))
 #
 #     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
 #         self.past_returns.value = past_returns.iloc[-self.rolling:].values.T
 #
 #     def compile_to_cvxpy(self, w_plus, z, v):
-#         return cvx.sum(cvx.log(w_plus.T @ self.past_returns + 1)) / self.rolling
+#         return cp.sum(cp.log(w_plus.T @ self.past_returns + 1)) / self.rolling
     
 
 class ReturnsForecast(BaseReturnsModel):
@@ -155,7 +155,7 @@ class ReturnsForecast(BaseReturnsModel):
         self.subtractshorts = subtractshorts
         
         if self.subtractshorts:
-            self.cash_return = cvx.Parameter(nonneg=True)
+            self.cash_return = cp.Parameter(nonneg=True)
             
         self.decayfactor = decayfactor
         
@@ -176,7 +176,7 @@ class ReturnsForecast(BaseReturnsModel):
         
     def pre_evaluation(self, universe, backtest_times):
         
-        self.r_hat_parameter = cvx.Parameter(len(universe))
+        self.r_hat_parameter = cp.Parameter(len(universe))
         
     
     def values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
@@ -204,7 +204,7 @@ class ReturnsForecast(BaseReturnsModel):
             # TODO too complicated to have this here
             # maybe remove and increase holdingcost (ignoring borrow/lend spreads?)
             noncash = w_plus[:-1].T @ self.r_hat_parameter[:-1]
-            realcash = (w_plus[-1] - 2 * cvx.sum(cvx.neg(w_plus[:-1])))
+            realcash = (w_plus[-1] - 2 * cp.sum(cp.neg(w_plus[:-1])))
             cash = realcash * self.cash_return
             # print(cash)
             assert cash.is_concave()
@@ -243,7 +243,7 @@ class ReturnsForecastError(BaseRiskModel):
             
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe=universe, backtest_times=backtest_times)
-        self.deltas_parameter = cvx.Parameter(len(universe)-1, nonneg=True)
+        self.deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
 
 
     def values_in_time(self, t, past_returns, **kwargs):
@@ -261,7 +261,7 @@ class ReturnsForecastError(BaseRiskModel):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile to cvxpy expression."""
-        return cvx.abs(w_plus_minus_w_bm[:-1]).T @ self.deltas_parameter
+        return cp.abs(w_plus_minus_w_bm[:-1]).T @ self.deltas_parameter
 
 
 
