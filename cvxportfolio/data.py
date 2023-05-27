@@ -16,7 +16,6 @@ from pathlib import Path
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import pandas_datareader
 import sqlite3
 
 from .estimator import DataEstimator
@@ -138,8 +137,7 @@ class YfinanceBase(BaseData):
         data.loc[data.index[-1], ["High", "Low", "Close", "Return", "Volume"]] = np.nan
         return data
 
-    @classmethod
-    def download(cls, symbol, current=None, overlap=5, **kwargs):
+    def download(self, symbol, current=None, overlap=5, **kwargs):
         """Download single stock from Yahoo Finance.
 
         If data was already downloaded we only download
@@ -158,12 +156,12 @@ class YfinanceBase(BaseData):
         """
         if (current is None) or (len(current) < overlap):
             updated = yf.download(symbol, progress=False, **kwargs)
-            return cls.internal_process(updated)
+            return self.internal_process(updated)
         else:
             if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta('5d'):
                 return current
             new = yf.download(symbol, progress=False, start=current.index[-overlap], **kwargs)
-            new = cls.internal_process(new)
+            new = self.internal_process(new)
             return pd.concat([current.iloc[:-overlap], new])
 
     @staticmethod
@@ -400,22 +398,21 @@ class LocalDataStore(BaseDataStore):
 
 class FredBase(BaseData):
     """Base class for FRED data access."""
+    
+    URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+    
+    def _download(self, symbol):
+        return pd.read_csv(self.URL + f'?id={symbol}', index_col=0, parse_dates=[0])[symbol]
 
-    @staticmethod
-    def download(symbol="DFF", current=None):
-        if current is None:
+    def download(self, symbol="DFF", current=None):
+        if current is None or ((pd.Timestamp.today() - current.index[-1]) > pd.Timedelta('2d')):
             end = pd.Timestamp.today()
-            return pandas_datareader.get_data_fred(
-                symbol, start="1900-01-01", end=pd.Timestamp.today()
-            )[symbol]
+            return self._download(symbol)
         else:
-            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta('2d'):
-                return current
-            new = pandas_datareader.get_data_fred(
-                symbol, start=current.index[-1], end=pd.Timestamp.today()
-            )[symbol]
-            assert new.index[0] == current.index[-1]
-            return pd.concat([current.iloc[:-1], new])
+            new = self._download(symbol)
+            new = new.loc[new.index > current.index[-1]]
+            assert new.index[0] > current.index[-1]
+            return pd.concat([current, new])
 
 
 class RateBase(BaseData):
@@ -423,9 +420,8 @@ class RateBase(BaseData):
 
     trading_days = 252
 
-    @classmethod
-    def preload(cls, data):
-        return np.exp(np.log(1 + data / 100) / cls.trading_days) - 1
+    def preload(self, data):
+        return np.exp(np.log(1 + data / 100) / self.trading_days) - 1
 
 
 class Yfinance(YfinanceBase, LocalDataStore):
@@ -436,8 +432,6 @@ class Yfinance(YfinanceBase, LocalDataStore):
         base_location (pathlib.Path): filesystem directory where to store files.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     def update_and_load(self, symbol):
         """Update data for symbol and load it."""
@@ -452,7 +446,7 @@ class FredRate(FredBase, RateBase, SqliteDataStore):
 
 class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
     
-    def __init__(self, symbol, use_last_available_time=False, base_location=None):
+    def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
         self.symbol = symbol
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
@@ -463,7 +457,7 @@ class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
         
 class FredTimeSeries(DataEstimator, FredBase, PickleStore):
     
-    def __init__(self, symbol, use_last_available_time=False, base_location=None):
+    def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
         self.symbol = symbol
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
@@ -473,7 +467,7 @@ class FredTimeSeries(DataEstimator, FredBase, PickleStore):
     
 class FredRateTimeSeries(DataEstimator, FredBase, RateBase, PickleStore):
     
-    def __init__(self, symbol, use_last_available_time=False, base_location=None):
+    def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
         self.symbol = symbol
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time

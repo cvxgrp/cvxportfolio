@@ -20,7 +20,7 @@ The default parameters are chosen to approximate real market costs as well as
 possible. 
 """
 
-import cvxpy as cvx
+import cvxpy as cp
 import numpy as np
 import pandas as pd
 import copy
@@ -154,7 +154,7 @@ class HoldingCost(BaseCost):
         super().pre_evaluation(universe=universe, backtest_times=backtest_times)
         
         if not (self.spread_on_borrowing_stocks_percent is None):
-            self.borrow_cost_stocks = cvx.Parameter(len(universe) - 1, nonneg=True)
+            self.borrow_cost_stocks = cp.Parameter(len(universe) - 1, nonneg=True)
         
         
     def values_in_time(self, t, past_returns, **kwargs):
@@ -178,12 +178,12 @@ class HoldingCost(BaseCost):
         expression = 0. 
         
         if not (self.spread_on_borrowing_stocks_percent is None):
-           expression += cvx.multiply(self.borrow_cost_stocks, cvx.neg(w_plus)[:-1])
+           expression += cp.multiply(self.borrow_cost_stocks, cp.neg(w_plus)[:-1])
         
         if not (self.dividends is None):
-            expression -= cvx.multiply(self.dividends, w_plus[:-1])
-        assert cvx.sum(expression).is_convex()
-        return cvx.sum(expression)
+            expression -= cp.multiply(self.dividends, w_plus[:-1])
+        assert cp.sum(expression).is_convex()
+        return cp.sum(expression)
 
 
 class TransactionCost(BaseCost):
@@ -221,9 +221,9 @@ class TransactionCost(BaseCost):
             
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe=universe, backtest_times=backtest_times)
-        self.first_term_multiplier = cvx.Parameter(len(universe)-1, nonneg=True)
+        self.first_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
         if not (self.b is None):
-            self.second_term_multiplier = cvx.Parameter(len(universe)-1, nonneg=True)
+            self.second_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
 
     def values_in_time(self, t,  current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
         
@@ -241,10 +241,10 @@ class TransactionCost(BaseCost):
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
-        expression = cvx.abs(z[:-1]).T @ self.first_term_multiplier
+        expression = cp.abs(z[:-1]).T @ self.first_term_multiplier
         assert expression.is_convex()
         if not (self.b is None):
-            expression += (cvx.abs(z[:-1]) ** self.exponent).T @ self.second_term_multiplier
+            expression += (cp.abs(z[:-1]) ** self.exponent).T @ self.second_term_multiplier
             assert expression.is_convex()
         return expression
         

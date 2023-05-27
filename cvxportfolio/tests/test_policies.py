@@ -18,7 +18,7 @@ import unittest
 
 from pathlib import Path
 
-import cvxpy as cvx
+import cvxpy as cp
 import numpy as np
 import pandas as pd
 
@@ -39,9 +39,9 @@ class TestPolicies(unittest.TestCase):
         # cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
         cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
         cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
-        cls.w_plus = cvx.Variable(cls.returns.shape[1])
-        cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
-        cls.z = cvx.Variable(cls.returns.shape[1])
+        cls.w_plus = cp.Variable(cls.returns.shape[1])
+        cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
+        cls.z = cp.Variable(cls.returns.shape[1])
         cls.N = cls.returns.shape[1]
 
     def test_hold(self):
@@ -307,10 +307,10 @@ class TestPolicies(unittest.TestCase):
         # REPLICATE WITH CVXPY
         
         COV = self.returns.iloc[:121, :-1].cov(ddof=0).values #+ np.outer(self.returns.iloc[:121, :-1].mean(), self.returns.iloc[:121, :-1].mean())
-        w = cvx.Variable(self.N)
-        cvx.Problem(cvx.Maximize(w.T @ self.returns.iloc[:121].mean().values -
-                                 2 * cvx.quad_form(w[:-1], COV) -
-                                 5 * 1E-4 * cvx.sum(cvx.abs(w - curw)[:-1])
+        w = cp.Variable(self.N)
+        cp.Problem(cp.Maximize(w.T @ self.returns.iloc[:121].mean().values -
+                                 2 * cp.quad_form(w[:-1], COV) -
+                                 5 * 1E-4 * cp.sum(cp.abs(w - curw)[:-1])
                                  ),
                     [w >= 0, w <= 1, sum(w) == 1]
                     ).solve(solver='ECOS')

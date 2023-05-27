@@ -16,10 +16,10 @@ and MultiPeriodOptimization policies, or other Cvxpy-based policies.
 """
 
 
-import cvxpy as cvx
+import cvxpy as cp
 import numpy as np
 
-from .estimator import CvxpyExpressionEstimator, ParameterEstimator
+from .estimator import CvxpyExpressionEstimator, ParameterEstimator, DataEstimator
 from .forecast import HistoricalFactorizedCovariance
 
 __all__ = [
@@ -36,6 +36,8 @@ __all__ = [
     "MarketNeutral",
     "MinWeightsAtTimes",
     "MaxWeightsAtTimes",
+    "TurnoverLimit",
+    "MinCashBalance"
 ]
 
 
@@ -60,13 +62,20 @@ class BaseWeightConstraint(BaseConstraint):
     pass
 
 class MarketNeutral(BaseWeightConstraint):
+    """Initial implementation of market neutrality.
+    
+    The benchmark portfolio weights are computed here 
+    (weighting by rolling averages of the market volumes)
+    but instead should be their own class (used as well
+    by risk models, ...).
+    """
     
     def __init__(self):
         self.covarianceforecaster = HistoricalFactorizedCovariance()
     
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe=universe, backtest_times=backtest_times)
-        self.market_vector = cvx.Parameter(len(universe)-1)
+        self.market_vector = cp.Parameter(len(universe)-1)
     
     def values_in_time(self, t, past_volumes, past_returns, **kwargs):
         super().values_in_time(past_volumes=past_volumes, past_returns=past_returns, t=t, **kwargs)
@@ -79,6 +88,22 @@ class MarketNeutral(BaseWeightConstraint):
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         return w_plus[:-1].T @ self.market_vector == 0
+        
+        
+class TurnoverLimit(BaseTradeConstraint):
+    """Turnover limit as a fraction of the portfolio value.
+    
+    See page 37 of the book.
+    
+    :param delta: constant or changing in time turnover limit 
+    :type delta: float or pd.Series 
+    """
+    
+    def __init__(self, delta):
+        self.delta = ParameterEstimator(delta)
+        
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        return .5 * cp.norm1(z[:-1]) <= self.delta
         
 
 class ParticipationRateLimit(BaseTradeConstraint):
@@ -95,7 +120,7 @@ class ParticipationRateLimit(BaseTradeConstraint):
         self.volumes = ParameterEstimator(volumes)
         self.max_participation_rate = ParameterEstimator(
             max_fraction_of_volumes)
-        self.portfolio_value = cvx.Parameter(nonneg=True)
+        self.portfolio_value = cp.Parameter(nonneg=True)
 
     def values_in_time(self, current_portfolio_value, **kwargs):
         self.portfolio_value.value = current_portfolio_value
@@ -103,7 +128,7 @@ class ParticipationRateLimit(BaseTradeConstraint):
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return cvx.multiply(cvx.abs(z[:-1]), self.portfolio_value) <= cvx.multiply(
+        return cp.multiply(cp.abs(z[:-1]), self.portfolio_value) <= cp.multiply(
             self.volumes, self.max_participation_rate
         )
 
@@ -136,17 +161,37 @@ class LeverageLimit(BaseWeightConstraint):
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return cvx.norm(w_plus[:-1], 1) <= self.limit
+        return cp.norm(w_plus[:-1], 1) <= self.limit
 
 
-class LongCash(BaseWeightConstraint):
-    """Requires that cash be non-negative."""
-
+class MinCashBalance(BaseWeightConstraint):
+    """Requires that the cash account is larger than c_min dollars.
+    
+    This uses logic to subtract cash used as margin for the short 
+    positions that is not documented in the book but is
+    equivalent to the book definition's for long-only stock positions.
+    """
+    
+    def __init__(self, c_min):
+        self.c_min = DataEstimator(c_min)
+        self.rhs = cp.Parameter()
+    
+    def values_in_time(self, current_portfolio_value, **kwargs):
+        super().values_in_time(current_portfolio_value=current_portfolio_value, **kwargs)
+        self.rhs.value = self.c_min.current_value/current_portfolio_value
+    
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         # TODO clarify this
-        realcash = (w_plus[-1] - 2 * cvx.sum(cvx.neg(w_plus[:-1])))
-        return realcash >= 0
+        realcash = (w_plus[-1] - 2 * cp.sum(cp.neg(w_plus[:-1])))
+        return realcash >= self.rhs
+        
+    
+class LongCash(MinCashBalance):
+    """Requires that cash be non-negative."""
+    
+    def __init__(self):
+        super().__init__(0.)
 
 
 class DollarNeutral(BaseWeightConstraint):
@@ -195,7 +240,7 @@ class MinMaxWeightsAtTimes(BaseWeightConstraint):
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe=universe, backtest_times = backtest_times)
         self.backtest_times = backtest_times
-        self.limit = cvx.Parameter()
+        self.limit = cp.Parameter()
         
     def values_in_time(self, t, mpo_step, **kwargs):
         super().values_in_time(t=t, mpo_step=mpo_step, **kwargs)

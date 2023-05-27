@@ -47,8 +47,11 @@ are applied to make sure the system works well with real data.
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 
-objective = cvx.ReturnsForecast() - 3 * (cvx.FullCovariance() + \
-	0.05 * cvx.RiskForecastError()) - cvx.TransactionCost()
+gamma = 3       # risk aversion parameter (Chapter 4.2)
+kappa = 0.05    # covariance forecast error risk parameter (Chapter 4.3)
+objective = cvx.ReturnsForecast() - gamma * (
+	cvx.FullCovariance() + kappa * cvx.RiskForecastError()
+) - cvx.TransactionCost()
 constraints = [cvx.LeverageLimit(3)]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=2)
@@ -92,12 +95,12 @@ This will replicate our [development environment](https://docs.python.org/3/libr
 make test
 ```
 
-You activate the shell environment with one of scripts in `env/bin`, for example if you use bash
+You activate the shell environment with one of scripts in `env/bin` (or `env\Scripts` on windows), for example if you use bash on POSIX
 ```
 source env/bin/activate
 ```
 and from the environment you can run any of the scripts in the examples (the cvxportfolio package is installed in [editable mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html)). 
-Or, if you don't want to activate the environment, you can just run scripts directly using `env/bin/python`, like we do in the Makefile.
+(Or, if you don't want to activate the environment, you can just run scripts directly using `env/bin/python` or `env\Scripts\python` on windows, like we do in the Makefile.)
 
 
 

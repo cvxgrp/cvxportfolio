@@ -18,8 +18,6 @@ import unittest
 import shutil, tempfile
 from pathlib import Path
 
-
-import cvxpy as cvx
 import numpy as np
 import pandas as pd
 

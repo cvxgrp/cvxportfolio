@@ -17,7 +17,7 @@
 import unittest
 from pathlib import Path
 
-import cvxpy as cvx
+import cvxpy as cp
 import numpy as np
 import pandas as pd
 
@@ -31,9 +31,9 @@ class TestRisks(unittest.TestCase):
     def setUpClass(cls):
         """Load the data and initialize cvxpy vars."""
         cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0]).iloc[:, :USED_RETURNS]
-        cls.w_plus = cvx.Variable(cls.returns.shape[1])
-        cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
-        cls.z = cvx.Variable(cls.returns.shape[1])
+        cls.w_plus = cp.Variable(cls.returns.shape[1])
+        cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
+        cls.z = cp.Variable(cls.returns.shape[1])
         cls.N = cls.returns.shape[1]
         
     def boilerplate(self, model):
@@ -67,7 +67,7 @@ class TestRisks(unittest.TestCase):
         # N = returns.shape[1]
         # returns.iloc[:, -1] = 0.
 
-        # w_plus = cvx.Variable(N)
+        # w_plus = cp.Variable(N)
         # risk_model.pre_evaluation(
         #     returns.iloc[:, :], None, start_time=returns.index[50], end_time=None)
         # cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)

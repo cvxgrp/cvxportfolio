@@ -2,7 +2,7 @@ name: Test
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
-on: push
+on: [push, pull_request]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -45,7 +45,9 @@ jobs:
               
       - name: Install dependencies
         run: |
-              make env
+              python -m venv env
+              env/bin/python -m pip install .
+              env/bin/python -m pip install coverage
       
       - name: Run tests
         run: |
