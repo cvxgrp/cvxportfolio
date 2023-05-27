@@ -28,8 +28,7 @@ from cvxportfolio.simulator import MarketSimulator, MarketData, \
 from cvxportfolio.estimator import DataEstimator
 
 from copy import deepcopy
-
-import cvxportfolio as cp
+import cvxportfolio as cvx
 
 class TestSimulator(unittest.TestCase):
     
@@ -409,7 +408,7 @@ class TestSimulator(unittest.TestCase):
         end_time = '2023-04-20'
     
         ## hold
-        policy = cp.Hold()
+        policy = cvx.Hold()
         for i in range(10):
             np.random.seed(i)
             h = np.random.randn(3)*10000
@@ -429,7 +428,7 @@ class TestSimulator(unittest.TestCase):
             self.assertTrue(np.allclose(simh, h[:-1]))
         
         ## proportional_trade
-        policy = cp.ProportionalTradeToTargets(
+        policy = cvx.ProportionalTradeToTargets(
         targets = pd.DataFrame({pd.Timestamp(end_time) + pd.Timedelta('1d'):  pd.Series([0, 0, 1], simulator.returns.data.columns)}).T)
         
         for i in range(10):
@@ -448,12 +447,12 @@ class TestSimulator(unittest.TestCase):
             self.assertTrue(np.all(np.abs(h[:-1]) < simulator.prices.data.loc[end_time]))
             
     def test_backtest(self):
-        pol = cp.SinglePeriodOptimization(cp.ReturnsForecast() -
-            cp.ReturnsForecastError() -
-            .5 * cp.FullCovariance(),
-            [#cp.LongOnly(),
-            cp.LeverageLimit(1)], verbose=True)
-        sim = cp.MarketSimulator(['AAPL', 'MSFT'],#', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
+        pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
+            cvx.ReturnsForecastError() -
+            .5 * cvx.FullCovariance(),
+            [#cvx.LongOnly(),
+            cvx.LeverageLimit(1)], verbose=True)
+        sim = cvx.MarketSimulator(['AAPL', 'MSFT'],#', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
          base_location=self.datadir)
         result = sim.backtest(pol, pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
         
@@ -461,15 +460,15 @@ class TestSimulator(unittest.TestCase):
             
     def test_multiple_backtest(self):
         
-        pol = cp.SinglePeriodOptimization(cp.ReturnsForecast() -
-            cp.ReturnsForecastError() -
-            .5 * cp.FullCovariance(),
-            [#cp.LongOnly(),
-            cp.LeverageLimit(1)], verbose=True)
+        pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
+            cvx.ReturnsForecastError() -
+            .5 * cvx.FullCovariance(),
+            [#cvx.LongOnly(),
+            cvx.LeverageLimit(1)], verbose=True)
             
-        pol1 = cp.Uniform()
+        pol1 = cvx.Uniform()
         
-        sim = cp.MarketSimulator(['AAPL', 'MSFT'],#', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
+        sim = cvx.MarketSimulator(['AAPL', 'MSFT'],#', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
          base_location=self.datadir)
          
         with self.assertRaises(SyntaxError):
@@ -486,9 +485,9 @@ class TestSimulator(unittest.TestCase):
         """Test re-use of a worker process"""
         cpus = multiprocessing.cpu_count()
         
-        sim = cp.MarketSimulator(['AAPL', 'MSFT'], base_location=self.datadir)
+        sim = cvx.MarketSimulator(['AAPL', 'MSFT'], base_location=self.datadir)
                 
-        results = sim.backtest([cp.Uniform() for i in range(cpus*2)], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-02-01'), parallel=True)
+        results = sim.backtest([cvx.Uniform() for i in range(cpus*2)], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-02-01'), parallel=True)
         sharpes = [result.sharpe_ratio for result in results]
         self.assertTrue(len(set(sharpes)) == 1)
         
