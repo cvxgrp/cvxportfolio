@@ -18,6 +18,7 @@ import unittest
 from pathlib import Path
 import tempfile
 import shutil
+import multiprocessing
 
 import cvxpy as cvx
 import numpy as np
@@ -504,6 +505,18 @@ class TestSimulator(unittest.TestCase):
         result2, result3 =  sim.backtest([pol, pol1], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
         
         self.assertTrue(np.all(result.h == result3.h))
+        
+    
+    def test_multiple_backtest2(self):
+        """Test re-use of a worker process"""
+        cpus = multiprocessing.cpu_count()
+        
+        sim = cp.MarketSimulator(['AAPL', 'MSFT'], base_location=self.datadir)
+                
+        results = sim.backtest([cp.Uniform() for i in range(cpus*2)], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-02-01'), parallel=True)
+        sharpes = [result.sharpe_ratio for result in results]
+        self.assertTrue(len(set(sharpes)) == 1)
+        
          
          
                 
