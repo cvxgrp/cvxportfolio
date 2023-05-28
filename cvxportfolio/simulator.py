@@ -358,14 +358,14 @@ class MarketSimulator(Estimator):
             volumes=None,
             prices=None,
             costs=[simulate_transaction_cost, simulate_stocks_holding_cost],
-            spreads=0.,
+            # spreads=0.,
             round_trades=True,
-            per_share_fixed_cost=0.005,
-            transaction_cost_coefficient_b=1.,
-            transaction_cost_exponent=1.5,
-            window_sigma_estimate=252,
-            spread_on_borrowing_stocks_percent=.5,
-            spread_on_long_positions_percent=None,
+            # per_share_fixed_cost=0.005,
+            # transaction_cost_coefficient_b=1.,
+            # transaction_cost_exponent=1.5,
+            # window_sigma_estimate=252,
+            # spread_on_borrowing_stocks_percent=.5,
+            # spread_on_long_positions_percent=None,
             spread_on_lending_cash_percent=.5,
             spread_on_borrowing_cash_percent=.5,
             min_history_for_inclusion=250,
@@ -386,9 +386,9 @@ class MarketSimulator(Estimator):
             self.costs = costs
             self.prices = DataEstimator(prices) if prices is not None else None
             if prices is None:
-                if per_share_fixed_cost > 0:
-                    raise SyntaxError(
-                        "If you don't specify prices you can't request `per_share_fixed_cost` transaction costs.")
+                # if per_share_fixed_cost > 0:
+                #     raise SyntaxError(
+                #         "If you don't specify prices you can't request `per_share_fixed_cost` transaction costs.")
                 if round_trades:
                     raise SyntaxError(
                         "If you don't specify prices you can't request `round_trades`.")
@@ -398,12 +398,12 @@ class MarketSimulator(Estimator):
             self.base_location = base_location
             self.prepare_data()
 
-        self.spreads = DataEstimator(spreads)
+        # self.spreads = DataEstimator(spreads)
         self.round_trades = round_trades
-        self.per_share_fixed_cost = per_share_fixed_cost
-        self.transaction_cost_coefficient_b = transaction_cost_coefficient_b
-        self.transaction_cost_exponent = transaction_cost_exponent
-        self.window_sigma_estimate = window_sigma_estimate
+        # self.per_share_fixed_cost = per_share_fixed_cost
+        # self.transaction_cost_coefficient_b = transaction_cost_coefficient_b
+        # self.transaction_cost_exponent = transaction_cost_exponent
+        # self.window_sigma_estimate = window_sigma_estimate
         self.spread_on_lending_cash_percent = spread_on_lending_cash_percent
         self.spread_on_borrowing_cash_percent = spread_on_borrowing_cash_percent
         self.min_history_for_inclusion = min_history_for_inclusion
@@ -412,8 +412,8 @@ class MarketSimulator(Estimator):
         self.kwargs = kwargs
 
         # compute my DataEstimator(s)
-        self.sigma_estimate = DataEstimator(
-            self.returns.data.iloc[:, :-1].rolling(window=self.window_sigma_estimate, min_periods=1).std(ddof=0))#.shift(1))
+        # self.sigma_estimate = DataEstimator(
+        #     self.returns.data.iloc[:, :-1].rolling(window=self.window_sigma_estimate, min_periods=1).std(ddof=0))#.shift(1))
 
     def prepare_data(self):
         """Build data from data storage and download interfaces.
@@ -477,33 +477,33 @@ class MarketSimulator(Estimator):
         return result
 
 
-    def transaction_costs(self, u):
-        """Compute transaction costs at time t for dollar trade vector u.
-
-        Returns a non-positive float.
-
-        Args:
-            u (pd.Series): dollar trade vector for all stocks including cash (but the cash
-                term is not used here).
-        """
-
-        result = 0.
-        if self.prices is not None:
-
-            result += self.per_share_fixed_cost * int(sum(np.abs(u[:-1] + 1E-6) / self.prices.current_value))
-
-        if self.spreads is not None:
-            result += sum(self.spreads.current_value * np.abs(u[:-1]))/2.
-
-        result += (np.abs(u[:-1])**self.transaction_cost_exponent) @ (self.transaction_cost_coefficient_b * 
-            self.sigma_estimate.current_value / (
-            (self.volumes.current_value+1 # we add 1 to prevent 0 volumes error
-             ) ** (self.transaction_cost_exponent - 1)))
-            
-        assert not np.isnan(result)
-        assert not np.isinf(result)
-            
-        return -result
+    # def transaction_costs(self, u):
+    #     """Compute transaction costs at time t for dollar trade vector u.
+    #
+    #     Returns a non-positive float.
+    #
+    #     Args:
+    #         u (pd.Series): dollar trade vector for all stocks including cash (but the cash
+    #             term is not used here).
+    #     """
+    #
+    #     result = 0.
+    #     if self.prices is not None:
+    #
+    #         result += self.per_share_fixed_cost * int(sum(np.abs(u[:-1] + 1E-6) / self.prices.current_value))
+    #
+    #     if self.spreads is not None:
+    #         result += sum(self.spreads.current_value * np.abs(u[:-1]))/2.
+    #
+    #     result += (np.abs(u[:-1])**self.transaction_cost_exponent) @ (self.transaction_cost_coefficient_b *
+    #         self.sigma_estimate.current_value / (
+    #         (self.volumes.current_value+1 # we add 1 to prevent 0 volumes error
+    #          ) ** (self.transaction_cost_exponent - 1)))
+    #
+    #     assert not np.isnan(result)
+    #     assert not np.isinf(result)
+    #
+    #     return -result
 
     def cash_holding_cost(self, h_plus):
         """Compute holding cost on cash (including cash return) for post trade holdings h_plus."""
@@ -583,11 +583,11 @@ class MarketSimulator(Estimator):
         h_plus = h + u
 
         # we have updated the internal estimators and they are used by these methods
-        transaction_costs = self.transaction_costs(u)
-        new_transaction_costs = self.costs[0](t, u, 
+        # transaction_costs = self.transaction_costs(u)
+        transaction_costs = self.costs[0](t, u, 
             current_prices=current_prices, current_and_past_volumes=current_and_past_volumes, 
             current_and_past_returns=current_and_past_returns, **self.kwargs)
-        assert np.isclose(new_transaction_costs, transaction_costs)
+        # assert np.isclose(new_transaction_costs, transaction_costs)
         holding_costs = self.costs[1](t, h_plus, current_and_past_returns, **self.kwargs)
         cash_holding_costs = self.cash_holding_cost(h_plus)
 
@@ -697,7 +697,7 @@ class MarketSimulator(Estimator):
         self.returns.data = self.returns.data[reduced_universe]
         self.volumes.data = self.volumes.data[reduced_universe[:-1]]
         self.prices.data = self.prices.data[reduced_universe[:-1]]
-        self.sigma_estimate.data = self.sigma_estimate.data[reduced_universe[:-1]]
+        # self.sigma_estimate.data = self.sigma_estimate.data[reduced_universe[:-1]]
         
         # initialize policies and get initial portfolios
         for i in range(len(policy)):

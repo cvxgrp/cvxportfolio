@@ -168,22 +168,22 @@ class TestSimulator(unittest.TestCase):
             simulator = MarketSimulator(returns=pd.DataFrame(
                 [[0., 0.]]), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
 
-        with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator(returns=pd.DataFrame(
-                [[0., 0.]]), volumes=pd.DataFrame([[0.]]), round_trades=False)    
+        # with self.assertRaises(SyntaxError):
+        #     simulator = MarketSimulator(returns=pd.DataFrame(
+        #         [[0., 0.]]), volumes=pd.DataFrame([[0.]]), round_trades=False)
             
     def test_prepare_data(self):
         simulator = MarketSimulator(['ZM', 'META'], base_location=self.datadir)
         self.assertTrue(simulator.returns.data.shape[1] == 3)
         self.assertTrue( simulator.prices.data.shape[1] == 2)
         self.assertTrue( simulator.volumes.data.shape[1] == 2)
-        self.assertTrue( simulator.sigma_estimate.data.shape[1] == 2)
+        # self.assertTrue( simulator.sigma_estimate.data.shape[1] == 2)
         self.assertTrue( np.isnan(simulator.returns.data.iloc[-1, 0]))
         self.assertTrue( np.isnan(simulator.volumes.data.iloc[-1, 1]))
         self.assertTrue( not np.isnan(simulator.prices.data.iloc[-1, 0]))
         self.assertTrue( simulator.returns.data.index[-1] == simulator.volumes.data.index[-1])
         self.assertTrue( simulator.returns.data.index[-1] == simulator.prices.data.index[-1])
-        self.assertTrue( simulator.sigma_estimate.data.index[-1] == simulator.prices.data.index[-1])
+        # self.assertTrue( simulator.sigma_estimate.data.index[-1] == simulator.prices.data.index[-1])
         #self.assertTrue( np.isclose(simulator.sigma_estimate.data.iloc[-1,0],
         #     simulator.returns.data.iloc[-253:-1,0].std())    )
              
@@ -345,28 +345,28 @@ class TestSimulator(unittest.TestCase):
         
                 print(u)
         
-            old_spread = simulator.spreads
-    
-            ## transaction cost
-    
-            for i in range(10):
-                np.random.seed(i)
-                tmp = np.random.uniform(size=4)*1000
-                tmp[3] = -sum(tmp[:3])
-                u = simulator.round_trade_vector(u, simulator.prices.current_value)
-        
-                simulator.spreads = DataEstimator(np.random.uniform(size=3) * 1E-3)
-                simulator.spreads.values_in_time(t=t)
-        
-                shares = sum(np.abs(u[:-1] / simulator.prices.data.loc[t]))
-                tcost = - simulator.per_share_fixed_cost * shares
-                tcost -= np.abs(u[:-1]) @ simulator.spreads.data / 2
-                tcost -= sum((np.abs(u[:-1])**1.5) * simulator.sigma_estimate.data.loc[t] / np.sqrt(simulator.volumes.data.loc[t]))
-                sim_tcost = simulator.transaction_costs(u)
-        
-                self.assertTrue(np.isclose(tcost, sim_tcost))
-        
-            simulator.spreads = old_spread 
+            # old_spread = simulator.spreads
+            #
+            # ## transaction cost
+            #
+            # for i in range(10):
+            #     np.random.seed(i)
+            #     tmp = np.random.uniform(size=4)*1000
+            #     tmp[3] = -sum(tmp[:3])
+            #     u = simulator.round_trade_vector(u, simulator.prices.current_value)
+            #
+            #     simulator.spreads = DataEstimator(np.random.uniform(size=3) * 1E-3)
+            #     simulator.spreads.values_in_time(t=t)
+            #
+            #     shares = sum(np.abs(u[:-1] / simulator.prices.data.loc[t]))
+            #     tcost = - simulator.per_share_fixed_cost * shares
+            #     tcost -= np.abs(u[:-1]) @ simulator.spreads.data / 2
+            #     tcost -= sum((np.abs(u[:-1])**1.5) * simulator.sigma_estimate.data.loc[t] / np.sqrt(simulator.volumes.data.loc[t]))
+            #     sim_tcost = simulator.transaction_costs(u)
+            #
+            #     self.assertTrue(np.isclose(tcost, sim_tcost))
+            #
+            # simulator.spreads = old_spread
     
             # old_dividends = simulator.dividends  
     
