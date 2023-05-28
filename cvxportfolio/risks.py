@@ -23,7 +23,6 @@ import numpy as np
 import pandas as pd
 
 from .costs import BaseCost
-from .errors import ForeCastError
 from .forecast import HistoricalVariance, HistoricalFactorizedCovariance
 
 logger = logging.getLogger(__name__)

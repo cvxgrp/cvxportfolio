@@ -356,8 +356,9 @@ class MarketSimulator(Estimator):
             universe=[],
             returns=None,
             volumes=None,
-            costs=None,
+            # costs=None,
             prices=None,
+            costs=[simulate_transaction_cost, simulate_stocks_holding_cost],
             spreads=0.,
             round_trades=True,
             per_share_fixed_cost=0.005,
@@ -371,25 +372,26 @@ class MarketSimulator(Estimator):
             spread_on_borrowing_cash_percent=.5,
             min_history_for_inclusion=250,
             cash_key="USDOLLAR",
-            base_location=BASE_LOCATION):
+            base_location=BASE_LOCATION,
+            **kwargs):
         """Initialize the Simulator and download data if necessary."""
         if not len(universe):
-            if costs is None: # we allow old simulator syntax for the time being
-                if ((returns is None) or (volumes is None)):
-                    raise SyntaxError(
-                        "If you don't specify a universe you should pass `returns` and `volumes`.")
-                if not returns.shape[1] == volumes.shape[1] + 1:
-                    raise SyntaxError(
-                        "In `returns` you must include the cash returns as the last column (and not in `volumes`).")
+            # if costs is None: # we allow old simulator syntax for the time being
+            if ((returns is None) or (volumes is None)):
+                raise SyntaxError(
+                    "If you don't specify a universe you should pass `returns` and `volumes`.")
+            if not returns.shape[1] == volumes.shape[1] + 1:
+                raise SyntaxError(
+                    "In `returns` you must include the cash returns as the last column (and not in `volumes`).")
             self.returns = DataEstimator(returns)
             self.volumes = DataEstimator(volumes) if not volumes is None else volumes
             self.cash_key = returns.columns[-1]
             self.costs = costs
-            if not self.costs is None:
-                for cost in self.costs:
-                    assert isinstance(cost, BaseCost)
+            # if not self.costs is None:
+            #     for cost in self.costs:
+            #         assert isinstance(cost, BaseCost)
             self.prices = DataEstimator(prices) if prices is not None else None
-            if prices is None and self.costs is None:
+            if prices is None:# and self.costs is None:
                 if per_share_fixed_cost > 0:
                     raise SyntaxError(
                         "If you don't specify prices you can't request `per_share_fixed_cost` transaction costs.")
@@ -414,6 +416,9 @@ class MarketSimulator(Estimator):
         self.spread_on_lending_cash_percent = spread_on_lending_cash_percent
         self.spread_on_borrowing_cash_percent = spread_on_borrowing_cash_percent
         self.min_history_for_inclusion = min_history_for_inclusion
+        
+        self.costs = costs
+        self.kwargs = kwargs
 
         # compute my DataEstimator(s)
         self.sigma_estimate = DataEstimator(
@@ -573,17 +578,23 @@ class MarketSimulator(Estimator):
         # past_returns = self.returns.data.loc[self.returns.data.index < t]
         #assert np.all(past_returns.fillna(0.) == self.returns.data.iloc[:tidx].fillna(0.))
         past_returns = self.returns.data.iloc[:tidx]
+        current_and_past_returns = self.returns.data.iloc[:tidx+1]
         #past_volumes = self.volumes.data.loc[self.volumes.data.index < t]
         #assert np.all(past_volumes.fillna(0.) == self.volumes.data.iloc[:tidx].fillna(0.))
         past_volumes = self.volumes.data.iloc[:tidx]
+        current_and_past_volumes = self.volumes.data.iloc[:tidx+1]
+        
+        
 
         # update internal estimators (spreads, dividends, volumes, ..., )
         super().values_in_time(t=t)
+        
+        current_prices = self.prices.current_value
 
         # evaluate the policy
         s = time.time()
         z = policy.values_in_time(t=t, current_weights=current_weights, current_portfolio_value=current_portfolio_value, 
-            past_returns=past_returns, past_volumes=past_volumes, current_prices=self.prices.current_value, **kwargs)
+            past_returns=past_returns, past_volumes=past_volumes, current_prices=current_prices, **kwargs)
         policy_time = time.time() - s
         
         # for safety recompute cash
@@ -611,7 +622,13 @@ class MarketSimulator(Estimator):
 
         # we have updated the internal estimators and they are used by these methods
         transaction_costs = self.transaction_costs(u)
+        new_transaction_costs = self.costs[0](t, u, 
+            current_prices=current_prices, current_and_past_volumes=current_and_past_volumes, 
+            current_and_past_returns=current_and_past_returns, **self.kwargs)
+        #assert (new_transaction_costs == transaction_costs)
         holding_costs = self.stocks_holding_costs(h_plus)
+        new_holding_costs = self.costs[1](t, h_plus, current_and_past_returns, **self.kwargs)
+        #assert (new_holding_costs == holding_costs)
         cash_holding_costs = self.cash_holding_cost(h_plus)
 
         # multiply positions by market returns (only non-cash)

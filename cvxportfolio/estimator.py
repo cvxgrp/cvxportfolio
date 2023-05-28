@@ -229,6 +229,75 @@ class DataEstimator(Estimator):
 #         raise NotImplementedError
 
 
+# class KnownData(DataEstimator):
+#     """Data known beforehand to use in backtest.
+#
+#     :param data: user-provided data (known beforehand) in the form of time-indexed
+#         Series or DataFrame (points-in-time are used in the backtest),
+#         non-time indexed Series of DataFrame (treated as constant in time),
+#         or float. If time-indexed, it can be multi-indexed (for example for
+#         covariance matrices at points in time).
+#     :type data: pd.DataFrame, pd.Series, float
+#     :param use_last_available_time: if True, use last available time in the data
+#         at each point in the backtest
+#     :type use_last_available_time: bool
+#
+#     :ivar value: current point-in-time value populated during a backtest
+#
+#     :raises MissingValueError: if data retrieved at a point in time contains nan's
+#     """
+#
+#     def __init__(self, data, use_last_available_time=False):
+#         self.data = data
+#         self.use_last_available_time = use_last_available_time
+#
+#     def values_in_time(self, t, **kwargs):
+#         self.value = self.internal_values_in_time(t, *args, **kwargs)
+#
+#
+# class KnownDataParameter(KnownData):
+#     """Data known beforehand to use in backtest as Cvxpy parameter.
+#
+#     :param data: user-provided data (known beforehand) in the form of time-indexed
+#         Series or DataFrame (points-in-time are used in the backtest),
+#         non-time indexed Series of DataFrame (treated as constant in time),
+#         or float. If time-indexed, it can be multi-indexed (for example for
+#         covariance matrices at points in time).
+#     :type data: pd.DataFrame, pd.Series, float
+#     :param use_last_available_time: if True, use last available time in the data
+#         at each point in the backtest
+#     :type use_last_available_time: bool
+#     :param cvxpy: if True, creates a Cvxpy parameter as self.parameter
+#         with the shape of the provided data at the first point in time, and optional
+#         attributes positive_semi_definite and non_negative
+#     :type cvxpy: bool
+#     :param positive_semi_definite: if True, make a PSD Cvxpy parameter
+#     :type positive_semi_definite: bool
+#     :param non_negative: if True, make a non negative Cvxpy parameter
+#     :type non_negative: bool
+#
+#     :ivar parameter: Cvxpy parameter (if :param cvxpy: is True) with
+#         value equal to :ivar value:
+#
+#     :raises MissingValueError: if data retrieved at a point in time contains nan's
+#     """
+#
+#     def __init__(self, data, positive_semi_definite=False, non_negative=False, **kwargs):
+#         super().__init__(data, **kwargs)
+#         self.positive_semi_definite = positive_semi_definite
+#         self.non_negative = non_negative
+#
+#     def pre_evaluation(self, universe, backtest_times):
+#         value = super().internal_values_in_time(t=backtest_times[0])
+#         self.parameter = cp.Parameter(
+#             value if hasattr(value, "shape") else (),
+#             PSD=self.positive_semi_definite, nonneg=self.non_negative)
+#
+#     def values_in_time(self, t, **kwargs):
+#         self.parameter.value = self.internal_values_in_time(t, **kwargs)
+        
+        
+
 class ParameterEstimator(cvxpy.Parameter, DataEstimator, PolicyEstimator):
     """Data estimator of point-in-time values that contains a Cvxpy Parameter.
 
