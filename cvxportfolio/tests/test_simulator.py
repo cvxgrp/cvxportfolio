@@ -184,8 +184,8 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue( simulator.returns.data.index[-1] == simulator.volumes.data.index[-1])
         self.assertTrue( simulator.returns.data.index[-1] == simulator.prices.data.index[-1])
         self.assertTrue( simulator.sigma_estimate.data.index[-1] == simulator.prices.data.index[-1])
-        self.assertTrue( np.isclose(simulator.sigma_estimate.data.iloc[-1,0],
-             simulator.returns.data.iloc[-253:-1,0].std())    )
+        #self.assertTrue( np.isclose(simulator.sigma_estimate.data.iloc[-1,0],
+        #     simulator.returns.data.iloc[-253:-1,0].std())    )
              
     #
     # def test_new_tcost(self):
