@@ -100,37 +100,7 @@ You activate the shell environment with one of scripts in `env/bin` (or `env\Scr
 source env/bin/activate
 ```
 and from the environment you can run any of the scripts in the examples (the cvxportfolio package is installed in [editable mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html)). 
-(Or, if you don't want to activate the environment, you can just run scripts directly using `env/bin/python` or `env\Scripts\python` on windows, like we do in the Makefile.)
-
-
-
-Roadmap
--------
-We plan to release the first stable version of cvxportfolio by the end of Summer 2023. Many new features are going to be added
-and extensive testing will be performed by then. Here's a rough list of what we think `cvxportfolio 1.0` will implement:
-
-- Automated hyperparameter search and tuning. Hyperparameters will be defined as cvxportfolio objects, with optional bounds and spacing,
-	so that the simulator can iterate automatically through HPs combinations. Optionally the user can define a metric to be optimized
-	(for example among the ones provided by BacktestResult) and let cvxportfolio use heuristics to get an (at least, local) optimal
-	HP combination. We'll make sure that the optimization routine can be subclassed and substituted with custom ones easily, as 
-	is the case with all other cvxportfolio objects. The same can also be done in a Pareto optimization fashion, so for example the user can 
-	request a list of HP combinations that are Pareto optimal (in backtest) for excess return and risk.
-- Online and offline caching. All expensive computations (including database accesses) are performed by cvxportfolio in a lazy fashion.
-	For example risk model estimations are done online, during a backtest, with a view of the past market data that is provided by the market
-	simulator. We will make sure that all expensive computations are done only once. Policy objects will provide an online cache 
-	for their estimators (e.g., risk models) to share. For example, MPO policies have separate estimator objects for each MPO step so they benefit
-	from this. Then, at the end of a backtest, the same data will be stored offline, in the `~/cvxportfolio_data/` folder, along with market
-	data and the backtest result itself. This all is done safely with respect to parallel execution (we use Python native multiprocessing module
-	for (potentially massive) parallelism). If the user asks for the same backtest twice, the saved result will be returned. If the user ask
-	for a backtest performed yesterday, today, the backtest will only be updated with the new market data available (i.e., one day). 
-- Documentation, auditability, code readability, ease of subclassing. With fast development come API breaks and lagging documentation. That's
-	why we have fixed a date for the stable release and we mean to stick with it. Especially for a piece of software that aims to automate
-	many functions of investment management we want everything to be clearly documented, but mostly readable and auditable. 
-	We'll use Python logging functionalities to record every action performed in the simulation that is not documented in the book (for example,
-	cancel a trade order because the market data for the day has null volumes, or add/remove one symbol during a backtest because their market
-	data starts or ceases to exist) and those will be saved with the backtest result itself. The total number of lines of code will not exceed
-	significantly the current value (we'll maybe even reduce it). The object model used now (estimators) will probably remain, but with added
-	methods for caching, and be clearly documented for subclassing (so that custom classes can as well use all cvxportfolio functionalities). 
+Or, if you don't want to activate the environment, you can just run scripts directly using `env/bin/python` or `env\Scripts\python` on windows, like we do in the Makefile.
 
 
 Examples from the book
