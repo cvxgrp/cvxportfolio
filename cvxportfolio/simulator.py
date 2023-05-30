@@ -379,7 +379,7 @@ class MarketSimulator(Estimator):
             returns=None,
             volumes=None,
             prices=None,
-            costs=[simulate_transaction_cost, simulate_stocks_holding_cost],
+            # costs=[simulate_transaction_cost, simulate_stocks_holding_cost],
             round_trades=True,
             spread_on_lending_cash_percent=.5,
             spread_on_borrowing_cash_percent=.5,
@@ -398,7 +398,6 @@ class MarketSimulator(Estimator):
             self.returns = DataEstimator(returns)
             self.volumes = DataEstimator(volumes) if not volumes is None else volumes
             self.cash_key = returns.columns[-1]
-            self.costs = costs
             self.prices = DataEstimator(prices) if prices is not None else None
             if prices is None:
                 if round_trades:
@@ -415,7 +414,8 @@ class MarketSimulator(Estimator):
         self.spread_on_borrowing_cash_percent = spread_on_borrowing_cash_percent
         self.min_history_for_inclusion = min_history_for_inclusion
         
-        self.costs = costs
+        # self.costs = costs
+        self.costs = [simulate_transaction_cost, simulate_stocks_holding_cost, simulate_cash_holding_cost]
         self.kwargs = kwargs
 
 
@@ -480,23 +480,6 @@ class MarketSimulator(Estimator):
         result[-1] = -sum(result[:-1])
         return result
 
-
-    def cash_holding_cost(self, h_plus):
-        """Compute holding cost on cash (including cash return) for post trade holdings h_plus."""
-
-        cash_return = self.returns.current_value[-1]
-
-        # we subtract from cash the value of borrowed stocks
-        # if trading CFDs/futures we must amend this
-        real_cash = h_plus[-1] + sum(np.minimum(h_plus[:-1], 0.))
-
-        if real_cash > 0:
-            return real_cash * \
-                max(cash_return - (self.spread_on_lending_cash_percent/100)/self.periods_per_year, 0.)
-        else:
-            return real_cash * \
-                (cash_return + (self.spread_on_borrowing_cash_percent/100)/self.periods_per_year)
-                
 
     def simulate(self, t, h, policy, **kwargs):
         """Get next portfolio and statistics used by Backtest for reporting.
@@ -565,14 +548,17 @@ class MarketSimulator(Estimator):
             current_and_past_returns=current_and_past_returns, **self.kwargs)
         # assert np.isclose(new_transaction_costs, transaction_costs)
         holding_costs = self.costs[1](t, h_plus, current_and_past_returns, **self.kwargs)
-        cash_holding_costs = self.cash_holding_cost(h_plus)
+        cash_holding_costs = self.costs[2](t, h_plus, current_and_past_returns, **self.kwargs)
+        # self.cash_holding_cost(h_plus)
         
-        # credit costs to cash (includes cash return)
+        # initialize tomorrow's holdings
+        h_next = pd.Series(h_plus, copy=True)
+        
+        # credit costs to cash
         h_next[-1] = h_plus[-1] + (transaction_costs + holding_costs + cash_holding_costs)
 
-        # multiply positions by market returns (only non-cash)
-        h_next = pd.Series(h_plus, copy=True)
-        h_next[:-1] *= (1 + self.returns.current_value[:-1])
+        # multiply positions by market returns
+        h_next *= (1 + self.returns.current_value)
         
         
             

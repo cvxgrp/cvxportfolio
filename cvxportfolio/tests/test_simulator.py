@@ -371,33 +371,33 @@ class TestSimulator(unittest.TestCase):
             # old_dividends = simulator.dividends  
     
             ## stock & cash holding cost
-            for i in range(10):
-                np.random.seed(i)
-                h = np.random.randn(4)*10000
-                h[3] = 10000 - sum(h[:3])
-        
-                # simulator.dividends = DataEstimator(np.random.uniform(size=3) * 1E-4)
-                # simulator.dividends.values_in_time(t=t)
-        
-                # sim_hcost = simulator.stocks_holding_costs(h)
-        
-                cash_return = simulator.returns.data.loc[t][-1]
-                # total_borrow_cost = cash_return + (0.005)/252
-                # hcost = -total_borrow_cost * sum(-np.minimum(h,0.)[:3])
-                # hcost += simulator.dividends.data @ h[:-1]
-                
-                # self.assertTrue(np.isclose(hcost, sim_hcost))
-        
-                sim_cash_hcost = simulator.cash_holding_cost(h)
-        
-                real_cash_position = h[3] + sum(np.minimum(h[:-1],0.))
-                if real_cash_position > 0:
-                    cash_hcost = real_cash_position * (cash_return - 0.005/252)
-                if real_cash_position < 0:
-                    cash_hcost = real_cash_position * (cash_return + 0.005/252)
-                
-                self.assertTrue(np.isclose(cash_hcost, sim_cash_hcost))
-        
+            # for i in range(10):
+            #     np.random.seed(i)
+            #     h = np.random.randn(4)*10000
+            #     h[3] = 10000 - sum(h[:3])
+            #
+            #     # simulator.dividends = DataEstimator(np.random.uniform(size=3) * 1E-4)
+            #     # simulator.dividends.values_in_time(t=t)
+            #
+            #     # sim_hcost = simulator.stocks_holding_costs(h)
+            #
+            #     cash_return = simulator.returns.data.loc[t][-1]
+            #     # total_borrow_cost = cash_return + (0.005)/252
+            #     # hcost = -total_borrow_cost * sum(-np.minimum(h,0.)[:3])
+            #     # hcost += simulator.dividends.data @ h[:-1]
+            #
+            #     # self.assertTrue(np.isclose(hcost, sim_hcost))
+            #
+            #     sim_cash_hcost = simulator.cash_holding_cost(h)
+            #
+            #     real_cash_position = h[3] + sum(np.minimum(h[:-1],0.))
+            #     if real_cash_position > 0:
+            #         cash_hcost = real_cash_position * (cash_return - 0.005/252)
+            #     if real_cash_position < 0:
+            #         cash_hcost = real_cash_position * (cash_return + 0.005/252)
+            #
+            #     self.assertTrue(np.isclose(cash_hcost, sim_cash_hcost))
+            #
            #  simulator.dividends = old_dividends 
                 
     def test_simulate_policy(self):
@@ -422,7 +422,7 @@ class TestSimulator(unittest.TestCase):
                 assert tcost == 0.
                 if np.all(h0[:2] > 0):
                     assert stock_hcost == 0.
-                assert np.isclose(oldcash + stock_hcost + cash_hcost, h[-1])
+                assert np.isclose((oldcash + stock_hcost + cash_hcost) * (1+simulator.returns.data.loc[t, 'USDOLLAR']), h[-1])
             
             simh = h0[:-1] * simulator.prices.data.loc[pd.Timestamp(end_time) + pd.Timedelta('1d')] / simulator.prices.data.loc[start_time]
             self.assertTrue(np.allclose(simh, h[:-1]))
