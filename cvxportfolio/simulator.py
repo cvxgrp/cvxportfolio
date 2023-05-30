@@ -22,6 +22,7 @@ import logging
 import time
 from pathlib import Path
 from multiprocessing import Pool
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -38,6 +39,27 @@ __all__ = ['MarketSimulator']
 def parallel_worker(policy, simulator, start_time, end_time, h):
 
     return simulator._single_backtest(policy, start_time, end_time, h)
+    
+    
+def load_cache(universe, base_location):
+    folder = base_location/f'hash(universe)={hash(tuple(universe))}'
+    try:
+        with open(folder/'cache.pkl', 'rb') as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        #print('CACHE NOT FOUND', folder)
+        #print('universe')
+        #print(universe)
+        return {}
+    
+def store_cache(cache, universe, base_location):
+    folder = base_location/f'hash(universe)={hash(tuple(universe))}'
+    folder.mkdir(exist_ok=True)
+    #print('STORING CACHE', folder)
+    #print('universe')
+    #print(universe)
+    with open(folder/'cache.pkl', 'wb') as f:
+        pickle.dump(cache, f)
     
     
 def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
@@ -130,7 +152,7 @@ class MarketData:
         cash_key='USDOLLAR', base_location=BASE_LOCATION, 
         periods_per_year=252, **kwargs):
         
-        self.base_location = base_location
+        self.base_location = Path(base_location)
         self.periods_per_year = periods_per_year
         
         if len(universe):
@@ -399,7 +421,7 @@ class MarketSimulator(Estimator):
         else:
             self.universe = universe
             self.cash_key = cash_key
-            self.base_location = base_location
+            self.base_location = Path(base_location)
             self.prepare_data()
 
         self.spreads = DataEstimator(spreads)
@@ -629,6 +651,11 @@ class MarketSimulator(Estimator):
         policy.pre_evaluation(universe = self.returns.data.columns, 
                              backtest_times = self.returns.data.index[(self.returns.data.index<end_time) & 
                                  (self.returns.data.index>=start_time)])
+        
+        # if policy initialized a cache, rewrite it with loaded one
+        if hasattr(policy, 'cache'):
+            policy.cache = load_cache(universe=self.returns.data.columns, base_location=self.base_location)
+            
                                  
     def _single_backtest(self, policy, start_time, end_time, h):
         
@@ -655,6 +682,9 @@ class MarketSimulator(Estimator):
         
         h_df.loc[pd.Timestamp(end_time)] = h  
         
+        # store cache
+        if hasattr(policy, 'cache'):
+            store_cache(cache=policy.cache, universe=self.returns.data.columns, base_location=self.base_location)
         
         return BacktestResult(h=h_df, u=u, z=z, tcost=tcost, hcost_stocks=hcost_stocks, hcost_cash=hcost_cash, 
             cash_returns=self.returns.data[self.cash_key].loc[u.index], 

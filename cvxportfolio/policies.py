@@ -289,6 +289,7 @@ class AdaptiveRebalance(BaseTradingPolicy):
 
 
 
+
 class MultiPeriodOptimization(BaseTradingPolicy):
     """Multi Period Optimization policy.
 
@@ -389,6 +390,8 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         self.z_at_lags = [cp.Variable(len(universe)) for i in range(self.planning_horizon)] 
         self.w_plus_at_lags = [cp.Variable(len(universe)) for i in range(self.planning_horizon)]
         self.w_plus_minus_w_bm_at_lags = [cp.Variable(len(universe)) for i in range(self.planning_horizon)]
+
+        # simulator will overwrite this with cached loaded from disk
         self.cache = {}
 
         # self.compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
@@ -434,6 +437,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         return pd.Series(self.z_at_lags[0].value, current_weights.index)
 
 
+    
 class SinglePeriodOptimization(MultiPeriodOptimization):
     """Single Period Optimization policy.
 
