@@ -387,6 +387,7 @@ class MarketSimulator(Estimator):
             base_location=BASE_LOCATION,
             **kwargs):
         """Initialize the Simulator and download data if necessary."""
+        self.base_location = Path(base_location)
         if not len(universe):
             if ((returns is None) or (volumes is None)):
                 raise SyntaxError(
@@ -405,7 +406,6 @@ class MarketSimulator(Estimator):
         else:
             self.universe = universe
             self.cash_key = cash_key
-            self.base_location = Path(base_location)
             self.prepare_data()
 
         self.round_trades = round_trades
