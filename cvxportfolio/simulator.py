@@ -23,6 +23,7 @@ import time
 from pathlib import Path
 from multiprocessing import Pool
 import pickle
+import hashlib
 
 import numpy as np
 import pandas as pd
@@ -40,24 +41,22 @@ def parallel_worker(policy, simulator, start_time, end_time, h):
 
     return simulator._single_backtest(policy, start_time, end_time, h)
     
+
+def hash_universe(universe):
+    return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
+        
     
 def load_cache(universe, base_location):
-    folder = base_location/f'hash(universe)={hash(tuple(universe))}'
+    folder = base_location/f'hash(universe)={hash_universe(universe)}'
     try:
         with open(folder/'cache.pkl', 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
-        #print('CACHE NOT FOUND', folder)
-        #print('universe')
-        #print(universe)
         return {}
     
 def store_cache(cache, universe, base_location):
-    folder = base_location/f'hash(universe)={hash(tuple(universe))}'
+    folder = base_location/f'hash(universe)={hash_universe(universe)}'
     folder.mkdir(exist_ok=True)
-    #print('STORING CACHE', folder)
-    #print('universe')
-    #print(universe)
     with open(folder/'cache.pkl', 'wb') as f:
         pickle.dump(cache, f)
     
@@ -601,7 +600,6 @@ class MarketSimulator(Estimator):
         
         h_df.loc[pd.Timestamp(end_time)] = h  
         
-        # store cache
         if hasattr(policy, 'cache'):
             store_cache(cache=policy.cache, universe=self.returns.data.columns, base_location=self.base_location)
         
@@ -682,15 +680,13 @@ class MarketSimulator(Estimator):
         def nonparallel_runner(zipped):
             return self._single_backtest(zipped[0], start_time, end_time, zipped[1])
                     
-        
         # decide if run in parallel or not
-        if (not parallel) or len(policy) == 1:
+        if (not parallel) or len(policy)==1: 
             result = list(map(nonparallel_runner, zip(policy, h)))
         else:
             with Pool() as p:
-                # if not __name__ == '__main__':
-                #     raise SyntaxError('When executing parallel backtests, the Simulator should be instantiated ')
                 result = p.starmap(parallel_worker, zip(policy, [self] * len(policy), [start_time] * len(policy), [end_time] * len(policy), h))
+           
                 
         if len(result) == 1:
             return result[0]
