@@ -35,6 +35,7 @@ from .data import FredRateTimeSeries, YfinanceTimeSeries, BASE_LOCATION
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
 
+PPY = 252
 __all__ = ['MarketSimulator']
 
 
@@ -64,7 +65,7 @@ def store_cache(cache, universe, base_location):
 def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
                                 spread_on_lending_cash_percent=0.5, 
                                 spread_on_borrowing_cash_percent=0.5, 
-                                periods_per_year=252, **kwargs):
+                                periods_per_year=PPY, **kwargs):
     """Simulate holding cost for the cash account. 
     
     TODO move arguments documentation from MarketSimulator.
@@ -85,7 +86,7 @@ def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
 
 def simulate_stocks_holding_cost(t, h_plus, current_and_past_returns,
                                 spread_on_borrowing_stocks_percent=0.5, 
-                                dividends=0., periods_per_year=252, **kwargs):
+                                dividends=0., periods_per_year=PPY, **kwargs):
     """Holding cost for stocks. 
     
     TODO move arguments documentation from MarketSimulator.
@@ -105,7 +106,7 @@ def simulate_stocks_holding_cost(t, h_plus, current_and_past_returns,
 def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
                             current_and_past_returns, persharecost=0.005,
                             linearcost=0., nonlinearcoefficient=1.,
-                            windowsigma=252, exponent=1.5, **kwargs):    
+                            windowsigma=PPY, exponent=1.5, **kwargs):    
     """Transaction cost model for the market simulator.
     
     TODO move arguments documentation from MarketSimulator
@@ -149,8 +150,9 @@ class MarketData:
         universe = [], 
         returns=None, volumes=None, prices=None, 
         cash_key='USDOLLAR', base_location=BASE_LOCATION, 
-        periods_per_year=252, min_history=252, max_contiguous_missing='10d', 
-        **kwargs):
+        periods_per_year=PPY, min_history=PPY, max_contiguous_missing='10d',
+        **kwargs,
+    ):
         
         # drop duplicates and ensure ordering
         universe = sorted(set(universe))
@@ -443,24 +445,25 @@ class MarketSimulator:
     :type base_location: pathlib.Path or str: 
     """
 
-    periods_per_year = 252
-
     def __init__(
-            self,
-            universe=[],
-            returns=None,
-            volumes=None,
-            prices=None,
-            # costs=[simulate_transaction_cost, simulate_stocks_holding_cost],
-            round_trades=True,
-            # spread_on_lending_cash_percent=.5,
-            # spread_on_borrowing_cash_percent=.5,
-            min_history_for_inclusion=250,
-            cash_key="USDOLLAR",
-            base_location=BASE_LOCATION,
-            **kwargs):
+        self,
+        universe=[],
+        returns=None,
+        volumes=None,
+        prices=None,
+        # costs=[simulate_transaction_cost, simulate_stocks_holding_cost],
+        round_trades=True,
+        # spread_on_lending_cash_percent=.5,
+        # spread_on_borrowing_cash_percent=.5,
+        min_history_for_inclusion=252,
+        cash_key="USDOLLAR",
+        base_location=BASE_LOCATION,
+        periods_per_year=252,
+        **kwargs
+    ):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
+        self.periods_per_year = periods_per_year
         
         self.market_data = MarketData(
             universe=universe, returns=returns,
@@ -559,9 +562,14 @@ class MarketSimulator:
         # we have updated the internal estimators and they are used by these methods
         transaction_costs = self.costs[0](t, u, 
             current_prices=current_prices, current_and_past_volumes=current_and_past_volumes, 
+            windowsigma=self.periods_per_year,
             current_and_past_returns=current_and_past_returns, **self.kwargs)
-        holding_costs = self.costs[1](t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns, **self.kwargs)
-        cash_holding_costs = self.costs[2](t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns, **self.kwargs)
+        holding_costs = self.costs[1](
+            t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns,
+            periods_per_year=self.periods_per_year, **self.kwargs)
+        cash_holding_costs = self.costs[2](
+            t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns,
+            periods_per_year=self.periods_per_year, **self.kwargs)
         
         # initialize tomorrow's holdings
         h_next = pd.Series(h_plus, copy=True)
