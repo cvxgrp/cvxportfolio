@@ -161,8 +161,8 @@ class TestSimulator(unittest.TestCase):
                 [[0.]]), volumes=pd.DataFrame([[0.]]))
 
         # not raises
-        simulator = MarketSimulator(returns=pd.DataFrame([[0., 0.]]), volumes=pd.DataFrame(
-            [[0.]]), per_share_fixed_cost=0., round_trades=False)
+        simulator = MarketSimulator(returns=pd.DataFrame([[0., 0.]], columns=['A', 'USDOLLAR']), volumes=pd.DataFrame(
+            [[0.]], columns=['A']), per_share_fixed_cost=0., round_trades=False)
 
         with self.assertRaises(SyntaxError):
             simulator = MarketSimulator(returns=pd.DataFrame(

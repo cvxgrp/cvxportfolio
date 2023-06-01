@@ -38,7 +38,6 @@ __all__ = ['MarketSimulator']
 
 
 def parallel_worker(policy, simulator, start_time, end_time, h):
-
     return simulator._single_backtest(policy, start_time, end_time, h)
     
 
@@ -247,6 +246,7 @@ class MarketData:
         if not cash_key == 'USDOLLAR':
             raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
             
+        # TODO do rate transformation here with periods_per_year
         data = FredRateTimeSeries('DFF', base_location=self.base_location)
         data.pre_evaluation()
         self.returns[cash_key] = data.data
@@ -380,14 +380,21 @@ class MarketSimulator(Estimator):
             prices=None,
             # costs=[simulate_transaction_cost, simulate_stocks_holding_cost],
             round_trades=True,
-            spread_on_lending_cash_percent=.5,
-            spread_on_borrowing_cash_percent=.5,
+            # spread_on_lending_cash_percent=.5,
+            # spread_on_borrowing_cash_percent=.5,
             min_history_for_inclusion=250,
             cash_key="USDOLLAR",
             base_location=BASE_LOCATION,
             **kwargs):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
+        
+        # self.market_data = MarketData(
+        #     universe=universe, returns=returns,
+        #     volumes=volumes, prices=prices,
+        #     cash_key=cash_key, base_location=base_location,
+        #     periods_per_year=252, **kwargs)
+                
         if not len(universe):
             if ((returns is None) or (volumes is None)):
                 raise SyntaxError(
@@ -409,8 +416,6 @@ class MarketSimulator(Estimator):
             self.prepare_data()
 
         self.round_trades = round_trades
-        self.spread_on_lending_cash_percent = spread_on_lending_cash_percent
-        self.spread_on_borrowing_cash_percent = spread_on_borrowing_cash_percent
         self.min_history_for_inclusion = min_history_for_inclusion
         
         # self.costs = costs
@@ -495,20 +500,16 @@ class MarketSimulator(Estimator):
 
         # get view of past data
         tidx = self.returns.data.index.get_loc(t)
-        # past_returns = self.returns.data.loc[self.returns.data.index < t]
-        #assert np.all(past_returns.fillna(0.) == self.returns.data.iloc[:tidx].fillna(0.))
         past_returns = self.returns.data.iloc[:tidx]
         current_and_past_returns = self.returns.data.iloc[:tidx+1]
-        #past_volumes = self.volumes.data.loc[self.volumes.data.index < t]
-        #assert np.all(past_volumes.fillna(0.) == self.volumes.data.iloc[:tidx].fillna(0.))
         past_volumes = self.volumes.data.iloc[:tidx]
         current_and_past_volumes = self.volumes.data.iloc[:tidx+1]
         
-        
+
+        # past_returns, past_volumes, current_prices = self.market_data.serve_data_policy(t)
 
         # update internal estimators (spreads, dividends, volumes, ..., )
         super().values_in_time(t=t)
-        
         current_prices = self.prices.current_value
 
         # evaluate the policy
@@ -523,6 +524,9 @@ class MarketSimulator(Estimator):
         
         # trades in dollars
         u = z * current_portfolio_value
+        
+        # get data for simulator
+        # current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
 
         # zero out trades on stock that weren't trading on that day 
         current_volumes = pd.Series(self.volumes.current_value, self.volumes.data.columns)
