@@ -148,9 +148,14 @@ class MarketData:
     
     def __init__(self, 
         universe = [], 
-        returns=None, volumes=None, prices=None, 
-        cash_key='USDOLLAR', base_location=BASE_LOCATION, 
-        periods_per_year=PPY, min_history=PPY, max_contiguous_missing='10d',
+        returns=None,
+        volumes=None,
+        prices=None, 
+        cash_key='USDOLLAR',
+        base_location=BASE_LOCATION, 
+        periods_per_year=PPY,
+        min_history=PPY,
+        max_contiguous_missing='10d',
         **kwargs,
     ):
         
@@ -459,7 +464,7 @@ class MarketSimulator:
         cash_key="USDOLLAR",
         base_location=BASE_LOCATION,
         periods_per_year=252,
-        **kwargs
+        **kwargs,
     ):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
