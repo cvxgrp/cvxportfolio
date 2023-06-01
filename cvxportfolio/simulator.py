@@ -283,10 +283,23 @@ class MarketData:
         self.returns.iloc[-1] = np.nan
         self.volumes.iloc[-1] = np.nan
         
+        
+    def backtest_times(self, start_time=None, end_time=None, include_end=False):
+        """Get trading calendar from market data."""
+        result = self.returns.index
+        if start_time:
+            result = result[result >= start_time]
+        if end_time:
+            result = result[(result <= end_time)]
+        if not include_end:
+            result = result[:-1]
+        return result
 
         
 
-class MarketSimulator(Estimator):
+        
+
+class MarketSimulator:
     """This class implements a simulator of market performance for trading strategies.
 
     We strive to make the parameters here as accurate as possible. The following is
@@ -389,31 +402,31 @@ class MarketSimulator(Estimator):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
         
-        # self.market_data = MarketData(
-        #     universe=universe, returns=returns,
-        #     volumes=volumes, prices=prices,
-        #     cash_key=cash_key, base_location=base_location,
-        #     periods_per_year=252, **kwargs)
+        self.market_data = MarketData(
+            universe=universe, returns=returns,
+            volumes=volumes, prices=prices,
+            cash_key=cash_key, base_location=base_location,
+            periods_per_year=252, **kwargs)
                 
-        if not len(universe):
-            if ((returns is None) or (volumes is None)):
+        # if not len(universe):
+        #     if ((returns is None) or (volumes is None)):
+        #         raise SyntaxError(
+        #             "If you don't specify a universe you should pass `returns` and `volumes`.")
+        #     if not returns.shape[1] == volumes.shape[1] + 1:
+        #         raise SyntaxError(
+        #            "In `returns` you must include the cash returns as the last column (and not in `volumes`).")
+        #    self.returns = DataEstimator(returns)
+        #    self.volumes = DataEstimator(volumes) if not volumes is None else volumes
+        #    self.cash_key = returns.columns[-1]
+        #    self.prices = DataEstimator(prices) if prices is not None else None
+        if not len(universe) and prices is None:
+            if round_trades:
                 raise SyntaxError(
-                    "If you don't specify a universe you should pass `returns` and `volumes`.")
-            if not returns.shape[1] == volumes.shape[1] + 1:
-                raise SyntaxError(
-                    "In `returns` you must include the cash returns as the last column (and not in `volumes`).")
-            self.returns = DataEstimator(returns)
-            self.volumes = DataEstimator(volumes) if not volumes is None else volumes
-            self.cash_key = returns.columns[-1]
-            self.prices = DataEstimator(prices) if prices is not None else None
-            if prices is None:
-                if round_trades:
-                    raise SyntaxError(
-                        "If you don't specify prices you can't request `round_trades`.")
-        else:
-            self.universe = universe
-            self.cash_key = cash_key
-            self.prepare_data()
+                    "If you don't specify prices you can't request `round_trades`.")
+       #  else:
+            # self.universe = universe
+            # self.cash_key = cash_key
+            # self.prepare_data()
 
         self.round_trades = round_trades
         self.min_history_for_inclusion = min_history_for_inclusion
@@ -422,58 +435,6 @@ class MarketSimulator(Estimator):
         self.costs = [simulate_transaction_cost, simulate_stocks_holding_cost, simulate_cash_holding_cost]
         self.kwargs = kwargs
 
-
-    def prepare_data(self):
-        """Build data from data storage and download interfaces.
-
-        This is a first cut, it's doing a for loop when we could instead parallelize
-        at the `yfinance` level and use the estimator logic of TimeSeries directly.
-        """
-        self.database_accesses = {}
-        print('Updating data')
-        for stock in self.universe:
-            print('.')
-            self.database_accesses[stock] = YfinanceTimeSeries(stock, base_location=self.base_location)
-            self.database_accesses[stock].pre_evaluation()
-        if not self.cash_key == 'USDOLLAR':
-            raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
-        self.database_accesses[self.cash_key] = FredRateTimeSeries('DFF', base_location=self.base_location)
-        self.database_accesses[self.cash_key].pre_evaluation()
-        # print()
-
-        # build returns
-        self.returns = pd.DataFrame(
-            {stock: self.database_accesses[stock].data['Return'] for stock in self.universe})
-        self.returns[self.cash_key] = self.database_accesses[self.cash_key].data
-        self.returns[self.cash_key] = self.returns[self.cash_key].fillna(
-            method='ffill')
-        
-
-        # build volumes
-        self.volumes = pd.DataFrame(
-            {stock: self.database_accesses[stock].data['ValueVolume'] for stock in self.universe})
-        
-
-        # build prices
-        self.prices = pd.DataFrame(
-            {stock: self.database_accesses[stock].data['Open'] for stock in self.universe})
-            
-        
-        # yfinance has some issues with most recent data; we patch it here but this
-        # logic should go in .data
-        if self.prices.iloc[-5:].isnull().any().any():
-            drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
-            self.prices = self.prices.loc[self.prices.index<drop_at]
-            self.returns = self.returns.loc[self.returns.index<drop_at]
-            self.volumes = self.volumes.loc[self.volumes.index<drop_at]
-        
-        # for consistency we must also nan-out the last row of returns and volumes
-        self.returns.iloc[-1] = np.nan
-        self.volumes.iloc[-1] = np.nan
-        
-        self.returns = DataEstimator(self.returns)
-        self.volumes = DataEstimator(self.volumes)
-        self.prices = DataEstimator(self.prices)
         
     @staticmethod
     def round_trade_vector(u, current_prices):
@@ -496,21 +457,12 @@ class MarketSimulator(Estimator):
         # translate to weights
         current_portfolio_value = sum(h)
         current_weights = h / current_portfolio_value
-        # print(t, current_portfolio_value)
 
-        # get view of past data
-        tidx = self.returns.data.index.get_loc(t)
-        past_returns = self.returns.data.iloc[:tidx]
-        current_and_past_returns = self.returns.data.iloc[:tidx+1]
-        past_volumes = self.volumes.data.iloc[:tidx]
-        current_and_past_volumes = self.volumes.data.iloc[:tidx+1]
-        
-
-        # past_returns, past_volumes, current_prices = self.market_data.serve_data_policy(t)
+        past_returns, past_volumes, current_prices = self.market_data.serve_data_policy(t)
 
         # update internal estimators (spreads, dividends, volumes, ..., )
-        super().values_in_time(t=t)
-        current_prices = self.prices.current_value
+        # TODO this should be superflous now
+        # super().values_in_time(t=t)
 
         # evaluate the policy
         s = time.time()
@@ -526,16 +478,16 @@ class MarketSimulator(Estimator):
         u = z * current_portfolio_value
         
         # get data for simulator
-        # current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
+        current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
 
         # zero out trades on stock that weren't trading on that day 
-        current_volumes = pd.Series(self.volumes.current_value, self.volumes.data.columns)
+        current_volumes = current_and_past_volumes.iloc[-1]
         non_tradable_stocks = current_volumes[current_volumes <= 0].index
         u[non_tradable_stocks] = 0.
 
         # round trades
         if self.round_trades:
-            u = self.round_trade_vector(u, self.prices.current_value)
+            u = self.round_trade_vector(u, current_prices)
             
         # for safety recompute cash
         u[-1] = -sum(u[:-1])
@@ -545,14 +497,11 @@ class MarketSimulator(Estimator):
         h_plus = h + u
 
         # we have updated the internal estimators and they are used by these methods
-        # transaction_costs = self.transaction_costs(u)
         transaction_costs = self.costs[0](t, u, 
             current_prices=current_prices, current_and_past_volumes=current_and_past_volumes, 
             current_and_past_returns=current_and_past_returns, **self.kwargs)
-        # assert np.isclose(new_transaction_costs, transaction_costs)
-        holding_costs = self.costs[1](t, h_plus, current_and_past_returns, **self.kwargs)
-        cash_holding_costs = self.costs[2](t, h_plus, current_and_past_returns, **self.kwargs)
-        # self.cash_holding_cost(h_plus)
+        holding_costs = self.costs[1](t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns, **self.kwargs)
+        cash_holding_costs = self.costs[2](t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns, **self.kwargs)
         
         # initialize tomorrow's holdings
         h_next = pd.Series(h_plus, copy=True)
@@ -561,22 +510,20 @@ class MarketSimulator(Estimator):
         h_next[-1] = h_plus[-1] + (transaction_costs + holding_costs + cash_holding_costs)
 
         # multiply positions by market returns
-        h_next *= (1 + self.returns.current_value)
-        
-        
+        current_returns = current_and_past_returns.iloc[-1]
+        h_next *= (1 + current_returns)
             
         return h_next, z, u, transaction_costs, holding_costs, cash_holding_costs, policy_time
         
     def initialize_policy(self, policy, start_time, end_time):
         """Initialize the policy object.
         """
-        policy.pre_evaluation(universe = self.returns.data.columns, 
-                             backtest_times = self.returns.data.index[(self.returns.data.index<end_time) & 
-                                 (self.returns.data.index>=start_time)])
+        policy.pre_evaluation(universe = self.market_data.universe,
+                             backtest_times = self.market_data.backtest_times(start_time, end_time))
         
         # if policy initialized a cache, rewrite it with loaded one
         if hasattr(policy, 'cache'):
-            policy.cache = load_cache(universe=self.returns.data.columns, base_location=self.base_location)
+            policy.cache = load_cache(universe=self.market_data.universe, base_location=self.base_location)
             
                                  
     def _single_backtest(self, policy, start_time, end_time, h):
@@ -586,16 +533,16 @@ class MarketSimulator(Estimator):
         if hasattr(policy, 'compile_to_cvxpy'):
             policy.compile_to_cvxpy()
         
-        h_df = pd.DataFrame(columns=self.returns.data.columns)
-        u = pd.DataFrame(columns=self.returns.data.columns)
-        z = pd.DataFrame(columns=self.returns.data.columns)
+        h_df = pd.DataFrame(columns=self.market_data.universe)
+        u = pd.DataFrame(columns=self.market_data.universe)
+        z = pd.DataFrame(columns=self.market_data.universe)
         tcost = pd.Series(dtype=float)
         hcost_stocks = pd.Series(dtype=float)
         hcost_cash = pd.Series(dtype=float)
         policy_times = pd.Series(dtype=float)
         simulator_times = pd.Series(dtype=float)
         
-        for t in self.returns.data.index[(self.returns.data.index >= start_time) & (self.returns.data.index < end_time)]:
+        for t in self.market_data.backtest_times(start_time, end_time):
             h_df.loc[t] = h
             s = time.time()
             h, z.loc[t], u.loc[t], tcost.loc[t], hcost_stocks.loc[t], hcost_cash.loc[t], policy_times.loc[t] = \
@@ -605,10 +552,10 @@ class MarketSimulator(Estimator):
         h_df.loc[pd.Timestamp(end_time)] = h  
         
         if hasattr(policy, 'cache'):
-            store_cache(cache=policy.cache, universe=self.returns.data.columns, base_location=self.base_location)
+            store_cache(cache=policy.cache, universe=self.market_data.universe, base_location=self.base_location)
         
         return BacktestResult(h=h_df, u=u, z=z, tcost=tcost, hcost_stocks=hcost_stocks, hcost_cash=hcost_cash, 
-            cash_returns=self.returns.data[self.cash_key].loc[u.index], 
+            cash_returns=self.market_data.returns.iloc[:,-1].loc[u.index], 
                 policy_times=policy_times, simulator_times=simulator_times)
         
                   
@@ -659,18 +606,22 @@ class MarketSimulator(Estimator):
             raise SyntaxError("If passing lists of policies and initial portfolios they must have the same length.")
         
         # discover start and end times
-        start_time = pd.Series(self.returns.data.index >= start_time, self.returns.data.index).idxmax()
-        if end_time is None:
-            end_time  = self.returns.data.index[-1]
-        else:
-            end_time = self.returns.data.index[self.returns.data.index <= end_time][-1]
+        # start_time = pd.Series(self.returns.data.index >= start_time, self.returns.data.index).idxmax()
+        # if end_time is None:
+        #     end_time  = self.returns.data.index[-1]
+        # else:
+        #    end_time = self.returns.data.index[self.returns.data.index <= end_time][-1]
+            
+        backtest_times_inclusive = self.market_data.backtest_times(start_time, end_time, include_end=True)
+        start_time = backtest_times_inclusive[0]
+        end_time = backtest_times_inclusive[-1]
             
         # TODO fix this - discard names that don't meet the min_history_for_inclusion
-        history = (~self.returns.data.loc[self.returns.data.index < start_time].isnull()).sum()
-        reduced_universe = self.returns.data.columns[history >= self.min_history_for_inclusion]
-        self.returns.data = self.returns.data[reduced_universe]
-        self.volumes.data = self.volumes.data[reduced_universe[:-1]]
-        self.prices.data = self.prices.data[reduced_universe[:-1]]
+        history = (~self.market_data.returns.loc[self.market_data.returns.index < start_time].isnull()).sum()
+        reduced_universe = self.market_data.returns.columns[history >= self.min_history_for_inclusion]
+        self.market_data.returns = self.market_data.returns[reduced_universe]
+        self.market_data.volumes = self.market_data.volumes[reduced_universe[:-1]]
+        self.market_data.prices = self.market_data.prices[reduced_universe[:-1]]
         # self.sigma_estimate.data = self.sigma_estimate.data[reduced_universe[:-1]]
         
         # initialize policies and get initial portfolios
@@ -678,7 +629,7 @@ class MarketSimulator(Estimator):
             self.initialize_policy(policy[i], start_time, end_time)
         
             if h[i] is None:
-                h[i] = pd.Series(0., self.returns.data.columns)
+                h[i] = pd.Series(0., self.market_data.universe)
                 h[i][-1] = initial_value
                 
         def nonparallel_runner(zipped):
