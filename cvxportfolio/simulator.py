@@ -25,6 +25,7 @@ from multiprocess import Pool
 import pickle
 import hashlib
 from functools import cached_property
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -151,6 +152,9 @@ class MarketData:
         periods_per_year=252, min_history=252, max_contiguous_missing='10d', 
         **kwargs):
         
+        # drop duplicates and ensure ordering
+        universe = sorted(set(universe))
+        
         self.base_location = Path(base_location)
         self.periods_per_year = periods_per_year
         self.min_history = min_history
@@ -173,12 +177,10 @@ class MarketData:
         
         self.set_read_only()
         self.check_sizes()
-        
-        
+            
     @property
     def universe(self):
         return self.returns.columns
-    
     
     def check_sizes(self):
         
@@ -307,42 +309,53 @@ class MarketData:
         for self.max_contiguous_missing. Defaults values are 252 and 10 
         respectively.
         """
-        all_ts = []
+        self.entry_dates = defaultdict(list)
+        self.exit_dates = defaultdict(list)
         for asset in self.returns.columns[:-1]:
             single_asset_returns = self.returns[asset].dropna()
             if len(single_asset_returns) > self.min_history: 
-                entry_date = single_asset_returns.index[self.min_history]
+                self.entry_dates[single_asset_returns.index[self.min_history]].append(asset)
                 exit_date = single_asset_returns.index[-1]
-                if (self.returns.index[-1] - exit_date) < pd.Timedelta(self.max_contiguous_missing):
-                    exit_date = None 
-            else:
-                entry_date, exit_date = None, None
-            all_ts += [entry_date, exit_date]
-        return sorted([el for el in set(all_ts) if el])
+                if (self.returns.index[-1] - exit_date) >= pd.Timedelta(self.max_contiguous_missing):
+                    self.exit_dates[exit_date].append(asset) 
+
+        return sorted(set(self.exit_dates) | set(self.entry_dates))
         
+    @cached_property    
+    def limited_universes(self):
+        """Valid universes for each section, minus cash."""
+        result = {}
+        uni = []
+        for ts in self.break_timestamps:
+            uni += self.entry_dates[ts]
+            uni = [el for el in uni if not el in self.exit_dates[ts]]
+            result[ts] = tuple(sorted(uni))
+        return result
+        
+        
+    # def break_up_backtest(self, start_time=None, end_time=None, min_history=252):
+    #     """Break up backtest into smaller backtests with constant universe.
+    #     """
+    #
+    #     backtest_times = self.backtest_times(start_time, end_time)
+    #     breakpoints = [el for el in self.break_timestamps if
+    #         (el > backtest_times[0]) and el <= backtest_times[-1]]
+    #
+    #     if not len(breakpoints):
+    #         return backtest_times
+    #
+    #     results = [backtest_times[backtest_times < breakpoints[0]]]
+    #
+    #     for i in range(len(breakpoints)-1):
+    #         results.append(
+    #         backtest_times[(backtest_times >= breakpoints[i]) & (backtest_times < breakpoints[i+1])]
+    #         )
+    #
+    #     results += [backtest_times[backtest_times >= breakpoints[-1]]]
+    #
+    #     return results
         
     
-    def break_up_backtest(self, start_time=None, end_time=None, min_history=252):
-        """Break up backtest into smaller backtests with constant universe.
-        """
-        
-        backtest_times = self.backtest_times(start_time, end_time)
-        breakpoints = [el for el in self.break_timestamps if 
-            (el > backtest_times[0]) and el <= backtest_times[-1]]
-            
-        if not len(breakpoints):
-            return backtest_times
-        
-        results = [backtest_times[backtest_times < breakpoints[0]]]
-        
-        for i in range(len(breakpoints)-1):
-            results.append(
-            backtest_times[(backtest_times >= breakpoints[i]) & (backtest_times < breakpoints[i+1])]
-            )
-            
-        results += [backtest_times[backtest_times >= breakpoints[-1]]]
-        
-        return results
 
         
 

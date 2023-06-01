@@ -75,7 +75,8 @@ class TestSimulator(unittest.TestCase):
     def test_break_timestamp(self):
         md = MarketData(['AAPL', 'ZM', 'TSLA'], base_location=self.datadir)
         self.assertTrue(pd.Timestamp('2020-04-20') in md.break_timestamps)
-        self.assertTrue(len(md.break_up_backtest('2000-01-01')) == 3)
+        # self.assertTrue(len(md.break_up_backtest('2000-01-01')) == 3)
+        self.assertTrue(md.limited_universes[pd.Timestamp('2011-06-28')] == ('AAPL', 'TSLA'))
         
         
     def test_market_data_object_safety(self):
