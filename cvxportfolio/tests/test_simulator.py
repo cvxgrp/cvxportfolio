@@ -72,6 +72,11 @@ class TestSimulator(unittest.TestCase):
         print(t)
         self.assertTrue(current_prices.name == t)
         
+    def test_break_timestamp(self):
+        md = MarketData(['AAPL', 'ZM', 'TSLA'], base_location=self.datadir)
+        self.assertTrue(pd.Timestamp('2020-04-20') in md.break_timestamps)
+        self.assertTrue(len(md.break_up_backtest('2000-01-01')) == 3)
+        
         
     def test_market_data_object_safety(self):
         t = self.returns.index[10]

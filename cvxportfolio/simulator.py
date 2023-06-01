@@ -24,13 +24,13 @@ from pathlib import Path
 from multiprocess import Pool
 import pickle
 import hashlib
+from functools import cached_property
 
 import numpy as np
 import pandas as pd
 
 from .costs import BaseCost
 from .data import FredRateTimeSeries, YfinanceTimeSeries, BASE_LOCATION
-from .returns import ReturnsForecast
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
 
@@ -148,10 +148,13 @@ class MarketData:
         universe = [], 
         returns=None, volumes=None, prices=None, 
         cash_key='USDOLLAR', base_location=BASE_LOCATION, 
-        periods_per_year=252, **kwargs):
+        periods_per_year=252, min_history=252, max_contiguous_missing='10d', 
+        **kwargs):
         
         self.base_location = Path(base_location)
         self.periods_per_year = periods_per_year
+        self.min_history = min_history
+        self.max_contiguous_missing = max_contiguous_missing
         
         if len(universe):
             self.get_market_data(universe)
@@ -267,7 +270,7 @@ class MarketData:
         self.prices = pd.DataFrame({stock: database_accesses[stock].data['Open'] for stock in universe})
         
         self.remove_missing_recent()
-        
+                
         
     def remove_missing_recent(self):
             
@@ -295,7 +298,51 @@ class MarketData:
             result = result[:-1]
         return result
 
+    @cached_property
+    def break_timestamps(self):
+        """List of timestamps at which a backtest should be broken.
         
+        An asset enters into a backtest after having non-NaN returns
+        for self.min_history periods and exits after having NaN returns
+        for self.max_contiguous_missing. Defaults values are 252 and 10 
+        respectively.
+        """
+        all_ts = []
+        for asset in self.returns.columns[:-1]:
+            single_asset_returns = self.returns[asset].dropna()
+            if len(single_asset_returns) > self.min_history: 
+                entry_date = single_asset_returns.index[self.min_history]
+                exit_date = single_asset_returns.index[-1]
+                if (self.returns.index[-1] - exit_date) < pd.Timedelta(self.max_contiguous_missing):
+                    exit_date = None 
+            else:
+                entry_date, exit_date = None, None
+            all_ts += [entry_date, exit_date]
+        return sorted([el for el in set(all_ts) if el])
+        
+        
+    
+    def break_up_backtest(self, start_time=None, end_time=None, min_history=252):
+        """Break up backtest into smaller backtests with constant universe.
+        """
+        
+        backtest_times = self.backtest_times(start_time, end_time)
+        breakpoints = [el for el in self.break_timestamps if 
+            (el > backtest_times[0]) and el <= backtest_times[-1]]
+            
+        if not len(breakpoints):
+            return backtest_times
+        
+        results = [backtest_times[backtest_times < breakpoints[0]]]
+        
+        for i in range(len(breakpoints)-1):
+            results.append(
+            backtest_times[(backtest_times >= breakpoints[i]) & (backtest_times < breakpoints[i+1])]
+            )
+            
+        results += [backtest_times[backtest_times >= breakpoints[-1]]]
+        
+        return results
 
         
 

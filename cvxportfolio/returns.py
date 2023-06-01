@@ -38,22 +38,6 @@ class BaseReturnsModel(BaseCost):
     """
 
 
-# class Kelly(BaseReturnsModel):
-#     r"""Maximize historical log-returns."""
-#
-#     def __init__(self, rolling):
-#         self.rolling = rolling
-#
-#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-#         self.past_returns = cp.Parameter((returns.shape[1], self.rolling))
-#
-#     def values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs):
-#         self.past_returns.value = past_returns.iloc[-self.rolling:].values.T
-#
-#     def compile_to_cvxpy(self, w_plus, z, v):
-#         return cp.sum(cp.log(w_plus.T @ self.past_returns + 1)) / self.rolling
-    
-
 class ReturnsForecast(BaseReturnsModel):
     r"""Returns forecast, either provided by the user or computed from the data.
     
@@ -159,20 +143,6 @@ class ReturnsForecast(BaseReturnsModel):
             
         self.decayfactor = decayfactor
         
-       
-    # @classmethod # we make it a classmethod so that also covariances can use it
-    # def update_full_mean(cls, past_returns, last_estimation, last_counts, last_time):
-    #
-    #     if last_time is None: # full estimation
-    #         estimation = past_returns.sum()
-    #         counts = past_returns.count()
-    #     else:
-    #         assert last_time == past_returns.index[-2]
-    #         estimation = last_estimation * last_counts + past_returns.iloc[-1].fillna(0.)
-    #         counts = last_counts + past_returns.iloc[-1:].count()
-    #
-    #     return estimation/counts, counts, past_returns.index[-1]
-            
         
     def pre_evaluation(self, universe, backtest_times):
         
@@ -183,13 +153,6 @@ class ReturnsForecast(BaseReturnsModel):
         
         super().values_in_time(t=t, past_returns=past_returns, mpo_step=mpo_step, **kwargs)
         
-        # if self.r_hat is None:
-        #     tmp = past_returns.mean()
-        #     if self.lastforcash:
-        #         tmp.iloc[-1] = past_returns.iloc[-1, -1]
-        #     self.r_hat_parameter.value = tmp.values
-        # else:
-        #     self.r_hat_parameter.value = self.r_hat.current_value
         
         self.r_hat_parameter.value = self.r_hat.current_value * (self.decayfactor**(mpo_step)
             if self.decayfactor else 1.)
@@ -248,14 +211,6 @@ class ReturnsForecastError(BaseRiskModel):
 
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
-        # if self.deltas is None:
-        #     # if self.mode == 'full':
-        #     tmp = (past_returns.iloc[:,:].std() / np.sqrt(past_returns.iloc[:,:].count())).values
-        #     if self.zeroforcash:
-        #         tmp[-1] = 0.
-        #     self.deltas_parameter.value = tmp
-        # else:
-        #     self.deltas_parameter.value = self.deltas.current_value
         self.deltas_parameter.value = self.deltas.current_value
 
 
