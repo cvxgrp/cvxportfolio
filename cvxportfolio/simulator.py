@@ -460,10 +460,10 @@ class MarketSimulator:
         round_trades=True,
         # spread_on_lending_cash_percent=.5,
         # spread_on_borrowing_cash_percent=.5,
-        min_history_for_inclusion=252,
+        min_history_for_inclusion=PPY,
         cash_key="USDOLLAR",
         base_location=BASE_LOCATION,
-        periods_per_year=252,
+        periods_per_year=PPY,
         **kwargs,
     ):
         """Initialize the Simulator and download data if necessary."""
@@ -474,7 +474,7 @@ class MarketSimulator:
             universe=universe, returns=returns,
             volumes=volumes, prices=prices,
             cash_key=cash_key, base_location=base_location,
-            periods_per_year=252, **kwargs)
+            periods_per_year=self.periods_per_year, **kwargs)
                 
         # if not len(universe):
         #     if ((returns is None) or (volumes is None)):
