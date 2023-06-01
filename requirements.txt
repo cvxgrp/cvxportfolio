@@ -10,3 +10,4 @@ wheel
 numpydoc
 myst_parser
 coverage
+multiprocess

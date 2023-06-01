@@ -21,7 +21,7 @@ import copy
 import logging
 import time
 from pathlib import Path
-from multiprocessing import Pool
+from multiprocess import Pool
 import pickle
 import hashlib
 

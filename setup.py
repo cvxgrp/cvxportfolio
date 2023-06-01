@@ -18,5 +18,6 @@ setup(
                       "numpy",
                       "matplotlib",
                       "yfinance",
-                      "cvxpy>=1.0.6"],
+                      "cvxpy>=1.0.6",
+                      "multiprocess"],
 )
