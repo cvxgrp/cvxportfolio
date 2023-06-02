@@ -122,7 +122,7 @@ def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
     if not (persharecost is None):
         if current_prices is None:
             raise SyntaxError("If you don't provide prices you should set persharecost to None")
-        result += persharecost * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices))
+        result += persharecost * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
 
     result += sum(DataEstimator(linearcost).values_in_time(t) * np.abs(u.iloc[:-1]))
 
