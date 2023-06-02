@@ -153,7 +153,6 @@ class MarketData:
         prices=None, 
         cash_key='USDOLLAR',
         base_location=BASE_LOCATION, 
-        periods_per_year=PPY,
         min_history=PPY,
         max_contiguous_missing='10d',
         **kwargs,
@@ -163,7 +162,6 @@ class MarketData:
         universe = sorted(set(universe))
         
         self.base_location = Path(base_location)
-        self.periods_per_year = periods_per_year
         self.min_history = min_history
         self.max_contiguous_missing = max_contiguous_missing
         
@@ -188,6 +186,13 @@ class MarketData:
     @property
     def universe(self):
         return self.returns.columns
+        
+    @cached_property
+    def PPY(self):
+        "Periods per year, assumes returns are about equally spaced."
+        idx = self.returns.index
+        return int(np.round(len(idx) / ((idx[-1] - idx[0]) / pd.Timedelta('365.24d'))))
+        
     
     def check_sizes(self):
         
@@ -463,18 +468,19 @@ class MarketSimulator:
         min_history_for_inclusion=PPY,
         cash_key="USDOLLAR",
         base_location=BASE_LOCATION,
-        periods_per_year=PPY,
+        # periods_per_year=PPY,
         **kwargs,
     ):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
-        self.periods_per_year = periods_per_year
+        # self.periods_per_year = periods_per_year
         
         self.market_data = MarketData(
             universe=universe, returns=returns,
             volumes=volumes, prices=prices,
             cash_key=cash_key, base_location=base_location,
-            periods_per_year=self.periods_per_year, **kwargs)
+            # periods_per_year=self.periods_per_year, 
+            **kwargs)
                 
         # if not len(universe):
         #     if ((returns is None) or (volumes is None)):
@@ -567,14 +573,14 @@ class MarketSimulator:
         # we have updated the internal estimators and they are used by these methods
         transaction_costs = self.costs[0](t, u, 
             current_prices=current_prices, current_and_past_volumes=current_and_past_volumes, 
-            windowsigma=self.periods_per_year,
+            windowsigma=self.market_data.PPY,
             current_and_past_returns=current_and_past_returns, **self.kwargs)
         holding_costs = self.costs[1](
             t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns,
-            periods_per_year=self.periods_per_year, **self.kwargs)
+            periods_per_year=self.market_data.PPY, **self.kwargs)
         cash_holding_costs = self.costs[2](
             t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns,
-            periods_per_year=self.periods_per_year, **self.kwargs)
+            periods_per_year=self.market_data.PPY, **self.kwargs)
         
         # initialize tomorrow's holdings
         h_next = pd.Series(h_plus, copy=True)
