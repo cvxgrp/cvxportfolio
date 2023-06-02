@@ -131,7 +131,7 @@ class TestCosts(unittest.TestCase):
             current_portfolio_value = value,
             past_returns=self.returns.iloc[:12], 
             past_volumes=self.volumes.iloc[:12],
-            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]).values)
+            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]))
         
         
         self.z.value = np.random.randn(self.returns.shape[1])
@@ -145,7 +145,7 @@ class TestCosts(unittest.TestCase):
         
         # spread and fixed cost
         
-        prices = pd.Series(np.random.uniform(1, 100, size=self.returns.shape[1]-1), self.returns.columns[:-1]).values
+        prices = pd.Series(np.random.uniform(1, 100, size=self.returns.shape[1]-1), self.returns.columns[:-1])
         
         tcost.values_in_time(t=self.returns.index[23], 
             current_portfolio_value = value,
@@ -169,7 +169,7 @@ class TestCosts(unittest.TestCase):
             current_portfolio_value = value,
             past_returns=self.returns.iloc[:34], 
             past_volumes=self.volumes.iloc[:34],
-            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]).values)
+            current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]))
         
         
         self.z.value = np.random.randn(self.returns.shape[1])

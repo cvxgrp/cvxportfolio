@@ -294,7 +294,7 @@ class TestPolicies(unittest.TestCase):
             current_portfolio_value=1000,
             past_returns=self.returns.iloc[:121],
             past_volumes=self.volumes.iloc[:121],
-            current_prices=pd.Series(1., self.volumes.columns).values)
+            current_prices=pd.Series(1., self.volumes.columns))
             
        
 
@@ -352,7 +352,7 @@ class TestPolicies(unittest.TestCase):
             current_portfolio_value=1000,
             past_returns=self.returns.iloc[:134],
             past_volumes=self.volumes.iloc[:134],
-            current_prices=pd.Series(1., self.volumes.columns).values)
+            current_prices=pd.Series(1., self.volumes.columns))
 
         self.assertFalse(np.allclose(result, 0.))
 
@@ -368,7 +368,7 @@ class TestPolicies(unittest.TestCase):
             current_portfolio_value=1000,
             past_returns=self.returns.iloc[:134],
             past_volumes=self.volumes.iloc[:134],
-            current_prices=pd.Series(1., self.volumes.columns).values)
+            current_prices=pd.Series(1., self.volumes.columns))
 
         self.assertTrue(np.allclose(result2, 0., atol=1e-7))
         
@@ -402,7 +402,7 @@ class TestPolicies(unittest.TestCase):
                 current_portfolio_value=1000,
                 past_returns=self.returns.iloc[:134],
                 past_volumes=self.volumes.iloc[:134],
-                current_prices=pd.Series(1., self.volumes.columns).values)
+                current_prices=pd.Series(1., self.volumes.columns))
             
     def test_single_period_optimization_unbounded(self):
 
@@ -434,7 +434,7 @@ class TestPolicies(unittest.TestCase):
                 current_portfolio_value=1000,
                 past_returns=self.returns.iloc[:134],
                 past_volumes=self.volumes.iloc[:134],
-                current_prices=pd.Series(1., self.volumes.columns).values)
+                current_prices=pd.Series(1., self.volumes.columns))
      
     def test_multi_period_optimization2(self):
         """Test that MPO1 and MPO2 and MPO5 return same if no tcost, and diff if tcost"""
@@ -504,7 +504,7 @@ class TestPolicies(unittest.TestCase):
                 current_portfolio_value=1000,
                 past_returns=self.returns.iloc[:67],
                 past_volumes=self.volumes.iloc[:67],
-                current_prices=pd.Series(1., self.volumes.columns).values))
+                current_prices=pd.Series(1., self.volumes.columns)))
 
         self.assertFalse(np.allclose(results[0], results[1], atol=1e-4))
         self.assertFalse(np.allclose(results[1], results[2], atol=1e-4))
@@ -558,7 +558,7 @@ class TestPolicies(unittest.TestCase):
                 current_portfolio_value=1000,
                 past_returns=self.returns.iloc[:67],
                 past_volumes=self.volumes.iloc[:67],
-                current_prices=pd.Series(1., self.volumes.columns).values) + curw - benchmark)
+                current_prices=pd.Series(1., self.volumes.columns)) + curw - benchmark)
                                         
         self.assertTrue(np.isclose(np.linalg.norm(diff_to_benchmarks[0]), 0.))
         self.assertTrue(np.linalg.norm(diff_to_benchmarks[0]) < np.linalg.norm(diff_to_benchmarks[1]))
