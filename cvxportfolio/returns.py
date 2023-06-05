@@ -162,57 +162,45 @@ class ReturnsForecast(BaseReturnsModel):
     # """
 
     def __init__(self, r_hat=None, #rolling=None, halflife=None, 
-                lastforcash=True, 
+                #lastforcash=True, 
                 decayfactor=None,
-                subtractshorts=True):
+                #subtractshorts=True
+                ):
         
         if not r_hat is None:
             self.r_hat = DataEstimator(r_hat)
         else:
-            self.r_hat = HistoricalMeanReturn(lastforcash=lastforcash)
+            self.r_hat = HistoricalMeanReturn()#lastforcash=lastforcash)
             
         # self.lastforcash = True
-        self.subtractshorts = subtractshorts
+        #self.subtractshorts = subtractshorts
         
-        if self.subtractshorts:
-            self.cash_return = cp.Parameter(nonneg=True)
+        #if self.subtractshorts:
+        #    self.cash_return = cp.Parameter(nonneg=True)
             
         self.decayfactor = decayfactor
         
         
     def pre_evaluation(self, universe, backtest_times):
         
-        self.r_hat_parameter = cp.Parameter(len(universe))
+        self.r_hat_parameter = cp.Parameter(len(universe)-1)
         
     
     def values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
         
         super().values_in_time(t=t, past_returns=past_returns, mpo_step=mpo_step, **kwargs)
         
-        
         self.r_hat_parameter.value = self.r_hat.current_value * (self.decayfactor**(mpo_step)
             if self.decayfactor else 1.)
 
             
-        if self.subtractshorts:
-            self.cash_return.value = self.r_hat_parameter.value[-1]
+        # if self.subtractshorts:
+        #     self.cash_return.value = self.r_hat_parameter.value[-1]
 
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        
-        return w_plus[:-1].T @ self.r_hat_parameter[:-1]
-        
-        # if self.subtractshorts:
-        #     # TODO too complicated to have this here
-        #     # maybe remove and increase holdingcost (ignoring borrow/lend spreads?)
-        #     noncash = w_plus[:-1].T @ self.r_hat_parameter[:-1]
-        #     realcash = (w_plus[-1] - 2 * cp.sum(cp.neg(w_plus[:-1])))
-        #     cash = realcash * self.cash_return
-        #     # print(cash)
-        #     assert cash.is_concave()
-        #     return noncash + cash
-        # else:
-        #     return w_plus.T @ self.r_hat_parameter
+        """Cvxpy expression acts on non-cash assets."""
+        return w_plus[:-1].T @ self.r_hat_parameter #[:-1]
         
 
 

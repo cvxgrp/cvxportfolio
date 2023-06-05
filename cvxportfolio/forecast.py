@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains classes to make forecasts such as historical means
+"""This module contains classes that provide forecasts such as historical means
 and covariances and are used internally by cvxportfolio objects. In addition,
 forecast classes have the ability to cache results online so that if multiple
 classes need access to the estimated value (as is the case in MultiPeriodOptimization
@@ -69,7 +69,6 @@ class BaseForecast(PolicyEstimator):
             logging.debug(f'{self}.values_in_time at time {t} is updated from previous value.')
             self.update(t=t, past_returns=past_returns)
             
-    
     def compute_from_scratch(self, t, past_returns):
         raise NotImplementedError
 
@@ -80,7 +79,7 @@ class BaseForecast(PolicyEstimator):
 class HistoricalMeanReturn(BaseForecast):
     """Historical mean returns."""
     
-    lastforcash: bool
+    # lastforcash: bool
      
     def __post_init__(self):
         self.last_time = None
@@ -90,12 +89,11 @@ class HistoricalMeanReturn(BaseForecast):
     def values_in_time(self, t, past_returns, cache=None, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, cache=cache, **kwargs)
         
-
         self.update_chooser(t=t, past_returns=past_returns)
         self.current_value = (self.last_sum / self.last_counts).values
         # self.current_value = past_returns.mean().values
-        if self.lastforcash:
-            self.current_value[-1] = past_returns.iloc[-1, -1]
+        # if self.lastforcash:
+        #    self.current_value[-1] = past_returns.iloc[-1, -1]
         
         # cache[self][t] = self.current_value
             
@@ -103,13 +101,13 @@ class HistoricalMeanReturn(BaseForecast):
         return self.current_value
         
     def compute_from_scratch(self, t, past_returns):
-        self.last_counts = past_returns.count()
-        self.last_sum = past_returns.sum()
+        self.last_counts = past_returns.iloc[:, :-1].count()
+        self.last_sum = past_returns.iloc[:, :-1].sum()
         self.last_time = t
         
     def update(self, t, past_returns): #, last_estimation, last_counts, last_time):
-        self.last_counts += ~(past_returns.iloc[-1].isnull())
-        self.last_sum += past_returns.iloc[-1].fillna(0.)
+        self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
+        self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)
         self.last_time = t
 
         # if last_time is None: # full estimation
@@ -128,7 +126,7 @@ class HistoricalMeanError(BaseForecast):
     def __init__(self):#, zeroforcash):
         # self.zeroforcash = zeroforcash
         # assert zeroforcash=True
-        self.varianceforecaster = HistoricalVariance(addmean=False)
+        self.varianceforecaster = HistoricalVariance(kelly=False)
     
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
@@ -139,49 +137,51 @@ class HistoricalMeanError(BaseForecast):
         return self.current_value  
         
         
+@dataclass(unsafe_hash=True)
 class HistoricalVariance(BaseForecast):
     """Historical variances."""
+    
+    kelly: bool = True
 
-    def __init__(self, addmean):
-        self.addmean = addmean
-        if not self.addmean:
-            self.meanforecaster = HistoricalMeanReturn(lastforcash=False)
+    def __post_init__(self):
+        if not self.kelly:
+            self.meanforecaster = HistoricalMeanReturn()
         self.last_time = None
         self.last_counts = None
         self.last_sum = None
     
     def values_in_time(self, t, past_returns, **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns.iloc[:,:-1], **kwargs)
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
-        self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
+        self.update_chooser(t=t, past_returns=past_returns)
         
         self.current_value = (self.last_sum / self.last_counts).values
                 
-        if not self.addmean:
+        if not self.kelly:
             self.current_value -= self.meanforecaster.current_value**2
 
         return self.current_value  
         
     def compute_from_scratch(self, t, past_returns):
-        self.last_counts = past_returns.count()
-        self.last_sum = (past_returns**2).sum()
+        self.last_counts = past_returns.iloc[:, :-1].count()
+        self.last_sum = (past_returns.iloc[:, :-1]**2).sum()
         self.last_time = t
         
     def update(self, t, past_returns): #, last_estimation, last_counts, last_time):
-        self.last_counts += ~(past_returns.iloc[-1].isnull())
-        self.last_sum += past_returns.iloc[-1].fillna(0.)**2
+        self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
+        self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)**2
         self.last_time = t
         
 @dataclass(unsafe_hash=True)
 class HistoricalFactorizedCovariance(BaseForecast):
     """Historical covariance matrix, sqrt factorized."""
     
-    addmean: bool = True
+    kelly: bool = True
     
-    def __post_init__(self):#, addmean=True):
-        #assert addmean == True
-        # self.addmean = addmean
-        # if not self.addmean:
+    def __post_init__(self):#, kelly=True):
+        #assert kelly == True
+        # self.kelly = kelly
+        # if not self.kelly:
         #     self.meanforecaster = HistoricalMeanReturn(lastforcash=False)
         self.last_time = None
     
@@ -200,7 +200,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
         self.last_counts_matrix = self.get_count_matrix(past_returns).values
         filled = past_returns.fillna(0.).values
         self.last_sum_matrix = filled.T @ filled
-        # if not self.addmean:
+        # if not self.kelly:
         #     self.last_meansum_matrix = self.last_sum_matrix/self.last_counts_matrix - past_returns.cov(ddof=0)
         #     self.last_meansum_matrix *= self.last_counts_matrix**2
         self.last_time = t
@@ -211,7 +211,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
         last_ret = past_returns.iloc[-1].fillna(0.)
         self.last_sum_matrix += np.outer(last_ret, last_ret)
         self.last_time = t
-        # if not self.addmean:
+        # if not self.kelly:
         #     self.last_meansum_matrix += np.outer(last_ret, last_ret)
     
     @online_cache
@@ -231,12 +231,12 @@ class HistoricalFactorizedCovariance(BaseForecast):
         #    self.current_value = cache[self][t]
         #else:
             # print (t, 'not hitting cache!')      
-        if self.addmean:
+        if self.kelly:
             self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
             Sigma = self.last_sum_matrix / self.last_counts_matrix
         else:
             Sigma = past_returns.iloc[:,:-1].cov(ddof=0)
-        # if not self.addmean:
+        # if not self.kelly:
         #     Sigma -= np.outer(self.meanforecaster.current_value, self.meanforecaster.current_value)   
         self.current_value = self.factorize(Sigma) 
             

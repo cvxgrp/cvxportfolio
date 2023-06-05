@@ -118,34 +118,34 @@ class FullCovariance(BaseRiskModel):
     #     If ``float`` a passed it is treated as a constant, if ``pandas.Series`` with ``pandas.DateTime`` index
     #     it varies in time, if ``None`` the forecast error risk term will not be compiled.
     # :type kappa: float or pandas.Series or None
-    # :param addmean: correct the covariance matrix with the term :math:`\mu\mu^T`, as is explained
+    # :param kelly: correct the covariance matrix with the term :math:`\mu\mu^T`, as is explained
     #     in page 28 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_,
     #     to match the second term of the Taylor expansion of the portfolio log-return. Default
     #     is ``False``, corresponding to classical mean-variance optimization. If ``True``, it
     #     estimates :math:`\mu` with the same technique as :math:`\Sigma`, *i.e.*, with rolling window
     #     average, exponential moving window average, or an average of the full history.
-    # :type addmean: bool
+    # :type kelly: bool
     # """
 
-    def __init__(self, Sigma=None, addmean=True):
+    def __init__(self, Sigma=None, kelly=True):
 
         if not Sigma is None:
             self.Sigma = DataEstimator(Sigma)
             self.alreadyfactorized = False
         else:
             self.Sigma = HistoricalFactorizedCovariance(# zeroforcash=True, 
-                addmean=addmean) #Sigma
+                kelly=kelly) #Sigma
             self.alreadyfactorized = True
             
         # self.zeroforcash = True
-        # self.addmean = addmean
+        # self.kelly = kelly
 
 
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
         
         
-        self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))#+self.addmean))
+        self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))#+self.kelly))
 
         #super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         
@@ -175,7 +175,7 @@ class FullCovariance(BaseRiskModel):
         
         # if self.Sigma is None:
         #     Sigma = past_returns.cov(ddof=0)
-        #     if self.addmean:
+        #     if self.kelly:
         #         mean = past_returns.mean()
         #         Sigma += np.outer(mean, mean)
         #     if self.zeroforcash:
@@ -211,16 +211,16 @@ class RiskForecastError(BaseRiskModel):
 
     def __init__(self, sigma_squares=None):
         if sigma_squares is None:
-            self.sigma_squares = HistoricalVariance(addmean=True) #None None
+            self.sigma_squares = HistoricalVariance(kelly=True) #None None
         else:
             self.sigma_squares = DataEstimator(sigma_squares)
         # self.standard_deviations = ParameterEstimator(standard_deviations)
         # self.zeroforcash=True
-        # self.addmean=True
+        # self.kelly=True
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
-        self.sigmas_parameter = cp.Parameter(len(universe)-1, nonneg=True)#+self.addmean))
+        self.sigmas_parameter = cp.Parameter(len(universe)-1, nonneg=True)#+self.kelly))
 
     def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
@@ -228,7 +228,7 @@ class RiskForecastError(BaseRiskModel):
         
         # if self.sigma_squares is None:
         #     sigma_squares = past_returns.var(ddof=0)
-        #     if self.addmean:
+        #     if self.kelly:
         #         mean = past_returns.mean()
         #         sigma_squares += mean**2
         #     if self.zeroforcash:
@@ -260,14 +260,14 @@ class DiagonalCovariance(BaseRiskModel):
         if not sigma_squares is None:
             self.sigma_squares = DataEstimator(sigma_squares)
         else:
-            self.sigma_squares = HistoricalVariance(addmean=True) #None
+            self.sigma_squares = HistoricalVariance(kelly=True) #None
         #self.zeroforcash = True
-        #self.addmean = True
+        #self.kelly = True
         # self.standard_deviations = ParameterEstimator(standard_deviations)
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
-        self.sigmas_parameter = cp.Parameter(len(universe)-1) #+self.addmean))
+        self.sigmas_parameter = cp.Parameter(len(universe)-1) #+self.kelly))
 
     def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
@@ -276,7 +276,7 @@ class DiagonalCovariance(BaseRiskModel):
         
         # if self.sigma_squares is None:
         #     sigma_squares = past_returns.var(ddof=0)
-        #     if self.addmean:
+        #     if self.kelly:
         #         mean = past_returns.mean()
         #         sigma_squares += mean**2
         #     if self.zeroforcash:
@@ -335,11 +335,11 @@ class FactorModelCovariance(BaseRiskModel):
         self.d = d if d is None else DataEstimator(d) 
         if (self.F is None) or (self.d is None):
             self.fit = True
-            self.Sigma = HistoricalFactorizedCovariance(addmean=True) #Sigma
+            self.Sigma = HistoricalFactorizedCovariance(kelly=True) #Sigma
         else:
             self.fit = False
         self.num_factors = num_factors
-        # self.addmean = True
+        # self.kelly = True
         # self.zeroforcash = True
         # self.normalize = normalize
 
@@ -393,7 +393,7 @@ class FactorModelCovariance(BaseRiskModel):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         # if self.F is None:
-        #     if not self.addmean:
+        #     if not self.kelly:
         #         past_returns = past_returns - past_returns.mean()
         #     if self.zeroforcash:
         #         past_returns = pd.DataFrame(past_returns, copy=True)

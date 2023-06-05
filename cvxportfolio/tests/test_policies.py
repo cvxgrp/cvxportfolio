@@ -265,7 +265,7 @@ class TestPolicies(unittest.TestCase):
     def test_single_period_optimization(self):
 
         return_forecast = ReturnsForecast()
-        risk_forecast = FullCovariance(addmean=False)
+        risk_forecast = FullCovariance(kelly=False)
         tcost = TransactionCost(spreads=1E-3, pershare_cost=0., b=None, exponent=2)
         
         policy = SinglePeriodOptimization(

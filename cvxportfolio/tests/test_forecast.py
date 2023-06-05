@@ -44,7 +44,7 @@ class TestEstimators(unittest.TestCase):
          
     
     def test_mean_update(self):
-        forecaster = HistoricalMeanReturn(lastforcash=True)
+        forecaster = HistoricalMeanReturn()#lastforcash=True)
         
         returns = pd.DataFrame(self.returns, copy=True)
         returns.iloc[:20, 3:10] = np.nan
@@ -53,13 +53,13 @@ class TestEstimators(unittest.TestCase):
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
             mean = forecaster.values_in_time(t=t, past_returns=past_returns)
-            print(mean)
-            self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
-            self.assertTrue(np.allclose(mean[:-1], past_returns.iloc[:,:-1].mean()))
+            # print(mean)
+            # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
+            self.assertTrue(np.allclose(mean, past_returns.iloc[:,:-1].mean()))
         
     
     def test_variance_update(self):
-        forecaster = HistoricalVariance(addmean=False)
+        forecaster = HistoricalVariance(kelly=False)
         
         returns = pd.DataFrame(self.returns, copy=True)
         returns.iloc[:20, 3:10] = np.nan
@@ -87,7 +87,7 @@ class TestEstimators(unittest.TestCase):
             self.assertTrue(np.allclose(val, past_returns.std(ddof=0)[:-1] / np.sqrt(past_returns.count()[:-1]) ))  
             
     def test_counts_matrix(self):
-        forecaster = HistoricalFactorizedCovariance()#addmean=True)
+        forecaster = HistoricalFactorizedCovariance()#kelly=True)
         returns = pd.DataFrame(self.returns, copy=True)
         returns.iloc[:20, 3:10] = np.nan
         returns.iloc[10:15, 10:20] = np.nan
@@ -101,7 +101,7 @@ class TestEstimators(unittest.TestCase):
                 len((returns.iloc[:,indexes[0]] * returns.iloc[:,indexes[1]]).dropna())))
                 
     def test_sum_matrix(self):
-        forecaster = HistoricalFactorizedCovariance()#addmean=True)
+        forecaster = HistoricalFactorizedCovariance()#kelly=True)
         returns = pd.DataFrame(self.returns, copy=True)
         returns.iloc[:20, 3:10] = np.nan
         returns.iloc[10:15, 10:20] = np.nan
@@ -121,7 +121,7 @@ class TestEstimators(unittest.TestCase):
         
     def test_covariance_update(self):
         
-        forecaster = HistoricalFactorizedCovariance()#addmean=False)
+        forecaster = HistoricalFactorizedCovariance()#kelly=False)
         
         returns = pd.DataFrame(self.returns.iloc[:, :4], copy=True)
         returns.iloc[:20, 1] = np.nan
