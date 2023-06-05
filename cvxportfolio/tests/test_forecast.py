@@ -150,7 +150,14 @@ class TestEstimators(unittest.TestCase):
             self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
 
     def test_covariance_update_nokelly(self):
-        """Test covariance forecast estimator."""
+        """Test covariance forecast estimator.
+        
+        NOTE: due to a bug in pandas we can't test against pandas.DataFrame.cov, 
+        see https://github.com/pandas-dev/pandas/issues/45814 . In fact with the
+        current bug in pandas 
+        ``past_returns.iloc[:,:-1].cov(ddof=0)`` returns ``past_returns.iloc[:,:-1].cov(ddof=1)``
+        whenever there are missing values.
+        """
         
         forecaster = HistoricalFactorizedCovariance(kelly=False)
         
@@ -188,12 +195,10 @@ class TestEstimators(unittest.TestCase):
             past_returns = returns.loc[returns.index<t]
             val = forecaster.values_in_time(t=t, past_returns=past_returns)
             Sigma = val @ val.T
-            
+
             self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
-            
             # pandasSigma = past_returns.iloc[:,:-1].cov(ddof=0)
             # self.assertTrue(np.allclose(Sigma, pandasSigma))
-            
             self.assertTrue(np.allclose(np.diag(Sigma), past_returns.iloc[:,:-1].var(ddof=0)))
 
             

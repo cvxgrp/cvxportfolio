@@ -168,6 +168,9 @@ class HistoricalVariance(BaseForecast):
 class HistoricalFactorizedCovariance(BaseForecast):
     r"""Historical covariance matrix, sqrt factorized.
     
+    If you :param kelly: is set to ``False`` the algorithm used matches the behavior of
+    ``pandas.DataFrame.cov(ddof=0)``, with its logic to handle missing data.
+    
     :param kelly: if ``True`` compute each :math:` \Sigma_{i,j} \simeq \mathbf{E}[r^{i} r^{j}]`, else
         :math:` \Sigma_{i,j} \simeq \mathbf{E}[r^{i} r^{j}] - \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`. 
         The second corresponds to the classic definition of covariance, while the first is what is obtained
