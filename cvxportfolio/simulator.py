@@ -36,7 +36,7 @@ from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
 
 PPY = 252
-__all__ = ['MarketSimulator']
+__all__ = ['MarketSimulator', 'simulate_cash_holding_cost', 'simulate_stocks_holding_cost', 'simulate_transaction_cost', 'MarketData']
 
 
 def parallel_worker(policy, simulator, start_time, end_time, h):

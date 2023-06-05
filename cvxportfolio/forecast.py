@@ -62,6 +62,7 @@ class BaseForecast(PolicyEstimator):
     
     
     def update_chooser(self, t, past_returns):
+        """Choose whether to make forecast from scratch or update last one."""
         if (self.last_time is None) or (self.last_time != past_returns.index[-1]):
             logging.debug(f'{self}.values_in_time at time {t} is computed from scratch.')
             self.compute_from_scratch(t=t, past_returns=past_returns)
@@ -70,17 +71,20 @@ class BaseForecast(PolicyEstimator):
             self.update(t=t, past_returns=past_returns)
             
     def compute_from_scratch(self, t, past_returns):
+        """Make forecast from scratch."""
         raise NotImplementedError
 
     def update(self, t, past_returns):
+        """Update forecast from period before."""
         raise NotImplementedError
 
 @dataclass(unsafe_hash=True)
 class HistoricalMeanReturn(BaseForecast):
-    """Historical mean returns."""
+    r"""Historical mean returns.
     
-    # lastforcash: bool
-     
+    This ignores both the cash returns column and all missing values.
+    """
+         
     def __post_init__(self):
         self.last_time = None
         self.last_counts = None
@@ -88,58 +92,50 @@ class HistoricalMeanReturn(BaseForecast):
     
     def values_in_time(self, t, past_returns, cache=None, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, cache=cache, **kwargs)
-        
         self.update_chooser(t=t, past_returns=past_returns)
-        self.current_value = (self.last_sum / self.last_counts).values
-        # self.current_value = past_returns.mean().values
-        # if self.lastforcash:
-        #    self.current_value[-1] = past_returns.iloc[-1, -1]
-        
-        # cache[self][t] = self.current_value
-            
-        
+        self.current_value = (self.last_sum / self.last_counts).values        
         return self.current_value
         
     def compute_from_scratch(self, t, past_returns):
+        """Make forecast from scratch."""
         self.last_counts = past_returns.iloc[:, :-1].count()
         self.last_sum = past_returns.iloc[:, :-1].sum()
         self.last_time = t
         
-    def update(self, t, past_returns): #, last_estimation, last_counts, last_time):
+    def update(self, t, past_returns):
+        """Update forecast from period before."""
         self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
         self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)
         self.last_time = t
 
-        # if last_time is None: # full estimation
-        #     estimation = past_returns.sum()
-        #     counts = past_returns.count()
-        # else:
-        #     assert last_time == past_returns.index[-2]
-        #     estimation = last_estimation * last_counts + past_returns.iloc[-1].fillna(0.)
-        #     counts = last_counts + past_returns.iloc[-1:].count()
-        #
-        # return estimation/counts, counts, past_returns.index[-1]
         
 class HistoricalMeanError(BaseForecast):
-    """Historical standard deviations of the mean."""
+    r"""Historical standard deviations of the mean of non-cash returns.
+    
+    For a given time series of past returns :math:`r_{t-1}, r_{t-2}, \ldots, r_0` this is
+    :math:`\sqrt{\text{Var}[r]/t}`. When there are missing values we ignore them,
+    both to compute the variance and the count.
+    """
 
-    def __init__(self):#, zeroforcash):
-        # self.zeroforcash = zeroforcash
-        # assert zeroforcash=True
+    def __init__(self):
         self.varianceforecaster = HistoricalVariance(kelly=False)
     
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
-                
         self.current_value  = np.sqrt(self.varianceforecaster.current_value / self.varianceforecaster.last_counts.values)
-        # if self.zeroforcash:
-        #     self.current_value[-1] = 0.
         return self.current_value  
         
         
 @dataclass(unsafe_hash=True)
 class HistoricalVariance(BaseForecast):
-    """Historical variances."""
+    r"""Historical variances of non-cash returns.
+    
+    :param kelly: if ``True`` compute :math:`\mathbf{E}[r^2]`, else
+        :math:`\mathbf{E}[r^2] - {\mathbf{E}[r]}^2`. The second corresponds
+        to the classic definition of variance, while the first is what is obtained
+        by Taylor approximation of the Kelly gambling objective. (See page 28 of the book.)
+    :type kelly: bool
+    """
     
     kelly: bool = True
 
@@ -152,14 +148,10 @@ class HistoricalVariance(BaseForecast):
     
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
-        
         self.update_chooser(t=t, past_returns=past_returns)
-        
         self.current_value = (self.last_sum / self.last_counts).values
-                
         if not self.kelly:
             self.current_value -= self.meanforecaster.current_value**2
-
         return self.current_value  
         
     def compute_from_scratch(self, t, past_returns):
@@ -174,72 +166,74 @@ class HistoricalVariance(BaseForecast):
         
 @dataclass(unsafe_hash=True)
 class HistoricalFactorizedCovariance(BaseForecast):
-    """Historical covariance matrix, sqrt factorized."""
+    r"""Historical covariance matrix, sqrt factorized.
+    
+    :param kelly: if ``True`` compute each :math:` \Sigma_{i,j} \simeq \mathbf{E}[r^{i} r^{j}]`, else
+        :math:` \Sigma_{i,j} \simeq \mathbf{E}[r^{i} r^{j}] - \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`. 
+        The second corresponds to the classic definition of covariance, while the first is what is obtained
+        by Taylor approximation of the Kelly gambling objective. (See page 28 of the book.)
+    :type kelly: bool
+    """
     
     kelly: bool = True
     
-    def __post_init__(self):#, kelly=True):
-        #assert kelly == True
-        # self.kelly = kelly
-        # if not self.kelly:
-        #     self.meanforecaster = HistoricalMeanReturn(lastforcash=False)
+    def __post_init__(self):
         self.last_time = None
     
-    def get_count_matrix(self, past_returns):
-        """We obtain the matrix of non-null joint counts."""
-        tmp = (~past_returns.isnull()) * 1.
+    @staticmethod
+    def get_count_matrix(past_returns):
+        r"""We obtain the matrix of non-null joint counts:
+        
+        .. math::
+        
+            \text{Count}\left(r^{i}r^{j} \neq \texttt{nan}\right).
+        """
+        tmp = (~past_returns.iloc[:,:-1].isnull()) * 1.
         return tmp.T @ tmp
+    
+    @staticmethod
+    def get_initial_joint_mean(past_returns):
+        r"""Compute precursor of :math:`\Sigma_{i,j} = \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`.
+        """
+        nonnull = (~past_returns.iloc[:,:-1].isnull()) * 1.
+        tmp = nonnull.T @ past_returns.iloc[:,:-1].fillna(0.)
+        return tmp # * tmp.T
 
     @staticmethod
     def factorize(Sigma):
+        """Factorize matrix and remove negative eigenvalues."""
         eigval, eigvec = np.linalg.eigh(Sigma)
         eigval = np.maximum(eigval, 0.)
         return eigvec @ np.diag(np.sqrt(eigval))
         
     def compute_from_scratch(self, t, past_returns):
         self.last_counts_matrix = self.get_count_matrix(past_returns).values
-        filled = past_returns.fillna(0.).values
+        filled = past_returns.iloc[:,:-1].fillna(0.).values
         self.last_sum_matrix = filled.T @ filled
-        # if not self.kelly:
-        #     self.last_meansum_matrix = self.last_sum_matrix/self.last_counts_matrix - past_returns.cov(ddof=0)
-        #     self.last_meansum_matrix *= self.last_counts_matrix**2
+        if not self.kelly:
+            self.joint_mean = self.get_initial_joint_mean(past_returns)
+
         self.last_time = t
         
-    def update(self, t, past_returns): #, last_estimation, last_counts, last_time):
-        nonnull = ~(past_returns.iloc[-1].isnull())
+    def update(self, t, past_returns):
+        nonnull = ~(past_returns.iloc[-1, :-1].isnull())
         self.last_counts_matrix += np.outer(nonnull, nonnull)
-        last_ret = past_returns.iloc[-1].fillna(0.)
+        last_ret = past_returns.iloc[-1, :-1].fillna(0.)
         self.last_sum_matrix += np.outer(last_ret, last_ret)
         self.last_time = t
-        # if not self.kelly:
-        #     self.last_meansum_matrix += np.outer(last_ret, last_ret)
-    
+        if not self.kelly:
+            self.joint_mean += last_ret
+
     @online_cache
-    def values_in_time(self, t, past_returns, #cache=None, 
-    **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns.iloc[:, :-1], # cache=cache, 
-            **kwargs)
+    def values_in_time(self, t, past_returns, **kwargs):
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+  
+        self.update_chooser(t=t, past_returns=past_returns)
+        Sigma = self.last_sum_matrix / self.last_counts_matrix
         
-        #if cache is None:
-        #    cache = {}
-            
-        #if not (self in cache):
-        #    cache[self] = {}
-        
-        #if t in cache[self]:
-        #    # print (t, 'hitting cache!')
-        #    self.current_value = cache[self][t]
-        #else:
-            # print (t, 'not hitting cache!')      
-        if self.kelly:
-            self.update_chooser(t=t, past_returns=past_returns.iloc[:,:-1])
-            Sigma = self.last_sum_matrix / self.last_counts_matrix
-        else:
-            Sigma = past_returns.iloc[:,:-1].cov(ddof=0)
-        # if not self.kelly:
-        #     Sigma -= np.outer(self.meanforecaster.current_value, self.meanforecaster.current_value)   
+        if not self.kelly:
+            tmp = self.joint_mean / self.last_counts_matrix
+            Sigma -= tmp.T * tmp
+               
         self.current_value = self.factorize(Sigma) 
-            
-        #    cache[self][t] = self.current_value
-        
         return self.current_value

@@ -120,8 +120,9 @@ class TestEstimators(unittest.TestCase):
                 ))
         
     def test_covariance_update(self):
+        """Test covariance forecast estimator."""
         
-        forecaster = HistoricalFactorizedCovariance()#kelly=False)
+        forecaster = HistoricalFactorizedCovariance()
         
         returns = pd.DataFrame(self.returns.iloc[:, :4], copy=True)
         returns.iloc[:20, 1] = np.nan
@@ -147,6 +148,53 @@ class TestEstimators(unittest.TestCase):
             val = forecaster.values_in_time(t=t, past_returns=past_returns)
             Sigma = val @ val.T
             self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
+
+    def test_covariance_update_nokelly(self):
+        """Test covariance forecast estimator."""
+        
+        forecaster = HistoricalFactorizedCovariance(kelly=False)
+        
+        returns = pd.DataFrame(self.returns.iloc[:, :4], copy=True)
+        returns.iloc[:20, 1] = np.nan
+        returns.iloc[10:30, 0] = np.nan
+        returns.iloc[25:40, 2] = np.nan
+        
+        def cov_ij(i, j, rets):
+            i_nanmasker = np.zeros(len(rets))
+            i_nanmasker[rets.iloc[:, i].isnull()] = np.nan
+            i_nanmasker[~(rets.iloc[:, i].isnull())] = 1.
+            j_nanmasker = np.zeros(len(rets))
+            j_nanmasker[rets.iloc[:, j].isnull()] = np.nan
+            j_nanmasker[~(rets.iloc[:, j].isnull())] = 1.
+            print(i_nanmasker, j_nanmasker)
+            return np.nanmean(rets.iloc[:, i] * rets.iloc[:, j]) - np.nanmean(rets.iloc[:, i] * j_nanmasker) * np.nanmean(rets.iloc[:, j] * i_nanmasker)
+        
+        def compute_Sigma(rets):
+            res = np.zeros((3,3))
+            res[0,0] = cov_ij(0,0, rets)
+            res[1,1] = cov_ij(1,1, rets)
+            res[2,2] = cov_ij(2,2, rets)
+            res[0,1] = cov_ij(0,1, rets)
+            res[0,2] = cov_ij(0,2, rets)
+            res[1,2] = cov_ij(1,2, rets)
+            res[1,0] = res[0,1]
+            res[2,0] = res[0,2]
+            res[2,1] = res[1,2]
+            return res
+        
+        
+        for tidx in [50,51,52,55,56,57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index<t]
+            val = forecaster.values_in_time(t=t, past_returns=past_returns)
+            Sigma = val @ val.T
+            
+            self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
+            
+            # pandasSigma = past_returns.iloc[:,:-1].cov(ddof=0)
+            # self.assertTrue(np.allclose(Sigma, pandasSigma))
+            
+            self.assertTrue(np.allclose(np.diag(Sigma), past_returns.iloc[:,:-1].var(ddof=0)))
 
             
         
