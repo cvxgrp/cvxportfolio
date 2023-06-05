@@ -163,7 +163,8 @@ class HistoricalVariance(BaseForecast):
         self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
         self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)**2
         self.last_time = t
-        
+
+
 @dataclass(unsafe_hash=True)
 class HistoricalFactorizedCovariance(BaseForecast):
     r"""Historical covariance matrix, sqrt factorized.

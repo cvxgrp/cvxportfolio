@@ -42,7 +42,10 @@ class BaseReturnsModel(BaseCost):
 class CashReturn(BaseReturnsModel):
     r"""Objective term representing cash return.
     
-    This is included automatically in :class:`SinglePeriodOptimization`
+    The forecast of cash return :math:`{\left(\hat{r}_t\right)}_n` is the observed value
+    from last period :math:`{\left({r}_{t-1}\right)}_n`.
+    
+    This object is included automatically in :class:`SinglePeriodOptimization`
     and :class:`MultiPeriodOptimization` policies. You can change
     this behavior by setting their :param:`include_cash_return` to False.
     
@@ -72,135 +75,83 @@ class CashReturn(BaseReturnsModel):
         
     
     
-    
-
 class ReturnsForecast(BaseReturnsModel):
-    r"""Returns forecast, either provided by the user or computed from the data.
-    
-    :param r_hat: constant or time varying returns estimates, or, if None, fitted
-        from the data as historical means
-    :type r_hat: pd.Series or pd.DataFrame or None
-    """
-    # r"""Returns forecast, either provided by the user or computed from the data.
-    #
-    # This class represents the term :math:`\hat{r}_t`,
-    # the forecast of assets' returns at time :math:`t`.
-    # :ref:`Optimization-based policies` use this, typically as the first
-    # element of their objectives.
-    # See Chapters 4 and 5 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
-    # for more details.
-    #
-    # It can either get return forecasts from the user, for example
-    # computed with some machine learning technique, or it can estimate them
-    # automatically from the data.
-    #
-    # In the first case ``r_hat`` is specified as
-    #
-    # * :class:`float`, if :math:`\hat{r}_t` is the same for all times and assets
-    # * :class:`pandas.Series` with :class:`pandas.DatetimeIndex`, if :math:`\hat{r}_t` is the same for all assets but changes in time
-    # * :class:`pandas.Series` indexed by assets' names, if :math:`\hat{r}_t` is constant in time and changes across assets
-    # * :class:`pandas.DataFrame` with :class:`pandas.DatetimeIndex`, if :math:`\hat{r}_t` changes across time and assets.
-    #
-    # The returns' forecast provided by the user must be supplied for all assets
-    # including cash (unless it is constant across all assets, so, also cash).
-    #
-    # If instead ``r_hat`` is not speficied it defaults to None. This instructs
-    # this class to compute :math:`\hat{r}_t` instead. It is
-    # done, at each step of a :class:`BackTest`, by evaluating an average of the
-    # past returns (*i.e.,* the real returns :math:`{r}_{t-1}, {r}_{t-2}, \ldots`,
-    # where :math:`t` is the current time). This class implements three ways to do so.
-    #
-    # * The full average of all available past returns skipping :class:`numpy.nan` values.
-    #   This is the default mode if no parameters are passed.
-    # * a *rolling window*  average of recent returns. This is specified by setting
-    #   the ``rolling`` parameter to a positive integer. If specified it takes precedence
-    #   over ``ewm``. See the documentation of :class:`pandas.DataFrame.rolling` for
-    #   details. It fails if the specified window contains :class:`numpy.nan` values.
-    # * an *exponential moving window* average of past returns. This is specified
-    #   by setting the ``halflife`` parameter to a positive integer.
-    #   The exponential moving window is a weighted
-    #   average where the most recent returns have a larger weight than the older
-    #   ones. This is done by calling :class:`pandas.DataFrame.ewm` with the
-    #   `halflife`` argument, which represents the number of periods over which
-    #   the weight decays by a factor of 2. See the relevant ``pandas`` documentation
-    #   for more details.
-    #
-    #
-    # The only exception to the above is the forecast of cash return
-    # :math:`{\left(\hat{r}_t\right)}_n`, for which the observed value
-    # from last period :math:`{\left({r}_{t-1}\right)}_n`
-    # is typically chosen. This is
-    # the default behavior and is done by setting ``lastforcash`` to ``True``.
-    # (If instead ``lastforcash`` is ``False``, the same averaging of past
-    # returns is used to forecast the cash return as well.)
-    #
-    # :param r_hat: return forecasts supplied by the user, default is None
-    # :type r_hat: float or pandas.Series or pandas.DataFrame or None
-    # :param rolling: size of rolling window, it takes precendence over
-    #     ``halflife`` if both are specified
-    # :type rolling: int or None
-    # :param halflife: half-life of exponential moving window
-    # :type halflife: int or None
-    # :param lastforcash: use last value to estimate cash return
-    # :type lastforcash: bool
-    #
-    # :raises cvxportfolio.MissingValuesError: If the class accesses
-    #     user-provided elements of ``r_hat`` that are :class:`numpy.nan`,
-    #     or the rolling window used for averaging contains :class:`numpy.nan`.
-    # :raises ValueError: If the data passed by the user is not of the right
-    #     size (for example the cash returns' columns is missing).
-    #
-    # :Example:
-    #
-    # >>> import cvxportfolio as cp
-    # >>> policy = cp.SinglePeriod(cp.ReturnsForecast() - \
-    #     0.5 * cp.FullCovariance())
-    #
-    # Defines a single period optimization policy where the returns' forecasts
-    # :math:`\hat{r}_t` are the full average of past returns at each point in time
-    # and the risk model is the full covariance, also computed from the past returns.
-    # """
+    r"""Returns forecast for non-cash assets, provided by the user or computed from the data.
 
-    def __init__(self, r_hat=None, #rolling=None, halflife=None, 
-                #lastforcash=True, 
-                decayfactor=None,
-                #subtractshorts=True
-                ):
+    This class represents the term :math:`\hat{r}_t`,
+    the forecast of non-cash assets' returns at time :math:`t`.
+    :ref:`Optimization-based policies` use this, typically as the first
+    element of their objectives.
+    See Chapters 4 and 5 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
+    for more details.
+
+    It can either get return forecasts from the user, for example
+    computed with some machine learning technique, or it can estimate them
+    automatically from the data.
+
+    In the first case ``r_hat`` is specified as
+
+    * :class:`float`, if :math:`\hat{r}_t` is the same for all times and non-cash assets
+    * :class:`pandas.Series` with :class:`pandas.DatetimeIndex`, if :math:`\hat{r}_t` is the same for all assets but changes in time
+    * :class:`pandas.Series` indexed by assets' names, if :math:`\hat{r}_t` is constant in time and changes across assets
+    * :class:`pandas.DataFrame` with :class:`pandas.DatetimeIndex`, if :math:`\hat{r}_t` changes across time and assets.
+
+    The returns' forecast provided by the user must be supplied for all assets
+    excluding cash.
+
+    If instead ``r_hat`` is not speficied it defaults to None. This instructs
+    this class to compute :math:`\hat{r}_t` instead. It is
+    done, at each step of a :class:`BackTest`, by evaluating the full average of the
+    past returns (*i.e.,* the real returns :math:`{r}_{t-1}, {r}_{t-2}, \ldots`,
+    where :math:`t` is the current time),  skipping :class:`numpy.nan` values.
+    This is the default mode if no parameters are passed.
+
+    :param r_hat: constant or time varying returns estimates, provided in the form of
+        a pandas DataFrame indexed by timestamps of trading period and whose columns
+        are all non-cash assets. Alternatively it can be a pandas Series indexed by the
+        assets' names (so it is constant in time), a pandas Series indexed by time (so it is 
+        constant across assets), or a float (constant for all times and assets). 
+        If it is None, the default, the return forecasts are fitted from the data as historical means.
+    :type r_hat: pd.Series or pd.DataFrame or float or None
+    :param decay: decay factor used in :class:`MultiPeriodOptimization` policies.
+        It is as a number in :math:`[0,1]`. At step :math:`\tau` of the MPO policy, where 
+        :math:`\tau=t` is the initial one, the return predictions are multiplied by 
+        :math:`\texttt{decay}^{\tau-t}`. So, :param:`decay` close to 0 models a `fast` signal
+        while :param:`decay` close to 1 a `slow` signal. The default value is 1.    
+    :type decay: float
+
+    :raises cvxportfolio.MissingValuesError: If the class accesses
+        user-provided elements of ``r_hat`` that are :class:`numpy.nan`.
+
+    :Example:
+
+    >>> import cvxportfolio as cvx
+    >>> policy = cp.SinglePeriod(cvx.ReturnsForecast() - \
+        0.5 * cvx.FullCovariance())
+
+    Defines a single period optimization policy where the returns' forecasts
+    :math:`\hat{r}_t` are the full average of past returns at each point in time
+    and the risk model is the full covariance, also computed from the past returns.
+    """
+
+    def __init__(self, r_hat=None, decay=1.):
         
         if not r_hat is None:
             self.r_hat = DataEstimator(r_hat)
         else:
-            self.r_hat = HistoricalMeanReturn()#lastforcash=lastforcash)
-            
-        # self.lastforcash = True
-        #self.subtractshorts = subtractshorts
-        
-        #if self.subtractshorts:
-        #    self.cash_return = cp.Parameter(nonneg=True)
-            
-        self.decayfactor = decayfactor
-        
+            self.r_hat = HistoricalMeanReturn()
+        self.decay = decay
         
     def pre_evaluation(self, universe, backtest_times):
-        
         self.r_hat_parameter = cp.Parameter(len(universe)-1)
         
-    
     def values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
-        
         super().values_in_time(t=t, past_returns=past_returns, mpo_step=mpo_step, **kwargs)
-        
-        self.r_hat_parameter.value = self.r_hat.current_value * (self.decayfactor**(mpo_step)
-            if self.decayfactor else 1.)
+        self.r_hat_parameter.value = self.r_hat.current_value * self.decay**(mpo_step)
 
-            
-        # if self.subtractshorts:
-        #     self.cash_return.value = self.r_hat_parameter.value[-1]
-
-        
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Cvxpy expression acts on non-cash assets."""
-        return w_plus[:-1].T @ self.r_hat_parameter #[:-1]
+        return w_plus[:-1].T @ self.r_hat_parameter 
         
 
 
@@ -222,14 +173,12 @@ class ReturnsForecastError(BaseRiskModel):
     :type deltas_errors: pd.DataFrame or pd.Series or None
     """
 
-    def __init__(self, deltas=None):#, zeroforcash=True, # rolling=None, halflife=None
+    def __init__(self, deltas=None):
         
         if not deltas is None:
             self.deltas = DataEstimator(deltas)
         else:
-            self.deltas = HistoricalMeanError()#zeroforcash)
-        # self.zeroforcash = zeroforcash
-
+            self.deltas = HistoricalMeanError()
             
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe=universe, backtest_times=backtest_times)
