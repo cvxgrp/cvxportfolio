@@ -44,18 +44,32 @@ class TestReturns(unittest.TestCase):
         return model.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         
         
+    def test_cash_returns(self):
+        cash_model = CashReturn()
+        cvxpy_expression = self.boilerplate(cash_model)
+        self.w_plus.value = np.random.randn(self.N)
+        cash_model.values_in_time(t=None, past_returns=self.returns.iloc[:123])
+        cr = self.returns.iloc[122, -1]
+        self.assertTrue(cvxpy_expression.value == cr * (self.w_plus[-1].value + 2 * np.sum(np.minimum(self.w_plus[:-1].value, 0.))))
+        
+    def test_cash_returns_provided(self):
+        cash_model = CashReturn(self.returns.iloc[:,-1])
+        cvxpy_expression = self.boilerplate(cash_model)
+        self.w_plus.value = np.random.randn(self.N)
+        cash_model.values_in_time(t=self.returns.index[123], past_returns=None)
+        cr = self.returns.iloc[123, -1]
+        self.assertTrue(cvxpy_expression.value == cr * (self.w_plus[-1].value + 2 * np.sum(np.minimum(self.w_plus[:-1].value, 0.))))
+        
     def test_returns_forecast(self):
         alpha_model = ReturnsForecast(self.returns)
         cvxpy_expression = self.boilerplate(alpha_model)
         alpha_model.values_in_time(t=self.returns.index[123], past_returns=None)
         self.w_plus.value = np.random.randn(self.N)
         print(cvxpy_expression.value)
-        print(self.w_plus[:-1].value @ self.returns.iloc[123][:-1] + 
-        ((self.w_plus[-1].value + np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1]))
-        self.assertTrue(np.isclose(cvxpy_expression.value, 
-            self.w_plus[:-1].value @ self.returns.iloc[123][:-1]
-                + ((self.w_plus[-1].value + 2 * np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1])
-            ))
+        print(self.w_plus[:-1].value @ self.returns.iloc[123][:-1]) 
+        #+ ((self.w_plus[-1].value + np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1]))
+        self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus[:-1].value @ self.returns.iloc[123][:-1]))
+                #+ ((self.w_plus[-1].value + 2 * np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1])))
         
         
     def test_full_returns_forecast(self):
@@ -65,9 +79,9 @@ class TestReturns(unittest.TestCase):
         alpha_model.values_in_time(t=t, past_returns = self.returns.loc[self.returns.index<t])
         self.w_plus.value = np.random.uniform(size=self.N)
         self.w_plus.value /= sum(self.w_plus.value)
-        myforecast = self.returns.loc[self.returns.index < t].mean()
-        myforecast.iloc[-1] = self.returns.iloc[122, -1]
-        self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus.value @ myforecast))
+        myforecast = self.returns.iloc[:, :-1].loc[self.returns.index < t].mean()
+        # myforecast.iloc[-1] = self.returns.iloc[122, -1]
+        self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus.value[:-1] @ myforecast))
         
     def test_returns_forecast_error(self):
 

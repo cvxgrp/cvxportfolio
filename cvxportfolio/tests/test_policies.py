@@ -264,10 +264,9 @@ class TestPolicies(unittest.TestCase):
 
     def test_single_period_optimization(self):
 
-        return_forecast = ReturnsForecast(lastforcash=False, subtractshorts=False)
+        return_forecast = ReturnsForecast()
         risk_forecast = FullCovariance(addmean=False)
         tcost = TransactionCost(spreads=1E-3, pershare_cost=0., b=None, exponent=2)
-        
         
         policy = SinglePeriodOptimization(
             return_forecast
@@ -276,6 +275,7 @@ class TestPolicies(unittest.TestCase):
             #- TcostModel(half_spread=5 * 1E-4)  # , power=2)
             ,
             constraints=[LongOnly(), LeverageLimit(1)],
+            include_cash_return=False,
             # verbose=True,
             solver='ECOS')
             
@@ -308,7 +308,7 @@ class TestPolicies(unittest.TestCase):
         
         COV = self.returns.iloc[:121, :-1].cov(ddof=0).values #+ np.outer(self.returns.iloc[:121, :-1].mean(), self.returns.iloc[:121, :-1].mean())
         w = cp.Variable(self.N)
-        cp.Problem(cp.Maximize(w.T @ self.returns.iloc[:121].mean().values -
+        cp.Problem(cp.Maximize(w[:-1].T @ self.returns.iloc[:121, :-1].mean().values -
                                  2 * cp.quad_form(w[:-1], COV) -
                                  5 * 1E-4 * cp.sum(cp.abs(w - curw)[:-1])
                                  ),

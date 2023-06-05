@@ -28,6 +28,7 @@ from .forecast import HistoricalMeanReturn, HistoricalMeanError
 __all__ = [
     "ReturnsForecast",
     "ReturnsForecastError",
+    "CashReturn",
 ]
 
 
@@ -37,6 +38,41 @@ class BaseReturnsModel(BaseCost):
     Use this to define any logic common to return models.
     """
 
+
+class CashReturn(BaseReturnsModel):
+    r"""Objective term representing cash return.
+    
+    This is included automatically in :class:`SinglePeriodOptimization`
+    and :class:`MultiPeriodOptimization` policies. You can change
+    this behavior by setting their :param:`include_cash_return` to False.
+    
+    :param short_margin_requirement: fraction of value of a short positions
+        that is margined by portfolio cash
+    :type short_margin_requirement: float
+    """
+    
+    def __init__(self, cash_returns=None, short_margin_requirement=1.):
+        self.cash_returns = cash_returns
+        self.cash_return_parameter = cp.Parameter(nonneg=True) if self.cash_returns is None \
+            else ParameterEstimator(cash_returns, non_negative=True)
+        self.short_margin_requirement = short_margin_requirement
+        
+    def values_in_time(self, t, past_returns, **kwargs):
+        """Update cash return parameter as last cash return."""
+        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+        if self.cash_returns is None:
+            self.cash_return_parameter.value = past_returns.iloc[-1,-1]
+        
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Apply cash return to "real" cash position (without shorts and margins)."""
+        realcash = (w_plus[-1] - (1 + self.short_margin_requirement) * cp.sum(cp.neg(w_plus[:-1])))
+        result = realcash * self.cash_return_parameter
+        assert result.is_concave()
+        return result
+        
+    
+    
+    
 
 class ReturnsForecast(BaseReturnsModel):
     r"""Returns forecast, either provided by the user or computed from the data.
@@ -163,17 +199,20 @@ class ReturnsForecast(BaseReturnsModel):
 
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        if self.subtractshorts: 
-            # TODO too complicated to have this here
-            # maybe remove and increase holdingcost (ignoring borrow/lend spreads?)
-            noncash = w_plus[:-1].T @ self.r_hat_parameter[:-1]
-            realcash = (w_plus[-1] - 2 * cp.sum(cp.neg(w_plus[:-1])))
-            cash = realcash * self.cash_return
-            # print(cash)
-            assert cash.is_concave()
-            return noncash + cash
-        else:
-            return w_plus.T @ self.r_hat_parameter
+        
+        return w_plus[:-1].T @ self.r_hat_parameter[:-1]
+        
+        # if self.subtractshorts:
+        #     # TODO too complicated to have this here
+        #     # maybe remove and increase holdingcost (ignoring borrow/lend spreads?)
+        #     noncash = w_plus[:-1].T @ self.r_hat_parameter[:-1]
+        #     realcash = (w_plus[-1] - 2 * cp.sum(cp.neg(w_plus[:-1])))
+        #     cash = realcash * self.cash_return
+        #     # print(cash)
+        #     assert cash.is_concave()
+        #     return noncash + cash
+        # else:
+        #     return w_plus.T @ self.r_hat_parameter
         
 
 

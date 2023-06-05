@@ -26,7 +26,7 @@ from .returns import BaseReturnsModel
 from .constraints import BaseConstraint
 from .estimator import PolicyEstimator, DataEstimator
 from .errors import MissingValuesError, PortfolioOptimizationError
-from .returns import ReturnsForecast
+from .returns import ReturnsForecast, CashReturn
 
 __all__ = [
     "Hold",
@@ -331,7 +331,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             parameters to it.
     """
 
-    def __init__(self, objective, constraints=[], planning_horizon=None,terminal_constraint=None,**kwargs):
+    def __init__(self, objective, constraints=[], include_cash_return=True, planning_horizon=None, terminal_constraint=None,**kwargs):
         if hasattr(objective, '__iter__'):
             if not (hasattr(constraints, '__iter__') and len(constraints) and (hasattr(constraints[0], '__iter__') and len(objective) == len(constraints))):
                 raise SyntaxError('If you pass objective as a list, constraints should be a list of lists of the same length.')
@@ -344,7 +344,10 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             self.planning_horizon = planning_horizon
             self.objective = [copy.deepcopy(objective) for i in range(planning_horizon)] if planning_horizon > 1 else [objective]
             self.constraints = [copy.deepcopy(constraints) for i in range(planning_horizon)] if planning_horizon > 1 else [constraints]
-                
+        
+        self.include_cash_return = include_cash_return
+        if self.include_cash_return:
+            self.objective = [el + CashReturn() for el in self.objective]
         self.terminal_constraint = terminal_constraint
         self.cvxpy_kwargs = kwargs
 
@@ -456,7 +459,7 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
             parameters to it.
     """
 
-    def __init__(self, objective, constraints=[], **kwargs):
-        super().__init__([objective], [constraints], **kwargs)
+    def __init__(self, objective, constraints=[], include_cash_return=True, **kwargs):
+        super().__init__([objective], [constraints], include_cash_return=include_cash_return, **kwargs)
         
 
