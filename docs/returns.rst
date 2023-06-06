@@ -16,6 +16,8 @@ Return models
 
 .. autoclass:: ReturnsForecast
 
+.. autoclass:: CashReturn
+
 
 Risk models
 -----------

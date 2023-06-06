@@ -47,7 +47,7 @@ class CashReturn(BaseReturnsModel):
     
     This object is included automatically in :class:`SinglePeriodOptimization`
     and :class:`MultiPeriodOptimization` policies. You can change
-    this behavior by setting their :param:`include_cash_return` to False.
+    this behavior by setting their ``include_cash_return`` to False.
     
     :param short_margin_requirement: fraction of value of a short positions
         that is margined by portfolio cash
@@ -116,8 +116,8 @@ class ReturnsForecast(BaseReturnsModel):
     :param decay: decay factor used in :class:`MultiPeriodOptimization` policies.
         It is as a number in :math:`[0,1]`. At step :math:`\tau` of the MPO policy, where 
         :math:`\tau=t` is the initial one, the return predictions are multiplied by 
-        :math:`\texttt{decay}^{\tau-t}`. So, :param:`decay` close to 0 models a `fast` signal
-        while :param:`decay` close to 1 a `slow` signal. The default value is 1.    
+        :math:`\texttt{decay}^{\tau-t}`. So, ``decay`` close to zero models a `fast` signal
+        while ``decay`` close to one a `slow` signal. The default value is 1.    
     :type decay: float
 
     :raises cvxportfolio.MissingValuesError: If the class accesses

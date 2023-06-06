@@ -26,7 +26,7 @@ import pandas as pd
 import copy
 
 from .estimator import CvxpyExpressionEstimator, ParameterEstimator, DataEstimator
-
+from .utils import periods_per_year
 __all__ = ["HoldingCost", "TransactionCost"]
 
 
@@ -169,7 +169,7 @@ class HoldingCost(BaseCost):
 
         if not (self.spread_on_borrowing_stocks_percent is None):
             self.borrow_cost_stocks.value = np.ones(past_returns.shape[1] - 1) * (cash_return) + \
-                self.spread_on_borrowing_stocks_percent.current_value / (100 * 252)
+                self.spread_on_borrowing_stocks_percent.current_value / (100 * periods_per_year(past_returns.index))
         
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):

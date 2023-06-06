@@ -34,6 +34,7 @@ from .costs import BaseCost
 from .data import FredRateTimeSeries, YfinanceTimeSeries, BASE_LOCATION
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
+from .utils import periods_per_year
 
 PPY = 252
 __all__ = ['MarketSimulator', 'simulate_cash_holding_cost', 'simulate_stocks_holding_cost', 'simulate_transaction_cost', 'MarketData']
@@ -139,6 +140,8 @@ def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
 
     return -result
         
+
+
         
 class MarketData:
     """Prepare, hold, and serve market data.
@@ -155,8 +158,12 @@ class MarketData:
         base_location=BASE_LOCATION, 
         min_history=PPY,
         max_contiguous_missing='10d',
+        trading_interval=None,  # disabled for now because cache is not robust against this
         **kwargs,
     ):
+        
+        # TODO unblock once cache fixed
+        # trading_interval = None
         
         # drop duplicates and ensure ordering
         universe = sorted(set(universe))
@@ -179,6 +186,9 @@ class MarketData:
             self.prices = prices
             if cash_key != returns.columns[-1]:
                 self.add_cash_column(cash_key)
+            
+        if trading_interval:
+            self.downsample(trading_interval)
         
         self.set_read_only()
         self.check_sizes()
@@ -187,11 +197,21 @@ class MarketData:
     def universe(self):
         return self.returns.columns
         
+    sampling_intervals = {'weekly': 'W-MON', 'monthly':'MS', 'quarterly':'QS', 'annual':'AS'}
+        
+    def downsample(self, interval):
+        """Downsample market data."""
+        if not interval in self.sampling_intervals:
+            raise SyntaxError('Unsopported trading interval for down-sampling.')
+        interval = self.sampling_intervals[interval]
+        self.returns = np.exp(np.log(1+self.returns).resample(interval, closed='left', label='left').sum(False, 1))-1
+        self.volumes = self.volumes.resample(interval, closed='left', label='left').sum(False, 1)
+        self.prices = self.prices.resample(interval, closed='left', label='left').first()
+        
     @cached_property
     def PPY(self):
         "Periods per year, assumes returns are about equally spaced."
-        idx = self.returns.index
-        return int(np.round(len(idx) / ((idx[-1] - idx[0]) / pd.Timedelta('365.24d'))))
+        return periods_per_year(self.returns.index)
         
     
     def check_sizes(self):

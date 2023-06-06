@@ -19,6 +19,7 @@ import pandas as pd
 import copy
 
 from .estimator import Estimator
+from .utils import periods_per_year
 
 __all__ = ['BacktestResult']
 
@@ -37,7 +38,6 @@ class BacktestResult(Estimator):
     # Periods per year.
     # When we generalize to intra- or multi-day 
     # trading we won't have this constant.
-    PPY = 252
     
     def __init__(self, h, u, z, tcost, hcost_stocks, hcost_cash, cash_returns, policy_times, simulator_times):
         self.h = h
@@ -49,6 +49,10 @@ class BacktestResult(Estimator):
         self.cash_returns = cash_returns
         self.policy_times = policy_times
         self.simulator_times = simulator_times
+        
+    @property
+    def PPY(self):
+        return periods_per_year(self.h.index)
 
     @property
     def v(self):
@@ -131,8 +135,8 @@ class BacktestResult(Estimator):
     def sharpe_ratio(self):
         return (
             np.sqrt(self.PPY)
-            * np.mean(self.excess_growth_rates)
-            / np.std(self.excess_growth_rates)
+            * np.mean(self.excess_returns)
+            / np.std(self.excess_returns)
         )
 
     @property
