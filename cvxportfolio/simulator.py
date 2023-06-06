@@ -484,52 +484,31 @@ class MarketSimulator:
         returns=None,
         volumes=None,
         prices=None,
-        # costs=[simulate_transaction_cost, simulate_stocks_holding_cost],
+        costs=[simulate_transaction_cost, simulate_stocks_holding_cost, simulate_cash_holding_cost],
         round_trades=True,
-        # spread_on_lending_cash_percent=.5,
-        # spread_on_borrowing_cash_percent=.5,
         min_history_for_inclusion=PPY,
         cash_key="USDOLLAR",
         base_location=BASE_LOCATION,
-        # periods_per_year=PPY,
         **kwargs,
     ):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
-        # self.periods_per_year = periods_per_year
         
         self.market_data = MarketData(
             universe=universe, returns=returns,
             volumes=volumes, prices=prices,
             cash_key=cash_key, base_location=base_location,
-            # periods_per_year=self.periods_per_year, 
             **kwargs)
                 
-        # if not len(universe):
-        #     if ((returns is None) or (volumes is None)):
-        #         raise SyntaxError(
-        #             "If you don't specify a universe you should pass `returns` and `volumes`.")
-        #     if not returns.shape[1] == volumes.shape[1] + 1:
-        #         raise SyntaxError(
-        #            "In `returns` you must include the cash returns as the last column (and not in `volumes`).")
-        #    self.returns = DataEstimator(returns)
-        #    self.volumes = DataEstimator(volumes) if not volumes is None else volumes
-        #    self.cash_key = returns.columns[-1]
-        #    self.prices = DataEstimator(prices) if prices is not None else None
         if not len(universe) and prices is None:
             if round_trades:
                 raise SyntaxError(
                     "If you don't specify prices you can't request `round_trades`.")
-       #  else:
-            # self.universe = universe
-            # self.cash_key = cash_key
-            # self.prepare_data()
 
         self.round_trades = round_trades
         self.min_history_for_inclusion = min_history_for_inclusion
         
-        # self.costs = costs
-        self.costs = [simulate_transaction_cost, simulate_stocks_holding_cost, simulate_cash_holding_cost]
+        self.costs = costs
         self.kwargs = kwargs
 
         
@@ -589,29 +568,25 @@ class MarketSimulator:
         # compute post-trade holdings (including cash balance)
         h_plus = h + u
 
-        # we have updated the internal estimators and they are used by these methods
-        transaction_costs = self.costs[0](t, u, 
-            current_prices=current_prices, current_and_past_volumes=current_and_past_volumes, 
-            windowsigma=self.market_data.PPY,
-            current_and_past_returns=current_and_past_returns, **self.kwargs)
-        holding_costs = self.costs[1](
-            t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns,
-            periods_per_year=self.market_data.PPY, **self.kwargs)
-        cash_holding_costs = self.costs[2](
-            t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns,
-            periods_per_year=self.market_data.PPY, **self.kwargs)
+        # evaluate cost functions
+        realized_costs = {cost.__name__: cost(t=t, u=u,  h_plus=h_plus, 
+            current_and_past_volumes=current_and_past_volumes, 
+            current_and_past_returns=current_and_past_returns,
+            current_prices=current_prices,
+            periods_per_year=self.market_data.PPY,
+            windowsigma=self.market_data.PPY, **self.kwargs) for cost in self.costs}
         
         # initialize tomorrow's holdings
         h_next = pd.Series(h_plus, copy=True)
         
         # credit costs to cash
-        h_next[-1] = h_plus[-1] + (transaction_costs + holding_costs + cash_holding_costs)
+        h_next[-1] = h_plus[-1] + sum(realized_costs.values())
 
         # multiply positions by market returns
         current_returns = current_and_past_returns.iloc[-1]
         h_next *= (1 + current_returns)
             
-        return h_next, z, u, transaction_costs, holding_costs, cash_holding_costs, policy_time
+        return h_next, z, u, realized_costs, policy_time
         
     def initialize_policy(self, policy, start_time, end_time):
         """Initialize the policy object.
@@ -636,11 +611,13 @@ class MarketSimulator:
         for t in self.market_data.backtest_times(start_time, end_time):
             result.h.loc[t] = h
             s = time.time()
-            h, result.z.loc[t], result.u.loc[t], result.costs['simulate_transaction_cost'].loc[t], \
-                result.costs['simulate_stocks_holding_cost'].loc[t], result.costs['simulate_cash_holding_cost'].loc[t], \
+            h, result.z.loc[t], result.u.loc[t], realized_costs, \
                     result.policy_times.loc[t] = self.simulate(t=t, h=h, policy=policy)
             result.simulator_times.loc[t] = time.time() - s - result.policy_times.loc[t]
-        
+            
+            for cost in realized_costs:
+                result.costs[cost].loc[t] = realized_costs[cost]
+
         result.h.loc[pd.Timestamp(end_time)] = h  
         
         # TODO fix this
