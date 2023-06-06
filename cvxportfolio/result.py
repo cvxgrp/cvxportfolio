@@ -36,14 +36,14 @@ class BacktestResult(Estimator):
     """Holds the data from a Backtest and producs metrics and plots."""
     
     
-    def __init__(self, universe, costs):
+    def __init__(self, universe, backtest_times, costs):
         """Initialization of backtest result."""
-        self.h = pd.DataFrame(columns=universe)
-        self.u = pd.DataFrame(columns=universe)
-        self.z = pd.DataFrame(columns=universe)
-        self.costs = {cost.__name__:pd.Series(dtype=float) for cost in costs}
-        self.policy_times = pd.Series(dtype=float)
-        self.simulator_times = pd.Series(dtype=float)
+        self.h = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
+        self.u = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
+        self.z = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
+        self.costs = {cost.__name__:pd.Series(index=backtest_times, dtype=float) for cost in costs}
+        self.policy_times = pd.Series(index=backtest_times, dtype=float)
+        self.simulator_times = pd.Series(index=backtest_times, dtype=float)
     
     
     @property

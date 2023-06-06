@@ -43,11 +43,16 @@ __all__ = ['MarketSimulator', 'simulate_cash_holding_cost', 'simulate_stocks_hol
 def parallel_worker(policy, simulator, start_time, end_time, h):
     return simulator._single_backtest(policy, start_time, end_time, h)
     
-
 def hash_universe(universe):
     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
         
-    
+## TODO cache needs to take something else in order to be safe
+# against resampling (now disabled). If we give it backtest_times then it can't be reused
+# tomorrow with a backtest with one more data point. 
+# Also it can be quite large. There should probably be
+# logic to delete it automatically. Maybe this will only be used
+# by multiple backtests run on the same policy with different HPs and be
+# deleted at the end?
 def load_cache(universe, base_location):
     folder = base_location/f'hash(universe)={hash_universe(universe)}'
     try:
@@ -98,7 +103,7 @@ def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
 def simulate_stocks_holding_cost(t, h_plus, current_and_past_returns,
                                 spread_on_borrowing_stocks_percent=0.5, 
                                 dividends=0., periods_per_year=PPY, **kwargs):
-    """Holding cost for stocks. 
+    """Holding cost for stocks used by MarketSimulator. 
     
     :param spread_on_borrowing_stocks_percent: when shorting a stock,
         one pays a rate on the value of the position equal to the cash return plus this spread, 
@@ -127,7 +132,7 @@ def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
                             current_and_past_returns, persharecost=0.005,
                             linearcost=0., nonlinearcoefficient=1.,
                             windowsigma=PPY, exponent=1.5, **kwargs):    
-    """Transaction cost model for the market simulator.
+    """Transaction cost model for the MarketSimulator.
     
     :param per_share_fixed_cost: transaction cost per share traded. Default value is 0.005 (USD), uses
         Yahoo Finance open prices to simulate the number of stocks traded. See 
@@ -579,7 +584,7 @@ class MarketSimulator:
         # initialize tomorrow's holdings
         h_next = pd.Series(h_plus, copy=True)
         
-        # credit costs to cash
+        # credit costs to cash account
         h_next[-1] = h_plus[-1] + sum(realized_costs.values())
 
         # multiply positions by market returns
@@ -606,17 +611,17 @@ class MarketSimulator:
         if hasattr(policy, 'compile_to_cvxpy'):
             policy.compile_to_cvxpy()
         
-        result = BacktestResult(self.market_data.universe, self.costs)
+        result = BacktestResult(self.market_data.universe, self.market_data.backtest_times(start_time, end_time), self.costs)
         
+        # this is the main loop of a backtest
         for t in self.market_data.backtest_times(start_time, end_time):
             result.h.loc[t] = h
             s = time.time()
             h, result.z.loc[t], result.u.loc[t], realized_costs, \
                     result.policy_times.loc[t] = self.simulate(t=t, h=h, policy=policy)
-            result.simulator_times.loc[t] = time.time() - s - result.policy_times.loc[t]
-            
             for cost in realized_costs:
                 result.costs[cost].loc[t] = realized_costs[cost]
+            result.simulator_times.loc[t] = time.time() - s - result.policy_times.loc[t]
 
         result.h.loc[pd.Timestamp(end_time)] = h  
         
@@ -715,5 +720,37 @@ class MarketSimulator:
         if len(result) == 1:
             return result[0]
         return result
-        
 
+# def _do_single_backtest(policy, start_time, end_time, simulator, cache):
+#     """This function can run on remote process/machine."""
+#
+#     universe = simulator.market_data.universe
+#     backtest_times = simulator.market_data.backtest_times(start_time, end_time)
+#
+#     policy.pre_evaluation(universe=universe, backtest_times=backtest_times)
+#     if hasattr(policy, 'cache'):
+#         policy.cache = cache
+#     if hasattr(policy, 'compile_to_cvxpy'):
+#         policy.compile_to_cvxpy()
+#
+#     result = BacktestResult(universe, backtest_times, simulator.costs)
+#
+#     # this is the main loop of a backtest
+#     for t in backtest_times:
+#         result.h.loc[t] = h
+#         s = time.time()
+#         h, result.z.loc[t], result.u.loc[t], realized_costs, \
+#                 result.policy_times.loc[t] = simulator.simulate(t=t, h=h, policy=policy)
+#         for cost in realized_costs:
+#             result.costs[cost].loc[t] = realized_costs[cost]
+#         result.simulator_times.loc[t] = time.time() - s - result.policy_times.loc[t]
+#
+#     result.h.loc[pd.Timestamp(end_time)] = h
+#
+#     # TODO fix this
+#     result.cash_returns = simulator.market_data.returns.iloc[:,-1].loc[result.u.index]
+#
+#     return result, policy.cache
+#
+    
+    
