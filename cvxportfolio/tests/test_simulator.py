@@ -52,6 +52,39 @@ class TestSimulator(unittest.TestCase):
         print('removing', cls.datadir)
         shutil.rmtree(cls.datadir)
         
+    def test_market_data_downsample(self):
+        "Test downsampling of market data."
+        md = MarketData(['AAPL', 'GOOG'])
+        
+        
+        idx = md.returns.index
+    
+        freqs = ['weekly', 'monthly', 'quarterly'] # not doing annual because XXXX-01-01 is holiday
+        testdays = ['2023-05-01', '2023-05-01', '2022-04-01']
+        periods = [['2023-05-01', '2023-05-02', '2023-05-03', '2023-05-04', '2023-05-05'], 
+                    idx[(idx >= '2023-05-01') & (idx < '2023-06-01')],
+                idx[(idx >= '2022-04-01') & (idx < '2022-07-01')]  ]
+        
+        for i in range(len(freqs)):
+            
+            new_md = deepcopy(md)
+        
+            new_md.downsample(freqs[i])
+            print(new_md.returns)
+            self.assertTrue(np.isnan(new_md.returns.GOOG.iloc[0]))
+            self.assertTrue(np.isnan(new_md.volumes.GOOG.iloc[0]))
+            self.assertTrue(np.isnan(new_md.prices.GOOG.iloc[0]))
+            
+            if freqs[i] == 'weekly':
+                self.assertTrue(all(new_md.returns.index.weekday==0))
+                
+            if freqs[i] == 'monthly':
+                self.assertTrue(all(new_md.returns.index.day==1))
+            
+            self.assertTrue(all(md.prices.loc[testdays[i]] == new_md.prices.loc[testdays[i]]))
+            self.assertTrue(np.allclose(md.volumes.loc[periods[i]].sum(), new_md.volumes.loc[testdays[i]]))
+            self.assertTrue(np.allclose((1 + md.returns.loc[periods[i]]).prod(), 1 + new_md.returns.loc[testdays[i]]))
+
     
     def test_market_data_methods1(self):
         t = self.returns.index[10]
@@ -73,7 +106,7 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(current_prices.name == t)
         
     def test_break_timestamp(self):
-        md = MarketData(['AAPL', 'ZM', 'TSLA'], base_location=self.datadir)
+        md = MarketData(['AAPL', 'ZM', 'TSLA'], min_history=252, base_location=self.datadir)
         self.assertTrue(pd.Timestamp('2020-04-20') in md.break_timestamps)
         # self.assertTrue(len(md.break_up_backtest('2000-01-01')) == 3)
         self.assertTrue(md.limited_universes[pd.Timestamp('2011-06-28')] == ('AAPL', 'TSLA'))

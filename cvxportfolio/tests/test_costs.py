@@ -87,10 +87,11 @@ class TestCosts(unittest.TestCase):
         hcost = HoldingCost(spread_on_borrowing_stocks_percent=.5,
                             dividends=dividends)
         
+        t = 100 # this is picked so that periods_per_year evaluates to 252
         hcost.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         expression = hcost.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
-        hcost.values_in_time(t=self.returns.index[12], past_returns=self.returns.iloc[:12])
-        cash_ret = self.returns.iloc[11][-1]
+        hcost.values_in_time(t=self.returns.index[t], past_returns=self.returns.iloc[:t])
+        cash_ret = self.returns.iloc[t-1][-1]
         
         for i in range(10):
             self.w_plus.value = np.random.randn(self.N)

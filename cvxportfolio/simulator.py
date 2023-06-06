@@ -69,7 +69,17 @@ def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
                                 periods_per_year=PPY, **kwargs):
     """Simulate holding cost for the cash account. 
     
-    TODO move arguments documentation from MarketSimulator.
+    :param spread_on_lending_cash_percent: the cash account will generate annualized
+        return equal to the cash return minus this number, expressed in percent annualized, or zero if
+        the spread is larger than the cash return. For example with USDOLLAR cash,
+        if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5
+        (the default value), then the uninvested cash in the portfolio generates annualized
+        return of 4.3%. See `this page <https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php>_`.
+    :type spread_on_lending_cash_percent: float, pd.Series
+    :param spread_on_borrowing_cash_percent: if one instead borrows cash he pays the
+        cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
+        See `this page <https://www.interactivebrokers.com/en/trading/margin-rates.php>_`.
+    :type spread_on_borrowing_cash_percent: float, pd.Series
     """
                                 
     multiplier = 1 / (100 * periods_per_year)
@@ -90,7 +100,16 @@ def simulate_stocks_holding_cost(t, h_plus, current_and_past_returns,
                                 dividends=0., periods_per_year=PPY, **kwargs):
     """Holding cost for stocks. 
     
-    TODO move arguments documentation from MarketSimulator.
+    :param spread_on_borrowing_stocks_percent: when shorting a stock,
+        one pays a rate on the value of the position equal to the cash return plus this spread, 
+        expressed in percent annualized. These values are hard to find historically, if you are unsure consider 
+        long-only portfolios or look at CFDs/futures instead. We set the default value to 0.5 (percent annualized) 
+        which is probably OK for US large cap stocks. See `this page <https://www.interactivebrokers.com/en/pricing/short-sale-cost.php>`_.
+    :type spread_on_borrowing_stocks_percent: float, pd.Series, pd.DataFrame
+    :param dividends: if not included in the returns (as they are by the default data interface,
+        based on `yfinance`), you can pass a DataFrame of dividend payments which will be credited to the cash
+        account (or debited, if short) at each round. Default is 0., corresponding to no dividends.
+    :type dividends: float, pd.DataFrame
     """
                                 
     multiplier = 1 / (100 * periods_per_year)
@@ -110,7 +129,18 @@ def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
                             windowsigma=PPY, exponent=1.5, **kwargs):    
     """Transaction cost model for the market simulator.
     
-    TODO move arguments documentation from MarketSimulator
+    :param per_share_fixed_cost: transaction cost per share traded. Default value is 0.005 (USD), uses
+        Yahoo Finance open prices to simulate the number of stocks traded. See 
+        `this page <https://www.interactivebrokers.com/en/pricing/commissions-home.php>`_.
+    :type per_share_fixed_cost: float
+    :param transaction_cost_coefficient_b: coefficient that multiplies the non-linear
+        term of the transaction cost. Default value is 1, you can pass any other constant value, a per-stock Series,
+        or a per-day and per-stock DataFrame
+    :type transaction_cost_coefficient_b: float, pd.Series, or pd.DataFrame
+    :param transaction_cost_exponent: exponent of the non-linear term of the transaction cost model. Default value 1.5,
+        this is applied to the trade volume (in US dollars) over the total market volume (in US dollars). See the
+        paper for more details; this model is supported by a long tradition of research in market microstructure.
+    :type transaction_cost_exponent: float
     """
         
     persharecost = DataEstimator(persharecost).values_in_time(t) if not \
@@ -146,7 +176,25 @@ def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
 class MarketData:
     """Prepare, hold, and serve market data.
     
-    Arguments are detailed in MarketSimulator, which initializes this.
+    :param universe: list of `Yahoo Finance <https://finance.yahoo.com/>`_ tickers on which to
+        simulate performance of the trading strategy. If left unspecified you should at least
+        pass `returns` and `volumes`. If you define a different market data access interface
+        (look in `cvxportfolio.data` for how to do it) you should pass instead
+        the symbol names for that data provider. Default is empty list.
+    :type universe: list or None
+    :param returns: historical open-to-open returns. Default is None, it is ignored
+        if universe is specified.
+    :type returns: pandas.DataFrame 
+    :param volumes: historical market volumes expressed in value (e.g., US dollars).
+            Default is None, it is ignored if universe is specified.
+    :type volumes: pandas.DataFrame
+    :param prices: historical open prices. Default is None, it is ignored
+        if universe is specified. These are used to round the trades to integer number of stocks
+        if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
+        is greater than zero).
+    :type prices: pandas.DataFrame
+    
+    
     """
     
     def __init__(self, 
@@ -291,7 +339,6 @@ class MarketData:
         
     
     def get_market_data(self, universe):
-        
         database_accesses = {}
         print('Updating data')
         for stock in universe:
@@ -307,9 +354,12 @@ class MarketData:
                 
         
     def remove_missing_recent(self):
-            
-        # yfinance has some issues with most recent data; 
-        # we remove recent days if there are NaNs
+        """Clean recent data.
+        
+        Yfinance has some issues with most recent data; 
+        we remove recent days if there are NaNs.
+        """
+        
         if self.prices.iloc[-5:].isnull().any().any():
             drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
             self.prices = self.prices.loc[self.prices.index<drop_at]
@@ -355,7 +405,12 @@ class MarketData:
         
     @cached_property    
     def limited_universes(self):
-        """Valid universes for each section, minus cash."""
+        """Valid universes for each section, minus cash.
+        
+        A backtest is broken into multiple ones that start at each key
+        of this, have the universe specified by this, and end
+        at the next startpoint.  
+        """
         result = {}
         uni = []
         for ts in self.break_timestamps:
@@ -399,73 +454,21 @@ class MarketSimulator:
     `large US-based broker <https://www.interactivebrokers.com/>`_.
 
 
-    :param universe: list of `Yahoo Finance <https://finance.yahoo.com/>`_ tickers on which to
-        simulate performance of the trading strategy. If left unspecified you should at least
-        pass `returns` and `volumes`. If you define a different market data access interface
-        (look in `cvxportfolio.data` for how to do it) you should pass instead
-        the symbol names for that data provider. Default is empty list.
-    :type universe: list or None
-    :param returns: historical open-to-open returns. Default is None, it is ignored
-        if universe is specified.
-    :type returns: pandas.DataFrame 
-    :param volumes: historical market volumes expressed in value (e.g., US dollars).
-            Default is None, it is ignored if universe is specified.
-    :type volumes: pandas.DataFrame
-    :param prices: historical open prices. Default is None, it is ignored
-        if universe is specified. These are used to round the trades to integer number of stocks
-        if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
-        is greater than zero).
-    :type prices: pandas.DataFrame
+    
     :param spreads: historical bid-ask spreads expressed as (ask-bid)/bid. Default is None,
         equivalent to 0.0. Practical spreads are negligible on US liquid stocks.
     :type spreads: pandas.DataFrame
     :param round_trades: round the trade weights provided by a policy so they correspond to an integer
         number of stocks traded. Default is True using Yahoo Finance open prices.
     :type round_trades: bool
-    :param per_share_fixed_cost: transaction cost per share traded. Default value is 0.005 (USD), uses
-        Yahoo Finance open prices to simulate the number of stocks traded. See 
-        `this page <https://www.interactivebrokers.com/en/pricing/commissions-home.php>`_.
-    :type per_share_fixed_cost: float
-    :param transaction_cost_coefficient_b: coefficient that multiplies the non-linear
-        term of the transaction cost. Default value is 1, you can pass any other constant value, a per-stock Series,
-        or a per-day and per-stock DataFrame
-    :type transaction_cost_coefficient_b: float, pd.Series, or pd.DataFrame
-    :param transaction_cost_exponent: exponent of the non-linear term of the transaction cost model. Default value 1.5,
-        this is applied to the trade volume (in US dollars) over the total market volume (in US dollars). See the
-        paper for more details; this model is supported by a long tradition of research in market microstructure.
-    :type transaction_cost_exponent: float
+    
     :param window_sigma_estimate: we use an historical rolling standard deviation to estimate the average
         size of the return on a stock on each day, and this multiplies the second term of the transaction cost model.
         See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
         default is 252 (typical number of trading days in a year).
     :type window_sigma_estimate: int
-    :param spread_on_borrowing_stocks_percent: when shorting a stock,
-        one pays a rate on the value of the position equal to the cash return plus this spread, 
-        expressed in percent annualized. These values are hard to find historically, if you are unsure consider 
-        long-only portfolios or look at CFDs/futures instead. We set the default value to 0.5 (percent annualized) 
-        which is probably OK for US large cap stocks. See `this page <https://www.interactivebrokers.com/en/pricing/short-sale-cost.php>`_.
-    :type spread_on_borrowing_stocks_percent: float, pd.Series, pd.DataFrame
-    :param spread_on_long_positions_percent: if you trade CFDs one pays interest on long positions  as well as your short positions, 
-        equal to the cash return plus this value (percent annualized). If
-        instead this is None, the default value, you pay nothing on your long positions (as you do if you trade
-        stocks). We don't consider dividend payments because those are already incorporated in the
-        open-to-open returns as we compute them from the Yahoo Finance data. See cvxportfolio.data for details.
-    :type spread_on_long_positions_percent: float, None, pd.Series, pd.DataFrame
-    :param dividends: if not included in the returns (as they are by the default data interface,
-        based on `yfinance`), you can pass a DataFrame of dividend payments which will be credited to the cash
-        account (or debited, if short) at each round. Default is 0., corresponding to no dividends.
-    :type dividends: float, pd.DataFrame
-    :param spread_on_lending_cash_percent: the cash account will generate annualized
-        return equal to the cash return minus this number, expressed in percent annualized, or zero if
-        the spread is larger than the cash return. For example with USDOLLAR cash,
-        if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5
-        (the default value), then the uninvested cash in the portfolio generates annualized
-        return of 4.3%. See `this page <https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php>_`.
-    :type spread_on_lending_cash_percent: float, pd.Series
-    :param spread_on_borrowing_cash_percent: if one instead borrows cash he pays the
-        cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
-        See `this page <https://www.interactivebrokers.com/en/trading/margin-rates.php>_`.
-    :type spread_on_borrowing_cash_percent: float, pd.Series 
+    
+
     :param cash_key: name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
         as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
         along with the stock returns as its last column.
@@ -554,10 +557,6 @@ class MarketSimulator:
 
         past_returns, past_volumes, current_prices = self.market_data.serve_data_policy(t)
 
-        # update internal estimators (spreads, dividends, volumes, ..., )
-        # TODO this should be superflous now
-        # super().values_in_time(t=t)
-
         # evaluate the policy
         s = time.time()
         z = policy.values_in_time(t=t, current_weights=current_weights, current_portfolio_value=current_portfolio_value, 
@@ -632,33 +631,27 @@ class MarketSimulator:
         if hasattr(policy, 'compile_to_cvxpy'):
             policy.compile_to_cvxpy()
         
-        h_df = pd.DataFrame(columns=self.market_data.universe)
-        u = pd.DataFrame(columns=self.market_data.universe)
-        z = pd.DataFrame(columns=self.market_data.universe)
-        tcost = pd.Series(dtype=float)
-        hcost_stocks = pd.Series(dtype=float)
-        hcost_cash = pd.Series(dtype=float)
-        policy_times = pd.Series(dtype=float)
-        simulator_times = pd.Series(dtype=float)
+        result = BacktestResult(self.market_data.universe, self.costs)
         
         for t in self.market_data.backtest_times(start_time, end_time):
-            h_df.loc[t] = h
+            result.h.loc[t] = h
             s = time.time()
-            h, z.loc[t], u.loc[t], tcost.loc[t], hcost_stocks.loc[t], hcost_cash.loc[t], policy_times.loc[t] = \
-                self.simulate(t=t, h=h, policy=policy)
-            simulator_times.loc[t] = time.time() - s - policy_times.loc[t]
+            h, result.z.loc[t], result.u.loc[t], result.costs['simulate_transaction_cost'].loc[t], \
+                result.costs['simulate_stocks_holding_cost'].loc[t], result.costs['simulate_cash_holding_cost'].loc[t], \
+                    result.policy_times.loc[t] = self.simulate(t=t, h=h, policy=policy)
+            result.simulator_times.loc[t] = time.time() - s - result.policy_times.loc[t]
         
-        h_df.loc[pd.Timestamp(end_time)] = h  
+        result.h.loc[pd.Timestamp(end_time)] = h  
+        
+        # TODO fix this
+        result.cash_returns = self.market_data.returns.iloc[:,-1].loc[result.u.index]
         
         if hasattr(policy, 'cache'):
             store_cache(cache=policy.cache, universe=self.market_data.universe, base_location=self.base_location)
         
-        return BacktestResult(h=h_df, u=u, z=z, tcost=tcost, hcost_stocks=hcost_stocks, hcost_cash=hcost_cash, 
-            cash_returns=self.market_data.returns.iloc[:,-1].loc[u.index], 
-                policy_times=policy_times, simulator_times=simulator_times)
+        return result
         
-                  
-                                 
+                            
     def backtest(self, policy, start_time, end_time=None, initial_value = 1E6, h=None, parallel=True):
         """Backtest one or more trading policy.
         

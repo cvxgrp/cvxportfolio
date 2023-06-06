@@ -35,21 +35,17 @@ def getFiscalQuarter(dt):
 class BacktestResult(Estimator):
     """Holds the data from a Backtest and producs metrics and plots."""
     
-    # Periods per year.
-    # When we generalize to intra- or multi-day 
-    # trading we won't have this constant.
     
-    def __init__(self, h, u, z, tcost, hcost_stocks, hcost_cash, cash_returns, policy_times, simulator_times):
-        self.h = h
-        self.u = u
-        self.z = z
-        self.tcost = tcost
-        self.hcost_stocks = hcost_stocks
-        self.hcost_cash = hcost_cash
-        self.cash_returns = cash_returns
-        self.policy_times = policy_times
-        self.simulator_times = simulator_times
-        
+    def __init__(self, universe, costs):
+        """Initialization of backtest result."""
+        self.h = pd.DataFrame(columns=universe)
+        self.u = pd.DataFrame(columns=universe)
+        self.z = pd.DataFrame(columns=universe)
+        self.costs = {cost.__name__:pd.Series(dtype=float) for cost in costs}
+        self.policy_times = pd.Series(dtype=float)
+        self.simulator_times = pd.Series(dtype=float)
+    
+    
     @property
     def PPY(self):
         return periods_per_year(self.h.index)
@@ -66,7 +62,7 @@ class BacktestResult(Estimator):
 
     @property
     def w(self):
-        """The weights of the portfolio over time."""
+        """The weights of the portfolio in time."""
         return (self.h.T / self.v).T
 
     @property
@@ -93,6 +89,10 @@ class BacktestResult(Estimator):
         )
 
     @property
+    def excess_returns(self):
+        return self.returns - self.cash_returns
+        
+    @property
     def growth_rates(self):
         """The growth rate log(v_{t+1}/v_t)"""
         return np.log(self.returns + 1)
@@ -102,34 +102,34 @@ class BacktestResult(Estimator):
         """The growth rate log(v_{t+1}/v_t)"""
         return np.log(self.excess_returns + 1)
     
-    @property
-    def annual_growth_rate(self):
-        """The annualized growth rate PPY/T sum_{t=1}^T log(v_{t+1}/v_t)"""
-        return self.growth_rates.sum() * self.PPY / self.growth_rates.size
+    # @property
+    # def annual_growth_rate(self):
+    #     """The annualized growth rate PPY/T sum_{t=1}^T log(v_{t+1}/v_t)"""
+    #     return self.growth_rates.mean() * self.PPY
+    #
+    # @property
+    # def annual_return(self):
+    #     """The annualized return in percent."""
+    #     ret = self.growth_rates
+    #     return self._growth_to_return(ret.mean())
+    #
+    # def _growth_to_return(self, growth_rates):
+    #     """Convert growth to annualized percentage return."""
+    #     return 100 * (np.exp(self.PPY * growth) - 1)
 
-    @property
-    def annual_return(self):
-        """The annualized return in percent."""
-        ret = self.growth_rates
-        return self._growth_to_return(ret.mean())
-
-    def _growth_to_return(self, growth):
-        """Convert growth to annualized percentage return."""
-        return 100 * (np.exp(self.PPY * growth) - 1)
-
-    def get_quarterly_returns(self, benchmark=None):
-        """The annualized returns for each fiscal quarter."""
-        ret = self.growth_rates
-        quarters = ret.groupby(getFiscalQuarter).aggregate(np.mean)
-        return self._growth_to_return(quarters)
-
-    def get_best_quarter(self, benchmark=None):
-        ret = self.get_quarterly_returns(benchmark)
-        return (ret.argmax(), ret.max())
-
-    def get_worst_quarter(self, benchmark=None):
-        ret = self.get_quarterly_returns(benchmark)
-        return (ret.argmin(), ret.min())
+    # def get_quarterly_returns(self, benchmark=None):
+    #     """The annualized returns for each fiscal quarter."""
+    #     ret = self.growth_rates
+    #     quarters = ret.groupby(getFiscalQuarter).aggregate(np.mean)
+    #     return self._growth_to_return(quarters)
+    #
+    # def get_best_quarter(self, benchmark=None):
+    #     ret = self.get_quarterly_returns(benchmark)
+    #     return (ret.argmax(), ret.max())
+    #
+    # def get_worst_quarter(self, benchmark=None):
+    #     ret = self.get_quarterly_returns(benchmark)
+    #     return (ret.argmin(), ret.min())
 
     @property
     def sharpe_ratio(self):
@@ -151,56 +151,34 @@ class BacktestResult(Estimator):
         
     @property
     def drawdown(self):
-        return (1 - (self.v / self.v.cummax()))
-
-    # @property
-    # def max_drawdown(self):
-    #     """The maximum peak to trough drawdown in percent."""
-    #     val_arr = self.v.values
-    #     max_dd_so_far = 0
-    #     cur_max = val_arr[0]
-    #     for val in val_arr[1:]:
-    #         if val >= cur_max:
-    #             cur_max = val
-    #         elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
-    #             max_dd_so_far = 100 * (cur_max - val) / cur_max
-    #     return max_dd_so_far
-        
-    @property
-    def excess_returns(self):
-        return self.returns - self.cash_returns
+        return -(1 - (self.v / self.v.cummax()))
 
 
     def __repr__(self):
         data = collections.OrderedDict({
             "Number of periods": self.u.shape[0],
             "Initial timestamp": self.h.index[0],
+            "Universe size": self.h.shape[1],
             "Final timestamp": self.h.index[-1],
             "Total profit (PnL)": self.profit,
             "Annualized portfolio return (%)": self.returns.mean() * 100 * self.PPY,
             "Annualized excess return (%)": self.excess_returns.mean() * 100 * self.PPY,
             "Annualized excess risk (%)": self.excess_returns.std() * 100 * np.sqrt(self.PPY),
             "Sharpe ratio": self.sharpe_ratio,
-            "Max. drawdown (%)": self.drawdown.max() * 100,
+            "Max. drawdown (%)": self.drawdown.min() * 100,
             "Average drawdown (%)": self.drawdown.mean() * 100,
             "Daily Turnover (%)": self.turnover.mean() * 100,
             "Annualized Turnover (%)": self.turnover.mean() * 100 * self.PPY,
             
             "Average leverage (%)": self.leverage.mean() * 100,
-            "Max leverage (%)": self.leverage.max() * 100,
-            
-            "Average daily tcost (bp)": (self.tcost / self.v).mean()*1E4,
-            "Average daily tcost ($)": (self.tcost).mean(),
-            "Average daily stock borrow cost (bp)": (self.hcost_stocks / self.v).mean()*1E4,
-            "Average daily stock borrow cost ($)": (self.hcost_stocks).mean(),
-            "Average daily cash return or cost (bp)": (self.hcost_cash / self.v).mean()*1E4,
-            "Average daily cash return or cost ($)": (self.hcost_cash).mean(),
-            
-            "Average policy time (sec)": self.policy_times.mean(),
-            "Average simulator time (sec)": self.simulator_times.mean(),
-            
-            
-            })
+            "Max leverage (%)": self.leverage.max() * 100})
+        
+        data.update(collections.OrderedDict({f'Average of {cost} per period (bp)': (self.costs[cost]/self.v).mean()*1E4 for cost in self.costs}))
+        
+        data.update(collections.OrderedDict(
+            {"Average policy time (sec)": self.policy_times.mean(),
+            "Average simulator time (sec)": self.simulator_times.mean()
+            }))
 
         return 'Backtest Result:\n' + pd.Series(data=data).to_string(float_format="{:,.3f}".format)
         
