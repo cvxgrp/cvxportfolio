@@ -25,7 +25,7 @@ from multiprocess import Pool
 import pickle
 import hashlib
 from functools import cached_property
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -35,6 +35,7 @@ from .data import FredRateTimeSeries, YfinanceTimeSeries, BASE_LOCATION
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
 from .utils import periods_per_year
+from .errors import DataError
 
 PPY = 252
 __all__ = ['MarketSimulator', 'simulate_cash_holding_cost', 'simulate_stocks_holding_cost', 'simulate_transaction_cost', 'MarketData']
@@ -224,10 +225,11 @@ class MarketData:
         self.base_location = Path(base_location)
         self.min_history = min_history
         self.max_contiguous_missing = max_contiguous_missing
+        self.cash_key = cash_key
         
         if len(universe):
             self.get_market_data(universe)
-            self.add_cash_column(cash_key)
+            self.add_cash_column(self.cash_key)
         else:
             if returns is None:
                 raise SyntaxError("If you don't specify a universe you should pass `returns`.")
@@ -416,38 +418,55 @@ class MarketData:
         of this, have the universe specified by this, and end
         at the next startpoint.  
         """
-        result = {}
+        result = OrderedDict()
         uni = []
         for ts in self.break_timestamps:
             uni += self.entry_dates[ts]
             uni = [el for el in uni if not el in self.exit_dates[ts]]
             result[ts] = tuple(sorted(uni))
         return result
-        
-        
-    # def break_up_backtest(self, start_time=None, end_time=None, min_history=252):
-    #     """Break up backtest into smaller backtests with constant universe.
-    #     """
-    #
-    #     backtest_times = self.backtest_times(start_time, end_time)
-    #     breakpoints = [el for el in self.break_timestamps if
-    #         (el > backtest_times[0]) and el <= backtest_times[-1]]
-    #
-    #     if not len(breakpoints):
-    #         return backtest_times
-    #
-    #     results = [backtest_times[backtest_times < breakpoints[0]]]
-    #
-    #     for i in range(len(breakpoints)-1):
-    #         results.append(
-    #         backtest_times[(backtest_times >= breakpoints[i]) & (backtest_times < breakpoints[i+1])]
-    #         )
-    #
-    #     results += [backtest_times[backtest_times >= breakpoints[-1]]]
-    #
-    #     return results
-        
     
+    @cached_property
+    def earliest_backtest_start(self):
+        """Earliest date at which we can start a backtest."""
+        return self.returns.iloc[:,:-1].dropna(how='all').index[self.min_history]
+        
+        
+    def get_limited_backtests(self, start_time, end_time):
+        """Get start/end times and universes of constituent backtests.
+        
+        Each one has constant universe with assets' that meet the
+        ``min_history`` requirement and has not disappeared from the
+        dataset.
+        """
+                
+        full_backtest_times = self.backtest_times(start_time, end_time)
+        brkt = np.array(self.break_timestamps)
+
+        def get_valid_universe_and_its_expiration_for(time):    
+            try:
+                return self.limited_universes[brkt[brkt<=time][-1]], \
+                    brkt[brkt>time][0] if len(brkt[brkt>time]) else full_backtest_times[-1]
+            except IndexError:
+                raise DataError('There are no assets that meet the required min_history.')
+        
+        result = []
+        start = full_backtest_times[0]
+        while True:
+            
+            universe, expiration = get_valid_universe_and_its_expiration_for(start)
+            if expiration > full_backtest_times[-1]:
+                expiration = full_backtest_times[-1]
+            result.append({
+                'start_time': start,
+                'end_time': expiration,
+                'universe': list(universe) + [self.cash_key]})
+            
+            if expiration == full_backtest_times[-1]:
+                return result
+
+            start = expiration
+        
 
         
 
@@ -633,7 +652,7 @@ class MarketSimulator:
         
         return result
         
-                            
+                                    
     def backtest(self, policy, start_time, end_time=None, initial_value = 1E6, h=None, parallel=True):
         """Backtest one or more trading policy.
         
