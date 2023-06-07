@@ -406,11 +406,13 @@ class FredBase(BaseData):
 
     def download(self, symbol="DFF", current=None):
         if current is None or ((pd.Timestamp.today() - current.index[-1]) > pd.Timedelta('2d')):
-            end = pd.Timestamp.today()
             return self._download(symbol)
         else:
             new = self._download(symbol)
             new = new.loc[new.index > current.index[-1]]
+            if new.empty:
+                return current
+
             assert new.index[0] > current.index[-1]
             return pd.concat([current, new])
 
