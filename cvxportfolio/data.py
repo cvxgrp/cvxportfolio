@@ -133,11 +133,11 @@ class YfinanceBase(BaseData):
         )
         data["Return"] = np.exp(open_to_open_logreturn) - 1
         del data["Adj Close"]
-        # eliminate intraday data
+        # eliminate last period's intraday data
         data.loc[data.index[-1], ["High", "Low", "Close", "Return", "Volume"]] = np.nan
         return data
 
-    def download(self, symbol, current=None, overlap=5, **kwargs):
+    def download(self, symbol, current=None, overlap=5, grace_period='5d', **kwargs):
         """Download single stock from Yahoo Finance.
 
         If data was already downloaded we only download
@@ -158,7 +158,7 @@ class YfinanceBase(BaseData):
             updated = yf.download(symbol, progress=False, **kwargs)
             return self.internal_process(updated)
         else:
-            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta('5d'):
+            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta(grace_period):
                 return current
             new = yf.download(symbol, progress=False, start=current.index[-overlap], **kwargs)
             new = self.internal_process(new)
@@ -404,12 +404,24 @@ class FredBase(BaseData):
     def _download(self, symbol):
         return pd.read_csv(self.URL + f'?id={symbol}', index_col=0, parse_dates=[0])[symbol]
 
-    def download(self, symbol="DFF", current=None):
-        if current is None or ((pd.Timestamp.today() - current.index[-1]) > pd.Timedelta('2d')):
+    def download(self, symbol="DFF", current=None, grace_period='5d'):
+        """Download or update pandas Series from FRED. 
+        
+        If already downloaded don't change data stored locally and only
+        add new entries at the end. 
+        
+        Additionally, we allow for a `grace period`, if the data already downloaded
+        has a last entry not older than the grace period, we don't download new data.
+        """
+        if current is None:
             return self._download(symbol)
         else:
+            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta(grace_period):
+                return current
+                
             new = self._download(symbol)
             new = new.loc[new.index > current.index[-1]]
+            
             if new.empty:
                 return current
 
