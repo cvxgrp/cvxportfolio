@@ -169,7 +169,7 @@ class FullCovariance(BaseRiskModel):
     #
     #     return estimation, counts, past_returns.index[-1]
 
-    def values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, multiplier=1., **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
@@ -191,6 +191,8 @@ class FullCovariance(BaseRiskModel):
             eigval, eigvec = np.linalg.eigh(Sigma)
             eigval = np.maximum(eigval, 0.)
             self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
+        if not (multiplier == 1.):
+            self.Sigma_sqrt.value = np.sqrt(multiplier) * self.Sigma_sqrt.value
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         # TODO change benchmark weights passing
