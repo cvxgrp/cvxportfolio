@@ -190,14 +190,14 @@ class TestSimulator(unittest.TestCase):
             simulator = MarketSimulator()
 
         with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator(returns=pd.DataFrame([[0.]]))
+            simulator = MarketSimulator(returns=pd.DataFrame([[0.]], index=[pd.Timestamp.today()], columns=['USDOLLAR']))
 
         with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator(volumes=pd.DataFrame([[0.]]))
+            simulator = MarketSimulator(volumes=pd.DataFrame([[0.]], index=[pd.Timestamp.today()]))
 
         with self.assertRaises(SyntaxError):
             simulator = MarketSimulator(returns=pd.DataFrame(
-                [[0.]]), volumes=pd.DataFrame([[0.]]))
+                [[0.]], columns=['USDOLLAR'], index=[pd.Timestamp.today()]), volumes=pd.DataFrame([[0.]]))
 
         # not raises
         simulator = MarketSimulator(returns=pd.DataFrame([[0., 0.]], columns=['A', 'USDOLLAR']), volumes=pd.DataFrame(
@@ -205,7 +205,7 @@ class TestSimulator(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             simulator = MarketSimulator(returns=pd.DataFrame(
-                [[0., 0.]]), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
+                [[0., 0.]], index=[pd.Timestamp.today()], columns=['X', 'USDOLLAR']), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
 
         # with self.assertRaises(SyntaxError):
         #     simulator = MarketSimulator(returns=pd.DataFrame(

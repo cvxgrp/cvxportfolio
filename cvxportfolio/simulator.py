@@ -31,10 +31,10 @@ import numpy as np
 import pandas as pd
 
 from .costs import BaseCost, TransactionCost, HoldingCost
-from .data import FredRateTimeSeries, YfinanceTimeSeries, BASE_LOCATION
+from .data import FredTimeSeries, YfinanceTimeSeries, BASE_LOCATION
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
-from .utils import periods_per_year
+from .utils import *
 from .errors import DataError
 
 PPY = 252
@@ -264,7 +264,7 @@ class MarketData:
         self.volumes = self.volumes.resample(interval, closed='left', label='left').sum(False, 1)
         self.prices = self.prices.resample(interval, closed='left', label='left').first()
         
-    @cached_property
+    @property
     def PPY(self):
         "Periods per year, assumes returns are about equally spaced."
         return periods_per_year(self.returns.index)
@@ -339,10 +339,10 @@ class MarketData:
         if not cash_key == 'USDOLLAR':
             raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
             
-        # TODO do rate transformation here with periods_per_year
-        data = FredRateTimeSeries('DFF', base_location=self.base_location)
+        data = FredTimeSeries('DFF', base_location=self.base_location)
         data.pre_evaluation()
-        self.returns[cash_key] = data.data
+        print(self.returns)
+        self.returns[cash_key] = resample_returns(data.data / 100, periods=self.PPY)
         self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')
         
     
