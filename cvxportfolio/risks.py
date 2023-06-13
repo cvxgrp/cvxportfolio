@@ -37,21 +37,6 @@ __all__ = [
 ]
 
 
-# class CashBenchMark(ConstantEstimator):
-#     """Default benchmark weights for cvxportfolio risk models.
-#     """
-#
-#     def __init__(self):
-#         pass
-#
-#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
-#         """Initialize it using the size of the returns.
-#         """
-#         size = returns.shape[1]
-#         value = np.zeros(size)
-#         value[-1] = 1.
-#         super().__init__(value)
-#         super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
 
 
 class BaseRiskModel(BaseCost):
