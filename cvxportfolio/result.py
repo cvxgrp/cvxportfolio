@@ -41,7 +41,7 @@ class BacktestResult(Estimator):
         self.h = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
         self.u = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
         self.z = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
-        self.costs = {cost.__name__:pd.Series(index=backtest_times, dtype=float) for cost in costs}
+        self.costs = {cost.__class__.__name__:pd.Series(index=backtest_times, dtype=float) for cost in costs}
         self.policy_times = pd.Series(index=backtest_times, dtype=float)
         self.simulator_times = pd.Series(index=backtest_times, dtype=float)
     

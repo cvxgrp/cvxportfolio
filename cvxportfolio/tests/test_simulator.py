@@ -23,8 +23,8 @@ import multiprocessing
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.simulator import MarketSimulator, MarketData, \
-    simulate_stocks_holding_cost, simulate_transaction_cost, simulate_cash_holding_cost
+from cvxportfolio.simulator import MarketSimulator, MarketData #, \
+    #simulate_stocks_holding_cost, simulate_transaction_cost, simulate_cash_holding_cost
 from cvxportfolio.estimator import DataEstimator
 
 from copy import deepcopy
@@ -421,11 +421,11 @@ class TestSimulator(unittest.TestCase):
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
                 oldcash = h[-1]
                 h, z, u, costs, timer = simulator.simulate(t=t, h=h, policy=policy)
-                tcost, stock_hcost, cash_hcost = costs['simulate_transaction_cost'], costs['simulate_stocks_holding_cost'], costs['simulate_cash_holding_cost']
+                tcost, hcost = costs['TransactionCost'], costs['HoldingCost']
                 assert tcost == 0.
-                if np.all(h0[:2] > 0):
-                    assert stock_hcost == 0.
-                assert np.isclose((oldcash + stock_hcost + cash_hcost) * (1+simulator.market_data.returns.loc[t, 'USDOLLAR']), h[-1])
+                #if np.all(h0[:2] > 0):
+                #    assert hcost == 0.
+                assert np.isclose((oldcash + hcost) * (1+simulator.market_data.returns.loc[t, 'USDOLLAR']), h[-1])
             
             simh = h0[:-1] * simulator.market_data.prices.loc[pd.Timestamp(end_time) + pd.Timedelta('1d')] / simulator.market_data.prices.loc[start_time]
             self.assertTrue(np.allclose(simh, h[:-1]))
@@ -444,9 +444,9 @@ class TestSimulator(unittest.TestCase):
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
                 oldcash = h[-1]
                 h, z, u, costs, timer = simulator.simulate(t=t, h=h, policy=policy)
-                tcost, stock_hcost, cash_hcost = costs['simulate_transaction_cost'], costs['simulate_stocks_holding_cost'], costs['simulate_cash_holding_cost']
+                tcost, hcost = costs['TransactionCost'], costs['HoldingCost']
                 print(h)
-                print(tcost, stock_hcost, cash_hcost)
+                # print(tcost, stock_hcost, cash_hcost)
             
             self.assertTrue(np.all(np.abs(h[:-1]) < simulator.market_data.prices.loc[end_time]))
             

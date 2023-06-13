@@ -147,7 +147,7 @@ class HoldingCost(BaseCost):
         spread_on_borrowing_cash_percent=.5,
         periods_per_year=None,
         cash_return_on_borrow=True, #TODO revisit this plus spread_on_borrowing_stocks_percent syntax 
-        dividends=None):
+        dividends=0.):
         
         self.spread_on_borrowing_stocks_percent = None if spread_on_borrowing_stocks_percent is None else \
             DataEstimator(spread_on_borrowing_stocks_percent)
