@@ -125,14 +125,16 @@ class CombinedCosts(BaseCost):
 class HoldingCost(BaseCost):
     """A model for holding costs.
 
-    :param borrow_spread: spread on top of cash return payed for borrowing assets,
+    :param spread_on_borrowing_stocks_percent: spread on top of cash return payed for borrowing assets,
         including cash. If ``None``, the default, it gets from :class:`Backtest` the
         value for the period.
-    :type borrow_spread: float or pd.Series or pd.DataFrame or None
-    :param cash_lending_spread: spread that subtracts from the cash return for
-        uninvested cash. If ``None``, the default, it gets from :class:`Backtest` the
-        value for the period.
-    :type cash_lending_spread: float or pd.Series or None
+    :type spread_on_borrowing_stocks_percent: float or pd.Series or pd.DataFrame or None
+    :param spread_on_lending_cash_percent: spread that subtracts from the cash return for
+        uninvested cash.
+    :type spread_on_lending_cash_percent: float or pd.Series or None
+    :param spread_on_borrowing_cash_percent: spread that adds to the cash return as rate payed for
+        borrowed cash. This is not used as a policy optimization cost but is for the simulator cost.
+    :type spread_on_borrowing_cash_percent: float or pd.Series or None
     :param dividends: dividends payed (expressed as fraction of the stock value)
         for each period.  If ``None``, the default, it gets from :class:`Backtest` the
         value for the period.
@@ -141,14 +143,18 @@ class HoldingCost(BaseCost):
 
     def __init__(self, 
         spread_on_borrowing_stocks_percent=.5,
-        dividends=None,
-        ):
+        spread_on_lending_cash_percent=.5,
+        spread_on_borrowing_cash_percent=.5,
+        dividends=None):
         
         self.spread_on_borrowing_stocks_percent = None if spread_on_borrowing_stocks_percent is None else \
             DataEstimator(spread_on_borrowing_stocks_percent)
         self.dividends = None if dividends is None else \
             ParameterEstimator(dividends)
-
+        self.spread_on_lending_cash_percent = None if spread_on_lending_cash_percent is None else \
+            DataEstimator(spread_on_lending_cash_percent)        
+        self.spread_on_borrowing_cash_percent = None if spread_on_borrowing_cash_percent is None else \
+            DataEstimator(spread_on_borrowing_cash_percent)
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe=universe, backtest_times=backtest_times)
@@ -170,8 +176,30 @@ class HoldingCost(BaseCost):
         if not (self.spread_on_borrowing_stocks_percent is None):
             self.borrow_cost_stocks.value = np.ones(past_returns.shape[1] - 1) * (cash_return) + \
                 self.spread_on_borrowing_stocks_percent.current_value / (100 * periods_per_year(past_returns.index))
+                
+    def simulate(self, t, h_plus, current_and_past_returns, **kwargs):
         
+        cash_return = current_and_past_returns.iloc[-1,-1]        
+        multiplier = 1 / (100 * periods_per_year(current_and_past_returns.index))
+        result = 0.
+        borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
+        result += np.sum((cash_return + self.spread_on_borrowing_stocks_percent.values_in_time(t) * multiplier) * borrowed_stock_positions)
+        result += np.sum(h_plus[:-1] * self.dividends.values_in_time(t))
+        
+        # lending_spread = DataEstimator(spread_on_lending_cash_percent).values_in_time(t) * multiplier
+        # borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent).values_in_time(t) * multiplier
 
+        # cash_return = current_and_past_returns.iloc[-1,-1]
+        real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
+
+        if real_cash > 0:
+            result += real_cash * (max(cash_return - self.spread_on_lending_cash_percent.values_in_time(t) * multiplier, 0.) - cash_return)
+        else:
+            result += real_cash * self.spread_on_borrowing_cash_percent.values_in_time(t) * multiplier
+            
+        return result
+            
+            
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile cost to cvxpy expression."""
         
@@ -210,11 +238,8 @@ class TransactionCost(BaseCost):
     def __init__(self, spreads=0., pershare_cost=0.005, b=1.0, window_sigma_est=250, window_volume_est=250, exponent=1.5):
 
         self.spreads = DataEstimator(spreads)
-        self.pershare_cost = DataEstimator(pershare_cost)
-        if b is None:
-            self.b = b
-        else:
-            self.b = DataEstimator(b)
+        self.pershare_cost = None if pershare_cost is None else DataEstimator(pershare_cost)
+        self.b = None if b is None else DataEstimator(b)
         self.window_sigma_est = window_sigma_est
         self.window_volume_est = window_volume_est
         self.exponent = exponent
@@ -238,6 +263,31 @@ class TransactionCost(BaseCost):
 
             self.second_term_multiplier.value = self.b.current_value * sigma_est * \
                 (current_portfolio_value / volume_est) ** (self.exponent - 1)
+                
+    def simulate(self, t, u, current_and_past_returns, current_and_past_volumes, current_prices):
+        
+        sigma = np.std(current_and_past_returns.iloc[-self.window_sigma_est:, :-1], axis=0)
+
+        result = 0.
+        if not (self.pershare_cost is None):
+            if current_prices is None:
+                raise SyntaxError("If you don't provide prices you should set persharecost to None")
+            result += self.pershare_cost.values_in_time(t) * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
+
+        result += sum(self.spreads.values_in_time(t) * np.abs(u.iloc[:-1]))
+
+        if not (self.b is None):
+            if current_and_past_volumes is None:
+                raise SyntaxError("If you don't provide volumes you should set b to None")
+            # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
+            result += (np.abs(u.iloc[:-1])**self.exponent) @ (self.b.values_in_time(t)  *
+                sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (self.exponent - 1)))
+
+        assert not np.isnan(result)
+        assert not np.isinf(result)
+
+        return -result
+        
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
@@ -247,4 +297,3 @@ class TransactionCost(BaseCost):
             expression += (cp.abs(z[:-1]) ** self.exponent).T @ self.second_term_multiplier
             assert expression.is_convex()
         return expression
-        

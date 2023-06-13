@@ -307,9 +307,10 @@ class TestSimulator(unittest.TestCase):
         
         u = pd.Series(np.ones(len(current_prices)+1), self.universe)
         
+        tcost = cvx.TransactionCost()
         # syntax checks
         with self.assertRaises(SyntaxError):
-            simulate_transaction_cost(t, u=u, current_prices=None, 
+            tcost.simulate(t, u=u, current_prices=None, 
                             current_and_past_volumes=current_and_past_volumes, 
                             current_and_past_returns=current_and_past_returns)
                             
