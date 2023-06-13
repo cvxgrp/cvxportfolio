@@ -19,6 +19,7 @@ from pathlib import Path
 import tempfile
 import shutil
 import multiprocessing
+import time
 
 import numpy as np
 import pandas as pd
@@ -513,6 +514,33 @@ class TestSimulator(unittest.TestCase):
         print(np.linalg.norm(results[2].w.sum()[:2] - .5))
         self.assertTrue( np.linalg.norm(results[1].w.sum()[:2] - .5) < np.linalg.norm(results[0].w.sum()[:2] - .5) )
         self.assertTrue( np.linalg.norm(results[1].w.sum()[:2] - .5) < np.linalg.norm(results[2].w.sum()[:2] - .5) )
+        
+    def test_multiple_backtest4(self):
+        """Test downsample and offline cache."""
+        
+        time_first = 0.
+        results_first = []
+        for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
+            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_interval=downsampling)
+            pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)])
+            s = time.time()
+            results_first.append(sim.backtest(pol, pd.Timestamp('2021-12-01')))
+            time_first += time.time() - s 
+            
+        time_second = 0.
+        results_second = []
+        for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
+            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_interval=downsampling)
+            pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)])
+            s = time.time()
+            results_second.append(sim.backtest(pol, pd.Timestamp('2021-12-01')))
+            time_second += time.time() - s
+        
+        self.assertTrue(time_second < time_first)
+        [self.assertTrue(results_first[i].sharpe_ratio == results_second[i].sharpe_ratio) for i in range(len(results_first))]
+            
+            
+            
          
          
                 
