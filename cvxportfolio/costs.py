@@ -40,6 +40,7 @@ class BaseCost(CvxpyExpressionEstimator):
     def __mul__(self, other):
         """Multiply by constant."""
         if not np.isscalar(other):
+            # TODO here check if other is DataEstimator
             raise SyntaxError("You can only multiply cost by a scalar.")
         return CombinedCosts([self], [other])
 
@@ -110,10 +111,14 @@ class CombinedCosts(BaseCost):
 
     def values_in_time(self, *args, **kwargs):
         """Iterate over constituent costs."""
+        # TODO here pass multiplier (recursively) by multiplying
+        # by values_in_time of each element of self.multipliers
         [el.values_in_time(*args, **kwargs) for el in self.costs]
 
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Iterate over constituent costs."""
+        # TODO here patch by not compiling multiplier if it
+        # is not a scalar
         self.expression = 0
         for multiplier, cost in zip(self.multipliers, self.costs):
             self.expression += multiplier * \
@@ -139,6 +144,11 @@ class HoldingCost(BaseCost):
         for each period.  If ``None``, the default, it gets from :class:`Backtest` the
         value for the period.
     :type dividends: pd.DataFrame or None
+    :param periods_per_year: period per year (used in calculation of per-period cost). If None it is calculated
+        automatically.
+    :type periods_per_year: int or None
+    :param cash_return_on_borrow: whether to add (negative of) cash return to borrow cost of assets
+    :type cash_return_on_borrow: bool
     """
 
     def __init__(self, 
@@ -237,8 +247,8 @@ class TransactionCost(BaseCost):
     We don't include the short-term alpha term `c` here because it
     can be expressed with a separate `ReturnsForecast` object. 
 
-    :param spreads:
-    :type spreads: float or pd.Series or pd.DataFrame
+    :param a:
+    :type a: float or pd.Series or pd.DataFrame
     :param pershare_cost: per-share trade cost, as as in :class:`MarketSimulator`
     :type pershare_cost: float or pd.Series or pd.DataFrame
     :param b: coefficient of the second term

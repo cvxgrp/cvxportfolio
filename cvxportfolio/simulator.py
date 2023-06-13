@@ -264,7 +264,7 @@ class MarketData:
         self.volumes = self.volumes.resample(interval, closed='left', label='left').sum(False, 1)
         self.prices = self.prices.resample(interval, closed='left', label='left').first()
         
-    @property
+    @cached_property
     def PPY(self):
         "Periods per year, assumes returns are about equally spaced."
         return periods_per_year(self.returns.index)
@@ -469,31 +469,32 @@ class MarketData:
             start = expiration
         
 
-        
+    # :param spreads: historical bid-ask spreads expressed as (ask-bid)/bid. Default is None,
+    #     equivalent to 0.0. Practical spreads are negligible on US liquid stocks.
+    # :type spreads: pandas.DataFrame
+    #
+    # :param window_sigma_estimate: we use an historical rolling standard deviation to estimate the average
+    #     size of the return on a stock on each day, and this multiplies the second term of the transaction cost model.
+    #     See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
+    #     default is 252 (typical number of trading days in a year).
+    # :type window_sigma_estimate: int
 
 class MarketSimulator:
     """This class implements a simulator of market performance for trading strategies.
+    
+    
 
     We strive to make the parameters here as accurate as possible. The following is
     accurate as of 2023 using numbers obtained on the public website of a
     `large US-based broker <https://www.interactivebrokers.com/>`_.
 
-
-    
-    :param spreads: historical bid-ask spreads expressed as (ask-bid)/bid. Default is None,
-        equivalent to 0.0. Practical spreads are negligible on US liquid stocks.
-    :type spreads: pandas.DataFrame
     :param round_trades: round the trade weights provided by a policy so they correspond to an integer
         number of stocks traded. Default is True using Yahoo Finance open prices.
     :type round_trades: bool
     
-    :param window_sigma_estimate: we use an historical rolling standard deviation to estimate the average
-        size of the return on a stock on each day, and this multiplies the second term of the transaction cost model.
-        See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
-        default is 252 (typical number of trading days in a year).
-    :type window_sigma_estimate: int
-    
-
+    :param costs: list of BaseCost instances or class objects. If class objects (the default) they will
+        be instantiated internally with their default arguments.
+    :type costs: list
     :param cash_key: name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
         as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
         along with the stock returns as its last column.
@@ -501,6 +502,8 @@ class MarketSimulator:
     :param base_location: base location for storage of data.
         Default is `Path.home() / "cvxportfolio_data"`. Unused if passing `returns` and `volumes`.
     :type base_location: pathlib.Path or str: 
+    
+    
     """
 
     def __init__(
