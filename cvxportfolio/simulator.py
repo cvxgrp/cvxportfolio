@@ -55,16 +55,16 @@ def hash_universe(universe):
 # logic to delete it automatically. Maybe this will only be used
 # by multiple backtests run on the same policy with different HPs and be
 # deleted at the end?
-def load_cache(universe, base_location):
-    folder = base_location/f'hash(universe)={hash_universe(universe)}'
+def load_cache(universe, trading_interval, base_location):
+    folder = base_location/f'hash(universe)={hash_universe(universe)},trading_interval={trading_interval}'
     try:
         with open(folder/'cache.pkl', 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
         return {}
     
-def store_cache(cache, universe, base_location):
-    folder = base_location/f'hash(universe)={hash_universe(universe)}'
+def store_cache(cache, universe, trading_interval, base_location):
+    folder = base_location/f'hash(universe)={hash_universe(universe)},trading_interval={trading_interval}'
     folder.mkdir(exist_ok=True)
     with open(folder/'cache.pkl', 'wb') as f:
         pickle.dump(cache, f)
@@ -264,7 +264,7 @@ class MarketData:
         self.volumes = self.volumes.resample(interval, closed='left', label='left').sum(False, 1)
         self.prices = self.prices.resample(interval, closed='left', label='left').first()
         
-    @cached_property
+    @property
     def PPY(self):
         "Periods per year, assumes returns are about equally spaced."
         return periods_per_year(self.returns.index)
@@ -515,9 +515,10 @@ class MarketSimulator:
             #simulate_transaction_cost, simulate_stocks_holding_cost, simulate_cash_holding_cost
         ],
         round_trades=True,
-        min_history_for_inclusion=PPY,
+        min_history_for_inclusion=pd.Timedelta('365d'), # TODO temporary, will use MarketData infrastructure
         cash_key="USDOLLAR",
         base_location=BASE_LOCATION,
+        trading_interval=None,
         **kwargs,
     ):
         """Initialize the Simulator and download data if necessary."""
@@ -527,7 +528,10 @@ class MarketSimulator:
             universe=universe, returns=returns,
             volumes=volumes, prices=prices,
             cash_key=cash_key, base_location=base_location,
+            trading_interval=trading_interval,
             **kwargs)
+            
+        self.trading_interval = trading_interval
                 
         if not len(universe) and prices is None:
             if round_trades:
@@ -626,7 +630,8 @@ class MarketSimulator:
         
         # if policy initialized a cache, rewrite it with loaded one
         if hasattr(policy, 'cache'):
-            policy.cache = load_cache(universe=self.market_data.universe, base_location=self.base_location)
+            policy.cache = load_cache(universe=self.market_data.universe, trading_interval = self.trading_interval, 
+                base_location=self.base_location)
             
                                  
     def _single_backtest(self, policy, start_time, end_time, h):
@@ -654,7 +659,8 @@ class MarketSimulator:
         result.cash_returns = self.market_data.returns.iloc[:,-1].loc[result.u.index]
         
         if hasattr(policy, 'cache'):
-            store_cache(cache=policy.cache, universe=self.market_data.universe, base_location=self.base_location)
+            store_cache(cache=policy.cache, universe=self.market_data.universe, 
+            trading_interval = self.trading_interval, base_location=self.base_location)
         
         return result
         
@@ -716,8 +722,11 @@ class MarketSimulator:
         end_time = backtest_times_inclusive[-1]
             
         # TODO fix this - discard names that don't meet the min_history_for_inclusion
+        min_history = self.market_data.PPY * int(round(self.min_history_for_inclusion.days/365))
+        # print('min_history', min_history)
         history = (~self.market_data.returns.loc[self.market_data.returns.index < start_time].isnull()).sum()
-        reduced_universe = self.market_data.returns.columns[history >= self.min_history_for_inclusion]
+        reduced_universe = self.market_data.returns.columns[history >= min_history]
+        # print('reduced_universe', reduced_universe)
         self.market_data.returns = self.market_data.returns[reduced_universe]
         self.market_data.volumes = self.market_data.volumes[reduced_universe[:-1]]
         self.market_data.prices = self.market_data.prices[reduced_universe[:-1]]
