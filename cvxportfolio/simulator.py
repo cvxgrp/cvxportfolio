@@ -48,13 +48,6 @@ def parallel_worker(policy, simulator, start_time, end_time, h):
 def hash_universe(universe):
     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
         
-## TODO cache needs to take something else in order to be safe
-# against resampling (now disabled). If we give it backtest_times then it can't be reused
-# tomorrow with a backtest with one more data point. 
-# Also it can be quite large. There should probably be
-# logic to delete it automatically. Maybe this will only be used
-# by multiple backtests run on the same policy with different HPs and be
-# deleted at the end?
 def load_cache(universe, trading_interval, base_location):
     folder = base_location/f'hash(universe)={hash_universe(universe)},trading_interval={trading_interval}'
     try:
