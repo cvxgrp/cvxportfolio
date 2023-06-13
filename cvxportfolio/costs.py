@@ -145,16 +145,25 @@ class HoldingCost(BaseCost):
         spread_on_borrowing_stocks_percent=.5,
         spread_on_lending_cash_percent=.5,
         spread_on_borrowing_cash_percent=.5,
+        periods_per_year=None,
+        cash_return_on_borrow=True, #TODO revisit this plus spread_on_borrowing_stocks_percent syntax 
         dividends=None):
         
         self.spread_on_borrowing_stocks_percent = None if spread_on_borrowing_stocks_percent is None else \
             DataEstimator(spread_on_borrowing_stocks_percent)
-        self.dividends = None if dividends is None else \
-            ParameterEstimator(dividends)
+        if dividends is None:
+            self.dividends = None
+        else:
+            self.dividends = DataEstimator(dividends)
+            self.dividends_parameter = ParameterEstimator(dividends)
+        
         self.spread_on_lending_cash_percent = None if spread_on_lending_cash_percent is None else \
             DataEstimator(spread_on_lending_cash_percent)        
         self.spread_on_borrowing_cash_percent = None if spread_on_borrowing_cash_percent is None else \
             DataEstimator(spread_on_borrowing_cash_percent)
+            
+        self.periods_per_year = periods_per_year
+        self.cash_return_on_borrow = cash_return_on_borrow
         
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe=universe, backtest_times=backtest_times)
@@ -170,22 +179,29 @@ class HoldingCost(BaseCost):
         is very small so for now we do this. 
         """
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+        ppy = periods_per_year(past_returns.index) if self.periods_per_year is None else \
+            self.periods_per_year
                                
         cash_return = past_returns.iloc[-1,-1]
 
         if not (self.spread_on_borrowing_stocks_percent is None):
-            self.borrow_cost_stocks.value = np.ones(past_returns.shape[1] - 1) * (cash_return) + \
-                self.spread_on_borrowing_stocks_percent.current_value / (100 * periods_per_year(past_returns.index))
+            self.borrow_cost_stocks.value = np.ones(past_returns.shape[1] - 1) * (
+                    cash_return if self.cash_return_on_borrow else 0.) + \
+                self.spread_on_borrowing_stocks_percent.current_value / (100 * ppy)
                 
     def simulate(self, t, h_plus, current_and_past_returns, **kwargs):
         
+        ppy = periods_per_year(current_and_past_returns.index) if self.periods_per_year is None else \
+            self.periods_per_year
+        
         cash_return = current_and_past_returns.iloc[-1,-1]        
-        multiplier = 1 / (100 * periods_per_year(current_and_past_returns.index))
+        multiplier = 1 / (100 * ppy)
         result = 0.
         borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
-        result += np.sum((cash_return + self.spread_on_borrowing_stocks_percent.values_in_time(t) * multiplier) * borrowed_stock_positions)
+        result += np.sum(((cash_return if self.cash_return_on_borrow else 0.) + 
+            self.spread_on_borrowing_stocks_percent.values_in_time(t) * multiplier) * borrowed_stock_positions)
         result += np.sum(h_plus[:-1] * self.dividends.values_in_time(t))
-        
+          
         # lending_spread = DataEstimator(spread_on_lending_cash_percent).values_in_time(t) * multiplier
         # borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent).values_in_time(t) * multiplier
 
@@ -209,7 +225,7 @@ class HoldingCost(BaseCost):
            expression += cp.multiply(self.borrow_cost_stocks, cp.neg(w_plus)[:-1])
         
         if not (self.dividends is None):
-            expression -= cp.multiply(self.dividends, w_plus[:-1])
+            expression -= cp.multiply(self.dividends_parameter, w_plus[:-1])
         assert cp.sum(expression).is_convex()
         return cp.sum(expression)
 
@@ -235,9 +251,9 @@ class TransactionCost(BaseCost):
     :type exponent: float
     """
 
-    def __init__(self, spreads=0., pershare_cost=0.005, b=1.0, window_sigma_est=250, window_volume_est=250, exponent=1.5):
+    def __init__(self, a=0., pershare_cost=0.005, b=1.0, window_sigma_est=250, window_volume_est=250, exponent=1.5):
 
-        self.spreads = DataEstimator(spreads)
+        self.a = None if a is None else DataEstimator(a)
         self.pershare_cost = None if pershare_cost is None else DataEstimator(pershare_cost)
         self.b = None if b is None else DataEstimator(b)
         self.window_sigma_est = window_sigma_est
@@ -256,7 +272,7 @@ class TransactionCost(BaseCost):
             past_returns=past_returns, past_volumes=past_volumes, 
             current_prices=current_prices, **kwargs)
             
-        self.first_term_multiplier.value = self.spreads.current_value/2. + self.pershare_cost.current_value / current_prices.values
+        self.first_term_multiplier.value = self.a.current_value + self.pershare_cost.current_value / current_prices.values
         if not (self.b is None):
             sigma_est = np.sqrt((past_returns.iloc[-self.window_sigma_est:, :-1]**2).mean()).values
             volume_est = past_volumes.iloc[-self.window_volume_est:].mean().values
@@ -264,7 +280,7 @@ class TransactionCost(BaseCost):
             self.second_term_multiplier.value = self.b.current_value * sigma_est * \
                 (current_portfolio_value / volume_est) ** (self.exponent - 1)
                 
-    def simulate(self, t, u, current_and_past_returns, current_and_past_volumes, current_prices):
+    def simulate(self, t, u, current_and_past_returns, current_and_past_volumes, current_prices, **kwargs):
         
         sigma = np.std(current_and_past_returns.iloc[-self.window_sigma_est:, :-1], axis=0)
 
@@ -274,7 +290,7 @@ class TransactionCost(BaseCost):
                 raise SyntaxError("If you don't provide prices you should set persharecost to None")
             result += self.pershare_cost.values_in_time(t) * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
 
-        result += sum(self.spreads.values_in_time(t) * np.abs(u.iloc[:-1]))
+        result += sum(self.a.values_in_time(t) * np.abs(u.iloc[:-1]))
 
         if not (self.b is None):
             if current_and_past_volumes is None:

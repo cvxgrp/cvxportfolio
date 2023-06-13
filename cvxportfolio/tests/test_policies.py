@@ -266,7 +266,7 @@ class TestPolicies(unittest.TestCase):
 
         return_forecast = ReturnsForecast()
         risk_forecast = FullCovariance(kelly=False)
-        tcost = TransactionCost(spreads=1E-3, pershare_cost=0., b=None, exponent=2)
+        tcost = TransactionCost(a=1E-3/2, pershare_cost=0., b=None, exponent=2)
         
         policy = SinglePeriodOptimization(
             return_forecast
@@ -332,7 +332,7 @@ class TestPolicies(unittest.TestCase):
         policy = SinglePeriodOptimization(
             return_forecast
             - 2 * risk_forecast
-            - TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
+            - TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
             ,
             constraints=[LongOnly(), LeverageLimit(1)],
             # verbose=True,
@@ -380,7 +380,7 @@ class TestPolicies(unittest.TestCase):
         policy = SinglePeriodOptimization(
             return_forecast
             - 2 * risk_forecast
-            - TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
+            - TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
             ,
             constraints=[LongOnly(), LeverageLimit(1), MaxWeights(-1)],
             # verbose=True,
@@ -482,7 +482,7 @@ class TestPolicies(unittest.TestCase):
             policy = MultiPeriodOptimization(
                 return_forecast
                 - 10 * risk_forecast
-                - TransactionCost(spreads=50 * 1E-4, pershare_cost=0., b=0.)
+                - TransactionCost(a=25 * 1E-4, pershare_cost=0., b=0.)
                 #- TcostModel(half_spread=5 * 1E-4)  # , power=2)
                 ,
                 constraints=[LongOnly(), LeverageLimit(1)],
@@ -536,7 +536,7 @@ class TestPolicies(unittest.TestCase):
             policy = MultiPeriodOptimization(
                 return_forecast
                 - 10 * risk_forecast
-                - TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
+                - TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
                 ,
                 constraints=[LongOnly(), LeverageLimit(1)],
                 #verbose=True,

@@ -119,7 +119,7 @@ class TestCosts(unittest.TestCase):
         b = pd.Series([0., 0., 1.], [self.returns.index[12], self.returns.index[23], self.returns.index[34]])
         
         tcost = TransactionCost(
-            spreads=0.001, pershare_cost=pershare_cost, b=b, window_sigma_est=250, window_volume_est=250, exponent=1.5)
+            a=0.001/2, pershare_cost=pershare_cost, b=b, window_sigma_est=250, window_volume_est=250, exponent=1.5)
         
         t = self.returns.index[12]
         

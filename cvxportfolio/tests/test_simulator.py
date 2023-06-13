@@ -256,13 +256,21 @@ class TestSimulator(unittest.TestCase):
         
         cash_return = self.returns.loc[t, 'cash']
         
+        hcost = cvx.HoldingCost(
+            #spread_on_lending_cash_percent=0.,
+            #spread_on_borrowing_cash_percent=0.,
+            dividends=0.,
+            periods_per_year=252,
+            spread_on_borrowing_stocks_percent=0.,
+            cash_return_on_borrow=False)
+        
         for i in range(10):
             np.random.seed(i)
             h_plus = np.random.randn(self.returns.shape[1])*1000
             h_plus = pd.Series(h_plus, self.returns.columns)
             h_plus[-1] = 1000 - sum(h_plus[:-1])
-        
-            sim_cash_hcost = simulate_cash_holding_cost(t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
+            
+            sim_cash_hcost = hcost.simulate(t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
 
             real_cash_position = h_plus[-1] + sum(np.minimum(h_plus[:-1],0.))
             if real_cash_position > 0:
@@ -290,7 +298,13 @@ class TestSimulator(unittest.TestCase):
             
             dividends = np.random.uniform(size=len(h_plus)-1) * 1E-4
             
-            sim_hcost = simulate_stocks_holding_cost(t=t, h_plus = h_plus, dividends=dividends, current_and_past_returns=current_and_past_returns)
+            hcost = cvx.HoldingCost(
+                spread_on_lending_cash_percent=0.,
+                spread_on_borrowing_cash_percent=0.,
+                dividends=dividends, periods_per_year=252)
+            
+            
+            sim_hcost = hcost.simulate(t=t, h_plus = h_plus, current_and_past_returns=current_and_past_returns)
             
             total_borrow_cost = cash_return + (0.005)/252
             hcost = -total_borrow_cost * sum(-np.minimum(h_plus,0.)[:-1])
@@ -313,18 +327,20 @@ class TestSimulator(unittest.TestCase):
             tcost.simulate(t, u=u, current_prices=None, 
                             current_and_past_volumes=current_and_past_volumes, 
                             current_and_past_returns=current_and_past_returns)
-                            
-        simulate_transaction_cost(t, u=u, current_prices=None, persharecost=None,
+        
+        tcost = cvx.TransactionCost(pershare_cost=None,)
+        tcost.simulate(t, u=u, current_prices=None, 
                         current_and_past_volumes=current_and_past_volumes, 
                         current_and_past_returns=current_and_past_returns)
-                        
+        
+        tcost = cvx.TransactionCost()           
         with self.assertRaises(SyntaxError):
-            simulate_transaction_cost(t, u=u, current_prices=current_prices, 
+            tcost.simulate(t, u=u, current_prices=current_prices, 
                             current_and_past_volumes=None, 
                             current_and_past_returns=current_and_past_returns)
-                            
-        simulate_transaction_cost(t, h=None, u=u, current_prices=current_prices, 
-                        nonlinearcoefficient=None,
+        
+        tcost = cvx.TransactionCost(b=None)
+        tcost.simulate(t, u=u, current_prices=current_prices, 
                         current_and_past_volumes=None, 
                         current_and_past_returns=current_and_past_returns)
         
@@ -345,10 +361,12 @@ class TestSimulator(unittest.TestCase):
             u[-1] = -sum(u[:-1])
             u = pd.Series(u, self.universe)
             u = MarketSimulator.round_trade_vector(u, current_prices)
+            
+            tcost = cvx.TransactionCost(a = spreads/2)
                         
-            sim_cost = simulate_transaction_cost(t, u=u, current_prices=current_prices, 
+            sim_cost = tcost.simulate(t, u=u, current_prices=current_prices, 
                             current_and_past_volumes=current_and_past_volumes, 
-                            current_and_past_returns=current_and_past_returns, linearcost=spreads/2.)
+                            current_and_past_returns=current_and_past_returns)
 
             shares = sum(np.abs(u[:-1] / current_prices))
             tcost = -0.005 * shares
@@ -362,7 +380,6 @@ class TestSimulator(unittest.TestCase):
             self.assertTrue(np.isclose(tcost, sim_cost))
         
 
-           
              
     def test_methods(self):
         simulator = MarketSimulator(['ZM', 'META', 'AAPL'], base_location=self.datadir)
