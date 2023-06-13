@@ -133,57 +133,18 @@ class FullCovariance(BaseRiskModel):
             self.Sigma = DataEstimator(Sigma)
             self.alreadyfactorized = False
         else:
-            self.Sigma = HistoricalFactorizedCovariance(# zeroforcash=True, 
-                kelly=kelly) #Sigma
+            self.Sigma = HistoricalFactorizedCovariance(kelly=kelly) 
             self.alreadyfactorized = True
             
-        # self.zeroforcash = True
-        # self.kelly = kelly
-
-
     def pre_evaluation(self, universe, backtest_times):
         super().pre_evaluation(universe, backtest_times)
         
-        
-        self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))#+self.kelly))
+        self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
-        #super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
-        
-    # @classmethod
-    # def get_count_matrix(cls, past_returns):
-    #     """We obtain the matrix of non-null joint counts."""
-    #     tmp = ~past_returns.isnull()
-    #     return len(past_returns) * (tmp.cov(ddof=0) + np.outer(tmp.mean(), tmp.mean()))
-    #
-    # @classmethod # we make it a classmethod so that also covariances can use it
-    # def update_full_covariance(cls, past_returns, last_estimation, last_counts, last_time):
-    #
-    #     if last_time is None: # full estimation
-    #         estimation = past_returns.iloc[:,:-1].cov()
-    #         counts = self.get_count_matrix(past_returns)
-    #     else:
-    #         assert last_time == past_returns.index[-2]
-    #
-    #         estimation = last_estimation * last_counts + past_returns.iloc[-1:].fillna(0.)
-    #         counts = last_counts + past_returns.iloc[-1:].count()
-    #
-    #     return estimation, counts, past_returns.index[-1]
-
-    def values_in_time(self, t, past_returns, multiplier=1., **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         
-        # if self.Sigma is None:
-        #     Sigma = past_returns.cov(ddof=0)
-        #     if self.kelly:
-        #         mean = past_returns.mean()
-        #         Sigma += np.outer(mean, mean)
-        #     if self.zeroforcash:
-        #         Sigma.iloc[:, -1] = 0
-        #         Sigma.iloc[-1, :] = 0
-        # else:
-        #     Sigma = self.Sigma.current_value
-
         if self.alreadyfactorized:
             self.Sigma_sqrt.value = self.Sigma.current_value
         else:
@@ -191,13 +152,9 @@ class FullCovariance(BaseRiskModel):
             eigval, eigvec = np.linalg.eigh(Sigma)
             eigval = np.maximum(eigval, 0.)
             self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
-        if not (multiplier == 1.):
-            self.Sigma_sqrt.value = np.sqrt(multiplier) * self.Sigma_sqrt.value
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        # TODO change benchmark weights passing
         self.cvxpy_expression = cp.sum_squares(self.Sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
-    
         return self.cvxpy_expression
 
 class RiskForecastError(BaseRiskModel):
@@ -247,8 +204,6 @@ class RiskForecastError(BaseRiskModel):
 
         return cp.square(cp.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
                 
-                
-
 
 class DiagonalCovariance(BaseRiskModel):
     """Diagonal covariance matrix, user-provided or fit from data.

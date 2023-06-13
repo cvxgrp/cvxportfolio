@@ -40,10 +40,8 @@ class BaseCost(CvxpyExpressionEstimator):
 
     def __mul__(self, other):
         """Multiply by constant."""
-        if not (np.isscalar(other) or hasattr(other, 'values_in_time')):
-            raise SyntaxError("You can only multiply cost by a scalar or an object implementing values_in_time.")
-        if hasattr(other, 'values_in_time') and (not 'multiplier' in inspect.getfullargspec(self, values_in_time).args):
-            raise NotImplementedError(f"Cost term {self} doesn't support time-changing multiplier.")
+        if not np.isscalar(other):
+            raise SyntaxError("You can only multiply cost by a scalar.")
         return CombinedCosts([self], [other])
 
     def __add__(self, other):
@@ -91,8 +89,7 @@ class CombinedCosts(BaseCost):
     def __init__(self, costs, multipliers):
         for cost in costs:
             if not isinstance(cost, BaseCost):
-                raise SyntaxError(
-      "You can only sum `BaseCost` instances to other `BaseCost` instances.")
+                raise SyntaxError("You can only sum `BaseCost` instances to other `BaseCost` instances.")
         self.costs = costs
         self.multipliers = multipliers
         
@@ -109,24 +106,17 @@ class CombinedCosts(BaseCost):
 
     def pre_evaluation(self, *args, **kwargs):
         """Iterate over constituent costs."""
-        # TODO revisit, we might need pre_evaluation of multipliers as well
         [el.pre_evaluation(*args, **kwargs) for el in self.costs]
 
-    def values_in_time(self, t, multiplier = 1., **kwargs):
+    def values_in_time(self, **kwargs):
         """Iterate over constituent costs."""
-        [el.values_in_time(t=t, 
-            multiplier=multiplier * (self.multipliers[i].values_in_time(t) if 
-                hasattr(self.multipliers[i], 'values_in_time') else 1.), **kwargs) 
-            for i, el in enumerate(self.costs)]
+        [el.values_in_time(**kwargs) for el in self.costs ]
 
     def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Iterate over constituent costs."""
         self.expression = 0
         for multiplier, cost in zip(self.multipliers, self.costs):
-            tmp = cost.compile_to_cvxpy(w_plus, z, portfolio_value)
-            if np.isscalar(multiplier):
-                tmp *= multiplier
-            self.expression += tmp
+            self.expression += multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value) 
         return self.expression
 
 

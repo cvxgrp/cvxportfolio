@@ -341,7 +341,6 @@ class MarketData:
             
         data = FredTimeSeries('DFF', base_location=self.base_location)
         data.pre_evaluation()
-        print(self.returns)
         self.returns[cash_key] = resample_returns(data.data / 100, periods=self.PPY)
         self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')
         
