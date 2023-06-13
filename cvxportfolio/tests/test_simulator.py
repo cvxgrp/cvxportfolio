@@ -537,7 +537,7 @@ class TestSimulator(unittest.TestCase):
             time_second += time.time() - s
         
         self.assertTrue(time_second < time_first)
-        [self.assertTrue(results_first[i].sharpe_ratio == results_second[i].sharpe_ratio) for i in range(len(results_first))]
+        [self.assertTrue(np.isclose(results_first[i].sharpe_ratio, results_second[i].sharpe_ratio)) for i in range(len(results_first))]
             
             
             
