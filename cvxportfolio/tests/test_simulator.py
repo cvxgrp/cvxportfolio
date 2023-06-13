@@ -496,6 +496,23 @@ class TestSimulator(unittest.TestCase):
         sharpes = [result.sharpe_ratio for result in results]
         self.assertTrue(len(set(sharpes)) == 1)
         
+        
+    def test_multiple_backtest3(self):
+        """Test benchmarks."""
+        
+        
+        sim = cvx.MarketSimulator(['AAPL', 'MSFT'], base_location=self.datadir)
+        pols = [
+            cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)]),
+            cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)], benchmark=cvx.UniformBenchmark),
+            cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)], benchmark=cvx.MarketBenchmark),
+                ]
+        results = sim.backtest(pols, pd.Timestamp('2023-01-01'), pd.Timestamp('2023-01-15'), parallel=True)
+        print(np.linalg.norm(results[0].w.sum()[:2] - .5))
+        print(np.linalg.norm(results[1].w.sum()[:2] - .5))
+        print(np.linalg.norm(results[2].w.sum()[:2] - .5))
+        self.assertTrue( np.linalg.norm(results[1].w.sum()[:2] - .5) < np.linalg.norm(results[0].w.sum()[:2] - .5) )
+        self.assertTrue( np.linalg.norm(results[1].w.sum()[:2] - .5) < np.linalg.norm(results[2].w.sum()[:2] - .5) )
          
          
                 
