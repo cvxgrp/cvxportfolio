@@ -53,12 +53,12 @@ jobs:
         run: |
               env/bin/python -m pip install .
               env/bin/python -m pip install coverage
-		          
+
       - name: Run tests
         run: |
               env/bin/coverage run -m unittest cvxportfolio/tests/*.py
               env/bin/coverage lcov
-              
+
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@v1
         with:
