@@ -56,9 +56,12 @@ class CashReturn(BaseReturnsModel):
     
     def __init__(self, cash_returns=None, short_margin_requirement=1.):
         self.cash_returns = cash_returns
-        self.cash_return_parameter = cp.Parameter(nonneg=True) if self.cash_returns is None \
-            else ParameterEstimator(cash_returns, non_negative=True)
         self.short_margin_requirement = short_margin_requirement
+        
+    def pre_evaluation(self, universe, backtest_times):
+        self.cash_return_parameter = cp.Parameter(nonneg=True) if self.cash_returns is None \
+            else ParameterEstimator(self.cash_returns, non_negative=True)
+        super().pre_evaluation(universe, backtest_times)
         
     def values_in_time(self, t, past_returns, **kwargs):
         """Update cash return parameter as last cash return."""
