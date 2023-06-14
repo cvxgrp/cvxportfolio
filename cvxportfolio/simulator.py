@@ -577,7 +577,7 @@ class MarketSimulator:
         current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
 
         # zero out trades on stock that weren't trading on that day 
-        if current_and_past_volumes:
+        if not (current_and_past_volumes is None):
             current_volumes = current_and_past_volumes.iloc[-1]
             non_tradable_stocks = current_volumes[current_volumes <= 0].index
             u[non_tradable_stocks] = 0.
@@ -714,9 +714,9 @@ class MarketSimulator:
         history = (~self.market_data.returns.loc[self.market_data.returns.index < start_time].isnull()).sum()
         reduced_universe = self.market_data.returns.columns[history >= self.min_history_for_inclusion]
         self.market_data.returns = self.market_data.returns[reduced_universe]
-        if self.market_data.volumes:
+        if not (self.market_data.volumes is None):
             self.market_data.volumes = self.market_data.volumes[reduced_universe[:-1]]
-        if self.market_data.prices:
+        if not (self.market_data.prices is None):
             self.market_data.prices = self.market_data.prices[reduced_universe[:-1]]
         # self.sigma_estimate.data = self.sigma_estimate.data[reduced_universe[:-1]]
         
