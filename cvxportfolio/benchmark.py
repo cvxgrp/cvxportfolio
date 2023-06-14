@@ -1,0 +1,55 @@
+# Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""This module defines benchmark portfolio weights in time that are used, for example,
+by risk terms of optimization-based policies.
+"""
+
+import numpy as np
+import pandas as pd
+
+from .estimator import PolicyEstimator
+
+__all__ = ['CashBenchmark', 'UniformBenchmark', 'MarketBenchmark']
+
+class CashBenchmark(PolicyEstimator):
+    """Default benchmark weights for cvxportfolio risk models.
+    """
+
+    def pre_evaluation(self, universe, backtest_times):
+        """Define current_value as a constant."""
+        self.current_value = np.zeros(len(universe))
+        self.current_value[-1] = 1.
+
+
+class UniformBenchmark(PolicyEstimator):
+    """Benchmark weights uniform on non-cash assets.
+    """
+
+    def pre_evaluation(self, universe, backtest_times):
+        """Define current_value as a constant."""
+        self.current_value = np.ones(len(universe))
+        self.current_value[-1] = 0.
+        self.current_value /= np.sum(self.current_value[:-1])
+   
+     
+class MarketBenchmark(PolicyEstimator):
+    """Portfolio weighted by last year's total volumes.
+    """
+    
+    def values_in_time(self, past_volumes, **kwargs):
+        """Update current_value using past year's volumes."""
+        sumvolumes = past_volumes.loc[past_volumes.index >= (past_volumes.index[-1] - pd.Timedelta('365d'))].sum()
+        self.current_value = np.zeros(len(sumvolumes) + 1)
+        self.current_value[:-1] = sumvolumes / sum(sumvolumes)
+        

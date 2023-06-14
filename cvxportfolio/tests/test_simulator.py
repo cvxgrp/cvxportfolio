@@ -19,12 +19,13 @@ from pathlib import Path
 import tempfile
 import shutil
 import multiprocessing
+import time
 
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.simulator import MarketSimulator, MarketData, \
-    simulate_stocks_holding_cost, simulate_transaction_cost, simulate_cash_holding_cost
+from cvxportfolio.simulator import MarketSimulator, MarketData #, \
+    #simulate_stocks_holding_cost, simulate_transaction_cost, simulate_cash_holding_cost
 from cvxportfolio.estimator import DataEstimator
 
 from copy import deepcopy
@@ -190,14 +191,14 @@ class TestSimulator(unittest.TestCase):
             simulator = MarketSimulator()
 
         with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator(returns=pd.DataFrame([[0.]]))
+            simulator = MarketSimulator(returns=pd.DataFrame([[0.]], index=[pd.Timestamp.today()], columns=['USDOLLAR']))
 
         with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator(volumes=pd.DataFrame([[0.]]))
+            simulator = MarketSimulator(volumes=pd.DataFrame([[0.]], index=[pd.Timestamp.today()]))
 
         with self.assertRaises(SyntaxError):
             simulator = MarketSimulator(returns=pd.DataFrame(
-                [[0.]]), volumes=pd.DataFrame([[0.]]))
+                [[0.]], columns=['USDOLLAR'], index=[pd.Timestamp.today()]), volumes=pd.DataFrame([[0.]]))
 
         # not raises
         simulator = MarketSimulator(returns=pd.DataFrame([[0., 0.]], columns=['A', 'USDOLLAR']), volumes=pd.DataFrame(
@@ -205,7 +206,7 @@ class TestSimulator(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             simulator = MarketSimulator(returns=pd.DataFrame(
-                [[0., 0.]]), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
+                [[0., 0.]], index=[pd.Timestamp.today()], columns=['X', 'USDOLLAR']), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
 
         # with self.assertRaises(SyntaxError):
         #     simulator = MarketSimulator(returns=pd.DataFrame(
@@ -256,13 +257,21 @@ class TestSimulator(unittest.TestCase):
         
         cash_return = self.returns.loc[t, 'cash']
         
+        hcost = cvx.HoldingCost(
+            #spread_on_lending_cash_percent=0.,
+            #spread_on_borrowing_cash_percent=0.,
+            dividends=0.,
+            periods_per_year=252,
+            spread_on_borrowing_stocks_percent=0.,
+            cash_return_on_borrow=False)
+        
         for i in range(10):
             np.random.seed(i)
             h_plus = np.random.randn(self.returns.shape[1])*1000
             h_plus = pd.Series(h_plus, self.returns.columns)
             h_plus[-1] = 1000 - sum(h_plus[:-1])
-        
-            sim_cash_hcost = simulate_cash_holding_cost(t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
+            
+            sim_cash_hcost = hcost.simulate(t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
 
             real_cash_position = h_plus[-1] + sum(np.minimum(h_plus[:-1],0.))
             if real_cash_position > 0:
@@ -290,7 +299,13 @@ class TestSimulator(unittest.TestCase):
             
             dividends = np.random.uniform(size=len(h_plus)-1) * 1E-4
             
-            sim_hcost = simulate_stocks_holding_cost(t=t, h_plus = h_plus, dividends=dividends, current_and_past_returns=current_and_past_returns)
+            hcost = cvx.HoldingCost(
+                spread_on_lending_cash_percent=0.,
+                spread_on_borrowing_cash_percent=0.,
+                dividends=dividends, periods_per_year=252)
+            
+            
+            sim_hcost = hcost.simulate(t=t, h_plus = h_plus, current_and_past_returns=current_and_past_returns)
             
             total_borrow_cost = cash_return + (0.005)/252
             hcost = -total_borrow_cost * sum(-np.minimum(h_plus,0.)[:-1])
@@ -307,23 +322,26 @@ class TestSimulator(unittest.TestCase):
         
         u = pd.Series(np.ones(len(current_prices)+1), self.universe)
         
+        tcost = cvx.TransactionCost()
         # syntax checks
         with self.assertRaises(SyntaxError):
-            simulate_transaction_cost(t, u=u, current_prices=None, 
+            tcost.simulate(t, u=u, current_prices=None, 
                             current_and_past_volumes=current_and_past_volumes, 
                             current_and_past_returns=current_and_past_returns)
-                            
-        simulate_transaction_cost(t, u=u, current_prices=None, persharecost=None,
+        
+        tcost = cvx.TransactionCost(pershare_cost=None,)
+        tcost.simulate(t, u=u, current_prices=None, 
                         current_and_past_volumes=current_and_past_volumes, 
                         current_and_past_returns=current_and_past_returns)
-                        
+        
+        tcost = cvx.TransactionCost()           
         with self.assertRaises(SyntaxError):
-            simulate_transaction_cost(t, u=u, current_prices=current_prices, 
+            tcost.simulate(t, u=u, current_prices=current_prices, 
                             current_and_past_volumes=None, 
                             current_and_past_returns=current_and_past_returns)
-                            
-        simulate_transaction_cost(t, h=None, u=u, current_prices=current_prices, 
-                        nonlinearcoefficient=None,
+        
+        tcost = cvx.TransactionCost(b=None)
+        tcost.simulate(t, u=u, current_prices=current_prices, 
                         current_and_past_volumes=None, 
                         current_and_past_returns=current_and_past_returns)
         
@@ -344,10 +362,12 @@ class TestSimulator(unittest.TestCase):
             u[-1] = -sum(u[:-1])
             u = pd.Series(u, self.universe)
             u = MarketSimulator.round_trade_vector(u, current_prices)
+            
+            tcost = cvx.TransactionCost(a = spreads/2)
                         
-            sim_cost = simulate_transaction_cost(t, u=u, current_prices=current_prices, 
+            sim_cost = tcost.simulate(t, u=u, current_prices=current_prices, 
                             current_and_past_volumes=current_and_past_volumes, 
-                            current_and_past_returns=current_and_past_returns, linearcost=spreads/2.)
+                            current_and_past_returns=current_and_past_returns)
 
             shares = sum(np.abs(u[:-1] / current_prices))
             tcost = -0.005 * shares
@@ -361,7 +381,6 @@ class TestSimulator(unittest.TestCase):
             self.assertTrue(np.isclose(tcost, sim_cost))
         
 
-           
              
     def test_methods(self):
         simulator = MarketSimulator(['ZM', 'META', 'AAPL'], base_location=self.datadir)
@@ -403,11 +422,11 @@ class TestSimulator(unittest.TestCase):
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
                 oldcash = h[-1]
                 h, z, u, costs, timer = simulator.simulate(t=t, h=h, policy=policy)
-                tcost, stock_hcost, cash_hcost = costs['simulate_transaction_cost'], costs['simulate_stocks_holding_cost'], costs['simulate_cash_holding_cost']
+                tcost, hcost = costs['TransactionCost'], costs['HoldingCost']
                 assert tcost == 0.
-                if np.all(h0[:2] > 0):
-                    assert stock_hcost == 0.
-                assert np.isclose((oldcash + stock_hcost + cash_hcost) * (1+simulator.market_data.returns.loc[t, 'USDOLLAR']), h[-1])
+                #if np.all(h0[:2] > 0):
+                #    assert hcost == 0.
+                assert np.isclose((oldcash + hcost) * (1+simulator.market_data.returns.loc[t, 'USDOLLAR']), h[-1])
             
             simh = h0[:-1] * simulator.market_data.prices.loc[pd.Timestamp(end_time) + pd.Timedelta('1d')] / simulator.market_data.prices.loc[start_time]
             self.assertTrue(np.allclose(simh, h[:-1]))
@@ -426,9 +445,9 @@ class TestSimulator(unittest.TestCase):
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
                 oldcash = h[-1]
                 h, z, u, costs, timer = simulator.simulate(t=t, h=h, policy=policy)
-                tcost, stock_hcost, cash_hcost = costs['simulate_transaction_cost'], costs['simulate_stocks_holding_cost'], costs['simulate_cash_holding_cost']
+                tcost, hcost = costs['TransactionCost'], costs['HoldingCost']
                 print(h)
-                print(tcost, stock_hcost, cash_hcost)
+                # print(tcost, stock_hcost, cash_hcost)
             
             self.assertTrue(np.all(np.abs(h[:-1]) < simulator.market_data.prices.loc[end_time]))
             
@@ -478,6 +497,50 @@ class TestSimulator(unittest.TestCase):
         sharpes = [result.sharpe_ratio for result in results]
         self.assertTrue(len(set(sharpes)) == 1)
         
+        
+    def test_multiple_backtest3(self):
+        """Test benchmarks."""
+        
+        
+        sim = cvx.MarketSimulator(['AAPL', 'MSFT'], base_location=self.datadir)
+        pols = [
+            cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)]),
+            cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)], benchmark=cvx.UniformBenchmark),
+            cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)], benchmark=cvx.MarketBenchmark),
+                ]
+        results = sim.backtest(pols, pd.Timestamp('2023-01-01'), pd.Timestamp('2023-01-15'), parallel=True)
+        print(np.linalg.norm(results[0].w.sum()[:2] - .5))
+        print(np.linalg.norm(results[1].w.sum()[:2] - .5))
+        print(np.linalg.norm(results[2].w.sum()[:2] - .5))
+        self.assertTrue( np.linalg.norm(results[1].w.sum()[:2] - .5) < np.linalg.norm(results[0].w.sum()[:2] - .5) )
+        self.assertTrue( np.linalg.norm(results[1].w.sum()[:2] - .5) < np.linalg.norm(results[2].w.sum()[:2] - .5) )
+        
+    def test_multiple_backtest4(self):
+        """Test downsample and offline cache."""
+        
+        time_first = 0.
+        results_first = []
+        for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
+            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_interval=downsampling)
+            pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
+            s = time.time()
+            results_first.append(sim.backtest(pol, pd.Timestamp('2021-12-01')))
+            time_first += time.time() - s 
+            
+        time_second = 0.
+        results_second = []
+        for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
+            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_interval=downsampling)
+            pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
+            s = time.time()
+            results_second.append(sim.backtest(pol, pd.Timestamp('2021-12-01')))
+            time_second += time.time() - s
+        
+        self.assertTrue(time_second < time_first)
+        [self.assertTrue(np.isclose(results_first[i].sharpe_ratio, results_second[i].sharpe_ratio)) for i in range(len(results_first))]
+            
+            
+            
          
          
                 

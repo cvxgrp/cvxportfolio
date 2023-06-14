@@ -27,6 +27,7 @@ from .constraints import BaseConstraint
 from .estimator import PolicyEstimator, DataEstimator
 from .errors import MissingValuesError, PortfolioOptimizationError
 from .returns import ReturnsForecast, CashReturn
+from .benchmark import *
 
 __all__ = [
     "Hold",
@@ -331,7 +332,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             parameters to it.
     """
 
-    def __init__(self, objective, constraints=[], include_cash_return=True, planning_horizon=None, terminal_constraint=None,**kwargs):
+    def __init__(self, objective, constraints=[], include_cash_return=True, planning_horizon=None, terminal_constraint=None, benchmark=CashBenchmark, **kwargs):
         if hasattr(objective, '__iter__'):
             if not (hasattr(constraints, '__iter__') and len(constraints) and (hasattr(constraints[0], '__iter__') and len(objective) == len(constraints))):
                 raise SyntaxError('If you pass objective as a list, constraints should be a list of lists of the same length.')
@@ -349,6 +350,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         if self.include_cash_return:
             self.objective = [el + CashReturn() for el in self.objective]
         self.terminal_constraint = terminal_constraint
+        self.benchmark = benchmark() if isinstance(benchmark, type) else benchmark
         self.cvxpy_kwargs = kwargs
 
     def compile_to_cvxpy(self):#, w_plus, z, value):
@@ -382,10 +384,13 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         for constr_at_lag in self.constraints:
             for constr in constr_at_lag:
                 constr.pre_evaluation(universe=universe, backtest_times=backtest_times)
+        
+        self.benchmark.pre_evaluation(universe=universe, backtest_times=backtest_times)
+        self.w_bm = cp.Parameter(len(universe))
 
         # temporary
-        self.w_bm = np.zeros(len(universe))
-        self.w_bm[-1] = 1.
+        # self.w_bm = np.zeros(len(universe))
+        # self.w_bm[-1] = 1.
         
         # initialize the problem
         # self.portfolio_value = cp.Parameter(nonneg=True)
@@ -411,13 +416,21 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             obj.values_in_time(t=t, current_weights=current_weights, 
                     current_portfolio_value=current_portfolio_value, 
                     past_returns=past_returns, past_volumes=past_volumes, 
-                    current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)      
+                    current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)     
+                     
         for i, constr_at_lag in enumerate(self.constraints):
             for constr in constr_at_lag:
                 constr.values_in_time(t=t, current_weights=current_weights, 
                     current_portfolio_value=current_portfolio_value, 
                     past_returns=past_returns, past_volumes=past_volumes, 
-                    current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)        
+                    current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)   
+                    
+        self.benchmark.values_in_time(t=t, current_weights=current_weights, 
+                    current_portfolio_value=current_portfolio_value, 
+                    past_returns=past_returns, past_volumes=past_volumes, 
+                    current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs) 
+                    
+        self.w_bm.value = self.benchmark.current_value
 
         # self.portfolio_value.value = 1. # not used current_portfolio_value
         self.w_current.value = current_weights.values
@@ -450,16 +463,16 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     multiplied by its multiplier. You also specify a list
     of constraints.
 
-    Args:
-        objective (algebra of BaseCost): this will be maximized.
-        constraints (list of BaseConstraints): these will be
-            imposed on the optimization. Default [].
-        **kwargs: these will be passed to cvxpy.Problem.solve,
-            so you can choose your own solver and pass
-            parameters to it.
+    :param objective: this algebraic combination of cvxportfolio cost objects will be maximized
+    :type objective: CombinedCost
+    :param constraints: these will be imposed on the optimization. Default [].
+    :type constraints: list of BaseConstraints
+    :param **kwargs: these will be passed to cvxpy.Problem.solve, so you can choose your own solver and pass
+        parameters to it.
     """
 
-    def __init__(self, objective, constraints=[], include_cash_return=True, **kwargs):
-        super().__init__([objective], [constraints], include_cash_return=include_cash_return, **kwargs)
+    def __init__(self, objective, constraints=[], include_cash_return=True, benchmark=CashBenchmark, **kwargs):
+        super().__init__([objective], [constraints], include_cash_return=include_cash_return, 
+            benchmark=benchmark, **kwargs)
         
 

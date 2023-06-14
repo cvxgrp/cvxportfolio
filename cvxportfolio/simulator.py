@@ -30,15 +30,16 @@ from collections import defaultdict, OrderedDict
 import numpy as np
 import pandas as pd
 
-from .costs import BaseCost
-from .data import FredRateTimeSeries, YfinanceTimeSeries, BASE_LOCATION
+from .costs import BaseCost, TransactionCost, HoldingCost
+from .data import FredTimeSeries, YfinanceTimeSeries, BASE_LOCATION
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
-from .utils import periods_per_year
+from .utils import *
 from .errors import DataError
 
 PPY = 252
-__all__ = ['MarketSimulator', 'simulate_cash_holding_cost', 'simulate_stocks_holding_cost', 'simulate_transaction_cost', 'MarketData']
+__all__ = ['MarketSimulator', #'simulate_cash_holding_cost', 'simulate_stocks_holding_cost', 'simulate_transaction_cost', 
+    'MarketData']
 
 
 def parallel_worker(policy, simulator, start_time, end_time, h):
@@ -47,134 +48,127 @@ def parallel_worker(policy, simulator, start_time, end_time, h):
 def hash_universe(universe):
     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
         
-## TODO cache needs to take something else in order to be safe
-# against resampling (now disabled). If we give it backtest_times then it can't be reused
-# tomorrow with a backtest with one more data point. 
-# Also it can be quite large. There should probably be
-# logic to delete it automatically. Maybe this will only be used
-# by multiple backtests run on the same policy with different HPs and be
-# deleted at the end?
-def load_cache(universe, base_location):
-    folder = base_location/f'hash(universe)={hash_universe(universe)}'
+def load_cache(universe, trading_interval, base_location):
+    folder = base_location/f'hash(universe)={hash_universe(universe)},trading_interval={trading_interval}'
     try:
         with open(folder/'cache.pkl', 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
         return {}
     
-def store_cache(cache, universe, base_location):
-    folder = base_location/f'hash(universe)={hash_universe(universe)}'
+def store_cache(cache, universe, trading_interval, base_location):
+    folder = base_location/f'hash(universe)={hash_universe(universe)},trading_interval={trading_interval}'
     folder.mkdir(exist_ok=True)
     with open(folder/'cache.pkl', 'wb') as f:
         pickle.dump(cache, f)
     
     
-def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
-                                spread_on_lending_cash_percent=0.5, 
-                                spread_on_borrowing_cash_percent=0.5, 
-                                periods_per_year=PPY, **kwargs):
-    """Simulate holding cost for the cash account. 
-    
-    :param spread_on_lending_cash_percent: the cash account will generate annualized
-        return equal to the cash return minus this number, expressed in percent annualized, or zero if
-        the spread is larger than the cash return. For example with USDOLLAR cash,
-        if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5
-        (the default value), then the uninvested cash in the portfolio generates annualized
-        return of 4.3%. See `this page <https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php>_`.
-    :type spread_on_lending_cash_percent: float, pd.Series
-    :param spread_on_borrowing_cash_percent: if one instead borrows cash he pays the
-        cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
-        See `this page <https://www.interactivebrokers.com/en/trading/margin-rates.php>_`.
-    :type spread_on_borrowing_cash_percent: float, pd.Series
-    """
-                                
-    multiplier = 1 / (100 * periods_per_year)
-    lending_spread = DataEstimator(spread_on_lending_cash_percent).values_in_time(t) * multiplier
-    borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent).values_in_time(t) * multiplier
-
-    cash_return = current_and_past_returns.iloc[-1,-1]
-    real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
-
-    if real_cash > 0:
-        return real_cash * (max(cash_return - lending_spread, 0.) - cash_return)
-    else:
-        return real_cash * borrowing_spread
-
-
-def simulate_stocks_holding_cost(t, h_plus, current_and_past_returns,
-                                spread_on_borrowing_stocks_percent=0.5, 
-                                dividends=0., periods_per_year=PPY, **kwargs):
-    """Holding cost for stocks used by MarketSimulator. 
-    
-    :param spread_on_borrowing_stocks_percent: when shorting a stock,
-        one pays a rate on the value of the position equal to the cash return plus this spread, 
-        expressed in percent annualized. These values are hard to find historically, if you are unsure consider 
-        long-only portfolios or look at CFDs/futures instead. We set the default value to 0.5 (percent annualized) 
-        which is probably OK for US large cap stocks. See `this page <https://www.interactivebrokers.com/en/pricing/short-sale-cost.php>`_.
-    :type spread_on_borrowing_stocks_percent: float, pd.Series, pd.DataFrame
-    :param dividends: if not included in the returns (as they are by the default data interface,
-        based on `yfinance`), you can pass a DataFrame of dividend payments which will be credited to the cash
-        account (or debited, if short) at each round. Default is 0., corresponding to no dividends.
-    :type dividends: float, pd.DataFrame
-    """
-                                
-    multiplier = 1 / (100 * periods_per_year)
-    borrowing_spread = DataEstimator(spread_on_borrowing_stocks_percent).values_in_time(t) * multiplier
-    dividends = DataEstimator(dividends).values_in_time(t)
-    result = 0.
-    cash_return = current_and_past_returns.iloc[-1,-1]
-    borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
-    result += np.sum((cash_return + borrowing_spread) * borrowed_stock_positions)
-    result += np.sum(h_plus[:-1] * DataEstimator(dividends).values_in_time(t))
-    return result
-              
-            
-def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
-                            current_and_past_returns, persharecost=0.005,
-                            linearcost=0., nonlinearcoefficient=1.,
-                            windowsigma=PPY, exponent=1.5, **kwargs):    
-    """Transaction cost model for the MarketSimulator.
-    
-    :param per_share_fixed_cost: transaction cost per share traded. Default value is 0.005 (USD), uses
-        Yahoo Finance open prices to simulate the number of stocks traded. See 
-        `this page <https://www.interactivebrokers.com/en/pricing/commissions-home.php>`_.
-    :type per_share_fixed_cost: float
-    :param transaction_cost_coefficient_b: coefficient that multiplies the non-linear
-        term of the transaction cost. Default value is 1, you can pass any other constant value, a per-stock Series,
-        or a per-day and per-stock DataFrame
-    :type transaction_cost_coefficient_b: float, pd.Series, or pd.DataFrame
-    :param transaction_cost_exponent: exponent of the non-linear term of the transaction cost model. Default value 1.5,
-        this is applied to the trade volume (in US dollars) over the total market volume (in US dollars). See the
-        paper for more details; this model is supported by a long tradition of research in market microstructure.
-    :type transaction_cost_exponent: float
-    """
-        
-    persharecost = DataEstimator(persharecost).values_in_time(t) if not \
-        (persharecost is None) else None
-    nonlinearcoefficient = DataEstimator(nonlinearcoefficient).values_in_time(t) if not \
-        (nonlinearcoefficient is None) else None
-        
-    sigma = np.std(current_and_past_returns.iloc[-windowsigma:, :-1], axis=0)
-
-    result = 0.
-    if not (persharecost is None):
-        if current_prices is None:
-            raise SyntaxError("If you don't provide prices you should set persharecost to None")
-        result += persharecost * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
-
-    result += sum(DataEstimator(linearcost).values_in_time(t) * np.abs(u.iloc[:-1]))
-
-    if not (nonlinearcoefficient is None):
-        if current_and_past_volumes is None:
-            raise SyntaxError("If you don't provide volumes you should set nonlinearcoefficient to None")
-        # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
-        result += (np.abs(u.iloc[:-1])**exponent) @ (nonlinearcoefficient  *
-            sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (exponent - 1)))
-
-    assert not np.isnan(result)
-    assert not np.isinf(result)
-
-    return -result
+# def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
+#                                 spread_on_lending_cash_percent=0.5,
+#                                 spread_on_borrowing_cash_percent=0.5,
+#                                 periods_per_year=PPY, **kwargs):
+#     """Simulate holding cost for the cash account.
+#
+#     :param spread_on_lending_cash_percent: the cash account will generate annualized
+#         return equal to the cash return minus this number, expressed in percent annualized, or zero if
+#         the spread is larger than the cash return. For example with USDOLLAR cash,
+#         if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5
+#         (the default value), then the uninvested cash in the portfolio generates annualized
+#         return of 4.3%. See `this page <https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php>_`.
+#     :type spread_on_lending_cash_percent: float, pd.Series
+#     :param spread_on_borrowing_cash_percent: if one instead borrows cash he pays the
+#         cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
+#         See `this page <https://www.interactivebrokers.com/en/trading/margin-rates.php>_`.
+#     :type spread_on_borrowing_cash_percent: float, pd.Series
+#     """
+#
+#     multiplier = 1 / (100 * periods_per_year)
+#     lending_spread = DataEstimator(spread_on_lending_cash_percent).values_in_time(t) * multiplier
+#     borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent).values_in_time(t) * multiplier
+#
+#     cash_return = current_and_past_returns.iloc[-1,-1]
+#     real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
+#
+#     if real_cash > 0:
+#         return real_cash * (max(cash_return - lending_spread, 0.) - cash_return)
+#     else:
+#         return real_cash * borrowing_spread
+#
+#
+# def simulate_stocks_holding_cost(t, h_plus, current_and_past_returns,
+#                                 spread_on_borrowing_stocks_percent=0.5,
+#                                 dividends=0., periods_per_year=PPY, **kwargs):
+#     """Holding cost for stocks used by MarketSimulator.
+#
+#     :param spread_on_borrowing_stocks_percent: when shorting a stock,
+#         one pays a rate on the value of the position equal to the cash return plus this spread,
+#         expressed in percent annualized. These values are hard to find historically, if you are unsure consider
+#         long-only portfolios or look at CFDs/futures instead. We set the default value to 0.5 (percent annualized)
+#         which is probably OK for US large cap stocks. See `this page <https://www.interactivebrokers.com/en/pricing/short-sale-cost.php>`_.
+#     :type spread_on_borrowing_stocks_percent: float, pd.Series, pd.DataFrame
+#     :param dividends: if not included in the returns (as they are by the default data interface,
+#         based on `yfinance`), you can pass a DataFrame of dividend payments which will be credited to the cash
+#         account (or debited, if short) at each round. Default is 0., corresponding to no dividends.
+#     :type dividends: float, pd.DataFrame
+#     """
+#
+#     multiplier = 1 / (100 * periods_per_year)
+#     borrowing_spread = DataEstimator(spread_on_borrowing_stocks_percent).values_in_time(t) * multiplier
+#     dividends = DataEstimator(dividends).values_in_time(t)
+#     result = 0.
+#     cash_return = current_and_past_returns.iloc[-1,-1]
+#     borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
+#     result += np.sum((cash_return + borrowing_spread) * borrowed_stock_positions)
+#     result += np.sum(h_plus[:-1] * DataEstimator(dividends).values_in_time(t))
+#     return result
+#
+#
+# def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
+#                             current_and_past_returns, persharecost=0.005,
+#                             linearcost=0., nonlinearcoefficient=1.,
+#                             windowsigma=PPY, exponent=1.5, **kwargs):
+#     """Transaction cost model for the MarketSimulator.
+#
+#     :param per_share_fixed_cost: transaction cost per share traded. Default value is 0.005 (USD), uses
+#         Yahoo Finance open prices to simulate the number of stocks traded. See
+#         `this page <https://www.interactivebrokers.com/en/pricing/commissions-home.php>`_.
+#     :type per_share_fixed_cost: float
+#     :param transaction_cost_coefficient_b: coefficient that multiplies the non-linear
+#         term of the transaction cost. Default value is 1, you can pass any other constant value, a per-stock Series,
+#         or a per-day and per-stock DataFrame
+#     :type transaction_cost_coefficient_b: float, pd.Series, or pd.DataFrame
+#     :param transaction_cost_exponent: exponent of the non-linear term of the transaction cost model. Default value 1.5,
+#         this is applied to the trade volume (in US dollars) over the total market volume (in US dollars). See the
+#         paper for more details; this model is supported by a long tradition of research in market microstructure.
+#     :type transaction_cost_exponent: float
+#     """
+#
+#     persharecost = DataEstimator(persharecost).values_in_time(t) if not \
+#         (persharecost is None) else None
+#     nonlinearcoefficient = DataEstimator(nonlinearcoefficient).values_in_time(t) if not \
+#         (nonlinearcoefficient is None) else None
+#
+#     sigma = np.std(current_and_past_returns.iloc[-windowsigma:, :-1], axis=0)
+#
+#     result = 0.
+#     if not (persharecost is None):
+#         if current_prices is None:
+#             raise SyntaxError("If you don't provide prices you should set persharecost to None")
+#         result += persharecost * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
+#
+#     result += sum(DataEstimator(linearcost).values_in_time(t) * np.abs(u.iloc[:-1]))
+#
+#     if not (nonlinearcoefficient is None):
+#         if current_and_past_volumes is None:
+#             raise SyntaxError("If you don't provide volumes you should set nonlinearcoefficient to None")
+#         # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
+#         result += (np.abs(u.iloc[:-1])**exponent) @ (nonlinearcoefficient  *
+#             sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (exponent - 1)))
+#
+#     assert not np.isnan(result)
+#     assert not np.isinf(result)
+#
+#     return -result
         
 
 
@@ -263,7 +257,7 @@ class MarketData:
         self.volumes = self.volumes.resample(interval, closed='left', label='left').sum(False, 1)
         self.prices = self.prices.resample(interval, closed='left', label='left').first()
         
-    @cached_property
+    @property
     def PPY(self):
         "Periods per year, assumes returns are about equally spaced."
         return periods_per_year(self.returns.index)
@@ -338,10 +332,9 @@ class MarketData:
         if not cash_key == 'USDOLLAR':
             raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
             
-        # TODO do rate transformation here with periods_per_year
-        data = FredRateTimeSeries('DFF', base_location=self.base_location)
+        data = FredTimeSeries('DFF', base_location=self.base_location)
         data.pre_evaluation()
-        self.returns[cash_key] = data.data
+        self.returns[cash_key] = resample_returns(data.data / 100, periods=self.PPY)
         self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')
         
     
@@ -468,31 +461,32 @@ class MarketData:
             start = expiration
         
 
-        
+    # :param spreads: historical bid-ask spreads expressed as (ask-bid)/bid. Default is None,
+    #     equivalent to 0.0. Practical spreads are negligible on US liquid stocks.
+    # :type spreads: pandas.DataFrame
+    #
+    # :param window_sigma_estimate: we use an historical rolling standard deviation to estimate the average
+    #     size of the return on a stock on each day, and this multiplies the second term of the transaction cost model.
+    #     See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
+    #     default is 252 (typical number of trading days in a year).
+    # :type window_sigma_estimate: int
 
 class MarketSimulator:
     """This class implements a simulator of market performance for trading strategies.
+    
+    
 
     We strive to make the parameters here as accurate as possible. The following is
     accurate as of 2023 using numbers obtained on the public website of a
     `large US-based broker <https://www.interactivebrokers.com/>`_.
 
-
-    
-    :param spreads: historical bid-ask spreads expressed as (ask-bid)/bid. Default is None,
-        equivalent to 0.0. Practical spreads are negligible on US liquid stocks.
-    :type spreads: pandas.DataFrame
     :param round_trades: round the trade weights provided by a policy so they correspond to an integer
         number of stocks traded. Default is True using Yahoo Finance open prices.
     :type round_trades: bool
     
-    :param window_sigma_estimate: we use an historical rolling standard deviation to estimate the average
-        size of the return on a stock on each day, and this multiplies the second term of the transaction cost model.
-        See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
-        default is 252 (typical number of trading days in a year).
-    :type window_sigma_estimate: int
-    
-
+    :param costs: list of BaseCost instances or class objects. If class objects (the default) they will
+        be instantiated internally with their default arguments.
+    :type costs: list
     :param cash_key: name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
         as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
         along with the stock returns as its last column.
@@ -500,6 +494,8 @@ class MarketSimulator:
     :param base_location: base location for storage of data.
         Default is `Path.home() / "cvxportfolio_data"`. Unused if passing `returns` and `volumes`.
     :type base_location: pathlib.Path or str: 
+    
+    
     """
 
     def __init__(
@@ -508,11 +504,14 @@ class MarketSimulator:
         returns=None,
         volumes=None,
         prices=None,
-        costs=[simulate_transaction_cost, simulate_stocks_holding_cost, simulate_cash_holding_cost],
+        costs=[TransactionCost, HoldingCost,
+            #simulate_transaction_cost, simulate_stocks_holding_cost, simulate_cash_holding_cost
+        ],
         round_trades=True,
-        min_history_for_inclusion=PPY,
+        min_history_for_inclusion=pd.Timedelta('365d'), # TODO temporary, will use MarketData infrastructure
         cash_key="USDOLLAR",
         base_location=BASE_LOCATION,
+        trading_interval=None,
         **kwargs,
     ):
         """Initialize the Simulator and download data if necessary."""
@@ -522,7 +521,10 @@ class MarketSimulator:
             universe=universe, returns=returns,
             volumes=volumes, prices=prices,
             cash_key=cash_key, base_location=base_location,
+            trading_interval=trading_interval,
             **kwargs)
+            
+        self.trading_interval = trading_interval
                 
         if not len(universe) and prices is None:
             if round_trades:
@@ -532,8 +534,8 @@ class MarketSimulator:
         self.round_trades = round_trades
         self.min_history_for_inclusion = min_history_for_inclusion
         
-        self.costs = costs
-        self.kwargs = kwargs
+        self.costs = [el() if isinstance(el, type) else el for el in costs]
+       # self.kwargs = kwargs
 
         
     @staticmethod
@@ -594,12 +596,13 @@ class MarketSimulator:
         h_plus = h + u
 
         # evaluate cost functions
-        realized_costs = {cost.__name__: cost(t=t, u=u,  h_plus=h_plus, 
+        realized_costs = {cost.__class__.__name__: cost.simulate(t=t, u=u,  h_plus=h_plus, 
             current_and_past_volumes=current_and_past_volumes, 
             current_and_past_returns=current_and_past_returns,
             current_prices=current_prices,
             periods_per_year=self.market_data.PPY,
-            windowsigma=self.market_data.PPY, **self.kwargs) for cost in self.costs}
+            windowsigma=self.market_data.PPY, #**self.kwargs
+            ) for cost in self.costs}
         
         # initialize tomorrow's holdings
         h_next = pd.Series(h_plus, copy=True)
@@ -621,7 +624,8 @@ class MarketSimulator:
         
         # if policy initialized a cache, rewrite it with loaded one
         if hasattr(policy, 'cache'):
-            policy.cache = load_cache(universe=self.market_data.universe, base_location=self.base_location)
+            policy.cache = load_cache(universe=self.market_data.universe, trading_interval = self.trading_interval, 
+                base_location=self.base_location)
             
                                  
     def _single_backtest(self, policy, start_time, end_time, h):
@@ -649,7 +653,8 @@ class MarketSimulator:
         result.cash_returns = self.market_data.returns.iloc[:,-1].loc[result.u.index]
         
         if hasattr(policy, 'cache'):
-            store_cache(cache=policy.cache, universe=self.market_data.universe, base_location=self.base_location)
+            store_cache(cache=policy.cache, universe=self.market_data.universe, 
+            trading_interval = self.trading_interval, base_location=self.base_location)
         
         return result
         
@@ -711,8 +716,11 @@ class MarketSimulator:
         end_time = backtest_times_inclusive[-1]
             
         # TODO fix this - discard names that don't meet the min_history_for_inclusion
+        min_history = self.market_data.PPY * int(round(self.min_history_for_inclusion.days/365))
+        # print('min_history', min_history)
         history = (~self.market_data.returns.loc[self.market_data.returns.index < start_time].isnull()).sum()
-        reduced_universe = self.market_data.returns.columns[history >= self.min_history_for_inclusion]
+        reduced_universe = self.market_data.returns.columns[history >= min_history]
+        # print('reduced_universe', reduced_universe)
         self.market_data.returns = self.market_data.returns[reduced_universe]
         if not (self.market_data.volumes is None):
             self.market_data.volumes = self.market_data.volumes[reduced_universe[:-1]]

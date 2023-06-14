@@ -41,7 +41,7 @@ class BacktestResult(Estimator):
         self.h = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
         self.u = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
         self.z = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
-        self.costs = {cost.__name__:pd.Series(index=backtest_times, dtype=float) for cost in costs}
+        self.costs = {cost.__class__.__name__:pd.Series(index=backtest_times, dtype=float) for cost in costs}
         self.policy_times = pd.Series(index=backtest_times, dtype=float)
         self.simulator_times = pd.Series(index=backtest_times, dtype=float)
     
@@ -163,9 +163,9 @@ class BacktestResult(Estimator):
             "Total profit (PnL)": self.profit,
             "Annualized portfolio return (%)": self.returns.mean() * 100 * self.PPY,
             "Annualized excess return (%)": self.excess_returns.mean() * 100 * self.PPY,
-            "Annualized excess risk (%)": self.excess_returns.std() * 100 * np.sqrt(self.PPY),
+            "Annualized excess risk (%)": self.excess_returns.std() * 100 * np.sqrt(self.PPY),            
             "Sharpe ratio": self.sharpe_ratio,
-            "Max. drawdown (%)": self.drawdown.min() * 100,
+            "Worst drawdown (%)": self.drawdown.min() * 100,
             "Average drawdown (%)": self.drawdown.mean() * 100,
             "Daily Turnover (%)": self.turnover.mean() * 100,
             "Annualized Turnover (%)": self.turnover.mean() * 100 * self.PPY,

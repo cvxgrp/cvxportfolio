@@ -15,8 +15,13 @@
 import pandas as pd
 import numpy as np
 
-__all__ = ['periods_per_year']
+__all__ = ['periods_per_year', 'resample_returns']
 
 def periods_per_year(idx):
     """Given a datetime pandas index return the periods per year."""
     return int(np.round(len(idx) / ((idx[-1] - idx[0]) / pd.Timedelta('365.24d'))))
+    
+def resample_returns(returns, periods):
+    """Resample returns expressed over number of periods to single period."""
+    return np.exp(np.log(1 + returns) / periods) - 1
+    
