@@ -44,8 +44,7 @@ jobs:
 
       - name: Setup environment
         run: python -m venv env
-    
-      # We hardcode some old versions of selected dependencies 
+
       - name: Old versions for Python 3.10
     	if: ${{ matrix.python-version == '3.10'}}
 	run: |
