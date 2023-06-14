@@ -43,9 +43,10 @@ jobs:
             python-version: ${{ matrix.python-version }}
 
       - name: Setup environment
-        run: python -m venv env
+        run: |
+	      python -m venv env
 
-      - name: Old versions for Python 3.10
+      - name: Old versions for py 3.10
     	if: ${{ matrix.python-version == '3.10'}}
 	run: |
 	      env/bin/python -m pip install cvxpy==1.2.3 
