@@ -37,7 +37,10 @@ Example
 To get a sneak preview of `cvxportfolio` you may try the following code. This is available in `examples/hello_world.py` and runs 
 with `cvxportfolio >= 0.3.0`. All objects in `cvxportfolio` can either be provided data (in a variety of forms, but preferably pandas
 series or dataframes) or infer/download it. For example in the following example, market data is downloaded by a public source
-(Yahoo finance) and the forecasts are computed iteratively, at each point in the backtest, from past data. The logic used
+(Yahoo finance) and the forecasts are computed iteratively, at each point in the backtest, from past data. That is, at each point in the backtest,
+the policy object only operates on **past data**, and thus the result you get is a realistic simulation of what the strategy would have performed in the market.
+The simulator by default includes holding and transaction costs, using the models described in the book, and default parameters that are typical for the US stock market.
+The logic used
 matches what is described in Chapter 7 of the book. For example, returns are forecasted as the historical mean returns 
 and covariances as historical covariances (both ignoring `np.nan`'s). The logic used is detailed in the `forecast` module. Many optimizations
 are applied to make sure the system works well with real data. 
@@ -72,11 +75,6 @@ plt.show()
 result.w.iloc[:, :-1].plot()
 plt.title('Weights of the portfolio in time')
 plt.show()
-
-print('\ntotal tcost ($)', result.tcost.sum())
-print('total borrow cost ($)', result.hcost_stocks.sum())
-print('total cash return + cost ($)', result.hcost_cash.sum())
-
 ```
 
 Development
