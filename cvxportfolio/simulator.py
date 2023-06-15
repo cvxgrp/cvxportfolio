@@ -681,6 +681,7 @@ class MarketSimulator:
         constituent_backtests_params = self.market_data.get_limited_backtests(start_time, end_time)
         results = []
         orig_md = self.market_data
+        orig_policy = policy
         for el in constituent_backtests_params:
             self.market_data = orig_md._reduce_universe(el['universe'])
             # TODO improve
@@ -692,21 +693,41 @@ class MarketSimulator:
                 h = h[el['universe']]
             print('h')
             print(h)
+            
+            policy = copy.deepcopy(orig_policy)
             policy.pre_evaluation(universe = el['universe'],
                 backtest_times = self.market_data.backtest_times(el['start_time'], el['end_time']))
+            if hasattr(policy, 'cache'):
+                policy.cache = load_cache(universe=el['universe'], trading_interval = self.trading_interval, 
+                    base_location=self.base_location)
+                    
             results.append(self._single_backtest(policy, el['start_time'], el['end_time'], h, el['universe']))
             print(results)
             print(results[0].h)
+            print(results[0].returns)
             print(dir(results[0]))
             h = results[-1].h.iloc[-1]
         print(results)
+        
+        res = BacktestResult.__new__(BacktestResult)
+        
+        res.h = pd.concat([el.h.iloc[:-1] if i < len(results) -1 else el.h for i, el in enumerate(results)])
+        for attr in ['cash_returns', 'u', 'z', 'simulator_times', 'policy_times']:
+            res.__setattr__(attr, pd.concat([el.__getattribute__(attr) for el in results]) )
+        # res.returns = pd.concat([el.returns el in results])
+        # res.cash_returns = pd.concat([el.cash_returns el in results])
+        # res.u = pd.concat([el.u el in results])
+        # res.z = pd.concat([el.z el in results])
+                
         self.market_data = orig_md
         raise Exception
+        return res
+        
             
     @staticmethod
     def worker(policy, simulator, start_time, end_time, h):
-        return simulator._single_backtest(policy, start_time, end_time, h)
-        # return simulator._concatenated_backtests(policy, start_time, end_time, h)
+        #return simulator._single_backtest(policy, start_time, end_time, h)
+        return simulator._concatenated_backtests(policy, start_time, end_time, h)
                                     
     def backtest(self, policy, start_time, end_time=None, initial_value = 1E6, h=None, parallel=True):
         """Backtest one or more trading policy.
@@ -767,7 +788,7 @@ class MarketSimulator:
         #constituent_backtests = self.market_data.get_limited_backtests(start_time, end_time)
         #raise Exception
             
-        if True:
+        if False:
             # TODO fix this - discard names that don't meet the min_history_for_inclusion
             min_history = self.market_data.PPY * int(round(self.min_history_for_inclusion.days/365))
             # print('min_history', min_history)

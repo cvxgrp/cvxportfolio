@@ -146,6 +146,7 @@ class ReturnsForecast(BaseReturnsModel):
         self.decay = decay
         
     def pre_evaluation(self, universe, backtest_times):
+        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.r_hat_parameter = cp.Parameter(len(universe)-1)
         
     def values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
