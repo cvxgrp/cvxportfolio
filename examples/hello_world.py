@@ -27,7 +27,3 @@ result.w.iloc[:, :-1].plot()
 plt.title('Weights of the portfolio in time')
 plt.show()
 
-print('\ntotal tcost ($)', result.tcost.sum())
-print('total borrow cost ($)', result.hcost_stocks.sum())
-print('total cash return + cost ($)', result.hcost_cash.sum())
-
