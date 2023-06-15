@@ -462,6 +462,23 @@ class TestSimulator(unittest.TestCase):
         result = sim.backtest(pol, pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
         
         print(result)
+        
+    def test_backtest_concatenation(self):
+        sim = cvx.MarketSimulator(['AAPL', 'ZM'])
+        pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
+            cvx.ReturnsForecastError() -
+            .5 * cvx.FullCovariance(),
+            [#cvx.LongOnly(),
+            cvx.LeverageLimit(1)], verbose=True)
+        
+        result = sim.backtest(pol, pd.Timestamp('2020-04-01'), pd.Timestamp('2020-05-01')) # zoom enters in mid-april
+        ridx = result.w.index
+        self.assertTrue(result.w['ZM'].isnull().sum() > 5)
+        self.assertTrue(result.w['AAPL'].isnull().sum() < 2)
+        self.assertTrue(len(ridx) == len(set(ridx)))
+        self.assertTrue(len(ridx) == len(sim.market_data.returns.loc[
+            (sim.market_data.returns.index>=ridx[0]) & (sim.market_data.returns.index<=ridx[-1]) ]))
+        print(result)
             
     def test_multiple_backtest(self):
         

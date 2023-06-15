@@ -380,6 +380,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
 
     def pre_evaluation(self, universe, backtest_times):
         """Pass a full view of the data to initialize objects that need it."""
+        
         for obj in self.objective:
             obj.pre_evaluation(universe=universe, backtest_times=backtest_times)
         for constr_at_lag in self.constraints:

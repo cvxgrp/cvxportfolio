@@ -89,6 +89,9 @@ class HistoricalMeanReturn(BaseForecast):
         self.last_time = None
         self.last_counts = None
         self.last_sum = None
+        
+    def pre_evaluation(self, universe, backtest_times):
+        self.__post_init__()
     
     def values_in_time(self, t, past_returns, cache=None, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, cache=cache, **kwargs)
@@ -145,6 +148,9 @@ class HistoricalVariance(BaseForecast):
         self.last_time = None
         self.last_counts = None
         self.last_sum = None
+        
+    def pre_evaluation(self, universe, backtest_times):
+        self.__post_init__()
     
     def values_in_time(self, t, past_returns, **kwargs):
         super().values_in_time(t=t, past_returns=past_returns, **kwargs)
@@ -181,6 +187,9 @@ class HistoricalFactorizedCovariance(BaseForecast):
     
     def __post_init__(self):
         self.last_time = None
+    
+    def pre_evaluation(self, universe, backtest_times):
+        self.__post_init__()
     
     @staticmethod
     def get_count_matrix(past_returns):

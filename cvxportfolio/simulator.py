@@ -26,6 +26,7 @@ import pickle
 import hashlib
 from functools import cached_property
 from collections import defaultdict, OrderedDict
+from itertools import starmap
 
 import numpy as np
 import pandas as pd
@@ -41,9 +42,6 @@ PPY = 252
 __all__ = ['MarketSimulator', #'simulate_cash_holding_cost', 'simulate_stocks_holding_cost', 'simulate_transaction_cost', 
     'MarketData']
 
-
-def parallel_worker(policy, simulator, start_time, end_time, h):
-    return simulator._single_backtest(policy, start_time, end_time, h)
     
 def hash_universe(universe):
     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
@@ -235,12 +233,21 @@ class MarketData:
             self.prices = prices
             if cash_key != returns.columns[-1]:
                 self.add_cash_column(cash_key)
-            
+                            
         if trading_interval:
             self.downsample(trading_interval)
         
         self.set_read_only()
         self.check_sizes()
+    
+    
+    def _reduce_universe(self, reduced_universe):
+        assert reduced_universe[-1] == self.cash_key
+        return MarketData(
+            returns=self.returns[reduced_universe],
+            volumes=self.volumes[reduced_universe[:-1]] if not (self.volumes is None) else None,
+            prices=self.prices[reduced_universe[:-1]] if not (self.prices is None) else None,
+            cash_key = self.cash_key)
     
     @property
     def min_history(self):
@@ -635,17 +642,22 @@ class MarketSimulator:
                 base_location=self.base_location)
             
                                  
-    def _single_backtest(self, policy, start_time, end_time, h):
+    def _single_backtest(self, policy, start_time, end_time, h, universe=None#, backtest_times=None
+    ):
+        if universe is None:
+            universe = self.market_data.universe
+        #if backtest_times is None:
+        backtest_times = self.market_data.backtest_times(start_time, end_time)
         
         # self.initialize_policy(policy, start_time, end_time)
         
         if hasattr(policy, 'compile_to_cvxpy'):
             policy.compile_to_cvxpy()
         
-        result = BacktestResult(self.market_data.universe, self.market_data.backtest_times(start_time, end_time), self.costs)
+        result = BacktestResult(universe, backtest_times, self.costs)
         
         # this is the main loop of a backtest
-        for t in self.market_data.backtest_times(start_time, end_time):
+        for t in backtest_times:
             result.h.loc[t] = h
             s = time.time()
             h, result.z.loc[t], result.u.loc[t], realized_costs, \
@@ -660,11 +672,41 @@ class MarketSimulator:
         result.cash_returns = self.market_data.returns.iloc[:,-1].loc[result.u.index]
         
         if hasattr(policy, 'cache'):
-            store_cache(cache=policy.cache, universe=self.market_data.universe, 
+            store_cache(cache=policy.cache, universe=universe, 
             trading_interval = self.trading_interval, base_location=self.base_location)
         
         return result
         
+    def _concatenated_backtests(self, policy, start_time, end_time, h):
+        constituent_backtests_params = self.market_data.get_limited_backtests(start_time, end_time)
+        results = []
+        orig_md = self.market_data
+        for el in constituent_backtests_params:
+            self.market_data = orig_md._reduce_universe(el['universe'])
+            # TODO improve
+            if len(el['universe']) > len(h):
+                tmp = pd.Series(0, el['universe'])
+                tmp[h.index] = h
+                h = tmp
+            else:
+                h = h[el['universe']]
+            print('h')
+            print(h)
+            policy.pre_evaluation(universe = el['universe'],
+                backtest_times = self.market_data.backtest_times(el['start_time'], el['end_time']))
+            results.append(self._single_backtest(policy, el['start_time'], el['end_time'], h, el['universe']))
+            print(results)
+            print(results[0].h)
+            print(dir(results[0]))
+            h = results[-1].h.iloc[-1]
+        print(results)
+        self.market_data = orig_md
+        raise Exception
+            
+    @staticmethod
+    def worker(policy, simulator, start_time, end_time, h):
+        return simulator._single_backtest(policy, start_time, end_time, h)
+        # return simulator._concatenated_backtests(policy, start_time, end_time, h)
                                     
     def backtest(self, policy, start_time, end_time=None, initial_value = 1E6, h=None, parallel=True):
         """Backtest one or more trading policy.
@@ -721,19 +763,23 @@ class MarketSimulator:
         backtest_times_inclusive = self.market_data.backtest_times(start_time, end_time, include_end=True)
         start_time = backtest_times_inclusive[0]
         end_time = backtest_times_inclusive[-1]
+        
+        #constituent_backtests = self.market_data.get_limited_backtests(start_time, end_time)
+        #raise Exception
             
-        # TODO fix this - discard names that don't meet the min_history_for_inclusion
-        min_history = self.market_data.PPY * int(round(self.min_history_for_inclusion.days/365))
-        # print('min_history', min_history)
-        history = (~self.market_data.returns.loc[self.market_data.returns.index < start_time].isnull()).sum()
-        reduced_universe = self.market_data.returns.columns[history >= min_history]
-        # print('reduced_universe', reduced_universe)
-        self.market_data.returns = self.market_data.returns[reduced_universe]
-        if not (self.market_data.volumes is None):
-            self.market_data.volumes = self.market_data.volumes[reduced_universe[:-1]]
-        if not (self.market_data.prices is None):
-            self.market_data.prices = self.market_data.prices[reduced_universe[:-1]]
-        # self.sigma_estimate.data = self.sigma_estimate.data[reduced_universe[:-1]]
+        if True:
+            # TODO fix this - discard names that don't meet the min_history_for_inclusion
+            min_history = self.market_data.PPY * int(round(self.min_history_for_inclusion.days/365))
+            # print('min_history', min_history)
+            history = (~self.market_data.returns.loc[self.market_data.returns.index < start_time].isnull()).sum()
+            reduced_universe = self.market_data.returns.columns[history >= min_history]
+            # print('reduced_universe', reduced_universe)
+            self.market_data.returns = self.market_data.returns[reduced_universe]
+            if not (self.market_data.volumes is None):
+                self.market_data.volumes = self.market_data.volumes[reduced_universe[:-1]]
+            if not (self.market_data.prices is None):
+                self.market_data.prices = self.market_data.prices[reduced_universe[:-1]]
+            # self.sigma_estimate.data = self.sigma_estimate.data[reduced_universe[:-1]]
         
         # initialize policies and get initial portfolios
         for i in range(len(policy)):
@@ -743,16 +789,18 @@ class MarketSimulator:
                 h[i] = pd.Series(0., self.market_data.universe)
                 h[i][-1] = initial_value
                 
-        def nonparallel_runner(zipped):
-            return self._single_backtest(zipped[0], start_time, end_time, zipped[1])
-                    
+        # def nonparallel_runner(zipped):
+        #     return self._single_backtest(zipped[0], start_time, end_time, zipped[1])
+        
+        zip_args = zip(policy, [self] * len(policy), [start_time] * len(policy), [end_time] * len(policy), h)
+        
         # decide if run in parallel or not
         if (not parallel) or len(policy)==1: 
-            result = list(map(nonparallel_runner, zip(policy, h)))
+            #result = list(map(nonparallel_runner, zip(policy, h)))
+            result = list(starmap(self.worker, zip_args))
         else:
             with Pool() as p:
-                result = p.starmap(parallel_worker, zip(policy, [self] * len(policy), [start_time] * len(policy), [end_time] * len(policy), h))
-           
+                result = p.starmap(self.worker, zip_args)   
                 
         if len(result) == 1:
             return result[0]
