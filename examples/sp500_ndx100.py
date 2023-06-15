@@ -141,7 +141,3 @@ plt.show()
 
 result.leverage.plot(); plt.show()
 result.drawdown.plot(); plt.show()
-
-print('\ntotal tcost ($)', result.tcost.sum())
-print('total borrow cost ($)', result.hcost_stocks.sum())
-print('total cash return + cost ($)', result.hcost_cash.sum())
