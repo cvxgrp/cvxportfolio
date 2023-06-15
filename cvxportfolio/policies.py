@@ -28,6 +28,7 @@ from .estimator import PolicyEstimator, DataEstimator
 from .errors import MissingValuesError, PortfolioOptimizationError
 from .returns import ReturnsForecast, CashReturn
 from .benchmark import *
+from .utils import *
 
 __all__ = [
     "Hold",
@@ -362,8 +363,8 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         assert self.cvxpy_objective.is_dcp()  # dpp=True)
         assert self.cvxpy_objective.is_concave()
         self.cvxpy_constraints = [
-            [constr.compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i]) 
-                for constr in el]
+            flatten_heterogeneous_list([constr.compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i]) 
+                for constr in el])
             for i, el in enumerate(self.constraints)]
         self.cvxpy_constraints = sum(self.cvxpy_constraints, [])
         self.cvxpy_constraints += [cp.sum(z) == 0 for z in self.z_at_lags]

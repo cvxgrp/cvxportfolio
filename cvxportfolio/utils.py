@@ -15,7 +15,7 @@
 import pandas as pd
 import numpy as np
 
-__all__ = ['periods_per_year', 'resample_returns']
+__all__ = ['periods_per_year', 'resample_returns', 'flatten_heterogeneous_list']
 
 def periods_per_year(idx):
     """Given a datetime pandas index return the periods per year."""
@@ -24,4 +24,8 @@ def periods_per_year(idx):
 def resample_returns(returns, periods):
     """Resample returns expressed over number of periods to single period."""
     return np.exp(np.log(1 + returns) / periods) - 1
-    
+
+def flatten_heterogeneous_list(l):
+    """[1, 2, 3, [4, 5]] -> [1, 2, 3, 4, 5]"""
+    return sum(([el] if not hasattr(el, '__iter__') 
+        else el for el in l), [])

@@ -145,6 +145,32 @@ class LongOnly(BaseWeightConstraint):
         return w_plus[:-1] >= 0
 
 
+class NoTrade(BaseTradeConstraint):
+    """No-trade condition on name on periods(s)."""
+    
+    def __init__(self, asset, periods):
+        self.asset = asset
+        self.periods = periods
+    
+    def pre_evaluation(self, universe, backtest_times):
+        self.index = universe.get_loc(self.asset)
+        self.low = cp.Parameter()
+        self.high = cp.Parameter()
+    
+    def values_in_time(self, t, **kwargs):
+        if t in self.periods:
+            self.low.value = 0.
+            self.high.value = 0.
+        else:
+            self.low.value = -100.
+            self.high.value = +100.
+    
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        return [z[self.index] >= self.low, 
+            z[self.index] <= self.high] 
+        
+
+
 class LeverageLimit(BaseWeightConstraint):
     """A limit on leverage.
     
