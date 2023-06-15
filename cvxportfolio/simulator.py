@@ -204,7 +204,7 @@ class MarketData:
         prices=None, 
         cash_key='USDOLLAR',
         base_location=BASE_LOCATION, 
-        min_history=PPY,
+        min_history=pd.Timedelta('365.24d'),
         max_contiguous_missing='10d',
         trading_interval=None,  # disabled for now because cache is not robust against this
         **kwargs,
@@ -217,7 +217,7 @@ class MarketData:
         universe = sorted(set(universe))
         
         self.base_location = Path(base_location)
-        self.min_history = min_history
+        self.min_history_timedelta = min_history
         self.max_contiguous_missing = max_contiguous_missing
         self.cash_key = cash_key
         
@@ -241,7 +241,12 @@ class MarketData:
         
         self.set_read_only()
         self.check_sizes()
-            
+    
+    @property
+    def min_history(self):
+        """Min. history expressed in periods."""
+        return int(np.round(self.PPY * (self.min_history_timedelta / pd.Timedelta('365.24d'))))
+        
     @property
     def universe(self):
         return self.returns.columns
@@ -374,6 +379,7 @@ class MarketData:
     def backtest_times(self, start_time=None, end_time=None, include_end=False):
         """Get trading calendar from market data."""
         result = self.returns.index
+        result = result[result >= self.earliest_backtest_start]
         if start_time:
             result = result[result >= start_time]
         if end_time:
@@ -419,7 +425,7 @@ class MarketData:
             result[ts] = tuple(sorted(uni))
         return result
     
-    @cached_property
+    @property
     def earliest_backtest_start(self):
         """Earliest date at which we can start a backtest."""
         return self.returns.iloc[:,:-1].dropna(how='all').index[self.min_history]
@@ -522,6 +528,7 @@ class MarketSimulator:
             volumes=volumes, prices=prices,
             cash_key=cash_key, base_location=base_location,
             trading_interval=trading_interval,
+            min_history=min_history_for_inclusion,
             **kwargs)
             
         self.trading_interval = trading_interval
