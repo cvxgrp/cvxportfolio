@@ -26,7 +26,7 @@ import pandas as pd
 import copy
 import inspect
 
-from .estimator import CvxpyExpressionEstimator, ParameterEstimator, DataEstimator
+from .estimator import CvxpyExpressionEstimator,  DataEstimator
 from .utils import periods_per_year
 __all__ = ["HoldingCost", "TransactionCost"]
 
@@ -157,8 +157,8 @@ class HoldingCost(BaseCost):
         if dividends is None:
             self.dividends = None
         else:
-            self.dividends = DataEstimator(dividends)
-            self.dividends_parameter = ParameterEstimator(dividends)
+            self.dividends = DataEstimator(dividends, compile_parameter=True)
+            #self.dividends_parameter = ParameterEstimator(dividends)
         
         self.spread_on_lending_cash_percent = None if spread_on_lending_cash_percent is None else \
             DataEstimator(spread_on_lending_cash_percent)        
@@ -228,7 +228,7 @@ class HoldingCost(BaseCost):
            expression += cp.multiply(self.borrow_cost_stocks, cp.neg(w_plus)[:-1])
         
         if not (self.dividends is None):
-            expression -= cp.multiply(self.dividends_parameter, w_plus[:-1])
+            expression -= cp.multiply(self.dividends.parameter, w_plus[:-1])
         assert cp.sum(expression).is_convex()
         return cp.sum(expression)
 

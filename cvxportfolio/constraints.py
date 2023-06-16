@@ -19,7 +19,7 @@ and MultiPeriodOptimization policies, or other Cvxpy-based policies.
 import cvxpy as cp
 import numpy as np
 
-from .estimator import CvxpyExpressionEstimator, ParameterEstimator, DataEstimator
+from .estimator import CvxpyExpressionEstimator, DataEstimator
 from .forecast import HistoricalFactorizedCovariance
 
 __all__ = [
@@ -100,10 +100,10 @@ class TurnoverLimit(BaseTradeConstraint):
     """
     
     def __init__(self, delta):
-        self.delta = ParameterEstimator(delta)
+        self.delta = DataEstimator(delta, compile_parameter=True)
         
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        return .5 * cp.norm1(z[:-1]) <= self.delta
+        return .5 * cp.norm1(z[:-1]) <= self.delta.parameter
         
 
 class ParticipationRateLimit(BaseTradeConstraint):
@@ -117,9 +117,9 @@ class ParticipationRateLimit(BaseTradeConstraint):
     """
 
     def __init__(self, volumes, max_fraction_of_volumes=0.05):
-        self.volumes = ParameterEstimator(volumes)
-        self.max_participation_rate = ParameterEstimator(
-            max_fraction_of_volumes)
+        self.volumes = DataEstimator(volumes, compile_parameter=True)
+        self.max_participation_rate = DataEstimator(
+            max_fraction_of_volumes, compile_parameter=True)
         self.portfolio_value = cp.Parameter(nonneg=True)
 
     def values_in_time(self, current_portfolio_value, **kwargs):
@@ -129,7 +129,7 @@ class ParticipationRateLimit(BaseTradeConstraint):
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return cp.multiply(cp.abs(z[:-1]), self.portfolio_value) <= cp.multiply(
-            self.volumes, self.max_participation_rate
+            self.volumes.parameter, self.max_participation_rate.parameter
         )
 
 
@@ -183,11 +183,11 @@ class LeverageLimit(BaseWeightConstraint):
     """
 
     def __init__(self, limit):
-        self.limit = ParameterEstimator(limit)
+        self.limit = DataEstimator(limit, compile_parameter=True)
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return cp.norm(w_plus[:-1], 1) <= self.limit
+        return cp.norm(w_plus[:-1], 1) <= self.limit.parameter
 
 
 class MinCashBalance(BaseWeightConstraint):
@@ -236,11 +236,11 @@ class MaxWeights(BaseWeightConstraint):
     """
 
     def __init__(self, limit):
-        self.limit = ParameterEstimator(limit)
+        self.limit = DataEstimator(limit, compile_parameter=True)
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return w_plus[:-1] <= self.limit
+        return w_plus[:-1] <= self.limit.parameter
 
 
 class MinWeights(BaseWeightConstraint):
@@ -251,11 +251,11 @@ class MinWeights(BaseWeightConstraint):
     """
 
     def __init__(self, limit):
-        self.limit = ParameterEstimator(limit)
+        self.limit = DataEstimator(limit, compile_parameter=True)
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return w_plus[:-1] >= self.limit
+        return w_plus[:-1] >= self.limit.parameter
 
 class MinMaxWeightsAtTimes(BaseWeightConstraint):
 
@@ -305,12 +305,12 @@ class FactorMaxLimit(BaseWeightConstraint):
     """
 
     def __init__(self, factor_exposure, limit):
-        self.factor_exposure = ParameterEstimator(factor_exposure)
-        self.limit = ParameterEstimator(limit)
+        self.factor_exposure = DataEstimator(factor_exposure, compile_parameter=True)
+        self.limit = DataEstimator(limit, compile_parameter=True)
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return self.factor_exposure.T @ w_plus[:-1] <= self.limit
+        return self.factor_exposure.parameter.T @ w_plus[:-1] <= self.limit.parameter
 
 
 class FactorMinLimit(BaseWeightConstraint):
@@ -323,12 +323,12 @@ class FactorMinLimit(BaseWeightConstraint):
     """
 
     def __init__(self, factor_exposure, limit):
-        self.factor_exposure = ParameterEstimator(factor_exposure)
-        self.limit = ParameterEstimator(limit)
+        self.factor_exposure = DataEstimator(factor_exposure, compile_parameter=True)
+        self.limit = DataEstimator(limit, compile_parameter=True)
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return self.factor_exposure.T @ w_plus[:-1] >= self.limit
+        return self.factor_exposure.parameter.T @ w_plus[:-1] >= self.limit.parameter
 
 
 class FixedFactorLoading(BaseWeightConstraint):
@@ -343,9 +343,9 @@ class FixedFactorLoading(BaseWeightConstraint):
     """
 
     def __init__(self, factor_exposure, target):
-        self.factor_exposure = ParameterEstimator(factor_exposure)
-        self.target = ParameterEstimator(target)
+        self.factor_exposure = DataEstimator(factor_exposure, compile_parameter=True)
+        self.target = DataEstimator(target, compile_parameter=True)
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return self.factor_exposure.T @ w_plus[:-1] == self.target
+        return self.factor_exposure.parameter.T @ w_plus[:-1] == self.target.parameter

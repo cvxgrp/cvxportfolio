@@ -20,7 +20,7 @@ from this.
 import numpy as np
 import pandas as pd
 from .errors import MissingValuesError, DataError
-import cvxpy
+import cvxpy as cp
 
 
 class Estimator:
@@ -97,7 +97,7 @@ class CvxpyExpressionEstimator(PolicyEstimator):
         raise NotImplementedError
 
 
-class DataEstimator(Estimator):
+class DataEstimator(PolicyEstimator):
     """Estimator of point-in-time values from internal `self.data`.
 
     It also implements logic to check that no `np.nan` are returned
@@ -120,10 +120,22 @@ class DataEstimator(Estimator):
 
     """
 
-    def __init__(self, data, use_last_available_time=False, allow_nans=False):
+    def __init__(self, data, use_last_available_time=False, allow_nans=False, 
+        compile_parameter=False, non_negative=False, positive_semi_definite=False):
         self.data = data
         self.use_last_available_time = use_last_available_time
         self.allow_nans = allow_nans
+        self.compile_parameter = compile_parameter
+        self.non_negative = non_negative
+        self.positive_semi_definite =positive_semi_definite
+    
+    def pre_evaluation(self, universe, backtest_times):
+        # super().pre_evaluation(universe, backtest_times)
+        if self.compile_parameter:
+            value = self.internal_values_in_time(t=backtest_times[0])
+            self.parameter = cp.Parameter(value.shape if hasattr(value, "shape") else (), 
+                PSD=self.positive_semi_definite, nonneg=self.non_negative)
+            
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned.
@@ -218,6 +230,9 @@ class DataEstimator(Estimator):
 
         """
         self.current_value = self.internal_values_in_time(t, *args, **kwargs)
+        # we do this because in some cases they never get compiled
+        if hasattr(self, 'parameter'): 
+            self.parameter.value = self.current_value
         return self.current_value
 
 
@@ -297,33 +312,37 @@ class DataEstimator(Estimator):
 #         self.parameter.value = self.internal_values_in_time(t, **kwargs)
         
         
-
-class ParameterEstimator(cvxpy.Parameter, DataEstimator, PolicyEstimator):
-    """Data estimator of point-in-time values that contains a Cvxpy Parameter.
-
-    Attributes:
-        parameter (cvxpy.Parameter): the parameter object to use with cvxpy
-            expressions
-    Args:
-        same as cvxportfolio.DataEstimator
-
-    """
-
-    def __init__(self, data, positive_semi_definite=False, non_negative=False, use_last_available_time=False, allow_nans=False):
-        self.positive_semi_definite = positive_semi_definite
-        self.non_negative = non_negative
-        self.use_last_available_time = use_last_available_time
-        self.data = data
-        self.allow_nans = allow_nans
-        # super(DataEstimator).__init__(data, use_last_available_time)
-
-    def pre_evaluation(self, universe, backtest_times):
-        """Use the start time of the simulation to initialize the Parameter."""
-        super().pre_evaluation(universe, backtest_times)
-        value = super().values_in_time(t=backtest_times[0])
-        super().__init__(value.shape if hasattr(value, "shape") else (), 
-            PSD=self.positive_semi_definite, nonneg=self.non_negative)
-
-    def values_in_time(self, t, **kwargs):
-        """Update Cvxpy Parameter value."""
-        self.value = super().values_in_time(t=t, **kwargs)
+#
+# class ParameterEstimator(DataEstimator):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(self, *args, compile_parameter=True, **kwargs)
+        
+# class ParameterEstimator(cvxpy.Parameter, DataEstimator, PolicyEstimator):
+#     """Data estimator of point-in-time values that contains a Cvxpy Parameter.
+#
+#     Attributes:
+#         parameter (cvxpy.Parameter): the parameter object to use with cvxpy
+#             expressions
+#     Args:
+#         same as cvxportfolio.DataEstimator
+#
+#     """
+#
+#     def __init__(self, data, positive_semi_definite=False, non_negative=False, use_last_available_time=False, allow_nans=False):
+#         self.positive_semi_definite = positive_semi_definite
+#         self.non_negative = non_negative
+#         self.use_last_available_time = use_last_available_time
+#         self.data = data
+#         self.allow_nans = allow_nans
+#         # super(DataEstimator).__init__(data, use_last_available_time)
+#
+#     def pre_evaluation(self, universe, backtest_times):
+#         """Use the start time of the simulation to initialize the Parameter."""
+#         super().pre_evaluation(universe, backtest_times)
+#         value = super().values_in_time(t=backtest_times[0])
+#         super().__init__(value.shape if hasattr(value, "shape") else (),
+#             PSD=self.positive_semi_definite, nonneg=self.non_negative)
+#
+#     def values_in_time(self, t, **kwargs):
+#         """Update Cvxpy Parameter value."""
+#         self.value = super().values_in_time(t=t, **kwargs)

@@ -22,7 +22,7 @@ import pandas as pd
 
 from .costs import BaseCost, CombinedCosts
 from .risks import BaseRiskModel
-from .estimator import DataEstimator, ParameterEstimator
+from .estimator import DataEstimator #, ParameterEstimator
 from .forecast import HistoricalMeanReturn, HistoricalMeanError
 
 __all__ = [
@@ -55,13 +55,17 @@ class CashReturn(BaseReturnsModel):
     """
     
     def __init__(self, cash_returns=None, short_margin_requirement=1.):
-        self.cash_returns = cash_returns
+        self.cash_returns = None if cash_returns is None else DataEstimator(cash_returns, 
+            compile_parameter=True, non_negative=True)
         self.short_margin_requirement = short_margin_requirement
         
     def pre_evaluation(self, universe, backtest_times):
-        self.cash_return_parameter = cp.Parameter(nonneg=True) if self.cash_returns is None \
-            else ParameterEstimator(self.cash_returns, non_negative=True)
         super().pre_evaluation(universe, backtest_times)
+        self.cash_return_parameter = cp.Parameter(nonneg=True) if self.cash_returns is None \
+            else self.cash_returns.parameter
+            
+        # else DataEstimator(self.cash_returns, non_negative=True, compile_parameter=True)
+        
         
     def values_in_time(self, t, past_returns, **kwargs):
         """Update cash return parameter as last cash return."""

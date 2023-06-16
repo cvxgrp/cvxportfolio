@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import unittest
 
-from cvxportfolio.estimator import DataEstimator, ParameterEstimator
+from cvxportfolio.estimator import DataEstimator #, ParameterEstimator
 from cvxportfolio.errors import MissingValuesError, DataError
 
 
@@ -162,13 +162,13 @@ class TestEstimators(unittest.TestCase):
         second_level = ["hello", "ciao", "hola"]
         index = pd.MultiIndex.from_product([timeindex, second_level])
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
-        estimator = ParameterEstimator(data)
-        self.assertTrue( not hasattr(estimator, "value"))
+        estimator = DataEstimator(data, compile_parameter=True)
+        self.assertTrue( not hasattr(estimator, "parameter"))
         estimator.pre_evaluation(universe=None, backtest_times=timeindex)
         # assert hasattr(estimator, 'parameter')
-        self.assertTrue( hasattr(estimator, "value"))
+        self.assertTrue( hasattr(estimator, "parameter"))
         estimator.values_in_time("2022-01-05")
-        self.assertTrue( np.all(estimator.value == data.loc["2022-01-05"]))
+        self.assertTrue( np.all(estimator.parameter.value == data.loc["2022-01-05"]))
         
 if __name__ == '__main__':
     unittest.main()

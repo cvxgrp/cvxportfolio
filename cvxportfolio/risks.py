@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .estimator import ParameterEstimator, DataEstimator 
+from .estimator import DataEstimator 
 import logging
 import warnings
 
@@ -273,7 +273,7 @@ class FactorModelCovariance(BaseRiskModel):
     factor_Sigma = None
 
     def __init__(self, F=None, d=None, num_factors=1, kelly=True):#, normalize=False):
-        self.F = F if F is None else ParameterEstimator(F) 
+        self.F = F if F is None else DataEstimator(F, compile_parameter=True) 
         self.d = d if d is None else DataEstimator(d) 
         if (self.F is None) or (self.d is None):
             self.fit = True
@@ -326,7 +326,7 @@ class FactorModelCovariance(BaseRiskModel):
         super().pre_evaluation(universe, backtest_times)
         # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
-        self.F_parameter = cp.Parameter((self.num_factors, len(universe)-1)) if self.F is None else self.F
+        self.F_parameter = cp.Parameter((self.num_factors, len(universe)-1)) if self.F is None else self.F.parameter
         # if not (self.factor_Sigma is None):
         #     self.factor_Sigma_sqrt = cp.Parameter(self.factor_Sigma.shape, PSD=True)
         # self.forecast_error_penalizer = cp.Parameter(returns.shape[1], nonneg=True)
