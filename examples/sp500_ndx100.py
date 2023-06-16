@@ -116,7 +116,7 @@ objective = cvx.ReturnsForecast() -.05 * cvx.ReturnsForecastError() \
 
 constraints = [cvx.LeverageLimit(3)]
 
-policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=3)
+policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=3, ignore_dpp=True)
  
  
 universe = sorted(set(SP500 + NDX100))

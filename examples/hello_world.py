@@ -10,7 +10,7 @@ constraints = [cvx.LeverageLimit(3)]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=2)
 
-simulator = cvx.MarketSimulator(['AAPL', 'AMZN', 'TSLA', 'GM', 'CVX', 'NKE'])
+simulator = cvx.MarketSimulator(['AAPL', 'AMZN', 'UBER', 'ZM', 'CVX', 'TSLA', 'GM', 'ABNB'])
 
 result = simulator.backtest(policy, start_time='2020-01-01')
 
@@ -19,6 +19,7 @@ print(result)
 # plot value of the portfolio in time
 result.v.plot(figsize=(12, 5), label='Multi Period Optimization')
 plt.ylabel('USD')
+plt.yscale('log')
 plt.title('Total value of the portfolio in time')
 plt.show()
 
