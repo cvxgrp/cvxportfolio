@@ -710,17 +710,20 @@ class MarketSimulator:
         print(results)
         
         res = BacktestResult.__new__(BacktestResult)
+        res.costs = {}
         
         res.h = pd.concat([el.h.iloc[:-1] if i < len(results) -1 else el.h for i, el in enumerate(results)])
         for attr in ['cash_returns', 'u', 'z', 'simulator_times', 'policy_times']:
             res.__setattr__(attr, pd.concat([el.__getattribute__(attr) for el in results]) )
+        for k in results[0].costs:
+            res.costs[k] = pd.concat([el.costs[k] for el in results])
         # res.returns = pd.concat([el.returns el in results])
         # res.cash_returns = pd.concat([el.cash_returns el in results])
         # res.u = pd.concat([el.u el in results])
         # res.z = pd.concat([el.z el in results])
                 
         self.market_data = orig_md
-        raise Exception
+        # raise Exception
         return res
         
             
@@ -804,7 +807,7 @@ class MarketSimulator:
         
         # initialize policies and get initial portfolios
         for i in range(len(policy)):
-            self.initialize_policy(policy[i], start_time, end_time)
+            # self.initialize_policy(policy[i], start_time, end_time)
         
             if h[i] is None:
                 h[i] = pd.Series(0., self.market_data.universe)
