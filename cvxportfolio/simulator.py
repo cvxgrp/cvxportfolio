@@ -383,7 +383,7 @@ class MarketData:
         self.volumes.iloc[-1] = np.nan
         
         
-    def backtest_times(self, start_time=None, end_time=None, include_end=False):
+    def backtest_times(self, start_time=None, end_time=None, include_end=True):
         """Get trading calendar from market data."""
         result = self.returns.index
         result = result[result >= self.earliest_backtest_start]
@@ -634,31 +634,32 @@ class MarketSimulator:
         """Initialize the policy object.
         """
         policy.pre_evaluation(universe = self.market_data.universe,
-                             backtest_times = self.market_data.backtest_times(start_time, end_time))
-        
+                             backtest_times = self.market_data.backtest_times(start_time, end_time, include_end=False))
+
         # if policy initialized a cache, rewrite it with loaded one
-        if hasattr(policy, 'cache'):
-            policy.cache = load_cache(universe=self.market_data.universe, trading_interval = self.trading_interval, 
-                base_location=self.base_location)
-            
-                                 
+        #if hasattr(policy, 'cache'):
+        #    policy.cache = load_cache(universe=self.market_data.universe, trading_interval = self.trading_interval,
+        #        base_location=self.base_location)
+
+
     def _single_backtest(self, policy, start_time, end_time, h, universe=None#, backtest_times=None
     ):
         if universe is None:
             universe = self.market_data.universe
         #if backtest_times is None:
-        backtest_times = self.market_data.backtest_times(start_time, end_time)
-        
+        backtest_times = self.market_data.backtest_times(start_time, end_time, include_end=False)
+
         # self.initialize_policy(policy, start_time, end_time)
-        
+
         if hasattr(policy, 'compile_to_cvxpy'):
             policy.compile_to_cvxpy()
-        
+
         result = BacktestResult(universe, backtest_times, self.costs)
-        
+
         # this is the main loop of a backtest
         for t in backtest_times:
             result.h.loc[t] = h
+            # print(t, h)
             s = time.time()
             h, result.z.loc[t], result.u.loc[t], realized_costs, \
                     result.policy_times.loc[t] = self.simulate(t=t, h=h, policy=policy)
@@ -666,19 +667,20 @@ class MarketSimulator:
                 result.costs[cost].loc[t] = realized_costs[cost]
             result.simulator_times.loc[t] = time.time() - s - result.policy_times.loc[t]
 
-        result.h.loc[pd.Timestamp(end_time)] = h  
-        
+        result.h.loc[pd.Timestamp(end_time)] = h
+
         # TODO fix this
         result.cash_returns = self.market_data.returns.iloc[:,-1].loc[result.u.index]
-        
-        if hasattr(policy, 'cache'):
-            store_cache(cache=policy.cache, universe=universe, 
-            trading_interval = self.trading_interval, base_location=self.base_location)
-        
+
+        #if hasattr(policy, 'cache'):
+        #    store_cache(cache=policy.cache, universe=universe,
+        #    trading_interval = self.trading_interval, base_location=self.base_location)
+
         return result
-        
+
     def _concatenated_backtests(self, policy, start_time, end_time, h):
         constituent_backtests_params = self.market_data.get_limited_backtests(start_time, end_time)
+        # print(constituent_backtests_params)
         results = []
         orig_md = self.market_data
         orig_policy = policy
@@ -691,23 +693,29 @@ class MarketSimulator:
                 h = tmp
             else:
                 h = h[el['universe']]
-            print('h')
-            print(h)
+           #  # print('h')
+            # print(h)
             
             policy = copy.deepcopy(orig_policy)
+            # print(el['start_time'], el['end_time'])
             policy.pre_evaluation(universe = el['universe'],
-                backtest_times = self.market_data.backtest_times(el['start_time'], el['end_time']))
-            if hasattr(policy, 'cache'):
-                policy.cache = load_cache(universe=el['universe'], trading_interval = self.trading_interval, 
-                    base_location=self.base_location)
+                backtest_times = self.market_data.backtest_times(el['start_time'], el['end_time'], include_end=True))
+            if not (hasattr(self, 'PARALLEL') and self.PARALLEL):
+                if hasattr(policy, 'cache'):
+                    policy.cache = load_cache(universe=el['universe'], trading_interval = self.trading_interval, 
+                        base_location=self.base_location)
                     
             results.append(self._single_backtest(policy, el['start_time'], el['end_time'], h, el['universe']))
-            print(results)
-            print(results[0].h)
-            print(results[0].returns)
-            print(dir(results[0]))
+            # print(results[0].w)
+            #print(results[0].h)
+            # print(results[0].returns)
+            # print(dir(results[0]))
             h = results[-1].h.iloc[-1]
-        print(results)
+            if not (hasattr(self, 'PARALLEL') and self.PARALLEL):
+                if hasattr(policy, 'cache'):
+                    store_cache(cache=policy.cache, universe=el['universe'], 
+                    trading_interval = self.trading_interval, base_location=self.base_location)
+        # print(results)
         
         res = BacktestResult.__new__(BacktestResult)
         res.costs = {}
@@ -715,8 +723,16 @@ class MarketSimulator:
         res.h = pd.concat([el.h.iloc[:-1] if i < len(results) -1 else el.h for i, el in enumerate(results)])
         for attr in ['cash_returns', 'u', 'z', 'simulator_times', 'policy_times']:
             res.__setattr__(attr, pd.concat([el.__getattribute__(attr) for el in results]) )
+        # pandas concat can misalign the columns ordering
+        ck = self.market_data.cash_key
+        sortcol = sorted([el for el in res.u.columns if not el == ck]) + [ck]
+        res.u = res.u[sortcol]
+        res.z = res.z[sortcol]
+        # sortcol += [self.market_data.cash_key]
+        res.h = res.h[sortcol]
         for k in results[0].costs:
             res.costs[k] = pd.concat([el.costs[k] for el in results])
+        # raise Exception
         # res.returns = pd.concat([el.returns el in results])
         # res.cash_returns = pd.concat([el.cash_returns el in results])
         # res.u = pd.concat([el.u el in results])
@@ -732,7 +748,7 @@ class MarketSimulator:
         #return simulator._single_backtest(policy, start_time, end_time, h)
         return simulator._concatenated_backtests(policy, start_time, end_time, h)
                                     
-    def backtest(self, policy, start_time, end_time=None, initial_value = 1E6, h=None, parallel=True):
+    def backtest(self, policy, start_time=None, end_time=None, initial_value = 1E6, h=None, parallel=True):
         """Backtest one or more trading policy.
         
         If runnning in parallel you must be careful at how you use this method. If 
@@ -823,9 +839,10 @@ class MarketSimulator:
             #result = list(map(nonparallel_runner, zip(policy, h)))
             result = list(starmap(self.worker, zip_args))
         else:
+            self.PARALLEL = True # TODO temporary, to disable some features when running in parallel
             with Pool() as p:
                 result = p.starmap(self.worker, zip_args)   
-                
+            del self.PARALLEL
         if len(result) == 1:
             return result[0]
         return result
