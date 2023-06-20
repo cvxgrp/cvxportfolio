@@ -32,16 +32,19 @@ revision:
 	$(BINDIR)/python bumpversion.py revision
 	git push
 	$(BINDIR)/python -m build
+	$(BINDIR)/twine check dist/*
 	$(BINDIR)/twine upload --skip-existing dist/*
 
 minor:
 	$(BINDIR)/python bumpversion.py minor	
 	git push
 	$(BINDIR)/python -m build
+	$(BINDIR)/twine check dist/*
 	$(BINDIR)/twine upload --skip-existing dist/*
 
 major:
 	$(BINDIR)/python bumpversion.py major	
 	git push
 	$(BINDIR)/python -m build
+	$(BINDIR)/twine check dist/*
 	$(BINDIR)/twine upload --skip-existing dist/*

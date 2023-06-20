@@ -685,6 +685,8 @@ class MarketSimulator:
         orig_md = self.market_data
         orig_policy = policy
         for el in constituent_backtests_params:
+            logging.info(f"current universe: {el['universe']}")
+            logging.info(f"interval: {el['start_time']}, {el['end_time']}")
             self.market_data = orig_md._reduce_universe(el['universe'])
             # TODO improve
             if len(el['universe']) > len(h):

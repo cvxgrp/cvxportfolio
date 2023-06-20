@@ -1,5 +1,8 @@
 from setuptools import setup
 
+with open('README.md') as f:
+    long_descr = ''.join(f.readlines())
+
 setup(
     name='cvxportfolio',
     version='0.3.4',
@@ -20,4 +23,6 @@ setup(
                       "yfinance",
                       "cvxpy>=1.0.6",
                       "multiprocess"],
+    long_description=long_descr,
+    long_description_content_type='text/markdown',
 )
