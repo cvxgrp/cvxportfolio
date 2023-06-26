@@ -26,7 +26,7 @@ class CashBenchmark(PolicyEstimator):
     """Default benchmark weights for cvxportfolio risk models.
     """
 
-    def _recursive_pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         """Define current_value as a constant."""
         self.current_value = np.zeros(len(universe))
         self.current_value[-1] = 1.
@@ -36,7 +36,7 @@ class UniformBenchmark(PolicyEstimator):
     """Benchmark weights uniform on non-cash assets.
     """
 
-    def _recursive_pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         """Define current_value as a constant."""
         self.current_value = np.ones(len(universe))
         self.current_value[-1] = 0.
@@ -47,9 +47,10 @@ class MarketBenchmark(PolicyEstimator):
     """Portfolio weighted by last year's total volumes.
     """
     
-    def _recursive_values_in_time(self, past_volumes, **kwargs):
+    def _values_in_time(self, past_volumes, **kwargs):
         """Update current_value using past year's volumes."""
-        sumvolumes = past_volumes.loc[past_volumes.index >= (past_volumes.index[-1] - pd.Timedelta('365d'))].sum()
-        self.current_value = np.zeros(len(sumvolumes) + 1)
-        self.current_value[:-1] = sumvolumes / sum(sumvolumes)
+        sumvolumes = past_volumes.loc[past_volumes.index >= (past_volumes.index[-1] - pd.Timedelta('365d'))].mean()
+        result = np.zeros(len(sumvolumes) + 1)
+        result[:-1] = sumvolumes / sum(sumvolumes)
+        return result
         

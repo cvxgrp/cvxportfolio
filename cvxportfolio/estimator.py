@@ -50,8 +50,8 @@ class Estimator:
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "_recursive_values_in_time"):
                 subestimator._recursive_values_in_time(**kwargs)
-            if hasattr(subestimator, "_values_in_time"):
-                self.current_value = subestimator._values_in_time(**kwargs)
+        if hasattr(self, "_values_in_time"):
+            self.current_value = self._values_in_time(**kwargs)
 
 
 class PolicyEstimator(Estimator):
@@ -69,8 +69,8 @@ class PolicyEstimator(Estimator):
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "_recursive_pre_evaluation"):
                 subestimator._recursive_pre_evaluation(universe, backtest_times)
-            if hasattr(subestimator, "_pre_evaluation"):
-                subestimator._pre_evaluation(universe, backtest_times)
+        if hasattr(self, "_pre_evaluation"):
+            self._pre_evaluation(universe, backtest_times)
     
 
 class CvxpyExpressionEstimator(PolicyEstimator):

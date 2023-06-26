@@ -168,20 +168,18 @@ class HoldingCost(BaseCost):
         self.periods_per_year = periods_per_year
         self.cash_return_on_borrow = cash_return_on_borrow
         
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        super()._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
         
         if not (self.spread_on_borrowing_stocks_percent is None):
             self.borrow_cost_stocks = cp.Parameter(len(universe) - 1, nonneg=True)
         
         
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
+    def _values_in_time(self, t, past_returns, **kwargs):
         """We use yesterday's value of the cash return here while in the simulator
         we use today's. In the US, updates to the FED rate are published outside
         of trading hours so we might as well use the actual value for today's. The difference
         is very small so for now we do this. 
         """
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
         ppy = periods_per_year(past_returns.index) if self.periods_per_year is None else \
             self.periods_per_year
                                
@@ -263,18 +261,13 @@ class TransactionCost(BaseCost):
         self.window_volume_est = window_volume_est
         self.exponent = exponent
             
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        super()._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
         self.first_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
         if not (self.b is None):
             self.second_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
 
-    def _recursive_values_in_time(self, t,  current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
-        
-        super()._recursive_values_in_time(t=t, current_portfolio_value=current_portfolio_value, 
-            past_returns=past_returns, past_volumes=past_volumes, 
-            current_prices=current_prices, **kwargs)
-            
+    def _values_in_time(self, t,  current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
+                    
         self.first_term_multiplier.value = self.a.current_value + self.pershare_cost.current_value / current_prices.values
         if not (self.b is None):
             sigma_est = np.sqrt((past_returns.iloc[-self.window_sigma_est:, :-1]**2).mean()).values
