@@ -5,6 +5,7 @@ sphinx
 numpy
 pandas
 cvxpy
+scipy<1.11.0;
 yfinance
 matplotlib
 wheel

@@ -19,10 +19,12 @@ setup(
     description='Portfolio optimization.',
     install_requires=["pandas",
                       "numpy",
+                      "scipy<1.11.0",  # on 2023-06-26 introduced bug in cvxpy
                       "matplotlib",
                       "yfinance",
-                      "cvxpy>=1.0.6",
-                      "multiprocess"],
+                      "cvxpy",
+                      "multiprocess"
+                      ],
     long_description=long_descr,
     long_description_content_type='text/markdown',
 )
