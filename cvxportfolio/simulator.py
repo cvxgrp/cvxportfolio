@@ -672,8 +672,6 @@ class MarketSimulator:
     def backtest_many(self, policies, start_time=None, end_time=None, initial_value = 1E6, h=None, parallel=True):
         """Backtest many trading policies.
         
-        
-        
         The default initial portfolio is all cash, or you can pass any portfolio with
         the `h` argument, or a list of those.
         

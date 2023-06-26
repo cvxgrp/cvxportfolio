@@ -11,16 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Cvxportfolio __init__ module.
+
+This module only republishes the api of a selection of cvxportfolio modules.
+The __all__ attribute of each is used.
+"""
 
 __version__ = "0.3.4"
-from .data import *
+
 from .simulator import *
-from .result import *
 from .policies import *
 from .constraints import *
 from .costs import *
 from .returns import *
-from .estimator import DataEstimator
 from .risks import *
 from .returns import *
 from .benchmark import *
