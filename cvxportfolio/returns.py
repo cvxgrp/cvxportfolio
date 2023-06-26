@@ -59,17 +59,15 @@ class CashReturn(BaseReturnsModel):
             compile_parameter=True, non_negative=True)
         self.short_margin_requirement = short_margin_requirement
         
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        super()._recursive_pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
         self.cash_return_parameter = cp.Parameter(nonneg=True) if self.cash_returns is None \
             else self.cash_returns.parameter
             
         # else DataEstimator(self.cash_returns, non_negative=True, compile_parameter=True)
         
         
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
+    def _values_in_time(self, t, past_returns, **kwargs):
         """Update cash return parameter as last cash return."""
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
         if self.cash_returns is None:
             self.cash_return_parameter.value = past_returns.iloc[-1,-1]
         
@@ -149,12 +147,10 @@ class ReturnsForecast(BaseReturnsModel):
             self.r_hat = HistoricalMeanReturn()
         self.decay = decay
         
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        super()._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
         self.r_hat_parameter = cp.Parameter(len(universe)-1)
         
-    def _recursive_values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, mpo_step=mpo_step, **kwargs)
+    def _values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
         self.r_hat_parameter.value = self.r_hat.current_value * self.decay**(mpo_step)
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -188,15 +184,12 @@ class ReturnsForecastError(BaseRiskModel):
         else:
             self.deltas = HistoricalMeanError()
             
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        super()._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
         self.deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
 
 
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
+    def _values_in_time(self, t, past_returns, **kwargs):
         self.deltas_parameter.value = self.deltas.current_value
-
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile to cvxpy expression."""
