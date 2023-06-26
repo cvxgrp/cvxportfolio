@@ -281,7 +281,7 @@ class TestPolicies(unittest.TestCase):
             
 
         policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-        policy.compile_to_cvxpy()
+        policy._compile_to_cvxpy()
         
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -339,7 +339,7 @@ class TestPolicies(unittest.TestCase):
             solver='ECOS')
 
         policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-        policy.compile_to_cvxpy()
+        policy._compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -387,7 +387,7 @@ class TestPolicies(unittest.TestCase):
             solver='ECOS')
 
         policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-        policy.compile_to_cvxpy()
+        policy._compile_to_cvxpy()
 
 
         curw = np.zeros(self.N)
@@ -419,7 +419,7 @@ class TestPolicies(unittest.TestCase):
             solver='ECOS')
 
         policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-        policy.compile_to_cvxpy()
+        policy._compile_to_cvxpy()
 
 
         curw = np.zeros(self.N)
@@ -454,7 +454,7 @@ class TestPolicies(unittest.TestCase):
                 solver='ECOS')
 
             policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-            policy.compile_to_cvxpy()
+            policy._compile_to_cvxpy()
 
 
             curw = np.zeros(self.N)
@@ -491,7 +491,7 @@ class TestPolicies(unittest.TestCase):
                 solver='ECOS')
 
             policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-            policy.compile_to_cvxpy()
+            policy._compile_to_cvxpy()
             
             curw = np.zeros(self.N)
             curw[-1] = 1.
@@ -545,7 +545,7 @@ class TestPolicies(unittest.TestCase):
                 solver='ECOS')
 
             policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-            policy.compile_to_cvxpy()
+            policy._compile_to_cvxpy()
             
             curw = np.zeros(self.N)
             curw[-1] = 1.

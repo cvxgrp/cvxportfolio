@@ -73,7 +73,7 @@ class CashReturn(BaseReturnsModel):
         if self.cash_returns is None:
             self.cash_return_parameter.value = past_returns.iloc[-1,-1]
         
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Apply cash return to "real" cash position (without shorts and margins)."""
         realcash = (w_plus[-1] - (1 + self.short_margin_requirement) * cp.sum(cp.neg(w_plus[:-1])))
         result = realcash * self.cash_return_parameter
@@ -157,7 +157,7 @@ class ReturnsForecast(BaseReturnsModel):
         super().values_in_time(t=t, past_returns=past_returns, mpo_step=mpo_step, **kwargs)
         self.r_hat_parameter.value = self.r_hat.current_value * self.decay**(mpo_step)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Cvxpy expression acts on non-cash assets."""
         return w_plus[:-1].T @ self.r_hat_parameter 
         
@@ -198,7 +198,7 @@ class ReturnsForecastError(BaseRiskModel):
         self.deltas_parameter.value = self.deltas.current_value
 
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile to cvxpy expression."""
         return cp.abs(w_plus_minus_w_bm[:-1]).T @ self.deltas_parameter
 

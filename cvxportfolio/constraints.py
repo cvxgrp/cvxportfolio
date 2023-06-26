@@ -86,7 +86,7 @@ class MarketNeutral(BaseWeightConstraint):
         # print(tmp2)
         self.market_vector.value = np.array(tmp2)
         
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         return w_plus[:-1].T @ self.market_vector == 0
         
         
@@ -102,7 +102,7 @@ class TurnoverLimit(BaseTradeConstraint):
     def __init__(self, delta):
         self.delta = DataEstimator(delta, compile_parameter=True)
         
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         return .5 * cp.norm1(z[:-1]) <= self.delta.parameter
         
 
@@ -126,7 +126,7 @@ class ParticipationRateLimit(BaseTradeConstraint):
         self.portfolio_value.value = current_portfolio_value
         super().values_in_time(current_portfolio_value=current_portfolio_value, **kwargs)
         
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return cp.multiply(cp.abs(z[:-1]), self.portfolio_value) <= cp.multiply(
             self.volumes.parameter, self.max_participation_rate.parameter
@@ -140,7 +140,7 @@ class LongOnly(BaseWeightConstraint):
     weights are non-negative.
     """
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] >= 0
 
@@ -165,7 +165,7 @@ class NoTrade(BaseTradeConstraint):
             self.low.value = -100.
             self.high.value = +100.
     
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         return [z[self.index] >= self.low, 
             z[self.index] <= self.high] 
         
@@ -185,7 +185,7 @@ class LeverageLimit(BaseWeightConstraint):
     def __init__(self, limit):
         self.limit = DataEstimator(limit, compile_parameter=True)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return cp.norm(w_plus[:-1], 1) <= self.limit.parameter
 
@@ -206,7 +206,7 @@ class MinCashBalance(BaseWeightConstraint):
         super().values_in_time(current_portfolio_value=current_portfolio_value, **kwargs)
         self.rhs.value = self.c_min.current_value/current_portfolio_value
     
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         # TODO clarify this
         realcash = (w_plus[-1] - 2 * cp.sum(cp.neg(w_plus[:-1])))
@@ -223,7 +223,7 @@ class LongCash(MinCashBalance):
 class DollarNeutral(BaseWeightConstraint):
     """Long-short dollar neutral strategy."""
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[-1] == 1
 
@@ -238,7 +238,7 @@ class MaxWeights(BaseWeightConstraint):
     def __init__(self, limit):
         self.limit = DataEstimator(limit, compile_parameter=True)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] <= self.limit.parameter
 
@@ -253,7 +253,7 @@ class MinWeights(BaseWeightConstraint):
     def __init__(self, limit):
         self.limit = DataEstimator(limit, compile_parameter=True)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] >= self.limit.parameter
 
@@ -282,7 +282,7 @@ class MinWeightsAtTimes(MinMaxWeightsAtTimes):
     
     sign = -1.
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] >= self.limit
         
@@ -290,7 +290,7 @@ class MaxWeightsAtTimes(MinMaxWeightsAtTimes):
 
     sign = 1.
     
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return w_plus[:-1] <= self.limit
         
@@ -308,7 +308,7 @@ class FactorMaxLimit(BaseWeightConstraint):
         self.factor_exposure = DataEstimator(factor_exposure, compile_parameter=True)
         self.limit = DataEstimator(limit, compile_parameter=True)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return self.factor_exposure.parameter.T @ w_plus[:-1] <= self.limit.parameter
 
@@ -326,7 +326,7 @@ class FactorMinLimit(BaseWeightConstraint):
         self.factor_exposure = DataEstimator(factor_exposure, compile_parameter=True)
         self.limit = DataEstimator(limit, compile_parameter=True)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return self.factor_exposure.parameter.T @ w_plus[:-1] >= self.limit.parameter
 
@@ -346,6 +346,6 @@ class FixedFactorLoading(BaseWeightConstraint):
         self.factor_exposure = DataEstimator(factor_exposure, compile_parameter=True)
         self.target = DataEstimator(target, compile_parameter=True)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return self.factor_exposure.parameter.T @ w_plus[:-1] == self.target.parameter

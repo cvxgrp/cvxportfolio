@@ -38,7 +38,7 @@ class TestRisks(unittest.TestCase):
         
     def boilerplate(self, model):
         model.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-        return model.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        return model._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
 
 
     def test_full_sigma(self):
@@ -70,7 +70,7 @@ class TestRisks(unittest.TestCase):
         # w_plus = cp.Variable(N)
         # risk_model.pre_evaluation(
         #     returns.iloc[:, :], None, start_time=returns.index[50], end_time=None)
-        # cvxpy_expression = risk_model.compile_to_cvxpy(w_plus, None, None)
+        # cvxpy_expression = risk_model._compile_to_cvxpy(w_plus, None, None)
         
         t = pd.Timestamp('2014-06-02')
         past = self.returns.loc[self.returns.index < t]
@@ -219,8 +219,8 @@ class TestRisks(unittest.TestCase):
 
         assert cvxpy_expression.is_convex()
 
-        cvxpy_expression0 = risk_model0.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
-        cvxpy_expression1 = risk_model1.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        cvxpy_expression0 = risk_model0._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        cvxpy_expression1 = risk_model1._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
 
         self.w_plus_minus_w_bm.value = np.ones(self.N)
 

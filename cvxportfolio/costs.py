@@ -48,7 +48,7 @@ class BaseCost(CvxpyExpressionEstimator):
         """Add cost expression to another cost expression.
 
         Idea is to create a new CombinedCost class that
-        implements `compile_to_cvxpy` and values_in_time
+        implements `_compile_to_cvxpy` and values_in_time
         by summing over costs.
 
         """
@@ -112,11 +112,11 @@ class CombinedCosts(BaseCost):
         """Iterate over constituent costs."""
         [el.values_in_time(**kwargs) for el in self.costs ]
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def _compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Iterate over constituent costs."""
         self.expression = 0
         for multiplier, cost in zip(self.multipliers, self.costs):
-            self.expression += multiplier * cost.compile_to_cvxpy(w_plus, z, portfolio_value) 
+            self.expression += multiplier * cost._compile_to_cvxpy(w_plus, z, portfolio_value) 
         return self.expression
 
 
@@ -219,7 +219,7 @@ class HoldingCost(BaseCost):
         return result
             
             
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile cost to cvxpy expression."""
         
         expression = 0. 
@@ -308,7 +308,7 @@ class TransactionCost(BaseCost):
         return -result
         
         
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
         expression = cp.abs(z[:-1]).T @ self.first_term_multiplier
         assert expression.is_convex()

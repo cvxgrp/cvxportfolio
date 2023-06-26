@@ -138,7 +138,7 @@ class FullCovariance(BaseRiskModel):
             eigval = np.maximum(eigval, 0.)
             self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         self.cvxpy_expression = cp.sum_squares(self.Sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
         return self.cvxpy_expression
 
@@ -185,7 +185,7 @@ class RiskForecastError(BaseRiskModel):
         
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
         return cp.square(cp.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
                 
@@ -231,7 +231,7 @@ class DiagonalCovariance(BaseRiskModel):
 
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
         return cp.sum_squares(cp.multiply(w_plus_minus_w_bm[:-1], self.sigmas_parameter))
 
@@ -355,7 +355,7 @@ class FactorModelCovariance(BaseRiskModel):
         self.idyosync_sqrt_parameter.value = np.sqrt(d)
 
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         self.expression = cp.sum_squares(cp.multiply(self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
         assert self.expression.is_dcp(dpp=True)
 
@@ -390,7 +390,7 @@ class WorstCaseRisk(BaseRiskModel):
         for risk in self.riskmodels:
             risk.values_in_time(**kwargs)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        risks = [risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        risks = [risk._compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
                  for risk in self.riskmodels]
         return cp.max(cp.hstack(risks))

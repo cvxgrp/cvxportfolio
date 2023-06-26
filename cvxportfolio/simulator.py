@@ -651,8 +651,8 @@ class MarketSimulator:
 
         # self.initialize_policy(policy, start_time, end_time)
 
-        if hasattr(policy, 'compile_to_cvxpy'):
-            policy.compile_to_cvxpy()
+        if hasattr(policy, '_compile_to_cvxpy'):
+            policy._compile_to_cvxpy()
 
         result = BacktestResult(universe, backtest_times, self.costs)
 
@@ -858,8 +858,8 @@ class MarketSimulator:
 #     policy.pre_evaluation(universe=universe, backtest_times=backtest_times)
 #     if hasattr(policy, 'cache'):
 #         policy.cache = cache
-#     if hasattr(policy, 'compile_to_cvxpy'):
-#         policy.compile_to_cvxpy()
+#     if hasattr(policy, '_compile_to_cvxpy'):
+#         policy._compile_to_cvxpy()
 #
 #     result = BacktestResult(universe, backtest_times, simulator.costs)
 #

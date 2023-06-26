@@ -354,16 +354,16 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         self.benchmark = benchmark() if isinstance(benchmark, type) else benchmark
         self.cvxpy_kwargs = kwargs
 
-    def compile_to_cvxpy(self):#, w_plus, z, value):
+    def _compile_to_cvxpy(self):#, w_plus, z, value):
         """Compile all cvxpy expressions and the problem."""
         self.cvxpy_objective = [
-            el.compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i]) 
+            el._compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i]) 
             for i, el in enumerate(self.objective)]
         self.cvxpy_objective = sum(self.cvxpy_objective)
         assert self.cvxpy_objective.is_dcp()  # dpp=True)
         assert self.cvxpy_objective.is_concave()
         self.cvxpy_constraints = [
-            flatten_heterogeneous_list([constr.compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i]) 
+            flatten_heterogeneous_list([constr._compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i]) 
                 for constr in el])
             for i, el in enumerate(self.constraints)]
         self.cvxpy_constraints = sum(self.cvxpy_constraints, [])
@@ -404,7 +404,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         # simulator will overwrite this with cached loaded from disk
         self.cache = {}
 
-        # self.compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
+        # self._compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
         
 
 

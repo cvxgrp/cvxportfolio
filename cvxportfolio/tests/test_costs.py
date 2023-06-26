@@ -54,30 +54,30 @@ class TestCosts(unittest.TestCase):
         cost3 = cost1 + cost2
 
         cost3.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
-        expr1 = cost1.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
-        expr2 = cost2.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr3 = cost3._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr1 = cost1._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr2 = cost2._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         cost3.values_in_time(t=t, past_returns=self.returns.loc[self.returns.index < t])
         self.assertTrue(expr3.value == expr1.value + expr2.value)
 
         cost4 = cost1 * 2
-        expr4 = cost4.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr4 = cost4._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue(expr4.value == expr1.value * 2)
 
         cost3 = cost1 - cost2
-        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr3 = cost3._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue(expr3.value == expr1.value - expr2.value)
 
         cost3 = -cost1 + 2 * cost2
-        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr3 = cost3._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue( expr3.value == -expr1.value + 2 * expr2.value)
 
         cost3 = -cost1 + 2 * (cost2 + cost1)
-        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr3 = cost3._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue( np.isclose(expr3.value, -expr1.value + 2 * (expr2.value + expr1.value)))
 
         cost3 = cost1 - 2 * (cost2 + cost1)
-        expr3 = cost3.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expr3 = cost3._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue( expr3.value == expr1.value - 2 * (expr2.value + expr1.value))
         
     def test_hcost(self):
@@ -89,7 +89,7 @@ class TestCosts(unittest.TestCase):
         
         t = 100 # this is picked so that periods_per_year evaluates to 252
         hcost.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-        expression = hcost.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expression = hcost._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         hcost.values_in_time(t=self.returns.index[t], past_returns=self.returns.iloc[:t])
         cash_ret = self.returns.iloc[t-1][-1]
         
@@ -124,7 +124,7 @@ class TestCosts(unittest.TestCase):
         t = self.returns.index[12]
         
         tcost.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-        expression = tcost.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        expression = tcost._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         
         # only spread
         
