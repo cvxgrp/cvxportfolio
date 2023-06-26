@@ -77,7 +77,7 @@ class PolicyEstimator(Estimator):
 class CvxpyExpressionEstimator(PolicyEstimator):
     """Base class for estimators that are Cvxpy expressions."""
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile term to cvxpy expression.
 
         This is called by a Policy class on its terms before the start of the backtest

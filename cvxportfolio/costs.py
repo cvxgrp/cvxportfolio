@@ -190,7 +190,7 @@ class HoldingCost(BaseCost):
                     cash_return if self.cash_return_on_borrow else 0.) + \
                 self.spread_on_borrowing_stocks_percent.current_value / (100 * ppy)
                 
-    def simulate(self, t, h_plus, current_and_past_returns, **kwargs):
+    def _simulate(self, t, h_plus, current_and_past_returns, **kwargs):
         
         ppy = periods_per_year(current_and_past_returns.index) if self.periods_per_year is None else \
             self.periods_per_year
@@ -276,7 +276,7 @@ class TransactionCost(BaseCost):
             self.second_term_multiplier.value = self.b.current_value * sigma_est * \
                 (current_portfolio_value / volume_est) ** (self.exponent - 1)
                 
-    def simulate(self, t, u, current_and_past_returns, current_and_past_volumes, current_prices, **kwargs):
+    def _simulate(self, t, u, current_and_past_returns, current_and_past_volumes, current_prices, **kwargs):
         
         sigma = np.std(current_and_past_returns.iloc[-self.window_sigma_est:, :-1], axis=0)
 

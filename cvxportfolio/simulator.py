@@ -39,137 +39,26 @@ from .utils import *
 from .errors import DataError
 
 PPY = 252
-__all__ = ['MarketSimulator', #'simulate_cash_holding_cost', 'simulate_stocks_holding_cost', 'simulate_transaction_cost', 
-    'MarketData']
+__all__ = ['MarketSimulator', 'MarketData']
 
     
-def hash_universe(universe):
+def _hash_universe(universe):
     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
         
-def load_cache(universe, trading_interval, base_location):
-    folder = base_location/f'hash(universe)={hash_universe(universe)},trading_interval={trading_interval}'
+def _load_cache(universe, trading_interval, base_location):
+    folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_interval={trading_interval}'
     try:
         with open(folder/'cache.pkl', 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
         return {}
     
-def store_cache(cache, universe, trading_interval, base_location):
-    folder = base_location/f'hash(universe)={hash_universe(universe)},trading_interval={trading_interval}'
+def _store_cache(cache, universe, trading_interval, base_location):
+    folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_interval={trading_interval}'
     folder.mkdir(exist_ok=True)
     with open(folder/'cache.pkl', 'wb') as f:
         pickle.dump(cache, f)
     
-    
-# def simulate_cash_holding_cost(t, h_plus, current_and_past_returns,
-#                                 spread_on_lending_cash_percent=0.5,
-#                                 spread_on_borrowing_cash_percent=0.5,
-#                                 periods_per_year=PPY, **kwargs):
-#     """Simulate holding cost for the cash account.
-#
-#     :param spread_on_lending_cash_percent: the cash account will generate annualized
-#         return equal to the cash return minus this number, expressed in percent annualized, or zero if
-#         the spread is larger than the cash return. For example with USDOLLAR cash,
-#         if the FRED-DFF annualized rate is 4.8% and spread_on_lending_cash_percent is 0.5
-#         (the default value), then the uninvested cash in the portfolio generates annualized
-#         return of 4.3%. See `this page <https://www.interactivebrokers.com/en/accounts/fees/pricing-interest-rates.php>_`.
-#     :type spread_on_lending_cash_percent: float, pd.Series
-#     :param spread_on_borrowing_cash_percent: if one instead borrows cash he pays the
-#         cash rate plus this spread, expressed in percent annualized. Default value is 0.5.
-#         See `this page <https://www.interactivebrokers.com/en/trading/margin-rates.php>_`.
-#     :type spread_on_borrowing_cash_percent: float, pd.Series
-#     """
-#
-#     multiplier = 1 / (100 * periods_per_year)
-#     lending_spread = DataEstimator(spread_on_lending_cash_percent)._recursive_values_in_time(t) * multiplier
-#     borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent)._recursive_values_in_time(t) * multiplier
-#
-#     cash_return = current_and_past_returns.iloc[-1,-1]
-#     real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
-#
-#     if real_cash > 0:
-#         return real_cash * (max(cash_return - lending_spread, 0.) - cash_return)
-#     else:
-#         return real_cash * borrowing_spread
-#
-#
-# def simulate_stocks_holding_cost(t, h_plus, current_and_past_returns,
-#                                 spread_on_borrowing_stocks_percent=0.5,
-#                                 dividends=0., periods_per_year=PPY, **kwargs):
-#     """Holding cost for stocks used by MarketSimulator.
-#
-#     :param spread_on_borrowing_stocks_percent: when shorting a stock,
-#         one pays a rate on the value of the position equal to the cash return plus this spread,
-#         expressed in percent annualized. These values are hard to find historically, if you are unsure consider
-#         long-only portfolios or look at CFDs/futures instead. We set the default value to 0.5 (percent annualized)
-#         which is probably OK for US large cap stocks. See `this page <https://www.interactivebrokers.com/en/pricing/short-sale-cost.php>`_.
-#     :type spread_on_borrowing_stocks_percent: float, pd.Series, pd.DataFrame
-#     :param dividends: if not included in the returns (as they are by the default data interface,
-#         based on `yfinance`), you can pass a DataFrame of dividend payments which will be credited to the cash
-#         account (or debited, if short) at each round. Default is 0., corresponding to no dividends.
-#     :type dividends: float, pd.DataFrame
-#     """
-#
-#     multiplier = 1 / (100 * periods_per_year)
-#     borrowing_spread = DataEstimator(spread_on_borrowing_stocks_percent)._recursive_values_in_time(t) * multiplier
-#     dividends = DataEstimator(dividends)._recursive_values_in_time(t)
-#     result = 0.
-#     cash_return = current_and_past_returns.iloc[-1,-1]
-#     borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
-#     result += np.sum((cash_return + borrowing_spread) * borrowed_stock_positions)
-#     result += np.sum(h_plus[:-1] * DataEstimator(dividends)._recursive_values_in_time(t))
-#     return result
-#
-#
-# def simulate_transaction_cost(t, u, current_prices, current_and_past_volumes,
-#                             current_and_past_returns, persharecost=0.005,
-#                             linearcost=0., nonlinearcoefficient=1.,
-#                             windowsigma=PPY, exponent=1.5, **kwargs):
-#     """Transaction cost model for the MarketSimulator.
-#
-#     :param per_share_fixed_cost: transaction cost per share traded. Default value is 0.005 (USD), uses
-#         Yahoo Finance open prices to simulate the number of stocks traded. See
-#         `this page <https://www.interactivebrokers.com/en/pricing/commissions-home.php>`_.
-#     :type per_share_fixed_cost: float
-#     :param transaction_cost_coefficient_b: coefficient that multiplies the non-linear
-#         term of the transaction cost. Default value is 1, you can pass any other constant value, a per-stock Series,
-#         or a per-day and per-stock DataFrame
-#     :type transaction_cost_coefficient_b: float, pd.Series, or pd.DataFrame
-#     :param transaction_cost_exponent: exponent of the non-linear term of the transaction cost model. Default value 1.5,
-#         this is applied to the trade volume (in US dollars) over the total market volume (in US dollars). See the
-#         paper for more details; this model is supported by a long tradition of research in market microstructure.
-#     :type transaction_cost_exponent: float
-#     """
-#
-#     persharecost = DataEstimator(persharecost)._recursive_values_in_time(t) if not \
-#         (persharecost is None) else None
-#     nonlinearcoefficient = DataEstimator(nonlinearcoefficient)._recursive_values_in_time(t) if not \
-#         (nonlinearcoefficient is None) else None
-#
-#     sigma = np.std(current_and_past_returns.iloc[-windowsigma:, :-1], axis=0)
-#
-#     result = 0.
-#     if not (persharecost is None):
-#         if current_prices is None:
-#             raise SyntaxError("If you don't provide prices you should set persharecost to None")
-#         result += persharecost * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
-#
-#     result += sum(DataEstimator(linearcost)._recursive_values_in_time(t) * np.abs(u.iloc[:-1]))
-#
-#     if not (nonlinearcoefficient is None):
-#         if current_and_past_volumes is None:
-#             raise SyntaxError("If you don't provide volumes you should set nonlinearcoefficient to None")
-#         # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
-#         result += (np.abs(u.iloc[:-1])**exponent) @ (nonlinearcoefficient  *
-#             sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (exponent - 1)))
-#
-#     assert not np.isnan(result)
-#     assert not np.isinf(result)
-#
-#     return -result
-        
-
-
         
 class MarketData:
     """Prepare, hold, and serve market data.
@@ -220,8 +109,8 @@ class MarketData:
         self.cash_key = cash_key
         
         if len(universe):
-            self.get_market_data(universe)
-            self.add_cash_column(self.cash_key)
+            self._get_market_data(universe)
+            self._add_cash_column(self.cash_key)
         else:
             if returns is None:
                 raise SyntaxError("If you don't specify a universe you should pass `returns`.")
@@ -232,12 +121,12 @@ class MarketData:
             self.volumes = volumes
             self.prices = prices
             if cash_key != returns.columns[-1]:
-                self.add_cash_column(cash_key)
+                self._add_cash_column(cash_key)
                             
         if trading_interval:
-            self.downsample(trading_interval)
+            self._downsample(trading_interval)
         
-        self.set_read_only()
+        self._set_read_only()
         self.check_sizes()
     
     
@@ -260,8 +149,8 @@ class MarketData:
         
     sampling_intervals = {'weekly': 'W-MON', 'monthly':'MS', 'quarterly':'QS', 'annual':'AS'}
         
-    def downsample(self, interval):
-        """Downsample market data."""
+    def _downsample(self, interval):
+        """_downsample market data."""
         if not interval in self.sampling_intervals:
             raise SyntaxError('Unsopported trading interval for down-sampling.')
         interval = self.sampling_intervals[interval]
@@ -286,7 +175,7 @@ class MarketData:
             raise SyntaxError('Prices should have same columns as returns, minus cash_key.')            
         
         
-    def serve_data_policy(self, t):
+    def _serve_data_policy(self, t):
         """Give data to policy at time t."""
         
         tidx = self.returns.index.get_loc(t)
@@ -301,7 +190,7 @@ class MarketData:
         return past_returns, past_volumes, current_prices
         
     
-    def serve_data_simulator(self, t):
+    def _serve_data_simulator(self, t):
         """Give data to simulator at time t."""
         
         tidx = self.returns.index.get_loc(t)
@@ -316,14 +205,14 @@ class MarketData:
         return current_and_past_returns, current_and_past_volumes, current_prices
         
         
-    def set_read_only(self):
+    def _set_read_only(self):
         """Set numpy array contained in dataframe to read only.
         
         This is enough to prevent direct assignement to the resulting 
         dataframe. However it could still be accidentally corrupted by assigning
         to columns or indices that are not present in the original.
         We avoid that case as well by returning a wrapped dataframe (which doesn't
-        copy data on creation) in serve_data_policy and serve_data_simulator.
+        copy data on creation) in _serve_data_policy and _serve_data_simulator.
         """
         
         def ro(df):
@@ -339,7 +228,7 @@ class MarketData:
         if not self.volumes is None:
             self.volumes = ro(self.volumes)
             
-    def add_cash_column(self, cash_key):
+    def _add_cash_column(self, cash_key):
         
         if not cash_key == 'USDOLLAR':
             raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
@@ -350,7 +239,7 @@ class MarketData:
         self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')
         
     
-    def get_market_data(self, universe):
+    def _get_market_data(self, universe):
         database_accesses = {}
         print('Updating data')
         for stock in universe:
@@ -362,10 +251,10 @@ class MarketData:
         self.volumes = pd.DataFrame({stock: database_accesses[stock].data['ValueVolume'] for stock in universe})
         self.prices = pd.DataFrame({stock: database_accesses[stock].data['Open'] for stock in universe})
         
-        self.remove_missing_recent()
+        self._remove_missing_recent()
                 
         
-    def remove_missing_recent(self):
+    def _remove_missing_recent(self):
         """Clean recent data.
         
         Yfinance has some issues with most recent data; 
@@ -386,7 +275,7 @@ class MarketData:
     def backtest_times(self, start_time=None, end_time=None, include_end=True):
         """Get trading calendar from market data."""
         result = self.returns.index
-        result = result[result >= self.earliest_backtest_start]
+        result = result[result >= self._earliest_backtest_start]
         if start_time:
             result = result[result >= start_time]
         if end_time:
@@ -395,8 +284,8 @@ class MarketData:
             result = result[:-1]
         return result
 
-    @cached_property
-    def break_timestamps(self):
+    @property
+    def _break_timestamps(self):
         """List of timestamps at which a backtest should be broken.
         
         An asset enters into a backtest after having non-NaN returns
@@ -416,8 +305,8 @@ class MarketData:
 
         return sorted(set(self.exit_dates) | set(self.entry_dates))
         
-    @cached_property    
-    def limited_universes(self):
+    @property    
+    def _limited_universes(self):
         """Valid universes for each section, minus cash.
         
         A backtest is broken into multiple ones that start at each key
@@ -426,19 +315,19 @@ class MarketData:
         """
         result = OrderedDict()
         uni = []
-        for ts in self.break_timestamps:
+        for ts in self._break_timestamps:
             uni += self.entry_dates[ts]
             uni = [el for el in uni if not el in self.exit_dates[ts]]
             result[ts] = tuple(sorted(uni))
         return result
     
     @property
-    def earliest_backtest_start(self):
+    def _earliest_backtest_start(self):
         """Earliest date at which we can start a backtest."""
         return self.returns.iloc[:,:-1].dropna(how='all').index[self.min_history]
         
         
-    def get_limited_backtests(self, start_time, end_time):
+    def _get_limited_backtests(self, start_time, end_time):
         """Get start/end times and universes of constituent backtests.
         
         Each one has constant universe with assets' that meet the
@@ -447,11 +336,11 @@ class MarketData:
         """
                 
         full_backtest_times = self.backtest_times(start_time, end_time)
-        brkt = np.array(self.break_timestamps)
+        brkt = np.array(self._break_timestamps)
 
         def get_valid_universe_and_its_expiration_for(time):    
             try:
-                return self.limited_universes[brkt[brkt<=time][-1]], \
+                return self._limited_universes[brkt[brkt<=time][-1]], \
                     brkt[brkt>time][0] if len(brkt[brkt>time]) else full_backtest_times[-1]
             except IndexError:
                 raise DataError('There are no assets that meet the required min_history.')
@@ -553,7 +442,7 @@ class MarketSimulator:
 
         
     @staticmethod
-    def round_trade_vector(u, current_prices):
+    def _round_trade_vector(u, current_prices):
         """Round dollar trade vector u.
         """
         result = pd.Series(u, copy=True)
@@ -562,7 +451,7 @@ class MarketSimulator:
         return result
 
 
-    def simulate(self, t, h, policy, **kwargs):
+    def _simulate(self, t, h, policy, **kwargs):
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
@@ -574,7 +463,7 @@ class MarketSimulator:
         current_portfolio_value = sum(h)
         current_weights = h / current_portfolio_value
 
-        past_returns, past_volumes, current_prices = self.market_data.serve_data_policy(t)
+        past_returns, past_volumes, current_prices = self.market_data._serve_data_policy(t)
 
         # evaluate the policy
         s = time.time()
@@ -590,7 +479,7 @@ class MarketSimulator:
         u = z * current_portfolio_value
         
         # get data for simulator
-        current_and_past_returns, current_and_past_volumes, current_prices = self.market_data.serve_data_simulator(t)
+        current_and_past_returns, current_and_past_volumes, current_prices = self.market_data._serve_data_simulator(t)
 
         # zero out trades on stock that weren't trading on that day 
         if not (current_and_past_volumes is None):
@@ -600,7 +489,7 @@ class MarketSimulator:
 
         # round trades
         if self.round_trades:
-            u = self.round_trade_vector(u, current_prices)
+            u = self._round_trade_vector(u, current_prices)
             
         # for safety recompute cash
         u[-1] = -sum(u[:-1])
@@ -610,7 +499,7 @@ class MarketSimulator:
         h_plus = h + u
 
         # evaluate cost functions
-        realized_costs = {cost.__class__.__name__: cost.simulate(t=t, u=u,  h_plus=h_plus, 
+        realized_costs = {cost.__class__.__name__: cost._simulate(t=t, u=u,  h_plus=h_plus, 
             current_and_past_volumes=current_and_past_volumes, 
             current_and_past_returns=current_and_past_returns,
             current_prices=current_prices,
@@ -630,7 +519,7 @@ class MarketSimulator:
             
         return h_next, z, u, realized_costs, policy_time
         
-    def initialize_policy(self, policy, start_time, end_time):
+    def _initialize_policy(self, policy, start_time, end_time):
         """Initialize the policy object.
         """
         policy._recursive_pre_evaluation(universe = self.market_data.universe,
@@ -638,7 +527,7 @@ class MarketSimulator:
 
         # if policy initialized a cache, rewrite it with loaded one
         #if hasattr(policy, 'cache'):
-        #    policy.cache = load_cache(universe=self.market_data.universe, trading_interval = self.trading_interval,
+        #    policy.cache = _load_cache(universe=self.market_data.universe, trading_interval = self.trading_interval,
         #        base_location=self.base_location)
 
 
@@ -649,7 +538,7 @@ class MarketSimulator:
         #if backtest_times is None:
         backtest_times = self.market_data.backtest_times(start_time, end_time, include_end=False)
 
-        # self.initialize_policy(policy, start_time, end_time)
+        # self._initialize_policy(policy, start_time, end_time)
 
         if hasattr(policy, '_compile_to_cvxpy'):
             policy._compile_to_cvxpy()
@@ -662,7 +551,7 @@ class MarketSimulator:
             # print(t, h)
             s = time.time()
             h, result.z.loc[t], result.u.loc[t], realized_costs, \
-                    result.policy_times.loc[t] = self.simulate(t=t, h=h, policy=policy)
+                    result.policy_times.loc[t] = self._simulate(t=t, h=h, policy=policy)
             for cost in realized_costs:
                 result.costs[cost].loc[t] = realized_costs[cost]
             result.simulator_times.loc[t] = time.time() - s - result.policy_times.loc[t]
@@ -673,13 +562,13 @@ class MarketSimulator:
         result.cash_returns = self.market_data.returns.iloc[:,-1].loc[result.u.index]
 
         #if hasattr(policy, 'cache'):
-        #    store_cache(cache=policy.cache, universe=universe,
+        #    _store_cache(cache=policy.cache, universe=universe,
         #    trading_interval = self.trading_interval, base_location=self.base_location)
 
         return result
 
     def _concatenated_backtests(self, policy, start_time, end_time, h):
-        constituent_backtests_params = self.market_data.get_limited_backtests(start_time, end_time)
+        constituent_backtests_params = self.market_data._get_limited_backtests(start_time, end_time)
         # print(constituent_backtests_params)
         results = []
         orig_md = self.market_data
@@ -704,7 +593,7 @@ class MarketSimulator:
                 backtest_times = self.market_data.backtest_times(el['start_time'], el['end_time'], include_end=True))
             if not (hasattr(self, 'PARALLEL') and self.PARALLEL):
                 if hasattr(policy, 'cache'):
-                    policy.cache = load_cache(universe=el['universe'], trading_interval = self.trading_interval, 
+                    policy.cache = _load_cache(universe=el['universe'], trading_interval = self.trading_interval, 
                         base_location=self.base_location)
                     
             results.append(self._single_backtest(policy, el['start_time'], el['end_time'], h, el['universe']))
@@ -715,7 +604,7 @@ class MarketSimulator:
             h = results[-1].h.iloc[-1]
             if not (hasattr(self, 'PARALLEL') and self.PARALLEL):
                 if hasattr(policy, 'cache'):
-                    store_cache(cache=policy.cache, universe=el['universe'], 
+                    _store_cache(cache=policy.cache, universe=el['universe'], 
                     trading_interval = self.trading_interval, base_location=self.base_location)
         # print(results)
         
@@ -746,11 +635,15 @@ class MarketSimulator:
         
             
     @staticmethod
-    def worker(policy, simulator, start_time, end_time, h):
+    def _worker(policy, simulator, start_time, end_time, h):
         #return simulator._single_backtest(policy, start_time, end_time, h)
         return simulator._concatenated_backtests(policy, start_time, end_time, h)
+        
+    def backtest(self, policy, start_time=None, end_time=None, initial_value = 1E6, h=None):
+        return self.backtest_many([policy], start_time = start_time, end_time = end_time, 
+                             initial_value = initial_value, h=h, parallel=False)[0]
                                     
-    def backtest(self, policy, start_time=None, end_time=None, initial_value = 1E6, h=None, parallel=True):
+    def backtest_many(self, policies, start_time=None, end_time=None, initial_value = 1E6, h=None, parallel=True):
         """Backtest one or more trading policy.
         
         If runnning in parallel you must be careful at how you use this method. If 
@@ -764,10 +657,10 @@ class MarketSimulator:
             in the main process. If passing a list, it uses Python multiprocessing to
             create multiple processes and run many policies in parallel.
         :type policy: cvx.BaseTradingPolicy or list
-        :param start_time: start time of the backtest(s), if holiday, the first trading day
+        :param start_time: start time of the backtest_many(s), if holiday, the first trading day
              after it is selected
         :type start_time: str or datetime 
-        :param end_time: end time of the backtest(s), if holiday, the last trading day
+        :param end_time: end time of the backtest_many(s), if holiday, the last trading day
              before it is selected
         :type end_time: str or datetime or None
         :param initial_value: initial value in dollar of the portfolio, if not specifying
@@ -786,46 +679,24 @@ class MarketSimulator:
         """
         
         # turn policy and h into lists
-        if not hasattr(policy, '__len__'):
-            policy = [policy]
+        assert hasattr(policies, '__len__')
+        # if not hasattr(policies, '__len__'):
+        #     policies = [policies]
         
         if not hasattr(h, '__len__'):
-            h = [h] * len(policy)
+            h = [h] * len(policies)
             
-        if not (len(policy) == len(h)):
+        if not (len(policies) == len(h)):
             raise SyntaxError("If passing lists of policies and initial portfolios they must have the same length.")
         
-        # discover start and end times
-        # start_time = pd.Series(self.returns.data.index >= start_time, self.returns.data.index).idxmax()
-        # if end_time is None:
-        #     end_time  = self.returns.data.index[-1]
-        # else:
-        #    end_time = self.returns.data.index[self.returns.data.index <= end_time][-1]
             
         backtest_times_inclusive = self.market_data.backtest_times(start_time, end_time, include_end=True)
         start_time = backtest_times_inclusive[0]
         end_time = backtest_times_inclusive[-1]
         
-        #constituent_backtests = self.market_data.get_limited_backtests(start_time, end_time)
-        #raise Exception
-            
-        if False:
-            # TODO fix this - discard names that don't meet the min_history_for_inclusion
-            min_history = self.market_data.PPY * int(round(self.min_history_for_inclusion.days/365))
-            # print('min_history', min_history)
-            history = (~self.market_data.returns.loc[self.market_data.returns.index < start_time].isnull()).sum()
-            reduced_universe = self.market_data.returns.columns[history >= min_history]
-            # print('reduced_universe', reduced_universe)
-            self.market_data.returns = self.market_data.returns[reduced_universe]
-            if not (self.market_data.volumes is None):
-                self.market_data.volumes = self.market_data.volumes[reduced_universe[:-1]]
-            if not (self.market_data.prices is None):
-                self.market_data.prices = self.market_data.prices[reduced_universe[:-1]]
-            # self.sigma_estimate.data = self.sigma_estimate.data[reduced_universe[:-1]]
-        
         # initialize policies and get initial portfolios
-        for i in range(len(policy)):
-            # self.initialize_policy(policy[i], start_time, end_time)
+        for i in range(len(policies)):
+            # self._initialize_policy(policy[i], start_time, end_time)
         
             if h[i] is None:
                 h[i] = pd.Series(0., self.market_data.universe)
@@ -834,19 +705,19 @@ class MarketSimulator:
         # def nonparallel_runner(zipped):
         #     return self._single_backtest(zipped[0], start_time, end_time, zipped[1])
         
-        zip_args = zip(policy, [self] * len(policy), [start_time] * len(policy), [end_time] * len(policy), h)
+        zip_args = zip(policies, [self] * len(policies), [start_time] * len(policies), [end_time] * len(policies), h)
         
         # decide if run in parallel or not
-        if (not parallel) or len(policy)==1: 
+        if (not parallel) or len(policies)==1: 
             #result = list(map(nonparallel_runner, zip(policy, h)))
-            result = list(starmap(self.worker, zip_args))
+            result = list(starmap(self._worker, zip_args))
         else:
             self.PARALLEL = True # TODO temporary, to disable some features when running in parallel
             with Pool() as p:
-                result = p.starmap(self.worker, zip_args)   
+                result = p.starmap(self._worker, zip_args)   
             del self.PARALLEL
-        if len(result) == 1:
-            return result[0]
+        # if len(result) == 1:
+        #     return result[0]
         return result
 
 # def _do_single_backtest(policy, start_time, end_time, simulator, cache):
