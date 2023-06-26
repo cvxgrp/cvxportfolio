@@ -39,49 +39,32 @@ from .utils import *
 from .errors import DataError
 
 PPY = 252
-__all__ = ['MarketSimulator', 'MarketData']
+__all__ = ['MarketSimulator']
 
     
 def _hash_universe(universe):
     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
         
-def _load_cache(universe, trading_interval, base_location):
-    folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_interval={trading_interval}'
+def _load_cache(universe, trading_frequency, base_location):
+    folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
     try:
         with open(folder/'cache.pkl', 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
         return {}
     
-def _store_cache(cache, universe, trading_interval, base_location):
-    folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_interval={trading_interval}'
+def _store_cache(cache, universe, trading_frequency, base_location):
+    folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
     folder.mkdir(exist_ok=True)
     with open(folder/'cache.pkl', 'wb') as f:
         pickle.dump(cache, f)
     
         
 class MarketData:
-    """Prepare, hold, and serve market data.
+    """Prepare, hold, and serve market data. 
     
-    :param universe: list of `Yahoo Finance <https://finance.yahoo.com/>`_ tickers on which to
-        simulate performance of the trading strategy. If left unspecified you should at least
-        pass `returns` and `volumes`. If you define a different market data access interface
-        (look in `cvxportfolio.data` for how to do it) you should pass instead
-        the symbol names for that data provider. Default is empty list.
-    :type universe: list or None
-    :param returns: historical open-to-open returns. Default is None, it is ignored
-        if universe is specified.
-    :type returns: pandas.DataFrame 
-    :param volumes: historical market volumes expressed in value (e.g., US dollars).
-            Default is None, it is ignored if universe is specified.
-    :type volumes: pandas.DataFrame
-    :param prices: historical open prices. Default is None, it is ignored
-        if universe is specified. These are used to round the trades to integer number of stocks
-        if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
-        is greater than zero).
-    :type prices: pandas.DataFrame
-    
-    
+    Not meant to be accessed by user. Most of its initialization
+    is documented in MarketSimulator.    
     """
     
     def __init__(self, 
@@ -93,12 +76,12 @@ class MarketData:
         base_location=BASE_LOCATION, 
         min_history=pd.Timedelta('365.24d'),
         max_contiguous_missing='10d',
-        trading_interval=None,  # disabled for now because cache is not robust against this
+        trading_frequency=None,  # disabled for now because cache is not robust against this
         **kwargs,
     ):
         
         # TODO unblock once cache fixed
-        # trading_interval = None
+        # trading_frequency = None
         
         # drop duplicates and ensure ordering
         universe = sorted(set(universe))
@@ -123,11 +106,11 @@ class MarketData:
             if cash_key != returns.columns[-1]:
                 self._add_cash_column(cash_key)
                             
-        if trading_interval:
-            self._downsample(trading_interval)
+        if trading_frequency:
+            self._downsample(trading_frequency)
         
         self._set_read_only()
-        self.check_sizes()
+        self._check_sizes()
     
     
     def _reduce_universe(self, reduced_universe):
@@ -164,7 +147,7 @@ class MarketData:
         return periods_per_year(self.returns.index)
         
     
-    def check_sizes(self):
+    def _check_sizes(self):
         
         if (not self.volumes is None) and (not (self.volumes.shape[1] == self.returns.shape[1] - 1) \
             or not all(self.volumes.columns == self.returns.columns[:-1])):
@@ -272,7 +255,7 @@ class MarketData:
         self.volumes.iloc[-1] = np.nan
         
         
-    def backtest_times(self, start_time=None, end_time=None, include_end=True):
+    def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
         """Get trading calendar from market data."""
         result = self.returns.index
         result = result[result >= self._earliest_backtest_start]
@@ -335,7 +318,7 @@ class MarketData:
         dataset.
         """
                 
-        full_backtest_times = self.backtest_times(start_time, end_time)
+        full_backtest_times = self._get_backtest_times(start_time, end_time)
         brkt = np.array(self._break_timestamps)
 
         def get_valid_universe_and_its_expiration_for(time):    
@@ -376,16 +359,30 @@ class MarketData:
 class MarketSimulator:
     """This class implements a simulator of market performance for trading strategies.
     
-    
-
     We strive to make the parameters here as accurate as possible. The following is
     accurate as of 2023 using numbers obtained on the public website of a
     `large US-based broker <https://www.interactivebrokers.com/>`_.
 
+    :param universe: list of `Yahoo Finance <https://finance.yahoo.com/>`_ tickers on which to
+        simulate performance of the trading strategy. If left unspecified you should at least
+        pass `returns` and `volumes`. If you define a different market data access interface
+        (look in `cvxportfolio.data` for how to do it) you should pass instead
+        the symbol names for that data provider. Default is empty list.
+    :type universe: list or None
+    :param returns: historical open-to-open returns. Default is None, it is ignored
+        if universe is specified.
+    :type returns: pandas.DataFrame 
+    :param volumes: historical market volumes expressed in value (e.g., US dollars).
+            Default is None, it is ignored if universe is specified.
+    :type volumes: pandas.DataFrame
+    :param prices: historical open prices. Default is None, it is ignored
+        if universe is specified. These are used to round the trades to integer number of stocks
+        if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
+        is greater than zero).
+    :type prices: pandas.DataFrame
     :param round_trades: round the trade weights provided by a policy so they correspond to an integer
         number of stocks traded. Default is True using Yahoo Finance open prices.
     :type round_trades: bool
-    
     :param costs: list of BaseCost instances or class objects. If class objects (the default) they will
         be instantiated internally with their default arguments.
     :type costs: list
@@ -396,8 +393,14 @@ class MarketSimulator:
     :param base_location: base location for storage of data.
         Default is `Path.home() / "cvxportfolio_data"`. Unused if passing `returns` and `volumes`.
     :type base_location: pathlib.Path or str: 
-    
-    
+    :param trading_frequency: optionally choose a different frequency for 
+        trades than the one of the data used.
+        The default interface (Yahoo finance) provides daily trading data, 
+        and so that is the default frequency for trades. With this argument you can set instead 
+        the trading frequency to ``"weekly"``, which trades every Monday (or the first
+        non-holiday trading day of each week), ``"monthly"``, which trades every first of the month (ditto), 
+        ``"quarterly"``, and ``"annual"``. 
+    :type trading_frequency: str or None
     """
 
     def __init__(
@@ -406,14 +409,12 @@ class MarketSimulator:
         returns=None,
         volumes=None,
         prices=None,
-        costs=[TransactionCost, HoldingCost,
-            #simulate_transaction_cost, simulate_stocks_holding_cost, simulate_cash_holding_cost
-        ],
+        costs=[TransactionCost, HoldingCost],
         round_trades=True,
         min_history_for_inclusion=pd.Timedelta('365d'), # TODO temporary, will use MarketData infrastructure
         cash_key="USDOLLAR",
         base_location=BASE_LOCATION,
-        trading_interval=None,
+        trading_frequency=None,
         **kwargs,
     ):
         """Initialize the Simulator and download data if necessary."""
@@ -423,11 +424,11 @@ class MarketSimulator:
             universe=universe, returns=returns,
             volumes=volumes, prices=prices,
             cash_key=cash_key, base_location=base_location,
-            trading_interval=trading_interval,
+            trading_frequency=trading_frequency,
             min_history=min_history_for_inclusion,
             **kwargs)
             
-        self.trading_interval = trading_interval
+        self.trading_frequency = trading_frequency
                 
         if not len(universe) and prices is None:
             if round_trades:
@@ -523,11 +524,11 @@ class MarketSimulator:
         """Initialize the policy object.
         """
         policy._recursive_pre_evaluation(universe = self.market_data.universe,
-                             backtest_times = self.market_data.backtest_times(start_time, end_time, include_end=False))
+                             backtest_times = self.market_data._get_backtest_times(start_time, end_time, include_end=False))
 
         # if policy initialized a cache, rewrite it with loaded one
         #if hasattr(policy, 'cache'):
-        #    policy.cache = _load_cache(universe=self.market_data.universe, trading_interval = self.trading_interval,
+        #    policy.cache = _load_cache(universe=self.market_data.universe, trading_frequency = self.trading_frequency,
         #        base_location=self.base_location)
 
 
@@ -536,7 +537,7 @@ class MarketSimulator:
         if universe is None:
             universe = self.market_data.universe
         #if backtest_times is None:
-        backtest_times = self.market_data.backtest_times(start_time, end_time, include_end=False)
+        backtest_times = self.market_data._get_backtest_times(start_time, end_time, include_end=False)
 
         # self._initialize_policy(policy, start_time, end_time)
 
@@ -563,7 +564,7 @@ class MarketSimulator:
 
         #if hasattr(policy, 'cache'):
         #    _store_cache(cache=policy.cache, universe=universe,
-        #    trading_interval = self.trading_interval, base_location=self.base_location)
+        #    trading_frequency = self.trading_frequency, base_location=self.base_location)
 
         return result
 
@@ -590,10 +591,10 @@ class MarketSimulator:
             policy = copy.deepcopy(orig_policy)
             # print(el['start_time'], el['end_time'])
             policy._recursive_pre_evaluation(universe = el['universe'],
-                backtest_times = self.market_data.backtest_times(el['start_time'], el['end_time'], include_end=True))
+                backtest_times = self.market_data._get_backtest_times(el['start_time'], el['end_time'], include_end=True))
             if not (hasattr(self, 'PARALLEL') and self.PARALLEL):
                 if hasattr(policy, 'cache'):
-                    policy.cache = _load_cache(universe=el['universe'], trading_interval = self.trading_interval, 
+                    policy.cache = _load_cache(universe=el['universe'], trading_frequency = self.trading_frequency, 
                         base_location=self.base_location)
                     
             results.append(self._single_backtest(policy, el['start_time'], el['end_time'], h, el['universe']))
@@ -605,7 +606,7 @@ class MarketSimulator:
             if not (hasattr(self, 'PARALLEL') and self.PARALLEL):
                 if hasattr(policy, 'cache'):
                     _store_cache(cache=policy.cache, universe=el['universe'], 
-                    trading_interval = self.trading_interval, base_location=self.base_location)
+                    trading_frequency = self.trading_frequency, base_location=self.base_location)
         # print(results)
         
         res = BacktestResult.__new__(BacktestResult)
@@ -640,42 +641,68 @@ class MarketSimulator:
         return simulator._concatenated_backtests(policy, start_time, end_time, h)
         
     def backtest(self, policy, start_time=None, end_time=None, initial_value = 1E6, h=None):
+        """Backtest trading policy.
+        
+        The default initial portfolio is all cash, or you can pass any portfolio with
+        the `h` argument.
+        
+        :param policy: trading policy
+        :type policy: cvx.BaseTradingPolicy
+        :param start_time: start time of the backtest; if market it close, the first trading day
+             after it is selected
+        :type start_time: str or datetime 
+        :param end_time: end time of the backtest; if market it close, the last trading day
+             before it is selected
+        :type end_time: str or datetime or None
+        :param initial_value: initial value in dollar of the portfolio, if not specifying
+            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified 
+            this is ignored
+        :type initial_value: float
+        :param h: initial portfolio ``h`` expressed in dollar positions. If ``None`` 
+            an initial portfolio of ``initial_value`` in cash is used.
+        :type h: pd.Series or None
+        
+        :returns result: instance of :class:`BacktestResult` which has all relevant backtest
+            data and logic to compute metrics, generate plots, ...
+        :rtype result: cvx.BacktestResult
+        """
         return self.backtest_many([policy], start_time = start_time, end_time = end_time, 
                              initial_value = initial_value, h=h, parallel=False)[0]
                                     
     def backtest_many(self, policies, start_time=None, end_time=None, initial_value = 1E6, h=None, parallel=True):
-        """Backtest one or more trading policy.
+        """Backtest many trading policies.
         
-        If runnning in parallel you must be careful at how you use this method. If 
-        you use this in a script, you should define the MarketSimulator
-        *in* the `if __name__ == '__main__:'` clause, and call this method there as well.
+        
         
         The default initial portfolio is all cash, or you can pass any portfolio with
-        the `h` argument, or a list of those if running multiple backtests.
+        the `h` argument, or a list of those.
         
-        :param policy: if passing a single trading policy it performs a single backtest 
-            in the main process. If passing a list, it uses Python multiprocessing to
-            create multiple processes and run many policies in parallel.
-        :type policy: cvx.BaseTradingPolicy or list
-        :param start_time: start time of the backtest_many(s), if holiday, the first trading day
-             after it is selected
+        :param policies: trading policies
+        :type policy: list of cvx.BaseTradingPolicy:
+        :param start_time: start time of the backtests; if market it close, the first trading day
+             after it is selected. Currently it is not possible to specify different start times
+            for different policies, so the same is used for all.
         :type start_time: str or datetime 
-        :param end_time: end time of the backtest_many(s), if holiday, the last trading day
-             before it is selected
+        :param end_time: end time of the backtests; if market it close, the last trading day
+             before it is selected. Currently it is not possible to specify different end times
+            for different policies, so the same is used for all.
         :type end_time: str or datetime or None
         :param initial_value: initial value in dollar of the portfolio, if not specifying
-            `h` it is assumed the initial portfolio is all cash
-        :type initial_value: float
-        :param h: initial portfolio `h` expressed in dollar positions, or list of those 
-            for multiple backtests
+            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified 
+            this is ignored
+        :param h: initial portfolio `h` expressed in dollar positions, or list of those. If 
+            passing a list it must have the same lenght as the policies. If this argument
+            is specified, ``initial_value`` is ignored, otherwise the same portfolio of 
+            ``initial_value`` all in cash is used as starting point for all backtests.
         :type h: list or pd.Series or None
-        :param parallel: whether to run in parallel if there are multiple policies or not.
-            If not, it just iterates through the policies in the main process.
+        :param parallel: whether to run in parallel. If runnning in parallel you **must be careful 
+            at how you use this method**. If you use this in a script, you *should* define the MarketSimulator
+            *in* the `if __name__ == '__main__:'` clause, and call this method there as well.
         :type parallel: bool
         
-        :returns result: instance of :class:`BacktestResult` which has all relevant backtest
+        :returns result: list of instances of :class:`BacktestResult` which have all relevant backtest
             data and logic to compute metrics, generate plots, ...
-        :rtype result: cvx.BacktestResult or list
+        :rtype result: list of cvx.BacktestResult
         """
         
         # turn policy and h into lists
@@ -690,7 +717,7 @@ class MarketSimulator:
             raise SyntaxError("If passing lists of policies and initial portfolios they must have the same length.")
         
             
-        backtest_times_inclusive = self.market_data.backtest_times(start_time, end_time, include_end=True)
+        backtest_times_inclusive = self.market_data._get_backtest_times(start_time, end_time, include_end=True)
         start_time = backtest_times_inclusive[0]
         end_time = backtest_times_inclusive[-1]
         
@@ -724,7 +751,7 @@ class MarketSimulator:
 #     """This function can run on remote process/machine."""
 #
 #     universe = simulator.market_data.universe
-#     backtest_times = simulator.market_data.backtest_times(start_time, end_time)
+#     backtest_times = simulator.market_data._get_backtest_times(start_time, end_time)
 #
 #     policy._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
 #     if hasattr(policy, 'cache'):

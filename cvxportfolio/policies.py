@@ -142,8 +142,7 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
 class SellAll(BaseTradingPolicy):
     """Sell all assets to cash.
 
-    This is useful to check the tcost model in the simulator,
-    or as an element in a (currently not implemented) composite policy.
+    This is useful to check the tcost model in the simulator.
     """
 
     def _values_in_time(self, t, current_weights, **kwargs):

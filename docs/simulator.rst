@@ -10,7 +10,6 @@ Simulator
 .. autoclass:: MarketSimulator
 
     .. automethod:: backtest
-	
-.. autoclass:: MarketData
-
+    
+    .. automethod:: backtest_many
 

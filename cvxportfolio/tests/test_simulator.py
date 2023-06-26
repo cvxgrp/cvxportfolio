@@ -538,7 +538,7 @@ class TestSimulator(unittest.TestCase):
         time_first = 0.
         results_first = []
         for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
-            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_interval=downsampling)
+            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_frequency=downsampling)
             pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
             s = time.time()
             results_first.append(sim.backtest(pol, pd.Timestamp('2021-12-01')))
@@ -547,7 +547,7 @@ class TestSimulator(unittest.TestCase):
         time_second = 0.
         results_second = []
         for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
-            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_interval=downsampling)
+            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_frequency=downsampling)
             pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
             s = time.time()
             results_second.append(sim.backtest(pol, pd.Timestamp('2021-12-01')))

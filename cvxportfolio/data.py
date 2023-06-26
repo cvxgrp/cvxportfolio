@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""DEPRECATED.
+
+This module will be removed or heavily reformatted, most of it is unused.
+The only parts that will remain are the FRED and YFinance interfaces, simplified,
+and not meant to be accessed directly by users.
+"""
 
 from pathlib import Path
 import yfinance as yf

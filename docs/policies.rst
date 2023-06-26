@@ -23,7 +23,6 @@ Simple policies
 
 .. autoclass:: Hold
 
-.. autoclass:: SellAll
 
 .. autoclass:: FixedTrades
 
@@ -38,3 +37,6 @@ Simple policies
 .. autoclass:: RankAndLongShort
 
 .. autoclass:: FixedWeights
+
+.. autoclass:: SellAll
+
