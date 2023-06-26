@@ -99,7 +99,7 @@ class TestRisks(unittest.TestCase):
         t = historical_variances.index[123]
         self.w_plus_minus_w_bm.value = np.random.randn(self.N) 
 
-        risk_model._recursive_values_in_time(t, past_returns='hello')
+        risk_model._recursive_values_in_time(t=t, past_returns='hello')
 
         self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus_minus_w_bm.value[:-1] @
                           np.diag(historical_variances.loc[t]) @ self.w_plus_minus_w_bm.value[:-1]))
@@ -135,7 +135,7 @@ class TestRisks(unittest.TestCase):
         
         self.w_plus_minus_w_bm.value = np.random.randn(self.N) 
 
-        risk_model._recursive_values_in_time(t, past_returns='hello')
+        risk_model._recursive_values_in_time(t=t, past_returns='hello')
 
         print(cvxpy_expression.value)
         print((np.abs(self.w_plus_minus_w_bm.value[:-1]) @ np.sqrt(historical_variances.loc[t]))**2)

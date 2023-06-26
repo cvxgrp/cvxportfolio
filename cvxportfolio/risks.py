@@ -121,14 +121,11 @@ class FullCovariance(BaseRiskModel):
             self.Sigma = HistoricalFactorizedCovariance(kelly=kelly) 
             self.alreadyfactorized = True
             
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        super()._recursive_pre_evaluation(universe, backtest_times)
-        
+    def _pre_evaluation(self, universe, backtest_times):
         self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
+    def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         if self.alreadyfactorized:
             self.Sigma_sqrt.value = self.Sigma.current_value
@@ -162,13 +159,11 @@ class RiskForecastError(BaseRiskModel):
         # self.zeroforcash=True
         # self.kelly=True
         
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        super()._recursive_pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
         self.sigmas_parameter = cp.Parameter(len(universe)-1, nonneg=True)#+self.kelly))
 
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
+    def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        super()._recursive_values_in_time(t=t, past_returns=past_returns)
         
         # if self.sigma_squares is None:
         #     sigma_squares = past_returns.var(ddof=0)
@@ -207,14 +202,12 @@ class DiagonalCovariance(BaseRiskModel):
         #self.kelly = True
         # self.standard_deviations = ParameterEstimator(standard_deviations)
         
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        super()._recursive_pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
         self.sigmas_parameter = cp.Parameter(len(universe)-1) #+self.kelly))
 
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
+    def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
         #super()._recursive_values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         # if self.sigma_squares is None:
         #     sigma_squares = past_returns.var(ddof=0)
@@ -322,8 +315,7 @@ class FactorModelCovariance(BaseRiskModel):
     #         raise ForeCastError("Low rank risk estimation with iterative SVD did not work.")
     #     return F, idyosyncratic
 
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        super()._recursive_pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
         # super()._recursive_pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         self.F_parameter = cp.Parameter((self.num_factors, len(universe)-1)) if self.F is None else self.F.parameter
@@ -331,8 +323,7 @@ class FactorModelCovariance(BaseRiskModel):
         #     self.factor_Sigma_sqrt = cp.Parameter(self.factor_Sigma.shape, PSD=True)
         # self.forecast_error_penalizer = cp.Parameter(returns.shape[1], nonneg=True)
 
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
+    def _values_in_time(self, t, past_returns, **kwargs):
         
         # if self.F is None:
         #     if not self.kelly:
