@@ -2,6 +2,7 @@ build
 setuptools
 twine
 sphinx
+sphinx_rtd_theme
 numpy
 pandas
 cvxpy
