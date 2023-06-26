@@ -17,7 +17,7 @@ This module only republishes the api of a selection of cvxportfolio modules.
 The __all__ attribute of each is used.
 """
 
-__version__ = "0.3.4"
+__version__ = "0.3.5"
 
 from .simulator import *
 from .policies import *
