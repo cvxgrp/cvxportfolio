@@ -26,8 +26,8 @@ import numpy as np
 from .estimator import PolicyEstimator
 
 
-def online_cache(_recursive_values_in_time):
-    """A simple online cache that decorates _recursive_values_in_time.
+def online_cache(_values_in_time):
+    """A simple online cache that decorates _values_in_time.
     
     The instance it is used on needs to be hashable (we currently
     use the hash of its __repr__ via dataclass).
@@ -42,13 +42,13 @@ def online_cache(_recursive_values_in_time):
             cache[self] = {}
         
         if t in cache[self]:
-            logging.debug(f'{self}._recursive_values_in_time at time {t} is retrieved from cache.')
-            self.current_value = cache[self][t]
+            logging.debug(f'{self}._values_in_time at time {t} is retrieved from cache.')
+            result = cache[self][t]
         else:
-            logging.debug(f'{self}._recursive_values_in_time at time {t} is stored in cache.')
-            _recursive_values_in_time(self, t=t, cache=cache, **kwargs)  
-            cache[self][t] = self.current_value
-        return self.current_value
+            logging.debug(f'{self}._values_in_time at time {t} is stored in cache.')
+            result = _values_in_time(self, t=t, cache=cache, **kwargs)  
+            cache[self][t] = result
+        return result
         
     return wrapped
 
@@ -61,20 +61,20 @@ class BaseForecast(PolicyEstimator):
     #
     
     
-    def update_chooser(self, t, past_returns):
+    def _agnostic_update(self, t, past_returns):
         """Choose whether to make forecast from scratch or update last one."""
         if (self.last_time is None) or (self.last_time != past_returns.index[-1]):
             logging.debug(f'{self}._recursive_values_in_time at time {t} is computed from scratch.')
-            self.compute_from_scratch(t=t, past_returns=past_returns)
+            self._initial_compute(t=t, past_returns=past_returns)
         else:
             logging.debug(f'{self}._recursive_values_in_time at time {t} is updated from previous value.')
-            self.update(t=t, past_returns=past_returns)
+            self._online_update(t=t, past_returns=past_returns)
             
-    def compute_from_scratch(self, t, past_returns):
+    def _initial_compute(self, t, past_returns):
         """Make forecast from scratch."""
         raise NotImplementedError
 
-    def update(self, t, past_returns):
+    def _online_update(self, t, past_returns):
         """Update forecast from period before."""
         raise NotImplementedError
 
@@ -90,22 +90,20 @@ class HistoricalMeanReturn(BaseForecast):
         self.last_counts = None
         self.last_sum = None
         
-    def _recursive_pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
-    def _recursive_values_in_time(self, t, past_returns, cache=None, **kwargs):
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, cache=cache, **kwargs)
-        self.update_chooser(t=t, past_returns=past_returns)
-        self.current_value = (self.last_sum / self.last_counts).values        
-        return self.current_value
+    def _values_in_time(self, t, past_returns, cache=None, **kwargs):
+        self._agnostic_update(t=t, past_returns=past_returns)
+        return (self.last_sum / self.last_counts).values        
         
-    def compute_from_scratch(self, t, past_returns):
+    def _initial_compute(self, t, past_returns):
         """Make forecast from scratch."""
         self.last_counts = past_returns.iloc[:, :-1].count()
         self.last_sum = past_returns.iloc[:, :-1].sum()
         self.last_time = t
         
-    def update(self, t, past_returns):
+    def _online_update(self, t, past_returns):
         """Update forecast from period before."""
         self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
         self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)
@@ -123,10 +121,8 @@ class HistoricalMeanError(BaseForecast):
     def __init__(self):
         self.varianceforecaster = HistoricalVariance(kelly=False)
     
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
-        self.current_value  = np.sqrt(self.varianceforecaster.current_value / self.varianceforecaster.last_counts.values)
-        return self.current_value  
+    def _values_in_time(self, t, past_returns, **kwargs):
+        return np.sqrt(self.varianceforecaster.current_value / self.varianceforecaster.last_counts.values)
         
         
 @dataclass(unsafe_hash=True)
@@ -149,23 +145,22 @@ class HistoricalVariance(BaseForecast):
         self.last_counts = None
         self.last_sum = None
         
-    def _recursive_pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
-        self.update_chooser(t=t, past_returns=past_returns)
-        self.current_value = (self.last_sum / self.last_counts).values
+    def _values_in_time(self, t, past_returns, **kwargs):
+        self._agnostic_update(t=t, past_returns=past_returns)
+        result = (self.last_sum / self.last_counts).values
         if not self.kelly:
-            self.current_value -= self.meanforecaster.current_value**2
-        return self.current_value  
+            result -= self.meanforecaster.current_value**2
+        return result
         
-    def compute_from_scratch(self, t, past_returns):
+    def _initial_compute(self, t, past_returns):
         self.last_counts = past_returns.iloc[:, :-1].count()
         self.last_sum = (past_returns.iloc[:, :-1]**2).sum()
         self.last_time = t
         
-    def update(self, t, past_returns): #, last_estimation, last_counts, last_time):
+    def _online_update(self, t, past_returns): #, last_estimation, last_counts, last_time):
         self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
         self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)**2
         self.last_time = t
@@ -188,11 +183,11 @@ class HistoricalFactorizedCovariance(BaseForecast):
     def __post_init__(self):
         self.last_time = None
     
-    def _recursive_pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
     @staticmethod
-    def get_count_matrix(past_returns):
+    def _get_count_matrix(past_returns):
         r"""We obtain the matrix of non-null joint counts:
         
         .. math::
@@ -203,7 +198,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
         return tmp.T @ tmp
     
     @staticmethod
-    def get_initial_joint_mean(past_returns):
+    def _get_initial_joint_mean(past_returns):
         r"""Compute precursor of :math:`\Sigma_{i,j} = \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`.
         """
         nonnull = (~past_returns.iloc[:,:-1].isnull()) * 1.
@@ -211,22 +206,22 @@ class HistoricalFactorizedCovariance(BaseForecast):
         return tmp # * tmp.T
 
     @staticmethod
-    def factorize(Sigma):
+    def _factorize(Sigma):
         """Factorize matrix and remove negative eigenvalues."""
         eigval, eigvec = np.linalg.eigh(Sigma)
         eigval = np.maximum(eigval, 0.)
         return eigvec @ np.diag(np.sqrt(eigval))
         
-    def compute_from_scratch(self, t, past_returns):
-        self.last_counts_matrix = self.get_count_matrix(past_returns).values
+    def _initial_compute(self, t, past_returns):
+        self.last_counts_matrix = self._get_count_matrix(past_returns).values
         filled = past_returns.iloc[:,:-1].fillna(0.).values
         self.last_sum_matrix = filled.T @ filled
         if not self.kelly:
-            self.joint_mean = self.get_initial_joint_mean(past_returns)
+            self.joint_mean = self._get_initial_joint_mean(past_returns)
 
         self.last_time = t
         
-    def update(self, t, past_returns):
+    def _online_update(self, t, past_returns):
         nonnull = ~(past_returns.iloc[-1, :-1].isnull())
         self.last_counts_matrix += np.outer(nonnull, nonnull)
         last_ret = past_returns.iloc[-1, :-1].fillna(0.)
@@ -236,15 +231,13 @@ class HistoricalFactorizedCovariance(BaseForecast):
             self.joint_mean += last_ret
 
     @online_cache
-    def _recursive_values_in_time(self, t, past_returns, **kwargs):
-        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
+    def _values_in_time(self, t, past_returns, **kwargs):
   
-        self.update_chooser(t=t, past_returns=past_returns)
+        self._agnostic_update(t=t, past_returns=past_returns)
         Sigma = self.last_sum_matrix / self.last_counts_matrix
         
         if not self.kelly:
             tmp = self.joint_mean / self.last_counts_matrix
             Sigma -= tmp.T * tmp
                
-        self.current_value = self.factorize(Sigma) 
-        return self.current_value
+        return self._factorize(Sigma) 

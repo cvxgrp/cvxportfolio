@@ -52,7 +52,8 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            mean = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            mean = forecaster.current_value
             # print(mean)
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(mean, past_returns.iloc[:,:-1].mean()))
@@ -67,7 +68,8 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            var = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            var = forecaster.current_value
             print(var)
             #self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(var, past_returns.var(ddof=0)[:-1]))    
@@ -81,7 +83,8 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            val = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            val = forecaster.current_value
             print(val)
             #self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(val, past_returns.std(ddof=0)[:-1] / np.sqrt(past_returns.count()[:-1]) ))  
@@ -92,7 +95,7 @@ class TestEstimators(unittest.TestCase):
         returns.iloc[:20, 3:10] = np.nan
         returns.iloc[10:15, 10:20] = np.nan
         
-        count_matrix = forecaster.get_count_matrix(returns)
+        count_matrix = forecaster._get_count_matrix(returns)
         
         for indexes in [(1,2), (4,5), (1,5), (7, 18), (7,24), (1,15), (13,22)]:
             print(count_matrix.iloc[indexes[0], indexes[1]])
@@ -145,7 +148,8 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            val = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            val = forecaster.current_value
             Sigma = val @ val.T
             self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
 
@@ -193,7 +197,8 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            val = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
+            val = forecaster.current_value
             Sigma = val @ val.T
 
             self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
