@@ -22,7 +22,12 @@ from .estimator import PolicyEstimator
 
 __all__ = ['CashBenchmark', 'UniformBenchmark', 'MarketBenchmark']
 
-class CashBenchmark(PolicyEstimator):
+
+class BaseBenchmark(PolicyEstimator):
+    """Base class for cvxportfolio benchmark weights."""
+    pass
+
+class CashBenchmark(BaseBenchmark):
     """Default benchmark weights for cvxportfolio risk models.
     """
 
@@ -32,7 +37,7 @@ class CashBenchmark(PolicyEstimator):
         self.current_value[-1] = 1.
 
 
-class UniformBenchmark(PolicyEstimator):
+class UniformBenchmark(BaseBenchmark):
     """Benchmark weights uniform on non-cash assets.
     """
 
@@ -43,7 +48,7 @@ class UniformBenchmark(PolicyEstimator):
         self.current_value /= np.sum(self.current_value[:-1])
    
      
-class MarketBenchmark(PolicyEstimator):
+class MarketBenchmark(BaseBenchmark):
     """Portfolio weighted by last year's total volumes.
     """
     

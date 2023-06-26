@@ -289,7 +289,7 @@ class AdaptiveRebalance(BaseTradingPolicy):
 
 
 class MultiPeriodOptimization(BaseTradingPolicy):
-    """Multi Period Optimization policy.
+    r"""Multi Period Optimization policy.
 
     Implements the model developed in Chapter 5, in particular
     at page 49, of the book. You specify the objective terms
@@ -307,26 +307,36 @@ class MultiPeriodOptimization(BaseTradingPolicy):
     it only returns the first step (to the Simulator, typically).
     The future steps (planning horizon) are by default not returned.
 
-    Args:
-        objective (algebra of BaseCost or list of those): these will be maximized;
-            if you pass a single expression of BaseCost it is understood as the 
-            same for all steps; if it's a list you must also pass a list of lists
-            for `constraints`, each term represents the cost for each step of the optimization
-            (starting from the first, i.e., today) and the length of the list is 
-            used as planning_horizon (the value you pass there will be ignored) 
-        constraints (list of BaseConstraints or list of those): these will be
-            imposed on the optimization. Default []. Pass this as a list of
-            lists of the same length as `objective` to specify different 
-            constraints at different time steps.
-        planning_horizon (int or None): how many steps in the future we 
-            plan for. Ignored if passing `objective` and `constraints` as lists.
-            Default is None.
-        terminal_constraint (pd.Series or None): if you pass a Series to this
-            (default is None) it will impose that at the last step of the multi
-            period optimization the post-trade weights are equal to this.
-        **kwargs: these will be passed to cvxpy.Problem.solve,
-            so you can choose your own solver and pass
-            parameters to it.
+    :param objective: these will be maximized;
+        if you pass a single expression of BaseCost it is understood as the 
+        same for all steps; if it's a list you must also pass a list of lists
+        for `constraints`, each term represents the cost for each step of the optimization
+        (starting from the first, i.e., today) and the length of the list is 
+        used as planning_horizon (the value you pass there will be ignored) 
+    :type objective: algebra of BaseCost or list of
+    :param constraints: these will be
+        imposed on the optimization. Default []. Pass this as a list of
+        lists of the same length as `objective` to specify different 
+        constraints at different time steps.
+    :type constraints: list of BaseConstraints or list of those
+    :param planning_horizon:  how many steps in the future we 
+        plan for. Ignored if passing `objective` and `constraints` as lists.
+        Default is None.
+    :type planning_horizon: int or None
+    :param terminal_constraint: if you pass a Series to this
+        (default is None) it will impose that at the last step of the multi
+        period optimization the post-trade weights are equal to this.
+    :type terminal_constraint: pd.Series or None
+    :param include_cash_return: whether to automatically include the ``CashReturn`` term in the objective,
+        with default parameters. Default is ``True``.
+    :type include_cash_return: bool
+    :param benchmark: benchmark weights to use in the risk model and other terms that need it. Implemented
+        ones are ``CashBenchmark``, the default, ``UniformBenchmark`` (uniform allocation on non-cash assets),
+        and ``MarketBenchmark``, which approximates the market-weighted portfolio.
+    :type benchmark: BaseBenchmark class or instance
+    :param \**kwargs: these will be passed to cvxpy.Problem.solve,
+        so you can choose your own solver and pass
+        parameters to it.
     """
 
     def __init__(self, objective, constraints=[], include_cash_return=True, planning_horizon=None, terminal_constraint=None, benchmark=CashBenchmark, **kwargs):
@@ -452,7 +462,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
 
     
 class SinglePeriodOptimization(MultiPeriodOptimization):
-    """Single Period Optimization policy.
+    r"""Single Period Optimization policy.
 
     Implements the model developed in Chapter 4, in particular
     at page 43, of the book. You specify the objective term
@@ -464,7 +474,14 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     :type objective: CombinedCost
     :param constraints: these will be imposed on the optimization. Default [].
     :type constraints: list of BaseConstraints
-    :param **kwargs: these will be passed to cvxpy.Problem.solve, so you can choose your own solver and pass
+    :param include_cash_return: whether to automatically include the ``CashReturn`` term in the objective,
+        with default parameters. Default is ``True``.
+    :type include_cash_return: bool
+    :param benchmark: benchmark weights to use in the risk model and other terms that need it. Implemented
+        ones are ``CashBenchmark``, the default, ``UniformBenchmark`` (uniform allocation on non-cash assets),
+        and ``MarketBenchmark``, which approximates the market-weighted portfolio.
+    :type benchmark: BaseBenchmark class or instance
+    :param \**kwargs: these will be passed to cvxpy.Problem.solve, so you can choose your own solver and pass
         parameters to it.
     """
 

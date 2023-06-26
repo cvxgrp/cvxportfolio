@@ -1,8 +1,6 @@
 Trading policies
 ================
 
-WORK IN PROGRESS
-
 .. toctree::
 	:maxdepth: 2
 
@@ -23,8 +21,9 @@ Simple policies
 
 .. autoclass:: Hold
 
-
 .. autoclass:: FixedTrades
+
+.. autoclass:: FixedWeights
 
 .. autoclass:: PeriodicRebalance
 
@@ -35,8 +34,6 @@ Simple policies
 .. autoclass:: ProportionalTradeToTargets
 
 .. autoclass:: RankAndLongShort
-
-.. autoclass:: FixedWeights
 
 .. autoclass:: SellAll
 
