@@ -81,8 +81,8 @@ def store_cache(cache, universe, trading_interval, base_location):
 #     """
 #
 #     multiplier = 1 / (100 * periods_per_year)
-#     lending_spread = DataEstimator(spread_on_lending_cash_percent).values_in_time(t) * multiplier
-#     borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent).values_in_time(t) * multiplier
+#     lending_spread = DataEstimator(spread_on_lending_cash_percent)._values_in_time(t) * multiplier
+#     borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent)._values_in_time(t) * multiplier
 #
 #     cash_return = current_and_past_returns.iloc[-1,-1]
 #     real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
@@ -111,13 +111,13 @@ def store_cache(cache, universe, trading_interval, base_location):
 #     """
 #
 #     multiplier = 1 / (100 * periods_per_year)
-#     borrowing_spread = DataEstimator(spread_on_borrowing_stocks_percent).values_in_time(t) * multiplier
-#     dividends = DataEstimator(dividends).values_in_time(t)
+#     borrowing_spread = DataEstimator(spread_on_borrowing_stocks_percent)._values_in_time(t) * multiplier
+#     dividends = DataEstimator(dividends)._values_in_time(t)
 #     result = 0.
 #     cash_return = current_and_past_returns.iloc[-1,-1]
 #     borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
 #     result += np.sum((cash_return + borrowing_spread) * borrowed_stock_positions)
-#     result += np.sum(h_plus[:-1] * DataEstimator(dividends).values_in_time(t))
+#     result += np.sum(h_plus[:-1] * DataEstimator(dividends)._values_in_time(t))
 #     return result
 #
 #
@@ -141,9 +141,9 @@ def store_cache(cache, universe, trading_interval, base_location):
 #     :type transaction_cost_exponent: float
 #     """
 #
-#     persharecost = DataEstimator(persharecost).values_in_time(t) if not \
+#     persharecost = DataEstimator(persharecost)._values_in_time(t) if not \
 #         (persharecost is None) else None
-#     nonlinearcoefficient = DataEstimator(nonlinearcoefficient).values_in_time(t) if not \
+#     nonlinearcoefficient = DataEstimator(nonlinearcoefficient)._values_in_time(t) if not \
 #         (nonlinearcoefficient is None) else None
 #
 #     sigma = np.std(current_and_past_returns.iloc[-windowsigma:, :-1], axis=0)
@@ -154,7 +154,7 @@ def store_cache(cache, universe, trading_interval, base_location):
 #             raise SyntaxError("If you don't provide prices you should set persharecost to None")
 #         result += persharecost * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
 #
-#     result += sum(DataEstimator(linearcost).values_in_time(t) * np.abs(u.iloc[:-1]))
+#     result += sum(DataEstimator(linearcost)._values_in_time(t) * np.abs(u.iloc[:-1]))
 #
 #     if not (nonlinearcoefficient is None):
 #         if current_and_past_volumes is None:
@@ -578,7 +578,7 @@ class MarketSimulator:
 
         # evaluate the policy
         s = time.time()
-        z = policy.values_in_time(t=t, current_weights=current_weights, current_portfolio_value=current_portfolio_value, 
+        z = policy._values_in_time(t=t, current_weights=current_weights, current_portfolio_value=current_portfolio_value, 
             past_returns=past_returns, past_volumes=past_volumes, current_prices=current_prices, **kwargs)
         policy_time = time.time() - s
         

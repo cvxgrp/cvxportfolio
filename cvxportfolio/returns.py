@@ -67,9 +67,9 @@ class CashReturn(BaseReturnsModel):
         # else DataEstimator(self.cash_returns, non_negative=True, compile_parameter=True)
         
         
-    def values_in_time(self, t, past_returns, **kwargs):
+    def _values_in_time(self, t, past_returns, **kwargs):
         """Update cash return parameter as last cash return."""
-        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+        super()._values_in_time(t=t, past_returns=past_returns, **kwargs)
         if self.cash_returns is None:
             self.cash_return_parameter.value = past_returns.iloc[-1,-1]
         
@@ -153,8 +153,8 @@ class ReturnsForecast(BaseReturnsModel):
         super()._pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.r_hat_parameter = cp.Parameter(len(universe)-1)
         
-    def values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns, mpo_step=mpo_step, **kwargs)
+    def _values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
+        super()._values_in_time(t=t, past_returns=past_returns, mpo_step=mpo_step, **kwargs)
         self.r_hat_parameter.value = self.r_hat.current_value * self.decay**(mpo_step)
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -193,8 +193,8 @@ class ReturnsForecastError(BaseRiskModel):
         self.deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
 
 
-    def values_in_time(self, t, past_returns, **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+    def _values_in_time(self, t, past_returns, **kwargs):
+        super()._values_in_time(t=t, past_returns=past_returns, **kwargs)
         self.deltas_parameter.value = self.deltas.current_value
 
 

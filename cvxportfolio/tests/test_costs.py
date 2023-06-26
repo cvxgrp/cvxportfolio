@@ -57,7 +57,7 @@ class TestCosts(unittest.TestCase):
         expr3 = cost3._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         expr1 = cost1._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         expr2 = cost2._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
-        cost3.values_in_time(t=t, past_returns=self.returns.loc[self.returns.index < t])
+        cost3._values_in_time(t=t, past_returns=self.returns.loc[self.returns.index < t])
         self.assertTrue(expr3.value == expr1.value + expr2.value)
 
         cost4 = cost1 * 2
@@ -90,7 +90,7 @@ class TestCosts(unittest.TestCase):
         t = 100 # this is picked so that periods_per_year evaluates to 252
         hcost._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         expression = hcost._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
-        hcost.values_in_time(t=self.returns.index[t], past_returns=self.returns.iloc[:t])
+        hcost._values_in_time(t=self.returns.index[t], past_returns=self.returns.iloc[:t])
         cash_ret = self.returns.iloc[t-1][-1]
         
         for i in range(10):
@@ -128,7 +128,7 @@ class TestCosts(unittest.TestCase):
         
         # only spread
         
-        tcost.values_in_time(t=self.returns.index[12], 
+        tcost._values_in_time(t=self.returns.index[12], 
             current_portfolio_value = value,
             past_returns=self.returns.iloc[:12], 
             past_volumes=self.volumes.iloc[:12],
@@ -148,7 +148,7 @@ class TestCosts(unittest.TestCase):
         
         prices = pd.Series(np.random.uniform(1, 100, size=self.returns.shape[1]-1), self.returns.columns[:-1])
         
-        tcost.values_in_time(t=self.returns.index[23], 
+        tcost._values_in_time(t=self.returns.index[23], 
             current_portfolio_value = value,
             past_returns=self.returns.iloc[:23], 
             past_volumes=self.volumes.iloc[:23],
@@ -166,7 +166,7 @@ class TestCosts(unittest.TestCase):
         
         # spread and nonlin cost
         
-        tcost.values_in_time(t=self.returns.index[34], 
+        tcost._values_in_time(t=self.returns.index[34], 
             current_portfolio_value = value,
             past_returns=self.returns.iloc[:34], 
             past_volumes=self.volumes.iloc[:34],

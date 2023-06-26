@@ -53,7 +53,7 @@ class TestData(unittest.TestCase):
         assert not hasattr(ts, "data")
         ts._pre_evaluation()
         assert np.all(
-            ts.values_in_time(pd.Timestamp("2023-04-11"), "foo", bar=None)
+            ts._values_in_time(pd.Timestamp("2023-04-11"), "foo", bar=None)
             == ts.data.loc["2023-04-11"]
         )
         

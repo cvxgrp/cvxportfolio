@@ -47,7 +47,7 @@ class MarketBenchmark(PolicyEstimator):
     """Portfolio weighted by last year's total volumes.
     """
     
-    def values_in_time(self, past_volumes, **kwargs):
+    def _values_in_time(self, past_volumes, **kwargs):
         """Update current_value using past year's volumes."""
         sumvolumes = past_volumes.loc[past_volumes.index >= (past_volumes.index[-1] - pd.Timedelta('365d'))].sum()
         self.current_value = np.zeros(len(sumvolumes) + 1)

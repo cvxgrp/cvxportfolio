@@ -126,9 +126,9 @@ class FullCovariance(BaseRiskModel):
         
         self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
-    def values_in_time(self, t, past_returns, **kwargs):
+    def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+        super()._values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         if self.alreadyfactorized:
             self.Sigma_sqrt.value = self.Sigma.current_value
@@ -166,9 +166,9 @@ class RiskForecastError(BaseRiskModel):
         super()._pre_evaluation(universe, backtest_times)
         self.sigmas_parameter = cp.Parameter(len(universe)-1, nonneg=True)#+self.kelly))
 
-    def values_in_time(self, t, past_returns, **kwargs):
+    def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        super().values_in_time(t=t, past_returns=past_returns)
+        super()._values_in_time(t=t, past_returns=past_returns)
         
         # if self.sigma_squares is None:
         #     sigma_squares = past_returns.var(ddof=0)
@@ -211,10 +211,10 @@ class DiagonalCovariance(BaseRiskModel):
         super()._pre_evaluation(universe, backtest_times)
         self.sigmas_parameter = cp.Parameter(len(universe)-1) #+self.kelly))
 
-    def values_in_time(self, t, past_returns, **kwargs):
+    def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        #super().values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
-        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+        #super()._values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+        super()._values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         # if self.sigma_squares is None:
         #     sigma_squares = past_returns.var(ddof=0)
@@ -331,8 +331,8 @@ class FactorModelCovariance(BaseRiskModel):
         #     self.factor_Sigma_sqrt = cp.Parameter(self.factor_Sigma.shape, PSD=True)
         # self.forecast_error_penalizer = cp.Parameter(returns.shape[1], nonneg=True)
 
-    def values_in_time(self, t, past_returns, **kwargs):
-        super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+    def _values_in_time(self, t, past_returns, **kwargs):
+        super()._values_in_time(t=t, past_returns=past_returns, **kwargs)
         
         # if self.F is None:
         #     if not self.kelly:
@@ -385,10 +385,10 @@ class WorstCaseRisk(BaseRiskModel):
         for risk in self.riskmodels:
             risk._pre_evaluation(universe, backtest_times)
 
-    def values_in_time(self, **kwargs):
+    def _values_in_time(self, **kwargs):
         """Update parameters."""
         for risk in self.riskmodels:
-            risk.values_in_time(**kwargs)
+            risk._values_in_time(**kwargs)
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         risks = [risk._compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)

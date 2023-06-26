@@ -237,7 +237,7 @@ class TestSimulator(unittest.TestCase):
     #         u = simulator.round_trade_vector(u)
     #
     #         simulator.spreads = DataEstimator(np.random.uniform(size=3) * 1E-3)
-    #         simulator.spreads.values_in_time(t=t)
+    #         simulator.spreads._values_in_time(t=t)
     #
     #         shares = sum(np.abs(u[:-1] / simulator.prices.data.loc[t]))
     #         tcost = - simulator.per_share_fixed_cost * shares
@@ -386,7 +386,7 @@ class TestSimulator(unittest.TestCase):
         simulator = MarketSimulator(['ZM', 'META', 'AAPL'], base_location=self.datadir)
     
         for t in [pd.Timestamp('2023-04-13')]:#, pd.Timestamp('2022-04-11')]: # can't because sigma requires 1000 days
-            #super(simulator.__class__, simulator).values_in_time(t=t)
+            #super(simulator.__class__, simulator)._values_in_time(t=t)
             
             ## round trade
     

@@ -52,7 +52,7 @@ class TestRisks(unittest.TestCase):
         t = historical_covariances.index[123][0]
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
 
-        risk_model.values_in_time(t=t, past_returns='Hello!')
+        risk_model._values_in_time(t=t, past_returns='Hello!')
 
         self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus_minus_w_bm.value[:-1] @
                           historical_covariances.loc[t] @ self.w_plus_minus_w_bm.value[:-1]))
@@ -78,7 +78,7 @@ class TestRisks(unittest.TestCase):
         
         self.w_plus_minus_w_bm.value = np.random.randn(self.N) 
         
-        risk_model.values_in_time(t=t, past_returns=past)
+        risk_model._values_in_time(t=t, past_returns=past)
         print(cvxpy_expression.value)
         
         print(self.w_plus_minus_w_bm.value[:-1] @ should_be @ self.w_plus_minus_w_bm.value[:-1])
@@ -99,7 +99,7 @@ class TestRisks(unittest.TestCase):
         t = historical_variances.index[123]
         self.w_plus_minus_w_bm.value = np.random.randn(self.N) 
 
-        risk_model.values_in_time(t, past_returns='hello')
+        risk_model._values_in_time(t, past_returns='hello')
 
         self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus_minus_w_bm.value[:-1] @
                           np.diag(historical_variances.loc[t]) @ self.w_plus_minus_w_bm.value[:-1]))
@@ -115,7 +115,7 @@ class TestRisks(unittest.TestCase):
         should_be = (past**2).mean()
         should_be.iloc[-1] = 0.
         
-        risk_model.values_in_time(t=t, past_returns=past)
+        risk_model._values_in_time(t=t, past_returns=past)
         self.w_plus_minus_w_bm.value = np.random.randn(self.N) 
         
         self.assertTrue(np.isclose(cvxpy_expression.value, self.w_plus_minus_w_bm.value @
@@ -135,7 +135,7 @@ class TestRisks(unittest.TestCase):
         
         self.w_plus_minus_w_bm.value = np.random.randn(self.N) 
 
-        risk_model.values_in_time(t, past_returns='hello')
+        risk_model._values_in_time(t, past_returns='hello')
 
         print(cvxpy_expression.value)
         print((np.abs(self.w_plus_minus_w_bm.value[:-1]) @ np.sqrt(historical_variances.loc[t]))**2)
@@ -157,7 +157,7 @@ class TestRisks(unittest.TestCase):
         should_be = (past**2).mean()
         should_be.iloc[-1] = 0.
 
-        risk_model.values_in_time(t=t, past_returns=past)
+        risk_model._values_in_time(t=t, past_returns=past)
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
 
         self.assertTrue(np.isclose(cvxpy_expression.value, 
@@ -175,7 +175,7 @@ class TestRisks(unittest.TestCase):
         cvxpy_expression = self.boilerplate(risk_model)
         self.assertTrue(cvxpy_expression.is_convex())
         
-        risk_model.values_in_time(t=self.returns.index[12], past_returns='hello')
+        risk_model._values_in_time(t=self.returns.index[12], past_returns='hello')
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
         
         self.assertTrue(np.isclose(cvxpy_expression.value, 
@@ -200,7 +200,7 @@ class TestRisks(unittest.TestCase):
         F = np.sqrt(eigval[-1]) * eigvec[:, -1]
         d = np.diag(FS) - F**2
         
-        risk_model.values_in_time(t=t, past_returns=past)
+        risk_model._values_in_time(t=t, past_returns=past)
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
         
         self.assertTrue(np.isclose(cvxpy_expression.value,
@@ -226,7 +226,7 @@ class TestRisks(unittest.TestCase):
 
         t = pd.Timestamp('2014-06-02')
         
-        worst_case.values_in_time(t=t, past_returns=self.returns.loc[self.returns.index < t])
+        worst_case._values_in_time(t=t, past_returns=self.returns.loc[self.returns.index < t])
 
         print(cvxpy_expression.value)
         print(cvxpy_expression0.value)
