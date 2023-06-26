@@ -35,5 +35,5 @@ class BaseTestClass(unittest.TestCase):
         cls.N = cls.returns.shape[1]
     
     def boilerplate(self, model):
-        model._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        model._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         return model._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)

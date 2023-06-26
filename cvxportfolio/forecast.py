@@ -26,8 +26,8 @@ import numpy as np
 from .estimator import PolicyEstimator
 
 
-def online_cache(_values_in_time):
-    """A simple online cache that decorates _values_in_time.
+def online_cache(_recursive_values_in_time):
+    """A simple online cache that decorates _recursive_values_in_time.
     
     The instance it is used on needs to be hashable (we currently
     use the hash of its __repr__ via dataclass).
@@ -42,11 +42,11 @@ def online_cache(_values_in_time):
             cache[self] = {}
         
         if t in cache[self]:
-            logging.debug(f'{self}._values_in_time at time {t} is retrieved from cache.')
+            logging.debug(f'{self}._recursive_values_in_time at time {t} is retrieved from cache.')
             self.current_value = cache[self][t]
         else:
-            logging.debug(f'{self}._values_in_time at time {t} is stored in cache.')
-            _values_in_time(self, t=t, cache=cache, **kwargs)  
+            logging.debug(f'{self}._recursive_values_in_time at time {t} is stored in cache.')
+            _recursive_values_in_time(self, t=t, cache=cache, **kwargs)  
             cache[self][t] = self.current_value
         return self.current_value
         
@@ -55,7 +55,7 @@ def online_cache(_values_in_time):
 class BaseForecast(PolicyEstimator):
     """Base class for forecasters."""
     
-    # def _pre_evaluation(self, universe, backtest_times):
+    # def _recursive_pre_evaluation(self, universe, backtest_times):
     #     self.universe = universe
     #     self.backtest_times = backtest_times
     #
@@ -64,10 +64,10 @@ class BaseForecast(PolicyEstimator):
     def update_chooser(self, t, past_returns):
         """Choose whether to make forecast from scratch or update last one."""
         if (self.last_time is None) or (self.last_time != past_returns.index[-1]):
-            logging.debug(f'{self}._values_in_time at time {t} is computed from scratch.')
+            logging.debug(f'{self}._recursive_values_in_time at time {t} is computed from scratch.')
             self.compute_from_scratch(t=t, past_returns=past_returns)
         else:
-            logging.debug(f'{self}._values_in_time at time {t} is updated from previous value.')
+            logging.debug(f'{self}._recursive_values_in_time at time {t} is updated from previous value.')
             self.update(t=t, past_returns=past_returns)
             
     def compute_from_scratch(self, t, past_returns):
@@ -90,11 +90,11 @@ class HistoricalMeanReturn(BaseForecast):
         self.last_counts = None
         self.last_sum = None
         
-    def _pre_evaluation(self, universe, backtest_times):
+    def _recursive_pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
-    def _values_in_time(self, t, past_returns, cache=None, **kwargs):
-        super()._values_in_time(t=t, past_returns=past_returns, cache=cache, **kwargs)
+    def _recursive_values_in_time(self, t, past_returns, cache=None, **kwargs):
+        super()._recursive_values_in_time(t=t, past_returns=past_returns, cache=cache, **kwargs)
         self.update_chooser(t=t, past_returns=past_returns)
         self.current_value = (self.last_sum / self.last_counts).values        
         return self.current_value
@@ -123,8 +123,8 @@ class HistoricalMeanError(BaseForecast):
     def __init__(self):
         self.varianceforecaster = HistoricalVariance(kelly=False)
     
-    def _values_in_time(self, t, past_returns, **kwargs):
-        super()._values_in_time(t=t, past_returns=past_returns, **kwargs)
+    def _recursive_values_in_time(self, t, past_returns, **kwargs):
+        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
         self.current_value  = np.sqrt(self.varianceforecaster.current_value / self.varianceforecaster.last_counts.values)
         return self.current_value  
         
@@ -149,11 +149,11 @@ class HistoricalVariance(BaseForecast):
         self.last_counts = None
         self.last_sum = None
         
-    def _pre_evaluation(self, universe, backtest_times):
+    def _recursive_pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
-    def _values_in_time(self, t, past_returns, **kwargs):
-        super()._values_in_time(t=t, past_returns=past_returns, **kwargs)
+    def _recursive_values_in_time(self, t, past_returns, **kwargs):
+        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
         self.update_chooser(t=t, past_returns=past_returns)
         self.current_value = (self.last_sum / self.last_counts).values
         if not self.kelly:
@@ -188,7 +188,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
     def __post_init__(self):
         self.last_time = None
     
-    def _pre_evaluation(self, universe, backtest_times):
+    def _recursive_pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
     @staticmethod
@@ -236,8 +236,8 @@ class HistoricalFactorizedCovariance(BaseForecast):
             self.joint_mean += last_ret
 
     @online_cache
-    def _values_in_time(self, t, past_returns, **kwargs):
-        super()._values_in_time(t=t, past_returns=past_returns, **kwargs)
+    def _recursive_values_in_time(self, t, past_returns, **kwargs):
+        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
   
         self.update_chooser(t=t, past_returns=past_returns)
         Sigma = self.last_sum_matrix / self.last_counts_matrix

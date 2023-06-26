@@ -48,7 +48,7 @@ class BaseCost(CvxpyExpressionEstimator):
         """Add cost expression to another cost expression.
 
         Idea is to create a new CombinedCost class that
-        implements `_compile_to_cvxpy` and _values_in_time
+        implements `_compile_to_cvxpy` and _recursive_values_in_time
         by summing over costs.
 
         """
@@ -104,13 +104,13 @@ class CombinedCosts(BaseCost):
         """Multiply by constant."""
         return CombinedCosts(self.costs, [el * other for el in self.multipliers])
 
-    def _pre_evaluation(self, *args, **kwargs):
+    def _recursive_pre_evaluation(self, *args, **kwargs):
         """Iterate over constituent costs."""
-        [el._pre_evaluation(*args, **kwargs) for el in self.costs]
+        [el._recursive_pre_evaluation(*args, **kwargs) for el in self.costs]
 
-    def _values_in_time(self, **kwargs):
+    def _recursive_values_in_time(self, **kwargs):
         """Iterate over constituent costs."""
-        [el._values_in_time(**kwargs) for el in self.costs ]
+        [el._recursive_values_in_time(**kwargs) for el in self.costs ]
 
     def _compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Iterate over constituent costs."""
@@ -168,20 +168,20 @@ class HoldingCost(BaseCost):
         self.periods_per_year = periods_per_year
         self.cash_return_on_borrow = cash_return_on_borrow
         
-    def _pre_evaluation(self, universe, backtest_times):
-        super()._pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _recursive_pre_evaluation(self, universe, backtest_times):
+        super()._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
         
         if not (self.spread_on_borrowing_stocks_percent is None):
             self.borrow_cost_stocks = cp.Parameter(len(universe) - 1, nonneg=True)
         
         
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def _recursive_values_in_time(self, t, past_returns, **kwargs):
         """We use yesterday's value of the cash return here while in the simulator
         we use today's. In the US, updates to the FED rate are published outside
         of trading hours so we might as well use the actual value for today's. The difference
         is very small so for now we do this. 
         """
-        super()._values_in_time(t=t, past_returns=past_returns, **kwargs)
+        super()._recursive_values_in_time(t=t, past_returns=past_returns, **kwargs)
         ppy = periods_per_year(past_returns.index) if self.periods_per_year is None else \
             self.periods_per_year
                                
@@ -202,19 +202,19 @@ class HoldingCost(BaseCost):
         result = 0.
         borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
         result += np.sum(((cash_return if self.cash_return_on_borrow else 0.) + 
-            self.spread_on_borrowing_stocks_percent._values_in_time(t) * multiplier) * borrowed_stock_positions)
-        result += np.sum(h_plus[:-1] * self.dividends._values_in_time(t))
+            self.spread_on_borrowing_stocks_percent._recursive_values_in_time(t) * multiplier) * borrowed_stock_positions)
+        result += np.sum(h_plus[:-1] * self.dividends._recursive_values_in_time(t))
           
-        # lending_spread = DataEstimator(spread_on_lending_cash_percent)._values_in_time(t) * multiplier
-        # borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent)._values_in_time(t) * multiplier
+        # lending_spread = DataEstimator(spread_on_lending_cash_percent)._recursive_values_in_time(t) * multiplier
+        # borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent)._recursive_values_in_time(t) * multiplier
 
         # cash_return = current_and_past_returns.iloc[-1,-1]
         real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
 
         if real_cash > 0:
-            result += real_cash * (max(cash_return - self.spread_on_lending_cash_percent._values_in_time(t) * multiplier, 0.) - cash_return)
+            result += real_cash * (max(cash_return - self.spread_on_lending_cash_percent._recursive_values_in_time(t) * multiplier, 0.) - cash_return)
         else:
-            result += real_cash * self.spread_on_borrowing_cash_percent._values_in_time(t) * multiplier
+            result += real_cash * self.spread_on_borrowing_cash_percent._recursive_values_in_time(t) * multiplier
             
         return result
             
@@ -263,15 +263,15 @@ class TransactionCost(BaseCost):
         self.window_volume_est = window_volume_est
         self.exponent = exponent
             
-    def _pre_evaluation(self, universe, backtest_times):
-        super()._pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _recursive_pre_evaluation(self, universe, backtest_times):
+        super()._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.first_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
         if not (self.b is None):
             self.second_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
 
-    def _values_in_time(self, t,  current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
+    def _recursive_values_in_time(self, t,  current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
         
-        super()._values_in_time(t=t, current_portfolio_value=current_portfolio_value, 
+        super()._recursive_values_in_time(t=t, current_portfolio_value=current_portfolio_value, 
             past_returns=past_returns, past_volumes=past_volumes, 
             current_prices=current_prices, **kwargs)
             
@@ -291,15 +291,15 @@ class TransactionCost(BaseCost):
         if not (self.pershare_cost is None):
             if current_prices is None:
                 raise SyntaxError("If you don't provide prices you should set persharecost to None")
-            result += self.pershare_cost._values_in_time(t) * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
+            result += self.pershare_cost._recursive_values_in_time(t) * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
 
-        result += sum(self.a._values_in_time(t) * np.abs(u.iloc[:-1]))
+        result += sum(self.a._recursive_values_in_time(t) * np.abs(u.iloc[:-1]))
 
         if not (self.b is None):
             if current_and_past_volumes is None:
                 raise SyntaxError("If you don't provide volumes you should set b to None")
             # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
-            result += (np.abs(u.iloc[:-1])**self.exponent) @ (self.b._values_in_time(t)  *
+            result += (np.abs(u.iloc[:-1])**self.exponent) @ (self.b._recursive_values_in_time(t)  *
                 sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (self.exponent - 1)))
 
         assert not np.isnan(result)

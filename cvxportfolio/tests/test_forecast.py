@@ -39,7 +39,7 @@ class TestEstimators(unittest.TestCase):
         cls.N = cls.returns.shape[1]
     
     # def boilerplate(self, model):
-    #     model._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+    #     model._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
     #     return model._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
          
     
@@ -52,7 +52,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            mean = forecaster._values_in_time(t=t, past_returns=past_returns)
+            mean = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
             # print(mean)
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(mean, past_returns.iloc[:,:-1].mean()))
@@ -67,7 +67,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            var = forecaster._values_in_time(t=t, past_returns=past_returns)
+            var = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
             print(var)
             #self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(var, past_returns.var(ddof=0)[:-1]))    
@@ -81,7 +81,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            val = forecaster._values_in_time(t=t, past_returns=past_returns)
+            val = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
             print(val)
             #self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(val, past_returns.std(ddof=0)[:-1] / np.sqrt(past_returns.count()[:-1]) ))  
@@ -106,7 +106,7 @@ class TestEstimators(unittest.TestCase):
         returns.iloc[:20, 3:10] = np.nan
         returns.iloc[10:15, 10:20] = np.nan
         
-        forecaster._values_in_time(t=pd.Timestamp('2022-01-01'), past_returns=returns)
+        forecaster._recursive_values_in_time(t=pd.Timestamp('2022-01-01'), past_returns=returns)
          
         sum_matrix = forecaster.last_sum_matrix
         
@@ -145,7 +145,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            val = forecaster._values_in_time(t=t, past_returns=past_returns)
+            val = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
             Sigma = val @ val.T
             self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
 
@@ -193,7 +193,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50,51,52,55,56,57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index<t]
-            val = forecaster._values_in_time(t=t, past_returns=past_returns)
+            val = forecaster._recursive_values_in_time(t=t, past_returns=past_returns)
             Sigma = val @ val.T
 
             self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))

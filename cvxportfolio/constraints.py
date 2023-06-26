@@ -73,12 +73,12 @@ class MarketNeutral(BaseWeightConstraint):
     def __init__(self):
         self.covarianceforecaster = HistoricalFactorizedCovariance()
     
-    def _pre_evaluation(self, universe, backtest_times):
-        super()._pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _recursive_pre_evaluation(self, universe, backtest_times):
+        super()._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.market_vector = cp.Parameter(len(universe)-1)
     
-    def _values_in_time(self, t, past_volumes, past_returns, **kwargs):
-        super()._values_in_time(past_volumes=past_volumes, past_returns=past_returns, t=t, **kwargs)
+    def _recursive_values_in_time(self, t, past_volumes, past_returns, **kwargs):
+        super()._recursive_values_in_time(past_volumes=past_volumes, past_returns=past_returns, t=t, **kwargs)
         tmp = past_volumes.iloc[-250:].mean()
         tmp /= sum(tmp)
         
@@ -122,9 +122,9 @@ class ParticipationRateLimit(BaseTradeConstraint):
             max_fraction_of_volumes, compile_parameter=True)
         self.portfolio_value = cp.Parameter(nonneg=True)
 
-    def _values_in_time(self, current_portfolio_value, **kwargs):
+    def _recursive_values_in_time(self, current_portfolio_value, **kwargs):
         self.portfolio_value.value = current_portfolio_value
-        super()._values_in_time(current_portfolio_value=current_portfolio_value, **kwargs)
+        super()._recursive_values_in_time(current_portfolio_value=current_portfolio_value, **kwargs)
         
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
@@ -152,12 +152,12 @@ class NoTrade(BaseTradeConstraint):
         self.asset = asset
         self.periods = periods
     
-    def _pre_evaluation(self, universe, backtest_times):
+    def _recursive_pre_evaluation(self, universe, backtest_times):
         self.index = universe.get_loc(self.asset)
         self.low = cp.Parameter()
         self.high = cp.Parameter()
     
-    def _values_in_time(self, t, **kwargs):
+    def _recursive_values_in_time(self, t, **kwargs):
         if t in self.periods:
             self.low.value = 0.
             self.high.value = 0.
@@ -202,8 +202,8 @@ class MinCashBalance(BaseWeightConstraint):
         self.c_min = DataEstimator(c_min)
         self.rhs = cp.Parameter()
     
-    def _values_in_time(self, current_portfolio_value, **kwargs):
-        super()._values_in_time(current_portfolio_value=current_portfolio_value, **kwargs)
+    def _recursive_values_in_time(self, current_portfolio_value, **kwargs):
+        super()._recursive_values_in_time(current_portfolio_value=current_portfolio_value, **kwargs)
         self.rhs.value = self.c_min.current_value/current_portfolio_value
     
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -263,13 +263,13 @@ class MinMaxWeightsAtTimes(BaseWeightConstraint):
         self.base_limit = limit
         self.times = times
     
-    def _pre_evaluation(self, universe, backtest_times):
-        super()._pre_evaluation(universe=universe, backtest_times = backtest_times)
+    def _recursive_pre_evaluation(self, universe, backtest_times):
+        super()._recursive_pre_evaluation(universe=universe, backtest_times = backtest_times)
         self.backtest_times = backtest_times
         self.limit = cp.Parameter()
         
-    def _values_in_time(self, t, mpo_step, **kwargs):
-        super()._values_in_time(t=t, mpo_step=mpo_step, **kwargs)
+    def _recursive_values_in_time(self, t, mpo_step, **kwargs):
+        super()._recursive_values_in_time(t=t, mpo_step=mpo_step, **kwargs)
         tidx = self.backtest_times.get_loc(t)
         nowtidx = tidx + mpo_step
         if (nowtidx < len(self.backtest_times)) and self.backtest_times[nowtidx] in self.times:
