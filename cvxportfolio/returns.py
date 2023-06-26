@@ -59,8 +59,8 @@ class CashReturn(BaseReturnsModel):
             compile_parameter=True, non_negative=True)
         self.short_margin_requirement = short_margin_requirement
         
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe, backtest_times)
         self.cash_return_parameter = cp.Parameter(nonneg=True) if self.cash_returns is None \
             else self.cash_returns.parameter
             
@@ -149,8 +149,8 @@ class ReturnsForecast(BaseReturnsModel):
             self.r_hat = HistoricalMeanReturn()
         self.decay = decay
         
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.r_hat_parameter = cp.Parameter(len(universe)-1)
         
     def values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
@@ -188,8 +188,8 @@ class ReturnsForecastError(BaseRiskModel):
         else:
             self.deltas = HistoricalMeanError()
             
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
 
 

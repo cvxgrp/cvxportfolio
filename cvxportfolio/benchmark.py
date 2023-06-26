@@ -26,7 +26,7 @@ class CashBenchmark(PolicyEstimator):
     """Default benchmark weights for cvxportfolio risk models.
     """
 
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         """Define current_value as a constant."""
         self.current_value = np.zeros(len(universe))
         self.current_value[-1] = 1.
@@ -36,7 +36,7 @@ class UniformBenchmark(PolicyEstimator):
     """Benchmark weights uniform on non-cash assets.
     """
 
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         """Define current_value as a constant."""
         self.current_value = np.ones(len(universe))
         self.current_value[-1] = 0.

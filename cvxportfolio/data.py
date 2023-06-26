@@ -465,7 +465,7 @@ class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
 
-    def pre_evaluation(self, *args, **kwargs):
+    def _pre_evaluation(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)
         
         
@@ -476,7 +476,7 @@ class FredTimeSeries(DataEstimator, FredBase, PickleStore):
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
 
-    def pre_evaluation(self, *args, **kwargs):
+    def _pre_evaluation(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)
     
 class FredRateTimeSeries(DataEstimator, FredBase, RateBase, PickleStore):
@@ -486,7 +486,7 @@ class FredRateTimeSeries(DataEstimator, FredBase, RateBase, PickleStore):
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
 
-    def pre_evaluation(self, *args, **kwargs):
+    def _pre_evaluation(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)    
         
 
@@ -548,5 +548,5 @@ class TimeSeries(DataEstimator):
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
 
-    def pre_evaluation(self, *args, **kwargs):
+    def _pre_evaluation(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)

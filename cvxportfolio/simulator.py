@@ -345,7 +345,7 @@ class MarketData:
             raise NotImplementedError('Currently the only data pipeline built is for USDOLLAR cash')
             
         data = FredTimeSeries('DFF', base_location=self.base_location)
-        data.pre_evaluation()
+        data._pre_evaluation()
         self.returns[cash_key] = resample_returns(data.data / 100, periods=self.PPY)
         self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')
         
@@ -356,7 +356,7 @@ class MarketData:
         for stock in universe:
             print('.')
             database_accesses[stock] = YfinanceTimeSeries(stock, base_location=self.base_location)
-            database_accesses[stock].pre_evaluation()
+            database_accesses[stock]._pre_evaluation()
 
         self.returns = pd.DataFrame({stock: database_accesses[stock].data['Return'] for stock in universe})
         self.volumes = pd.DataFrame({stock: database_accesses[stock].data['ValueVolume'] for stock in universe})
@@ -633,7 +633,7 @@ class MarketSimulator:
     def initialize_policy(self, policy, start_time, end_time):
         """Initialize the policy object.
         """
-        policy.pre_evaluation(universe = self.market_data.universe,
+        policy._pre_evaluation(universe = self.market_data.universe,
                              backtest_times = self.market_data.backtest_times(start_time, end_time, include_end=False))
 
         # if policy initialized a cache, rewrite it with loaded one
@@ -700,7 +700,7 @@ class MarketSimulator:
             
             policy = copy.deepcopy(orig_policy)
             # print(el['start_time'], el['end_time'])
-            policy.pre_evaluation(universe = el['universe'],
+            policy._pre_evaluation(universe = el['universe'],
                 backtest_times = self.market_data.backtest_times(el['start_time'], el['end_time'], include_end=True))
             if not (hasattr(self, 'PARALLEL') and self.PARALLEL):
                 if hasattr(policy, 'cache'):
@@ -855,7 +855,7 @@ class MarketSimulator:
 #     universe = simulator.market_data.universe
 #     backtest_times = simulator.market_data.backtest_times(start_time, end_time)
 #
-#     policy.pre_evaluation(universe=universe, backtest_times=backtest_times)
+#     policy._pre_evaluation(universe=universe, backtest_times=backtest_times)
 #     if hasattr(policy, 'cache'):
 #         policy.cache = cache
 #     if hasattr(policy, '_compile_to_cvxpy'):

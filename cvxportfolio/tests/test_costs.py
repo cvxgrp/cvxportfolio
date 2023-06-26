@@ -53,7 +53,7 @@ class TestCosts(unittest.TestCase):
         cost2 = FullCovariance(self.returns.iloc[:, :-1].T @ self.returns.iloc[:, :-1] / len(self.returns))
         cost3 = cost1 + cost2
 
-        cost3.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        cost3._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         expr3 = cost3._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         expr1 = cost1._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         expr2 = cost2._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
@@ -88,7 +88,7 @@ class TestCosts(unittest.TestCase):
                             dividends=dividends)
         
         t = 100 # this is picked so that periods_per_year evaluates to 252
-        hcost.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        hcost._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         expression = hcost._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         hcost.values_in_time(t=self.returns.index[t], past_returns=self.returns.iloc[:t])
         cash_ret = self.returns.iloc[t-1][-1]
@@ -123,7 +123,7 @@ class TestCosts(unittest.TestCase):
         
         t = self.returns.index[12]
         
-        tcost.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        tcost._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         expression = tcost._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         
         # only spread

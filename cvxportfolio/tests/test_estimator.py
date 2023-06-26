@@ -164,7 +164,7 @@ class TestEstimators(unittest.TestCase):
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
         estimator = DataEstimator(data, compile_parameter=True)
         self.assertTrue( not hasattr(estimator, "parameter"))
-        estimator.pre_evaluation(universe=None, backtest_times=timeindex)
+        estimator._pre_evaluation(universe=None, backtest_times=timeindex)
         # assert hasattr(estimator, 'parameter')
         self.assertTrue( hasattr(estimator, "parameter"))
         estimator.values_in_time("2022-01-05")

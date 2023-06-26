@@ -121,7 +121,7 @@ class TestPolicies(unittest.TestCase):
                                 }).T
         policy = ProportionalTradeToTargets(targets)
 
-        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         start_portfolio = pd.Series(
             np.random.randn(
                 self.returns.shape[1]),
@@ -214,7 +214,7 @@ class TestPolicies(unittest.TestCase):
 
     def test_uniform(self):
         pol = Uniform()
-        pol.pre_evaluation(self.returns.columns, self.returns.index)
+        pol._pre_evaluation(self.returns.columns, self.returns.index)
         
         init = pd.Series(np.random.randn(self.returns.shape[1]), self.returns.columns)
         trade = pol.values_in_time(t=self.returns.index[123], current_weights=init)
@@ -229,7 +229,7 @@ class TestPolicies(unittest.TestCase):
         target_matching_times = self.returns.index[::3]
 
         policy = ProportionalRebalance(target, target_matching_times=target_matching_times)
-        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
 
         init = pd.Series(np.random.randn(self.returns.shape[1]), self.returns.columns)
 
@@ -280,7 +280,7 @@ class TestPolicies(unittest.TestCase):
             solver='ECOS')
             
 
-        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         policy._compile_to_cvxpy()
         
         curw = np.zeros(self.N)
@@ -338,7 +338,7 @@ class TestPolicies(unittest.TestCase):
             # verbose=True,
             solver='ECOS')
 
-        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         policy._compile_to_cvxpy()
 
         curw = np.zeros(self.N)
@@ -386,7 +386,7 @@ class TestPolicies(unittest.TestCase):
             # verbose=True,
             solver='ECOS')
 
-        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         policy._compile_to_cvxpy()
 
 
@@ -418,7 +418,7 @@ class TestPolicies(unittest.TestCase):
             # verbose=True,
             solver='ECOS')
 
-        policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         policy._compile_to_cvxpy()
 
 
@@ -453,7 +453,7 @@ class TestPolicies(unittest.TestCase):
                 planning_horizon=planning_horizon,
                 solver='ECOS')
 
-            policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+            policy._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
             policy._compile_to_cvxpy()
 
 
@@ -490,7 +490,7 @@ class TestPolicies(unittest.TestCase):
                 planning_horizon=planning_horizon,
                 solver='ECOS')
 
-            policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+            policy._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
             policy._compile_to_cvxpy()
             
             curw = np.zeros(self.N)
@@ -544,7 +544,7 @@ class TestPolicies(unittest.TestCase):
                 planning_horizon=planning_horizon,
                 solver='ECOS')
 
-            policy.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+            policy._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
             policy._compile_to_cvxpy()
             
             curw = np.zeros(self.N)

@@ -104,9 +104,9 @@ class CombinedCosts(BaseCost):
         """Multiply by constant."""
         return CombinedCosts(self.costs, [el * other for el in self.multipliers])
 
-    def pre_evaluation(self, *args, **kwargs):
+    def _pre_evaluation(self, *args, **kwargs):
         """Iterate over constituent costs."""
-        [el.pre_evaluation(*args, **kwargs) for el in self.costs]
+        [el._pre_evaluation(*args, **kwargs) for el in self.costs]
 
     def values_in_time(self, **kwargs):
         """Iterate over constituent costs."""
@@ -168,8 +168,8 @@ class HoldingCost(BaseCost):
         self.periods_per_year = periods_per_year
         self.cash_return_on_borrow = cash_return_on_borrow
         
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe=universe, backtest_times=backtest_times)
         
         if not (self.spread_on_borrowing_stocks_percent is None):
             self.borrow_cost_stocks = cp.Parameter(len(universe) - 1, nonneg=True)
@@ -263,8 +263,8 @@ class TransactionCost(BaseCost):
         self.window_volume_est = window_volume_est
         self.exponent = exponent
             
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.first_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
         if not (self.b is None):
             self.second_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)

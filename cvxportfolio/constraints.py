@@ -73,8 +73,8 @@ class MarketNeutral(BaseWeightConstraint):
     def __init__(self):
         self.covarianceforecaster = HistoricalFactorizedCovariance()
     
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe=universe, backtest_times=backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.market_vector = cp.Parameter(len(universe)-1)
     
     def values_in_time(self, t, past_volumes, past_returns, **kwargs):
@@ -152,7 +152,7 @@ class NoTrade(BaseTradeConstraint):
         self.asset = asset
         self.periods = periods
     
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         self.index = universe.get_loc(self.asset)
         self.low = cp.Parameter()
         self.high = cp.Parameter()
@@ -263,8 +263,8 @@ class MinMaxWeightsAtTimes(BaseWeightConstraint):
         self.base_limit = limit
         self.times = times
     
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe=universe, backtest_times = backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe=universe, backtest_times = backtest_times)
         self.backtest_times = backtest_times
         self.limit = cp.Parameter()
         

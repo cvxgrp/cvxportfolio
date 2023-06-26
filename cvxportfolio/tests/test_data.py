@@ -51,7 +51,7 @@ class TestData(unittest.TestCase):
     def test_time_series(self):
         ts = TimeSeries("ZM", base_location=self.datadir)
         assert not hasattr(ts, "data")
-        ts.pre_evaluation()
+        ts._pre_evaluation()
         assert np.all(
             ts.values_in_time(pd.Timestamp("2023-04-11"), "foo", bar=None)
             == ts.data.loc["2023-04-11"]

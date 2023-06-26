@@ -56,7 +56,7 @@ class PolicyEstimator(Estimator):
     """Base class for (most) estimators that are part of policy objects."""
     
 
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         """Initialize estimator and its sub-estimators.
 
         :param universe: names of assets to be traded 
@@ -65,8 +65,8 @@ class PolicyEstimator(Estimator):
         :type backtest_time: pandas.DatetimeIndex
         """
         for _, subestimator in self.__dict__.items():
-            if hasattr(subestimator, "pre_evaluation"):
-                subestimator.pre_evaluation(universe, backtest_times)
+            if hasattr(subestimator, "_pre_evaluation"):
+                subestimator._pre_evaluation(universe, backtest_times)
     
 
 class CvxpyExpressionEstimator(PolicyEstimator):
@@ -129,8 +129,8 @@ class DataEstimator(PolicyEstimator):
         self.non_negative = non_negative
         self.positive_semi_definite =positive_semi_definite
     
-    def pre_evaluation(self, universe, backtest_times):
-        # super().pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        # super()._pre_evaluation(universe, backtest_times)
         if self.compile_parameter:
             value = self.internal_values_in_time(t=backtest_times[0])
             self.parameter = cp.Parameter(value.shape if hasattr(value, "shape") else (), 
@@ -239,7 +239,7 @@ class DataEstimator(PolicyEstimator):
 # class ConstantEstimator(cvxpy.Constant, DataEstimator):
 #     """Cvxpy constant that uses the pre_evalution method to be initialized."""
 #
-#     def pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
+#     def _pre_evaluation(self, returns, volumes, start_time, end_time, **kwargs):
 #         """You should call super().__init__ it here."""
 #         raise NotImplementedError
 
@@ -302,7 +302,7 @@ class DataEstimator(PolicyEstimator):
 #         self.positive_semi_definite = positive_semi_definite
 #         self.non_negative = non_negative
 #
-#     def pre_evaluation(self, universe, backtest_times):
+#     def _pre_evaluation(self, universe, backtest_times):
 #         value = super().internal_values_in_time(t=backtest_times[0])
 #         self.parameter = cp.Parameter(
 #             value if hasattr(value, "shape") else (),
@@ -336,9 +336,9 @@ class DataEstimator(PolicyEstimator):
 #         self.allow_nans = allow_nans
 #         # super(DataEstimator).__init__(data, use_last_available_time)
 #
-#     def pre_evaluation(self, universe, backtest_times):
+#     def _pre_evaluation(self, universe, backtest_times):
 #         """Use the start time of the simulation to initialize the Parameter."""
-#         super().pre_evaluation(universe, backtest_times)
+#         super()._pre_evaluation(universe, backtest_times)
 #         value = super().values_in_time(t=backtest_times[0])
 #         super().__init__(value.shape if hasattr(value, "shape") else (),
 #             PSD=self.positive_semi_definite, nonneg=self.non_negative)

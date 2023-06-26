@@ -123,10 +123,10 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
     def __init__(self, targets):
         self.targets = targets
 
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         """Get list of trading days."""
         self.trading_days = backtest_times
-        super().pre_evaluation(universe, backtest_times)
+        super()._pre_evaluation(universe, backtest_times)
 
     def values_in_time(self, t, current_weights, **kwargs):
         """Get current trade weights."""
@@ -214,7 +214,7 @@ class Uniform(FixedWeights):
     def __init__(self):
         pass
     
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         target_weights = pd.Series(1., universe)
         target_weights.iloc[-1] = 0
         target_weights /= sum(target_weights)
@@ -378,16 +378,16 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         self.problem = cp.Problem(cp.Maximize(self.cvxpy_objective), self.cvxpy_constraints)
         assert self.problem.is_dcp()  # dpp=True)
 
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         """Pass a full view of the data to initialize objects that need it."""
         
         for obj in self.objective:
-            obj.pre_evaluation(universe=universe, backtest_times=backtest_times)
+            obj._pre_evaluation(universe=universe, backtest_times=backtest_times)
         for constr_at_lag in self.constraints:
             for constr in constr_at_lag:
-                constr.pre_evaluation(universe=universe, backtest_times=backtest_times)
+                constr._pre_evaluation(universe=universe, backtest_times=backtest_times)
         
-        self.benchmark.pre_evaluation(universe=universe, backtest_times=backtest_times)
+        self.benchmark._pre_evaluation(universe=universe, backtest_times=backtest_times)
         self.w_bm = cp.Parameter(len(universe))
 
         # temporary

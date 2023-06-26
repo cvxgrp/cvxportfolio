@@ -55,7 +55,7 @@ def online_cache(values_in_time):
 class BaseForecast(PolicyEstimator):
     """Base class for forecasters."""
     
-    # def pre_evaluation(self, universe, backtest_times):
+    # def _pre_evaluation(self, universe, backtest_times):
     #     self.universe = universe
     #     self.backtest_times = backtest_times
     #
@@ -90,7 +90,7 @@ class HistoricalMeanReturn(BaseForecast):
         self.last_counts = None
         self.last_sum = None
         
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
     def values_in_time(self, t, past_returns, cache=None, **kwargs):
@@ -149,7 +149,7 @@ class HistoricalVariance(BaseForecast):
         self.last_counts = None
         self.last_sum = None
         
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
     def values_in_time(self, t, past_returns, **kwargs):
@@ -188,7 +188,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
     def __post_init__(self):
         self.last_time = None
     
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
     @staticmethod

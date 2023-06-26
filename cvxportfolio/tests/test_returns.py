@@ -41,7 +41,7 @@ class TestReturns(unittest.TestCase):
         
     def boilerplate(self, model):
         """Initialize objects, compile cvxpy expression."""
-        model.pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        model._pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
         return model._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         
         

@@ -38,7 +38,7 @@ class TestConstraints(unittest.TestCase):
         
     def build_constraint(self, constraint, t=None):
         """Initialize constraint, build expression, and point it to given time."""
-        constraint.pre_evaluation(self.returns.columns, self.returns.index)
+        constraint._pre_evaluation(self.returns.columns, self.returns.index)
         cvxpy_expression = constraint._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         constraint.values_in_time(t=pd.Timestamp("2020-01-01") if t is None else t, current_portfolio_value=1000)
         return cvxpy_expression
@@ -264,7 +264,7 @@ class TestConstraints(unittest.TestCase):
         # avg daily value limits.
         value = 1e6
         model = cvx.ParticipationRateLimit(self.volumes, max_fraction_of_volumes=0.1)
-        model.pre_evaluation(self.returns.columns, self.returns.index)
+        model._pre_evaluation(self.returns.columns, self.returns.index)
         cons = model._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
         model.values_in_time(t=t, current_portfolio_value=value)
         print(model.portfolio_value.value)

@@ -121,8 +121,8 @@ class FullCovariance(BaseRiskModel):
             self.Sigma = HistoricalFactorizedCovariance(kelly=kelly) 
             self.alreadyfactorized = True
             
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe, backtest_times)
         
         self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
@@ -162,8 +162,8 @@ class RiskForecastError(BaseRiskModel):
         # self.zeroforcash=True
         # self.kelly=True
         
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe, backtest_times)
         self.sigmas_parameter = cp.Parameter(len(universe)-1, nonneg=True)#+self.kelly))
 
     def values_in_time(self, t, past_returns, **kwargs):
@@ -207,8 +207,8 @@ class DiagonalCovariance(BaseRiskModel):
         #self.kelly = True
         # self.standard_deviations = ParameterEstimator(standard_deviations)
         
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe, backtest_times)
         self.sigmas_parameter = cp.Parameter(len(universe)-1) #+self.kelly))
 
     def values_in_time(self, t, past_returns, **kwargs):
@@ -322,9 +322,9 @@ class FactorModelCovariance(BaseRiskModel):
     #         raise ForeCastError("Low rank risk estimation with iterative SVD did not work.")
     #     return F, idyosyncratic
 
-    def pre_evaluation(self, universe, backtest_times):
-        super().pre_evaluation(universe, backtest_times)
-        # super().pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
+    def _pre_evaluation(self, universe, backtest_times):
+        super()._pre_evaluation(universe, backtest_times)
+        # super()._pre_evaluation(returns, volumes, start_time, end_time, **kwargs)
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         self.F_parameter = cp.Parameter((self.num_factors, len(universe)-1)) if self.F is None else self.F.parameter
         # if not (self.factor_Sigma is None):
@@ -380,10 +380,10 @@ class WorstCaseRisk(BaseRiskModel):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
 
-    def pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         """Initialize objects."""
         for risk in self.riskmodels:
-            risk.pre_evaluation(universe, backtest_times)
+            risk._pre_evaluation(universe, backtest_times)
 
     def values_in_time(self, **kwargs):
         """Update parameters."""
