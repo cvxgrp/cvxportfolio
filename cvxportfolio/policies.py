@@ -53,7 +53,7 @@ class BaseTradingPolicy(PolicyEstimator):
 class Hold(BaseTradingPolicy):
     """Hold initial portfolio, don't trade."""
 
-    def _recursive_values_in_time(self, current_weights, **kwargs):
+    def _values_in_time(self, current_weights, **kwargs):
         """Update sub-estimators and produce current estimate."""
         return pd.Series(0., index=current_weights.index)
 
@@ -83,9 +83,8 @@ class RankAndLongShort(BaseTradingPolicy):
         self.signal = DataEstimator(signal)
         self.target_leverage = DataEstimator(target_leverage)
 
-    def _recursive_values_in_time(self, t, current_weights, **kwargs):
+    def _values_in_time(self, t, current_weights, **kwargs):
         """Update sub-estimators and produce current estimate."""
-        super()._recursive_values_in_time(t=t, current_weights=current_weights, **kwargs)
 
         sorted_ret = pd.Series(
             self.signal.current_value, current_weights.index[:-1]
@@ -123,14 +122,12 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
     def __init__(self, targets):
         self.targets = targets
 
-    def _recursive_pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         """Get list of trading days."""
         self.trading_days = backtest_times
-        super()._recursive_pre_evaluation(universe, backtest_times)
 
-    def _recursive_values_in_time(self, t, current_weights, **kwargs):
+    def _values_in_time(self, t, current_weights, **kwargs):
         """Get current trade weights."""
-        super()._recursive_values_in_time(t=t, current_weights=current_weights, **kwargs)
         next_targets = self.targets.loc[self.targets.index >= t]
         assert np.allclose(next_targets.sum(1), 1.)
         if not len(next_targets):
@@ -149,9 +146,8 @@ class SellAll(BaseTradingPolicy):
     or as an element in a (currently not implemented) composite policy.
     """
 
-    def _recursive_values_in_time(self, t, current_weights, **kwargs):
+    def _values_in_time(self, t, current_weights, **kwargs):
         """Get current trade weights."""
-        super()._recursive_values_in_time(t=t, current_weights=current_weights, **kwargs)
         target = np.zeros(len(current_weights))
         target[-1] = 1.
         return target - current_weights
@@ -174,6 +170,7 @@ class FixedTrades(BaseTradingPolicy):
         self.trades_weights = DataEstimator(trades_weights)
 
     def _recursive_values_in_time(self, t, current_weights, **kwargs):
+        """We need to override recursion b/c we catch exception."""
         try:
             super()._recursive_values_in_time(t=t, current_weights=current_weights, **kwargs)
             return pd.Series(
@@ -200,6 +197,7 @@ class FixedWeights(BaseTradingPolicy):
         self.target_weights = DataEstimator(target_weights)
 
     def _recursive_values_in_time(self, t, current_weights, **kwargs):
+        """We need to override recursion b/c we catch exception."""
         try:
             super()._recursive_values_in_time(t=t, current_weights=current_weights, **kwargs)
             return pd.Series(self.target_weights.current_value,
@@ -214,7 +212,7 @@ class Uniform(FixedWeights):
     def __init__(self):
         pass
     
-    def _recursive_pre_evaluation(self, universe, backtest_times):
+    def _pre_evaluation(self, universe, backtest_times):
         target_weights = pd.Series(1., universe)
         target_weights.iloc[-1] = 0
         target_weights /= sum(target_weights)
@@ -281,8 +279,7 @@ class AdaptiveRebalance(BaseTradingPolicy):
         self.target = DataEstimator(target)
         self.tracking_error = DataEstimator(tracking_error)
 
-    def _recursive_values_in_time(self, t, current_weights, **kwargs):
-        super()._recursive_values_in_time(t=t, current_weights=current_weights, **kwargs)
+    def _values_in_time(self, t, current_weights, **kwargs):
         if np.linalg.norm(current_weights - self.target.current_value) > \
           self.tracking_error.current_value:
             return self.target.current_value - current_weights
@@ -379,7 +376,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         assert self.problem.is_dcp()  # dpp=True)
 
     def _recursive_pre_evaluation(self, universe, backtest_times):
-        """Pass a full view of the data to initialize objects that need it."""
+        """No point in using recursive super() method."""
         
         for obj in self.objective:
             obj._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
@@ -406,7 +403,6 @@ class MultiPeriodOptimization(BaseTradingPolicy):
 
         # self._compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
         
-
 
     def _recursive_values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
         """Update all cvxpy parameters and solve."""

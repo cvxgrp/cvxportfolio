@@ -52,6 +52,7 @@ class Estimator:
                 subestimator._recursive_values_in_time(**kwargs)
         if hasattr(self, "_values_in_time"):
             self.current_value = self._values_in_time(**kwargs)
+            return self.current_value
 
 
 class PolicyEstimator(Estimator):
