@@ -156,32 +156,27 @@ class HoldingCost(BaseCost):
     """
 
     def __init__(self, 
-        spread_on_borrowing_stocks_percent=0.,
-        spread_on_lending_cash_percent=0.,
-        spread_on_borrowing_cash_percent=0.,
+        spread_on_borrowing_stocks_percent=None,
+        spread_on_lending_cash_percent=None,
+        spread_on_borrowing_cash_percent=None,
         periods_per_year=None,
         cash_return_on_borrow=False, #TODO revisit this plus spread_on_borrowing_stocks_percent syntax 
-        dividends=0.):
+        dividends=None):
         
         self.spread_on_borrowing_stocks_percent = None if spread_on_borrowing_stocks_percent is None else \
             DataEstimator(spread_on_borrowing_stocks_percent)
-        if dividends is None:
-            self.dividends = None
-        else:
-            self.dividends = DataEstimator(dividends, compile_parameter=True)
-            #self.dividends_parameter = ParameterEstimator(dividends)
-        
+        self.dividends = None if dividends is None else DataEstimator(dividends, compile_parameter=True)        
         self.spread_on_lending_cash_percent = None if spread_on_lending_cash_percent is None else \
             DataEstimator(spread_on_lending_cash_percent)        
         self.spread_on_borrowing_cash_percent = None if spread_on_borrowing_cash_percent is None else \
             DataEstimator(spread_on_borrowing_cash_percent)
-            
+
         self.periods_per_year = periods_per_year
         self.cash_return_on_borrow = cash_return_on_borrow
         
     def _pre_evaluation(self, universe, backtest_times):
         
-        if not (self.spread_on_borrowing_stocks_percent is None):
+        if self.spread_on_borrowing_stocks_percent is not None or self.cash_return_on_borrow:
             self.borrow_cost_stocks = cp.Parameter(len(universe) - 1, nonneg=True)
         
         
@@ -196,7 +191,7 @@ class HoldingCost(BaseCost):
                                
         cash_return = past_returns.iloc[-1,-1]
 
-        if not (self.spread_on_borrowing_stocks_percent is None):
+        if self.spread_on_borrowing_stocks_percent is not None or self.cash_return_on_borrow:
             self.borrow_cost_stocks.value = np.ones(past_returns.shape[1] - 1) * (
                     cash_return if self.cash_return_on_borrow else 0.) + \
                 self.spread_on_borrowing_stocks_percent.current_value / (100 * ppy)
@@ -211,8 +206,12 @@ class HoldingCost(BaseCost):
         result = 0.
         borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
         result += np.sum(((cash_return if self.cash_return_on_borrow else 0.) + 
-            self.spread_on_borrowing_stocks_percent._recursive_values_in_time(t) * multiplier) * borrowed_stock_positions)
-        result += np.sum(h_plus[:-1] * self.dividends._recursive_values_in_time(t))
+            (self.spread_on_borrowing_stocks_percent._recursive_values_in_time(t) * multiplier if
+            self.spread_on_borrowing_stocks_percent is not None else 0.))
+                 * borrowed_stock_positions)
+        
+        if self.dividends is not None:
+            result += np.sum(h_plus[:-1] * self.dividends._recursive_values_in_time(t))
           
         # lending_spread = DataEstimator(spread_on_lending_cash_percent)._recursive_values_in_time(t) * multiplier
         # borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent)._recursive_values_in_time(t) * multiplier
@@ -221,9 +220,11 @@ class HoldingCost(BaseCost):
         real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
 
         if real_cash > 0:
-            result += real_cash * (max(cash_return - self.spread_on_lending_cash_percent._recursive_values_in_time(t) * multiplier, 0.) - cash_return)
+            if self.spread_on_lending_cash_percent is not None:
+                result += real_cash * (max(cash_return - self.spread_on_lending_cash_percent._recursive_values_in_time(t) * multiplier, 0.) - cash_return)
         else:
-            result += real_cash * self.spread_on_borrowing_cash_percent._recursive_values_in_time(t) * multiplier
+            if self.spread_on_borrowing_cash_percent is not None:
+                result += real_cash * self.spread_on_borrowing_cash_percent._recursive_values_in_time(t) * multiplier
             
         return result
             
