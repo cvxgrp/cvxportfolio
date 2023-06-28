@@ -156,15 +156,15 @@ class HoldingCost(BaseCost):
     """
 
     def __init__(self, 
-        spread_on_borrowing_stocks_percent=None,
+        spread_on_borrowing_assets_percent=None,
         spread_on_lending_cash_percent=None,
         spread_on_borrowing_cash_percent=None,
         periods_per_year=None,
         cash_return_on_borrow=False, #TODO revisit this plus spread_on_borrowing_stocks_percent syntax 
         dividends=None):
         
-        self.spread_on_borrowing_stocks_percent = None if spread_on_borrowing_stocks_percent is None else \
-            DataEstimator(spread_on_borrowing_stocks_percent)
+        self.spread_on_borrowing_assets_percent = None if spread_on_borrowing_assets_percent is None else \
+            DataEstimator(spread_on_borrowing_assets_percent)
         self.dividends = None if dividends is None else DataEstimator(dividends, compile_parameter=True)        
         self.spread_on_lending_cash_percent = None if spread_on_lending_cash_percent is None else \
             DataEstimator(spread_on_lending_cash_percent)        
@@ -176,7 +176,7 @@ class HoldingCost(BaseCost):
         
     def _pre_evaluation(self, universe, backtest_times):
         
-        if self.spread_on_borrowing_stocks_percent is not None or self.cash_return_on_borrow:
+        if self.spread_on_borrowing_assets_percent is not None or self.cash_return_on_borrow:
             self.borrow_cost_stocks = cp.Parameter(len(universe) - 1, nonneg=True)
         
         
@@ -191,10 +191,10 @@ class HoldingCost(BaseCost):
                                
         cash_return = past_returns.iloc[-1,-1]
 
-        if self.spread_on_borrowing_stocks_percent is not None or self.cash_return_on_borrow:
+        if self.spread_on_borrowing_assets_percent is not None or self.cash_return_on_borrow:
             self.borrow_cost_stocks.value = np.ones(past_returns.shape[1] - 1) * (
                     cash_return if self.cash_return_on_borrow else 0.) + \
-                self.spread_on_borrowing_stocks_percent.current_value / (100 * ppy)
+                self.spread_on_borrowing_assets_percent.current_value / (100 * ppy)
                 
     def _simulate(self, t, h_plus, current_and_past_returns, **kwargs):
         
@@ -206,8 +206,8 @@ class HoldingCost(BaseCost):
         result = 0.
         borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
         result += np.sum(((cash_return if self.cash_return_on_borrow else 0.) + 
-            (self.spread_on_borrowing_stocks_percent._recursive_values_in_time(t) * multiplier if
-            self.spread_on_borrowing_stocks_percent is not None else 0.))
+            (self.spread_on_borrowing_assets_percent._recursive_values_in_time(t) * multiplier if
+            self.spread_on_borrowing_assets_percent is not None else 0.))
                  * borrowed_stock_positions)
         
         if self.dividends is not None:
@@ -234,7 +234,7 @@ class HoldingCost(BaseCost):
         
         expression = 0. 
         
-        if not (self.spread_on_borrowing_stocks_percent is None):
+        if not (self.spread_on_borrowing_assets_percent is None):
            expression += cp.multiply(self.borrow_cost_stocks, cp.neg(w_plus)[:-1])
         
         if not (self.dividends is None):
@@ -255,7 +255,7 @@ class StocksHoldingCost(HoldingCost):
         dividends=0.):
         
         super().__init__(
-            spread_on_borrowing_stocks_percent=spread_on_borrowing_stocks_percent,
+            spread_on_borrowing_assets_percent=spread_on_borrowing_stocks_percent,
             spread_on_lending_cash_percent=spread_on_lending_cash_percent,
             spread_on_borrowing_cash_percent=spread_on_borrowing_cash_percent,
             periods_per_year=periods_per_year,
