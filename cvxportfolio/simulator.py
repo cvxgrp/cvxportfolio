@@ -734,6 +734,7 @@ class MarketSimulator:
         
     
 class StockMarketSimulator(MarketSimulator):
+    """This class specializes the MarketSimulator to the stock market."""
     
     def __init__(self, universe=[],
         returns=None, volumes=None, prices=None,

@@ -84,7 +84,7 @@ class TestCosts(unittest.TestCase):
         """Test holding cost model."""
         dividends = pd.Series(np.random.randn(self.N-1), self.returns.columns[:-1])
         dividends *= 0.
-        hcost = HoldingCost(spread_on_borrowing_stocks_percent=.5,
+        hcost = StocksHoldingCost(spread_on_borrowing_stocks_percent=.5,
                             dividends=dividends)
         
         t = 100 # this is picked so that periods_per_year evaluates to 252
@@ -118,7 +118,7 @@ class TestCosts(unittest.TestCase):
         pershare_cost = pd.Series([0., 0.005, 0.], [self.returns.index[12], self.returns.index[23], self.returns.index[34]])
         b = pd.Series([0., 0., 1.], [self.returns.index[12], self.returns.index[23], self.returns.index[34]])
         
-        tcost = TransactionCost(
+        tcost = StocksTransactionCost(
             a=0.001/2, pershare_cost=pershare_cost, b=b, window_sigma_est=250, window_volume_est=250, exponent=1.5)
         
         t = self.returns.index[12]

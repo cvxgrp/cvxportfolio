@@ -230,7 +230,7 @@ class TestSimulator(unittest.TestCase):
         
         cash_return = self.returns.loc[t, 'cash']
         
-        hcost = cvx.HoldingCost(
+        hcost = cvx.StocksHoldingCost(
             #spread_on_lending_cash_percent=0.,
             #spread_on_borrowing_cash_percent=0.,
             dividends=0.,
@@ -272,7 +272,7 @@ class TestSimulator(unittest.TestCase):
             
             dividends = np.random.uniform(size=len(h_plus)-1) * 1E-4
             
-            hcost = cvx.HoldingCost(
+            hcost = cvx.StocksHoldingCost(
                 spread_on_lending_cash_percent=0.,
                 spread_on_borrowing_cash_percent=0.,
                 dividends=dividends, periods_per_year=252)
@@ -295,7 +295,7 @@ class TestSimulator(unittest.TestCase):
         
         u = pd.Series(np.ones(len(current_prices)+1), self.universe)
         
-        tcost = cvx.TransactionCost()
+        tcost = cvx.StocksTransactionCost()
         # syntax checks
         with self.assertRaises(SyntaxError):
             tcost._simulate(t, u=u, current_prices=None, 
@@ -336,7 +336,7 @@ class TestSimulator(unittest.TestCase):
             u = pd.Series(u, self.universe)
             u = MarketSimulator._round_trade_vector(u, current_prices)
             
-            tcost = cvx.TransactionCost(a = spreads/2)
+            tcost = cvx.StocksTransactionCost(a = spreads/2)
                         
             sim_cost = tcost._simulate(t, u=u, current_prices=current_prices, 
                             current_and_past_volumes=current_and_past_volumes, 

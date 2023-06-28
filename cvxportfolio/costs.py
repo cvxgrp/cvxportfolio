@@ -28,7 +28,7 @@ import inspect
 
 from .estimator import CvxpyExpressionEstimator,  DataEstimator
 from .utils import periods_per_year
-__all__ = ["HoldingCost", "TransactionCost"]
+__all__ = ["HoldingCost", "TransactionCost", "StocksTransactionCost", "StocksHoldingCost"]
 
 
 class BaseCost(CvxpyExpressionEstimator):
@@ -156,11 +156,11 @@ class HoldingCost(BaseCost):
     """
 
     def __init__(self, 
-        spread_on_borrowing_stocks_percent=.5,
-        spread_on_lending_cash_percent=.5,
-        spread_on_borrowing_cash_percent=.5,
+        spread_on_borrowing_stocks_percent=0.,
+        spread_on_lending_cash_percent=0.,
+        spread_on_borrowing_cash_percent=0.,
         periods_per_year=None,
-        cash_return_on_borrow=True, #TODO revisit this plus spread_on_borrowing_stocks_percent syntax 
+        cash_return_on_borrow=False, #TODO revisit this plus spread_on_borrowing_stocks_percent syntax 
         dividends=0.):
         
         self.spread_on_borrowing_stocks_percent = None if spread_on_borrowing_stocks_percent is None else \
@@ -242,6 +242,26 @@ class HoldingCost(BaseCost):
         return cp.sum(expression)
 
 
+class StocksHoldingCost(HoldingCost):
+    """This class specializes HoldingCost to stocks."""
+    
+    def __init__(self, 
+        spread_on_borrowing_stocks_percent=.5,
+        spread_on_lending_cash_percent=.5,
+        spread_on_borrowing_cash_percent=.5,
+        periods_per_year=None,
+        cash_return_on_borrow=True, #TODO revisit this plus spread_on_borrowing_stocks_percent syntax 
+        dividends=0.):
+        
+        super().__init__(
+            spread_on_borrowing_stocks_percent=spread_on_borrowing_stocks_percent,
+            spread_on_lending_cash_percent=spread_on_lending_cash_percent,
+            spread_on_borrowing_cash_percent=spread_on_borrowing_cash_percent,
+            periods_per_year=periods_per_year,
+            cash_return_on_borrow=cash_return_on_borrow,
+            dividends=dividends)
+
+    
 class TransactionCost(BaseCost):
     """A model for transaction costs.
 
@@ -263,7 +283,7 @@ class TransactionCost(BaseCost):
     :type exponent: float
     """
 
-    def __init__(self, a=0., pershare_cost=0.005, b=1.0, window_sigma_est=250, window_volume_est=250, exponent=1.5):
+    def __init__(self, a=0., pershare_cost=0., b=0., window_sigma_est=250, window_volume_est=250, exponent=None):
 
         self.a = None if a is None else DataEstimator(a)
         self.pershare_cost = None if pershare_cost is None else DataEstimator(pershare_cost)
@@ -285,9 +305,11 @@ class TransactionCost(BaseCost):
             volume_est = past_volumes.iloc[-self.window_volume_est:].mean().values
 
             self.second_term_multiplier.value = self.b.current_value * sigma_est * \
-                (current_portfolio_value / volume_est) ** (self.exponent - 1)
+                (current_portfolio_value / volume_est) ** ((2 if self.exponent is None else self.exponent) - 1)
                 
     def _simulate(self, t, u, current_and_past_returns, current_and_past_volumes, current_prices, **kwargs):
+        
+        exponent = (1.5 if self.exponent is None else self.exponent)
         
         sigma = np.std(current_and_past_returns.iloc[-self.window_sigma_est:, :-1], axis=0)
 
@@ -303,8 +325,8 @@ class TransactionCost(BaseCost):
             if current_and_past_volumes is None:
                 raise SyntaxError("If you don't provide volumes you should set b to None")
             # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
-            result += (np.abs(u.iloc[:-1])**self.exponent) @ (self.b._recursive_values_in_time(t)  *
-                sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (self.exponent - 1)))
+            result += (np.abs(u.iloc[:-1])**exponent) @ (self.b._recursive_values_in_time(t)  *
+                sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (exponent - 1)))
 
         assert not np.isnan(result)
         assert not np.isinf(result)
@@ -317,6 +339,17 @@ class TransactionCost(BaseCost):
         expression = cp.abs(z[:-1]).T @ self.first_term_multiplier
         assert expression.is_convex()
         if not (self.b is None):
-            expression += (cp.abs(z[:-1]) ** self.exponent).T @ self.second_term_multiplier
+            expression += (
+            cp.abs(z[:-1]) ** (2 if self.exponent is None else self.exponent)
+                ).T @ self.second_term_multiplier
             assert expression.is_convex()
         return expression
+        
+        
+class StocksTransactionCost(TransactionCost):
+    
+    def __init__(self, a=0., pershare_cost=0.005, b=1.0, window_sigma_est=250, 
+        window_volume_est=250, exponent=1.5):
+        
+        super().__init__(a=a, pershare_cost=pershare_cost, b=b, window_sigma_est=window_sigma_est,
+            window_volume_est = window_volume_est, exponent=exponent)
