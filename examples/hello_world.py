@@ -18,7 +18,7 @@ constraints = [cvx.LeverageLimit(3)]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=2)
 
-simulator = cvx.StockMarketSimulator(['AAPL', 'AMZN', 'UBER', 'ZM', 'CVX', 'TSLA', 'GM', 'ABNB', 'CTAS'])
+simulator = cvx.StockMarketSimulator(['AAPL', 'AMZN', 'UBER', 'ZM', 'CVX', 'TSLA', 'GM', 'ABNB', 'CTAS', 'GOOG'])
 
 results = simulator.backtest_many([policy, cvx.Uniform()], start_time='2020-01-01')
 

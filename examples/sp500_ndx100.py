@@ -1,7 +1,6 @@
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 
-
 ## This is an example of a very large backtest, ~600 names and ~6000 days
 ## with multi period optimization. It shows that all parts of the system scale
 ## to such usecases.
@@ -67,77 +66,40 @@ SP500 = ['MMM', 'AOS', 'ABT', 'ABBV', 'ACN', 'ATVI', 'ADM', 'ADBE', 'ADP',
          'GWW', 'WYNN', 'XEL',
         'XYL', 'YUM', 'ZBRA', 'ZBH', 'ZION', 'ZTS']
         
-
+        
 NDX100 = ["AMZN", "AAPL", "MSFT", "GOOGL", "TSLA", "GM", 
-        'NKE', 'MCD', 'GE', 'CVX', 
-      'XOM', 'MMM', 'UNH', 'HD', 'WMT', 'ORCL', 'INTC', 'JPM', 'BLK', 'BA', 'NVDA', 
-       'F', 'GS', 'AMD', 'CSCO', 'KO', 'HON', 'DIS', 
-       'V', 
-        'ADBE', 'AMGN', 'CAT', 'BA', 'HON', 'JNJ', 'AXP', 'PG', 'JPM', 
-   'IBM', 'MRK', 'MMM', 'VZ', 'WBA', 'INTC', 'PEP', 'AVGO',
-    'COST', 'TMUS', 
-    'CMCSA', 'TXN', 'NFLX', 'SBUX', 'GILD',
-    'ISRG', 'MDLZ', 'BKNG', 'AMAT', 'ADI', 'ADP', 'VRTX', 
-    'REGN', 'PYPL',
-     'FISV', 'LRCX', 'PYPL',
-      'MU', 'CSX', 'MELI', 
-      'MNST', 'ATVI',
-     'PANW', 
-     'ORLY', 'ASML', 'SNPS', 'CDNS', 'MAR', 'KLAC', 'FTNT', 'CHTR', 
-    'CHTR', 'MRNA', 
-     'KHC', 
-     'CTAS', 'AEP', 'DXCM', 'LULU', 'KDP', 
-     'AZN',
-     'BIIB', 'ABNB', 
-     'NXPI', 
-     'ADSK', 'EXC', 'MCHP', 'IDXX', 'CPRT', 'PAYX',
-     'PCAR', 'XEL', 'PDD', 
-     'WDAY', 
-     'SGEN', 'ROST', 'DLTR', 'RA', 
-     #'MRVL',
-     'ODFL', 'VRSK',
-      'ILMN', 'CTSH', 'FAST', 'CSGP', 'WBD', 'GFS', 
-     'CRWD', 
- 'BKR', 'WBA', 'CEG', 
- 'ANSS', 'DDOG', 
- 'EBAY', 'FANG', 
- 'ENPH',
-  'ALGN', 'TEAM',
- 'ZS', 
- 'JD', 'ZM' ,
- 'SIRI','LCID', 'RIVN', 'SGEN', 'MDLZ', 'NFLX', 'GOOGL', 'DXCM']
+          'NKE', 'MCD', 'GE', 'CVX', 
+          'XOM', 'MMM', 'UNH', 'HD', 'WMT', 'ORCL', 'INTC', 'JPM', 'BLK', 'BA', 'NVDA', 
+          'F', 'GS', 'AMD', 'CSCO', 'KO', 'HON', 'DIS', 
+          'V', 'ADBE', 'AMGN', 'CAT', 'BA', 'HON', 'JNJ', 'AXP', 'PG', 'JPM', 
+          'IBM', 'MRK', 'MMM', 'VZ', 'WBA', 'INTC', 'PEP', 'AVGO',
+          'COST', 'TMUS', 'CMCSA', 'TXN', 'NFLX', 'SBUX', 'GILD', 'ISRG', 'MDLZ', 'BKNG', 'AMAT', 
+          'ADI', 'ADP', 'VRTX', 'REGN', 'PYPL',  'FISV', 'LRCX', 'PYPL',
+          'MU', 'CSX', 'MELI', 'MNST', 'ATVI', 'PANW', 'ORLY', 'ASML', 'SNPS', 
+          'CDNS', 'MAR', 'KLAC', 'FTNT', 'CHTR', 'CHTR', 'MRNA', 
+          'KHC', 'CTAS', 'AEP', 'DXCM', 'LULU', 'KDP', 
+          'AZN', 'BIIB', 'ABNB', 'NXPI', 'ADSK', 'EXC', 'MCHP', 'IDXX', 'CPRT', 'PAYX',
+          'PCAR', 'XEL', 'PDD', 'WDAY', 'SGEN', 'ROST', 'DLTR', 'RA', #'MRVL',
+          'ODFL', 'VRSK', 'ILMN', 'CTSH', 'FAST', 'CSGP', 'WBD', 'GFS', 'CRWD', 
+          'BKR', 'WBA', 'CEG', 'ANSS', 'DDOG', 'EBAY', 'FANG','ENPH', 'ALGN', 'TEAM',
+          'ZS','JD', 'ZM','SIRI','LCID', 'RIVN', 'SGEN', 'MDLZ', 'NFLX', 'GOOGL', 'DXCM']
 
-   
-   
 
 objective = cvx.ReturnsForecast() -.05 * cvx.ReturnsForecastError() \
      - 5 * (cvx.FactorModelCovariance(num_factors=50) + 0.1 * cvx.RiskForecastError()) \
-     - cvx.TransactionCost(exponent=2)  - cvx.HoldingCost()
+     - cvx.StocksTransactionCost(exponent=2)  - cvx.StocksHoldingCost()
 
 constraints = [cvx.LeverageLimit(3)]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=3, ignore_dpp=True)
- 
  
 universe = sorted(set(SP500 + NDX100))
 simulator = cvx.StockMarketSimulator(universe)
 
 result = simulator.backtest(policy, start_time='2000-01-01', initial_value=1E9)
 
+# print result backtest statistics
+print(result)
 
-# plot value of the portfolio in time
-result.v.plot(figsize=(12, 5), label='Multi Period Optimization')
-plt.ylabel('USD')
-plt.yscale('log')
-plt.title('Total value of the portfolio in time')
-plt.show()
-
-# plot weights of the (non-cash) assets for the SPO policy
-import numpy as np
-biggest_weights = np.abs(result.w.iloc[:, :-1]).max().sort_values().iloc[-10:].index
-result.w[biggest_weights].plot()
-plt.title('Largest 10 weights of the portfolio in time')
-plt.show()
-
-result.leverage.plot(); plt.show()
-result.drawdown.plot(); plt.show()
+# plot value and weights of the portfolio in time
+result.plot() 
