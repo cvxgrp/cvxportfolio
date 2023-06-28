@@ -24,8 +24,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.simulator import MarketSimulator, MarketData #, \
-    #_simulate_stocks_holding_cost, _simulate_transaction_cost, _simulate_cash_holding_cost
+from cvxportfolio.simulator import StockMarketSimulator, MarketSimulator, MarketData
 from cvxportfolio.estimator import DataEstimator
 
 from copy import deepcopy
@@ -191,7 +190,7 @@ class TestSimulator(unittest.TestCase):
             simulator = MarketSimulator()
 
         with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator(returns=pd.DataFrame([[0.]], index=[pd.Timestamp.today()], columns=['USDOLLAR']))
+            simulator = StockMarketSimulator(returns=pd.DataFrame([[0.]], index=[pd.Timestamp.today()], columns=['USDOLLAR']))
 
         with self.assertRaises(SyntaxError):
             simulator = MarketSimulator(volumes=pd.DataFrame([[0.]], index=[pd.Timestamp.today()]))
@@ -208,9 +207,6 @@ class TestSimulator(unittest.TestCase):
             simulator = MarketSimulator(returns=pd.DataFrame(
                 [[0., 0.]], index=[pd.Timestamp.today()], columns=['X', 'USDOLLAR']), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
 
-        # with self.assertRaises(SyntaxError):
-        #     simulator = MarketSimulator(returns=pd.DataFrame(
-        #         [[0., 0.]]), volumes=pd.DataFrame([[0.]]), round_trades=False)
             
     def test_prepare_data(self):
         simulator = MarketSimulator(['ZM', 'META'], base_location=self.datadir)
@@ -223,30 +219,7 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue( not np.isnan(simulator.market_data.prices.iloc[-1, 0]))
         self.assertTrue( simulator.market_data.returns.index[-1] == simulator.market_data.volumes.index[-1])
         self.assertTrue( simulator.market_data.returns.index[-1] == simulator.market_data.prices.index[-1])
-        # self.assertTrue( simulator.sigma_estimate.data.index[-1] == simulator.prices.data.index[-1])
-        #self.assertTrue( np.isclose(simulator.sigma_estimate.data.iloc[-1,0],
-        #     simulator.returns.data.iloc[-253:-1,0].std())    )
-             
-    #
-    # def test_new_tcost(self):
-    #
-    #     for i in range(10):
-    #         np.random.seed(i)
-    #         tmp = np.random.uniform(size=4)*1000
-    #         tmp[3] = -sum(tmp[:3])
-    #         u = simulator._round_trade_vector(u)
-    #
-    #         simulator.spreads = DataEstimator(np.random.uniform(size=3) * 1E-3)
-    #         simulator.spreads._recursive_values_in_time(t=t)
-    #
-    #         shares = sum(np.abs(u[:-1] / simulator.prices.data.loc[t]))
-    #         tcost = - simulator.per_share_fixed_cost * shares
-    #         tcost -= np.abs(u[:-1]) @ simulator.spreads.data / 2
-    #         tcost -= sum((np.abs(u[:-1])**1.5) * simulator.sigma_estimate.data.loc[t] / np.sqrt(simulator.volumes.data.loc[t]))
-    #         sim_tcost = simulator.transaction_costs(u)
-    #
-    #         self.assertTrue(np.isclose(tcost, sim_tcost))
-    #
+
             
         
     def test_cash_holding_cost(self):
@@ -404,7 +377,7 @@ class TestSimulator(unittest.TestCase):
         
                 
     def test__simulate_policy(self):
-        simulator = MarketSimulator(['META', 'AAPL'], base_location=self.datadir)
+        simulator = StockMarketSimulator(['META', 'AAPL'], base_location=self.datadir)
     
 
         start_time = '2023-03-10'

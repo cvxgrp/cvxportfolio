@@ -37,6 +37,17 @@ class BaseCost(CvxpyExpressionEstimator):
     Here there is some logic used to implement the algebraic operations.
     See also :class:`CombinedCost`.
     """
+    
+    def _simulate(self, *args, **kwargs):
+        """Simulate cost, used by market simulator.
+        
+        Look at its invocation in ``MarketSimulator`` for its list of 
+        arguments.
+        
+        Cost classes that are meant to be used in the simulator
+        should implement this.
+        """
+        raise NotImplementedError
 
     def __mul__(self, other):
         """Multiply by constant."""
@@ -80,10 +91,10 @@ class BaseCost(CvxpyExpressionEstimator):
 class CombinedCosts(BaseCost):
     """Algebraic combination of :class:`BaseCost` instances.
 
-    :var costs: instances of :class:`BaseCost`
-    :type var: list 
-    :var multipliers: floats that multiply the ``costs``
-    :type var: list
+    :param costs: instances of :class:`BaseCost`
+    :type costs: list 
+    :param multipliers: floats that multiply the ``costs``
+    :type multipliers: list
     """
 
     def __init__(self, costs, multipliers):

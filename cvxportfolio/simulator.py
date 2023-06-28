@@ -39,7 +39,7 @@ from .utils import *
 from .errors import DataError
 
 PPY = 252
-__all__ = ['MarketSimulator']
+__all__ = ['StockMarketSimulator', 'MarketSimulator']
 
     
 def _hash_universe(universe):
@@ -76,12 +76,9 @@ class MarketData:
         base_location=BASE_LOCATION, 
         min_history=pd.Timedelta('365.24d'),
         max_contiguous_missing='10d',
-        trading_frequency=None,  # disabled for now because cache is not robust against this
+        trading_frequency=None,  
         **kwargs,
     ):
-        
-        # TODO unblock once cache fixed
-        # trading_frequency = None
         
         # drop duplicates and ensure ordering
         universe = sorted(set(universe))
@@ -355,6 +352,7 @@ class MarketData:
     #     See the paper for an explanation of the model. Here you specify the length of the rolling window to use,
     #     default is 252 (typical number of trading days in a year).
     # :type window_sigma_estimate: int
+    
 
 class MarketSimulator:
     """This class implements a simulator of market performance for trading strategies.
@@ -403,20 +401,11 @@ class MarketSimulator:
     :type trading_frequency: str or None
     """
 
-    def __init__(
-        self,
-        universe=[],
-        returns=None,
-        volumes=None,
-        prices=None,
-        costs=[TransactionCost, HoldingCost],
-        round_trades=True,
-        min_history_for_inclusion=pd.Timedelta('365d'), # TODO temporary, will use MarketData infrastructure
-        cash_key="USDOLLAR",
-        base_location=BASE_LOCATION,
-        trading_frequency=None,
-        **kwargs,
-    ):
+    def __init__(self, universe=[], returns=None, volumes=None,
+                 prices=None, costs=[], round_trades=False, 
+                 min_history=pd.Timedelta('365d'),
+                 cash_key="USDOLLAR", base_location=BASE_LOCATION,
+                 trading_frequency=None, **kwargs):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
         
@@ -425,7 +414,7 @@ class MarketSimulator:
             volumes=volumes, prices=prices,
             cash_key=cash_key, base_location=base_location,
             trading_frequency=trading_frequency,
-            min_history=min_history_for_inclusion,
+            min_history=min_history,
             **kwargs)
             
         self.trading_frequency = trading_frequency
@@ -435,9 +424,7 @@ class MarketSimulator:
                 raise SyntaxError(
                     "If you don't specify prices you can't request `round_trades`.")
 
-        self.round_trades = round_trades
-        self.min_history_for_inclusion = min_history_for_inclusion
-        
+        self.round_trades = round_trades        
         self.costs = [el() if isinstance(el, type) else el for el in costs]
        # self.kwargs = kwargs
 
@@ -712,7 +699,7 @@ class MarketSimulator:
             h = [h] * len(policies)
             
         if not (len(policies) == len(h)):
-            raise SyntaxError("If passing lists of policies and initial portfolios they must have the same length.")
+            raise SyntaxError('If passing lists of policies and initial portfolios they must have the same length.')
         
             
         backtest_times_inclusive = self.market_data._get_backtest_times(start_time, end_time, include_end=True)
@@ -744,6 +731,22 @@ class MarketSimulator:
         # if len(result) == 1:
         #     return result[0]
         return result
+        
+    
+class StockMarketSimulator(MarketSimulator):
+    
+    def __init__(self, universe=[],
+        returns=None, volumes=None, prices=None,
+        costs=[TransactionCost, HoldingCost],
+        round_trades=True, min_history=pd.Timedelta('365d'),
+        cash_key="USDOLLAR", base_location=BASE_LOCATION,
+        trading_frequency=None, **kwargs):
+        
+        super().__init__(universe=universe,
+            returns=returns, volumes=volumes, prices=prices,
+            costs=costs, round_trades=round_trades, min_history=min_history,
+            cash_key=cash_key, base_location=base_location,
+            trading_frequency=trading_frequency, **kwargs)
 
 # def _do_single_backtest(policy, start_time, end_time, simulator, cache):
 #     """This function can run on remote process/machine."""
