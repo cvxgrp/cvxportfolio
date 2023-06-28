@@ -283,7 +283,7 @@ class TransactionCost(BaseCost):
     :type exponent: float
     """
 
-    def __init__(self, a=0., pershare_cost=0., b=0., window_sigma_est=250, window_volume_est=250, exponent=None):
+    def __init__(self, a=None, pershare_cost=None, b=0., window_sigma_est=250, window_volume_est=250, exponent=None):
 
         self.a = None if a is None else DataEstimator(a)
         self.pershare_cost = None if pershare_cost is None else DataEstimator(pershare_cost)
@@ -293,14 +293,28 @@ class TransactionCost(BaseCost):
         self.exponent = exponent
             
     def _pre_evaluation(self, universe, backtest_times):
-        self.first_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
-        if not (self.b is None):
+        if self.a is not None or self.pershare_cost is not None:
+            self.first_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
+        if self.b is not None:
             self.second_term_multiplier = cp.Parameter(len(universe)-1, nonneg=True)
 
     def _values_in_time(self, t,  current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
-                    
-        self.first_term_multiplier.value = self.a.current_value + self.pershare_cost.current_value / current_prices.values
-        if not (self.b is None):
+        
+        tmp = 0.
+        
+        if self.a is not None:
+            tmp += self.a.current_value
+        if self.pershare_cost is not None:
+            if current_prices is None:
+                raise SyntaxError("If you don't provide prices you should set pershare_cost to None")
+            tmp += self.pershare_cost.current_value / current_prices.values
+        
+        if self.a is not None or self.pershare_cost is not None:
+            self.first_term_multiplier.value = tmp
+        
+        if self.b is not None:
+            
+            # TODO refactor this with forecast.py logic
             sigma_est = np.sqrt((past_returns.iloc[-self.window_sigma_est:, :-1]**2).mean()).values
             volume_est = past_volumes.iloc[-self.window_volume_est:].mean().values
 
@@ -314,14 +328,15 @@ class TransactionCost(BaseCost):
         sigma = np.std(current_and_past_returns.iloc[-self.window_sigma_est:, :-1], axis=0)
 
         result = 0.
-        if not (self.pershare_cost is None):
+        if self.pershare_cost is not None:
             if current_prices is None:
-                raise SyntaxError("If you don't provide prices you should set persharecost to None")
+                raise SyntaxError("If you don't provide prices you should set pershare_cost to None")
             result += self.pershare_cost._recursive_values_in_time(t) * int(sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
+        
+        if self.a is not None:
+            result += sum(self.a._recursive_values_in_time(t) * np.abs(u.iloc[:-1]))
 
-        result += sum(self.a._recursive_values_in_time(t) * np.abs(u.iloc[:-1]))
-
-        if not (self.b is None):
+        if self.b is not None:
             if current_and_past_volumes is None:
                 raise SyntaxError("If you don't provide volumes you should set b to None")
             # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
@@ -335,12 +350,14 @@ class TransactionCost(BaseCost):
         
         
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-
-        expression = cp.abs(z[:-1]).T @ self.first_term_multiplier
-        assert expression.is_convex()
-        if not (self.b is None):
-            expression += (
-            cp.abs(z[:-1]) ** (2 if self.exponent is None else self.exponent)
+        
+        expression = 0
+        if self.a is not None or self.pershare_cost is not None:
+            expression += cp.abs(z[:-1]).T @ self.first_term_multiplier
+            assert expression.is_convex()
+        if self.b is not None:
+            expression += (cp.abs(z[:-1]) ** (
+                    2 if self.exponent is None else self.exponent)
                 ).T @ self.second_term_multiplier
             assert expression.is_convex()
         return expression
