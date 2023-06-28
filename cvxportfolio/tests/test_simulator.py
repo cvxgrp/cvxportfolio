@@ -511,7 +511,7 @@ class TestSimulator(unittest.TestCase):
         time_first = 0.
         results_first = []
         for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
-            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_frequency=downsampling)
+            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE', 'ZM', 'META'], base_location=self.datadir, trading_frequency=downsampling)
             pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
             s = time.time()
             results_first.append(sim.backtest(pol, pd.Timestamp('2021-12-01')))
@@ -520,13 +520,16 @@ class TestSimulator(unittest.TestCase):
         time_second = 0.
         results_second = []
         for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
-            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE'], base_location=self.datadir, trading_frequency=downsampling)
+            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE', 'ZM', 'META'], base_location=self.datadir, trading_frequency=downsampling)
             pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
             s = time.time()
             results_second.append(sim.backtest(pol, pd.Timestamp('2021-12-01')))
             time_second += time.time() - s
         
+        # example is almost too small to see difference w/ cache
+        # might have to drop it or improve its performance
         self.assertTrue(time_second < time_first)
+        print(time_second, time_first)
         [self.assertTrue(np.isclose(results_first[i].sharpe_ratio, results_second[i].sharpe_ratio)) for i in range(len(results_first))]
             
             

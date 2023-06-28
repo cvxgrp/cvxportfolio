@@ -20,6 +20,7 @@ import copy
 
 from .estimator import Estimator
 from .utils import periods_per_year
+import matplotlib.pyplot as plt
 
 __all__ = ['BacktestResult']
 
@@ -152,7 +153,24 @@ class BacktestResult(Estimator):
     @property
     def drawdown(self):
         return -(1 - (self.v / self.v.cummax()))
-
+        
+    def plot(self, show=True, how_many_weights=7):
+        """Make plots."""
+        
+        # value
+        self.v.plot(figsize=(12, 5), label='Multi Period Optimization')
+        plt.ylabel('USD')
+        plt.yscale('log')
+        plt.title('Total value of the portfolio in time')
+        
+        # weights
+        biggest_weights = np.abs(self.w).mean().sort_values().iloc[-how_many_weights:].index
+        self.w[biggest_weights].plot()
+        plt.title('Largest weights of the portfolio in time')
+                
+        if show:
+            plt.show()
+        
 
     def __repr__(self):
         data = collections.OrderedDict({

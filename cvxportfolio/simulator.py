@@ -555,16 +555,17 @@ class MarketSimulator:
 
         return result
 
-    def _concatenated_backtests(self, policy, start_time, end_time, h):
+    def _concatenated_backtests(self, policy, start_time, end_time, h, caches_before):
         constituent_backtests_params = self.market_data._get_limited_backtests(start_time, end_time)
-        # print(constituent_backtests_params)
         results = []
+        caches_after = {}
         orig_md = self.market_data
         orig_policy = policy
         for el in constituent_backtests_params:
             logging.info(f"current universe: {el['universe']}")
             logging.info(f"interval: {el['start_time']}, {el['end_time']}")
             self.market_data = orig_md._reduce_universe(el['universe'])
+            
             # TODO improve
             if len(el['universe']) > len(h):
                 tmp = pd.Series(0, el['universe'])
@@ -572,29 +573,44 @@ class MarketSimulator:
                 h = tmp
             else:
                 h = h[el['universe']]
-           #  # print('h')
-            # print(h)
-            
+
             policy = copy.deepcopy(orig_policy)
-            # print(el['start_time'], el['end_time'])
             policy._recursive_pre_evaluation(universe = el['universe'],
                 backtest_times = self.market_data._get_backtest_times(el['start_time'], el['end_time'], include_end=True))
-            if not (hasattr(self, 'PARALLEL') and self.PARALLEL):
-                if hasattr(policy, 'cache'):
-                    policy.cache = _load_cache(universe=el['universe'], trading_frequency = self.trading_frequency, 
-                        base_location=self.base_location)
-                    
+            
+            if hasattr(policy, 'cache') and tuple(el['universe']) in caches_before:
+                policy.cache = caches_before[tuple(el['universe'])]
+
             results.append(self._single_backtest(policy, el['start_time'], el['end_time'], h, el['universe']))
-            # print(results[0].w)
-            #print(results[0].h)
-            # print(results[0].returns)
-            # print(dir(results[0]))
+
             h = results[-1].h.iloc[-1]
-            if not (hasattr(self, 'PARALLEL') and self.PARALLEL):
-                if hasattr(policy, 'cache'):
-                    _store_cache(cache=policy.cache, universe=el['universe'], 
-                    trading_frequency = self.trading_frequency, base_location=self.base_location)
-        # print(results)
+            
+            if hasattr(policy, 'cache'):
+                caches_after[tuple(el['universe'])] = policy.cache
+        
+        self.market_data = orig_md
+        
+        return self._concatenate_backtest_results(results), caches_after
+
+
+    def _store_caches(self, caches_after):
+        """Store caches after backtest"""
+        for k in caches_after:
+            _store_cache(cache=caches_after[k], universe=list(k), trading_frequency=self.trading_frequency, 
+                base_location=self.base_location)
+
+    
+    def _load_caches(self, start_time, end_time):
+        """Load caches before backtest"""
+        caches_before = {}
+        constituent_backtests_params = self.market_data._get_limited_backtests(start_time, end_time)
+        for el in constituent_backtests_params:
+            caches_before[tuple(el['universe'])] = _load_cache(universe=el['universe'], 
+                trading_frequency = self.trading_frequency, base_location=self.base_location)
+        return caches_before
+
+        
+    def _concatenate_backtest_results(self, results):
         
         res = BacktestResult.__new__(BacktestResult)
         res.costs = {}
@@ -602,30 +618,23 @@ class MarketSimulator:
         res.h = pd.concat([el.h.iloc[:-1] if i < len(results) -1 else el.h for i, el in enumerate(results)])
         for attr in ['cash_returns', 'u', 'z', 'simulator_times', 'policy_times']:
             res.__setattr__(attr, pd.concat([el.__getattribute__(attr) for el in results]) )
+            
         # pandas concat can misalign the columns ordering
         ck = self.market_data.cash_key
         sortcol = sorted([el for el in res.u.columns if not el == ck]) + [ck]
         res.u = res.u[sortcol]
         res.z = res.z[sortcol]
-        # sortcol += [self.market_data.cash_key]
         res.h = res.h[sortcol]
         for k in results[0].costs:
             res.costs[k] = pd.concat([el.costs[k] for el in results])
-        # raise Exception
-        # res.returns = pd.concat([el.returns el in results])
-        # res.cash_returns = pd.concat([el.cash_returns el in results])
-        # res.u = pd.concat([el.u el in results])
-        # res.z = pd.concat([el.z el in results])
-                
-        self.market_data = orig_md
-        # raise Exception
+
         return res
         
-            
+    
     @staticmethod
-    def _worker(policy, simulator, start_time, end_time, h):
-        #return simulator._single_backtest(policy, start_time, end_time, h)
-        return simulator._concatenated_backtests(policy, start_time, end_time, h)
+    def _worker(policy, simulator, start_time, end_time, h, caches_before):
+        return simulator._concatenated_backtests(policy, start_time, end_time, h, caches_before)
+
         
     def backtest(self, policy, start_time=None, end_time=None, initial_value = 1E6, h=None):
         """Backtest trading policy.
@@ -654,7 +663,7 @@ class MarketSimulator:
         :rtype result: cvx.BacktestResult
         """
         return self.backtest_many([policy], start_time = start_time, end_time = end_time, 
-                             initial_value = initial_value, h=h, parallel=False)[0]
+                             initial_value = initial_value, h=None if h is None else [h], parallel=False)[0]
                                     
     def backtest_many(self, policies, start_time=None, end_time=None, initial_value = 1E6, h=None, parallel=True):
         """Backtest many trading policies.
@@ -690,10 +699,8 @@ class MarketSimulator:
         :rtype result: list of cvx.BacktestResult
         """
         
-        # turn policy and h into lists
-        assert hasattr(policies, '__len__')
-        # if not hasattr(policies, '__len__'):
-        #     policies = [policies]
+        if not hasattr(policies, '__len__'):
+            raise SyntaxError('You should pass a list of policies.')
         
         if not hasattr(h, '__len__'):
             h = [h] * len(policies)
@@ -707,30 +714,27 @@ class MarketSimulator:
         end_time = backtest_times_inclusive[-1]
         
         # initialize policies and get initial portfolios
-        for i in range(len(policies)):
-            # self._initialize_policy(policy[i], start_time, end_time)
-        
+        for i in range(len(policies)):        
             if h[i] is None:
                 h[i] = pd.Series(0., self.market_data.universe)
                 h[i][-1] = initial_value
                 
-        # def nonparallel_runner(zipped):
-        #     return self._single_backtest(zipped[0], start_time, end_time, zipped[1])
+        caches_before = self._load_caches(start_time=start_time, end_time=end_time)
         
-        zip_args = zip(policies, [self] * len(policies), [start_time] * len(policies), [end_time] * len(policies), h)
+        n = len(policies)
+        zip_args = zip(policies, [self] * n, [start_time] * n, [end_time] * n, h, [caches_before]*n)
         
         # decide if run in parallel or not
         if (not parallel) or len(policies)==1: 
-            #result = list(map(nonparallel_runner, zip(policy, h)))
             result = list(starmap(self._worker, zip_args))
         else:
-            self.PARALLEL = True # TODO temporary, to disable some features when running in parallel
             with Pool() as p:
                 result = p.starmap(self._worker, zip_args)   
-            del self.PARALLEL
-        # if len(result) == 1:
-        #     return result[0]
-        return result
+
+        for el in result:
+            self._store_caches(el[1])
+        
+        return [el[0] for el in result]
         
     
 class StockMarketSimulator(MarketSimulator):
