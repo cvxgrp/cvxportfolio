@@ -25,7 +25,7 @@ constraints += [cvx.MaxWeightsAtTimes(0., [pd.Timestamp('2023-04-19')])]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=25)
 
-simulator = cvx.MarketSimulator(universe)
+simulator = cvx.StockMarketSimulator(universe)
 
 result = simulator.backtest(
     policy,

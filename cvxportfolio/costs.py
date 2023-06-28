@@ -347,6 +347,7 @@ class TransactionCost(BaseCost):
         
         
 class StocksTransactionCost(TransactionCost):
+    """This class specializes TransactionCost to stocks."""
     
     def __init__(self, a=0., pershare_cost=0.005, b=1.0, window_sigma_est=250, 
         window_volume_est=250, exponent=1.5):

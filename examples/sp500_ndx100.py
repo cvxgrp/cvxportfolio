@@ -120,7 +120,7 @@ policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=3,
  
  
 universe = sorted(set(SP500 + NDX100))
-simulator = cvx.MarketSimulator(universe)
+simulator = cvx.StockMarketSimulator(universe)
 
 result = simulator.backtest(policy, start_time='2000-01-01', initial_value=1E9)
 

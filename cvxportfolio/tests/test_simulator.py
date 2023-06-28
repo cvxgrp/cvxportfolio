@@ -395,7 +395,7 @@ class TestSimulator(unittest.TestCase):
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
                 oldcash = h[-1]
                 h, z, u, costs, timer = simulator._simulate(t=t, h=h, policy=policy)
-                tcost, hcost = costs['TransactionCost'], costs['HoldingCost']
+                tcost, hcost = costs['StocksTransactionCost'], costs['StocksHoldingCost']
                 assert tcost == 0.
                 #if np.all(h0[:2] > 0):
                 #    assert hcost == 0.
@@ -418,7 +418,7 @@ class TestSimulator(unittest.TestCase):
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
                 oldcash = h[-1]
                 h, z, u, costs, timer = simulator._simulate(t=t, h=h, policy=policy)
-                tcost, hcost = costs['TransactionCost'], costs['HoldingCost']
+                tcost, hcost = costs['StocksTransactionCost'], costs['StocksHoldingCost']
                 print(h)
                 # print(tcost, stock_hcost, cash_hcost)
             

@@ -31,7 +31,7 @@ from itertools import starmap
 import numpy as np
 import pandas as pd
 
-from .costs import BaseCost, TransactionCost, HoldingCost
+from .costs import BaseCost, StocksTransactionCost, StocksHoldingCost
 from .data import FredTimeSeries, YfinanceTimeSeries, BASE_LOCATION
 from .estimator import Estimator, DataEstimator
 from .result import BacktestResult
@@ -738,7 +738,7 @@ class StockMarketSimulator(MarketSimulator):
     
     def __init__(self, universe=[],
         returns=None, volumes=None, prices=None,
-        costs=[TransactionCost, HoldingCost],
+        costs=[StocksTransactionCost, StocksHoldingCost],
         round_trades=True, min_history=pd.Timedelta('365d'),
         cash_key="USDOLLAR", base_location=BASE_LOCATION,
         trading_frequency=None, **kwargs):
