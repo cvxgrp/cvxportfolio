@@ -7,7 +7,7 @@ Simulator
 
 .. py:module:: cvxportfolio
 
-.. autoclass:: MarketSimulator
+.. autoclass:: StockMarketSimulator
 
     .. automethod:: backtest
     

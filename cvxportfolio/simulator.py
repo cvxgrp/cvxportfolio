@@ -357,51 +357,13 @@ class MarketData:
     
 
 class MarketSimulator:
-    """This class implements a simulator of market performance for trading strategies.
+    """This class is a generic financial market simulator.
     
-    We strive to make the parameters here as accurate as possible. The following is
-    accurate as of 2023 using numbers obtained on the public website of a
-    `large US-based broker <https://www.interactivebrokers.com/>`_.
-
-    :param universe: list of `Yahoo Finance <https://finance.yahoo.com/>`_ tickers on which to
-        simulate performance of the trading strategy. If left unspecified you should at least
-        pass `returns` and `volumes`. If you define a different market data access interface
-        (look in `cvxportfolio.data` for how to do it) you should pass instead
-        the symbol names for that data provider. Default is empty list.
-    :type universe: list or None
-    :param returns: historical open-to-open returns. Default is None, it is ignored
-        if universe is specified.
-    :type returns: pandas.DataFrame 
-    :param volumes: historical market volumes expressed in value (e.g., US dollars).
-            Default is None, it is ignored if universe is specified.
-    :type volumes: pandas.DataFrame
-    :param prices: historical open prices. Default is None, it is ignored
-        if universe is specified. These are used to round the trades to integer number of stocks
-        if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
-        is greater than zero).
-    :type prices: pandas.DataFrame
-    :param round_trades: round the trade weights provided by a policy so they correspond to an integer
-        number of stocks traded. Default is True using Yahoo Finance open prices.
-    :type round_trades: bool
-    :param costs: list of BaseCost instances or class objects. If class objects (the default) they will
-        be instantiated internally with their default arguments.
-    :type costs: list
-    :param cash_key: name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
-        as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
-        along with the stock returns as its last column.
-    :type cash_key: str or None
-    :param base_location: base location for storage of data.
-        Default is `Path.home() / "cvxportfolio_data"`. Unused if passing `returns` and `volumes`.
-    :type base_location: pathlib.Path or str: 
-    :param trading_frequency: optionally choose a different frequency for 
-        trades than the one of the data used.
-        The default interface (Yahoo finance) provides daily trading data, 
-        and so that is the default frequency for trades. With this argument you can set instead 
-        the trading frequency to ``"weekly"``, which trades every Monday (or the first
-        non-holiday trading day of each week), ``"monthly"``, which trades every first of the month (ditto), 
-        ``"quarterly"``, and ``"annual"``. 
-    :type trading_frequency: str or None
+    It is (currently) not meant to be used directly. Look at
+    :class:`StockMarketSimulator` for its version specialized
+    to the stock market.
     """
+
 
     def __init__(self, universe=[], returns=None, volumes=None,
                  prices=None, costs=[], round_trades=False, 
@@ -742,7 +704,55 @@ class MarketSimulator:
         
     
 class StockMarketSimulator(MarketSimulator):
-    """This class specializes the MarketSimulator to the stock market."""
+    """This class implements a simulator of the stock market.
+    
+    We strive to make the parameters here as accurate as possible. The following is
+    accurate as of 2023 using numbers obtained on the public website of a
+    `large US-based broker <https://www.interactivebrokers.com/>`_.
+
+    :param universe: list of `Yahoo Finance <https://finance.yahoo.com/>`_ tickers on which to
+        simulate performance of the trading strategy. If left unspecified you should at least
+        pass `returns` and `volumes`. If you define a different market data access interface
+        (look in `cvxportfolio.data` for how to do it) you should pass instead
+        the symbol names for that data provider. Default is empty list.
+    :type universe: list or None
+    :param returns: historical open-to-open returns. Default is None, it is ignored
+        if universe is specified.
+    :type returns: pandas.DataFrame 
+    :param volumes: historical market volumes expressed in value (e.g., US dollars).
+            Default is None, it is ignored if universe is specified.
+    :type volumes: pandas.DataFrame
+    :param prices: historical open prices. Default is None, it is ignored
+        if universe is specified. These are used to round the trades to integer number of stocks
+        if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
+        is greater than zero).
+    :type prices: pandas.DataFrame
+    :param round_trades: round the trade weights provided by a policy so they correspond to an integer
+        number of stocks traded. Default is True using Yahoo Finance open prices.
+    :type round_trades: bool
+    :param min_history: minimum history required for a stock to be included in a backtest. The stock
+        will be ignored for this amount of time after its IPO, and then be included.
+    :type min_history: pandas.Timedelta
+    :param costs: list of BaseCost instances or class objects. If class objects (the default) they will
+        be instantiated internally with their default arguments.
+    :type costs: list
+    :param cash_key: name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
+        as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
+        along with the stock returns as its last column.
+    :type cash_key: str or None
+    :param base_location: base location for storage of data.
+        Default is `Path.home() / "cvxportfolio_data"`. Unused if passing `returns` and `volumes`.
+    :type base_location: pathlib.Path or str: 
+    :param trading_frequency: optionally choose a different frequency for 
+        trades than the one of the data used.
+        The default interface (Yahoo finance) provides daily trading data, 
+        and so that is the default frequency for trades. With this argument you can set instead 
+        the trading frequency to ``"weekly"``, which trades every Monday (or the first
+        non-holiday trading day of each week), ``"monthly"``, which trades every first of the month (ditto), 
+        ``"quarterly"``, and ``"annual"``. 
+    :type trading_frequency: str or None
+    """
+    
     
     def __init__(self, universe=[],
         returns=None, volumes=None, prices=None,

@@ -50,8 +50,8 @@ Cost models
 
 .. py:module:: cvxportfolio
 
-.. autoclass:: HoldingCost
+.. autoclass:: StocksHoldingCost
 
-.. autoclass:: TransactionCost
+.. autoclass:: StocksTransactionCost
 
 

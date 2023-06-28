@@ -131,8 +131,9 @@ class ReturnsForecast(BaseReturnsModel):
     :Example:
 
     >>> import cvxportfolio as cvx
-    >>> policy = cp.SinglePeriod(cvx.ReturnsForecast() - \
-        0.5 * cvx.FullCovariance())
+    >>> policy = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - \
+        0.5 * cvx.FullCovariance(), [cvx.LongOnly(), cvx.LeverageLimit(1)])
+    >>> cvx.MarketSimulator(['AAPL', 'MSFT', 'GOOG']).backtest(policy).plot()
 
     Defines a single period optimization policy where the returns' forecasts
     :math:`\hat{r}_t` are the full average of past returns at each point in time

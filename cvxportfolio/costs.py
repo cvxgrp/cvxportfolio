@@ -14,10 +14,10 @@
 
 """This module implements cost functions used by optimization-based policies.
 
-Currently these are two: :class:`TransactionCost` and :class:`HoldingCost`.
+Currently these are two: :class:`StocksTransactionCost` and :class:`StocksHoldingCost`.
 
-The default parameters are chosen to approximate real market costs as well as
-possible. 
+The default parameters are chosen to approximate real costs for the stock market
+as well as possible. 
 """
 
 import cvxpy as cp
@@ -132,27 +132,11 @@ class CombinedCosts(BaseCost):
 
 
 class HoldingCost(BaseCost):
-    """A model for holding costs.
-
-    :param spread_on_borrowing_stocks_percent: spread on top of cash return payed for borrowing assets,
-        including cash. If ``None``, the default, it gets from :class:`Backtest` the
-        value for the period.
-    :type spread_on_borrowing_stocks_percent: float or pd.Series or pd.DataFrame or None
-    :param spread_on_lending_cash_percent: spread that subtracts from the cash return for
-        uninvested cash.
-    :type spread_on_lending_cash_percent: float or pd.Series or None
-    :param spread_on_borrowing_cash_percent: spread that adds to the cash return as rate payed for
-        borrowed cash. This is not used as a policy optimization cost but is for the simulator cost.
-    :type spread_on_borrowing_cash_percent: float or pd.Series or None
-    :param dividends: dividends payed (expressed as fraction of the stock value)
-        for each period.  If ``None``, the default, it gets from :class:`Backtest` the
-        value for the period.
-    :type dividends: pd.DataFrame or None
-    :param periods_per_year: period per year (used in calculation of per-period cost). If None it is calculated
-        automatically.
-    :type periods_per_year: int or None
-    :param cash_return_on_borrow: whether to add (negative of) cash return to borrow cost of assets
-    :type cash_return_on_borrow: bool
+    """This is a generic holding cost model.
+    
+    Currently it is not meant to be used directly. Look at
+    :class:`StocksHoldingCost` for its version specialized to
+    the stock market.
     """
 
     def __init__(self, 
@@ -243,8 +227,30 @@ class HoldingCost(BaseCost):
         return cp.sum(expression)
 
 
-class StocksHoldingCost(HoldingCost):
-    """This class specializes HoldingCost to stocks."""
+class StocksHoldingCost(HoldingCost):    
+    """A model for holding cost of stocks.
+
+    :param spread_on_borrowing_stocks_percent: spread on top of cash return payed for borrowing assets,
+        including cash. If ``None``, the default, it gets from :class:`Backtest` the
+        value for the period.
+    :type spread_on_borrowing_stocks_percent: float or pd.Series or pd.DataFrame or None
+    :param spread_on_lending_cash_percent: spread that subtracts from the cash return for
+        uninvested cash.
+    :type spread_on_lending_cash_percent: float or pd.Series or None
+    :param spread_on_borrowing_cash_percent: spread that adds to the cash return as rate payed for
+        borrowed cash. This is not used as a policy optimization cost but is for the simulator cost.
+    :type spread_on_borrowing_cash_percent: float or pd.Series or None
+    :param dividends: dividends payed (expressed as fraction of the stock value)
+        for each period.  If ``None``, the default, it gets from :class:`Backtest` the
+        value for the period.
+    :type dividends: pd.DataFrame or None
+    :param periods_per_year: period per year (used in calculation of per-period cost). If None it is calculated
+        automatically.
+    :type periods_per_year: int or None
+    :param cash_return_on_borrow: whether to add (negative of) cash return to borrow cost of assets
+    :type cash_return_on_borrow: bool
+    """
+    
     
     def __init__(self, 
         spread_on_borrowing_stocks_percent=.5,
@@ -264,24 +270,11 @@ class StocksHoldingCost(HoldingCost):
 
     
 class TransactionCost(BaseCost):
-    """A model for transaction costs.
-
-    See pages 10-11 in `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
-    We don't include the short-term alpha term `c` here because it
-    can be expressed with a separate `ReturnsForecast` object. 
-
-    :param a:
-    :type a: float or pd.Series or pd.DataFrame
-    :param pershare_cost: per-share trade cost, as as in :class:`MarketSimulator`
-    :type pershare_cost: float or pd.Series or pd.DataFrame
-    :param b: coefficient of the second term
-    :type b: float or pd.Series or pd.DataFrame
-    :param window_sigma_est: length of the window standard deviation of past returns used to estimate :math:`\sigma`
-    :type window_sigma_est: int
-    :param window_volume_est: length of the window mean of past volumes used as volume estimate
-    :type window_volume_est: int
-    :param exponent: exponent of the non-linear term, default 1.5
-    :type exponent: float
+    """This is a generic model for transaction cost of financial assets.
+    
+    Currently it is not meant to be used directly. Look at
+    :class:`StocksTransactionCost` for its version specialized
+    to the stock market.
     """
 
     def __init__(self, a=None, pershare_cost=None, b=0., window_sigma_est=250, window_volume_est=250, exponent=None):
@@ -365,7 +358,32 @@ class TransactionCost(BaseCost):
         
         
 class StocksTransactionCost(TransactionCost):
-    """This class specializes TransactionCost to stocks."""
+    """A model for transaction costs of stocks.
+
+    See pages 10-11 in `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+    We don't include the short-term alpha term `c` here because it
+    can be expressed with a separate `ReturnsForecast` object. 
+
+    :param a: linear cost, which multiplies the absolute value of each trade. This can model
+        (half) the bid-ask spread, or any fee linear in the size of a trade.
+    :type a: float or pd.Series or pd.DataFrame
+    :param pershare_cost: per-share trade cost, amount of dollars paid for each share traded. 
+    :type pershare_cost: float or pd.Series or pd.DataFrame
+    :param b: coefficient of the non-linear term of the transaction cost model, which multiplies
+        the estimated volatility for each stock (see the book).  
+    :type b: float or pd.Series or pd.DataFrame
+    :param window_sigma_est: length of the window for the standard deviation of past returns used to 
+        estimate the volatility :math:`\sigma` of each asset.
+    :type window_sigma_est: int
+    :param window_volume_est: length of the window for the mean of past volumes used as estimate
+        of each period's volume. Has no effect on the simulator version of this which uses
+        the actual volume.
+    :type window_volume_est: int
+    :param exponent: exponent of the non-linear term, defaults (if set to ``None``) to 1.5 for
+        the simulator version, and 2 for the optimization version (because it is more efficient
+        numerically and the difference is small, you can change it if you want).
+    :type exponent: float or None
+    """
     
     def __init__(self, a=0., pershare_cost=0.005, b=1.0, window_sigma_est=250, 
         window_volume_est=250, exponent=1.5):
