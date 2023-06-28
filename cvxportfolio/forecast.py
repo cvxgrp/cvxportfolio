@@ -45,8 +45,8 @@ def online_cache(_values_in_time):
             logging.debug(f'{self}._values_in_time at time {t} is retrieved from cache.')
             result = cache[self][t]
         else:
-            logging.debug(f'{self}._values_in_time at time {t} is stored in cache.')
             result = _values_in_time(self, t=t, cache=cache, **kwargs)  
+            logging.debug(f'{self}._values_in_time at time {t} is stored in cache.')
             cache[self][t] = result
         return result
         
@@ -64,10 +64,10 @@ class BaseForecast(PolicyEstimator):
     def _agnostic_update(self, t, past_returns):
         """Choose whether to make forecast from scratch or update last one."""
         if (self.last_time is None) or (self.last_time != past_returns.index[-1]):
-            logging.debug(f'{self}._recursive_values_in_time at time {t} is computed from scratch.')
+            logging.debug(f'{self}._values_in_time at time {t} is computed from scratch.')
             self._initial_compute(t=t, past_returns=past_returns)
         else:
-            logging.debug(f'{self}._recursive_values_in_time at time {t} is updated from previous value.')
+            logging.debug(f'{self}._values_in_time at time {t} is updated from previous value.')
             self._online_update(t=t, past_returns=past_returns)
             
     def _initial_compute(self, t, past_returns):
@@ -93,6 +93,7 @@ class HistoricalMeanReturn(BaseForecast):
     def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
+    @online_cache
     def _values_in_time(self, t, past_returns, cache=None, **kwargs):
         self._agnostic_update(t=t, past_returns=past_returns)
         return (self.last_sum / self.last_counts).values        
@@ -148,6 +149,9 @@ class HistoricalVariance(BaseForecast):
     def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
+    # We can't cache this currently because
+    # HistoricalMeanError uses one of the partial
+    # variables. We'll have to refactor them both.
     def _values_in_time(self, t, past_returns, **kwargs):
         self._agnostic_update(t=t, past_returns=past_returns)
         result = (self.last_sum / self.last_counts).values

@@ -1,30 +1,30 @@
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 
-gamma = 3       # risk aversion parameter (Chapter 4.2)
-kappa = 0.05    # covariance forecast error risk parameter (Chapter 4.3)
+# risk aversion parameter (Chapter 4.2)
+# chosen to match resulting volatility with the
+# uniform portfolio (for illustrative purpose)
+gamma = 2.5 
+
+# covariance forecast error risk parameter (Chapter 4.3)
+# this can help regularize a noisy covariance estimate
+kappa = 0.05  
+
 objective = cvx.ReturnsForecast() - gamma * (
 	cvx.FullCovariance() + kappa * cvx.RiskForecastError()
-) - cvx.TransactionCost()
+) - cvx.StocksTransactionCost()
+
 constraints = [cvx.LeverageLimit(3)]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=2)
 
-simulator = cvx.StockMarketSimulator(['AAPL', 'AMZN', 'UBER', 'ZM', 'CVX', 'TSLA', 'GM', 'ABNB'])
+simulator = cvx.StockMarketSimulator(['AAPL', 'AMZN', 'UBER', 'ZM', 'CVX', 'TSLA', 'GM', 'ABNB', 'CTAS'])
 
-result = simulator.backtest(policy, start_time='2020-01-01')
+results = simulator.backtest_many([policy, cvx.Uniform()], start_time='2020-01-01')
 
-print(result)
+# print statistics result of the backtest
+print("\n# MULTI-PERIOD OPTIMIZATION\n", results[0])
+print("\n# UNIFORM ALLOCATION:\n", results[1])
 
-# plot value of the portfolio in time
-result.v.plot(figsize=(12, 5), label='Multi Period Optimization')
-plt.ylabel('USD')
-plt.yscale('log')
-plt.title('Total value of the portfolio in time')
-plt.show()
-
-# plot weights of the (non-cash) assets for the SPO policy
-result.w.iloc[:, :-1].plot()
-plt.title('Weights of the portfolio in time')
-plt.show()
-
+# plot value and weights of the portfolio in time for MPO
+results[0].plot() 

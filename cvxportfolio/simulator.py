@@ -49,6 +49,7 @@ def _load_cache(universe, trading_frequency, base_location):
     folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
     try:
         with open(folder/'cache.pkl', 'rb') as f:
+            logging.info(f'Loading cache for universe = {universe} and trading_frequency = {trading_frequency}')
             return pickle.load(f)
     except FileNotFoundError:
         return {}
@@ -57,6 +58,7 @@ def _store_cache(cache, universe, trading_frequency, base_location):
     folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
     folder.mkdir(exist_ok=True)
     with open(folder/'cache.pkl', 'wb') as f:
+        logging.info(f'Storing cache for universe = {universe} and trading_frequency = {trading_frequency}')
         pickle.dump(cache, f)
     
         
@@ -579,6 +581,7 @@ class MarketSimulator:
                 backtest_times = self.market_data._get_backtest_times(el['start_time'], el['end_time'], include_end=True))
             
             if hasattr(policy, 'cache') and tuple(el['universe']) in caches_before:
+                logging.info('Attaching cache loaded from disk to policy')
                 policy.cache = caches_before[tuple(el['universe'])]
 
             results.append(self._single_backtest(policy, el['start_time'], el['end_time'], h, el['universe']))
@@ -586,6 +589,7 @@ class MarketSimulator:
             h = results[-1].h.iloc[-1]
             
             if hasattr(policy, 'cache'):
+                logging.info('Extracting cache from policy to return to main process')
                 caches_after[tuple(el['universe'])] = policy.cache
         
         self.market_data = orig_md
