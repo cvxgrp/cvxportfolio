@@ -5,7 +5,6 @@
 [![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/cvxportfolio/badge/?version=latest)](https://cvxportfolio.readthedocs.io/en/latest/?badge=latest)
 
-**WORK IN PROGRESS. Cvxportfolio is currently under development. We will freeze the user interface by end of 2023Q2 and release the first stable version by end of 2023Q3.**
 
 
 `cvxportfolio` is a python library for portfolio optimization and simulation
@@ -33,10 +32,9 @@ python -m unittest discover cvxportfolio
 
 Example
 ------------
-To get a sneak preview of `cvxportfolio` you may try the following code. This is available in `examples/hello_world.py` and runs 
-with `cvxportfolio >= 0.3.0`. All objects in `cvxportfolio` can either be provided data (in a variety of forms, but preferably pandas
-series or dataframes) or infer/download it. For example in the following example, market data is downloaded by a public source
-(Yahoo finance) and the forecasts are computed iteratively, at each point in the backtest, from past data. That is, at each point in the backtest,
+In the following example market data is downloaded by a public source
+(Yahoo finance) and the forecasts are computed iteratively, at each point in the backtest, from past data. 
+That is, at each point in the backtest,
 the policy object only operates on **past data**, and thus the result you get is a realistic simulation of what the strategy would have performed in the market.
 The simulator by default includes holding and transaction costs, using the models described in the book, and default parameters that are typical for the US stock market.
 The logic used
@@ -53,33 +51,25 @@ gamma = 3       # risk aversion parameter (Chapter 4.2)
 kappa = 0.05    # covariance forecast error risk parameter (Chapter 4.3)
 objective = cvx.ReturnsForecast() - gamma * (
 	cvx.FullCovariance() + kappa * cvx.RiskForecastError()
-) - cvx.TransactionCost()
+) - cvx.StocksTransactionCost()
 constraints = [cvx.LeverageLimit(3)]
 
 policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=2)
 
-simulator = cvx.MarketSimulator(['AAPL', 'AMZN', 'TSLA', 'GM', 'CVX', 'NKE'])
+simulator = cvx.StockMarketSimulator(['AAPL', 'AMZN', 'TSLA', 'GM', 'CVX', 'NKE'])
 
 result = simulator.backtest(policy, start_time='2020-01-01')
 
+# print backtest result statistics
 print(result)
 
-# plot value of the portfolio in time
-result.v.plot(figsize=(12, 5), label='Multi Period Optimization')
-plt.ylabel('USD')
-plt.title('Total value of the portfolio in time')
-plt.show()
-
-# plot weights of the (non-cash) assets for the SPO policy
-result.w.iloc[:, :-1].plot()
-plt.title('Weights of the portfolio in time')
-plt.show()
+# plot backtest results
+result.plot()
 ```
 
 Development
 -----------
-Cvxportfolio is under development and things might change (quite fast), however you are (most) welcome to 
-read the code, play with it, and contribute. To set up a development environment locally you should
+To set up a development environment locally you should
 
 ```
 git clone https://github.com/cvxgrp/cvxportfolio.git
@@ -103,7 +93,7 @@ Or, if you don't want to activate the environment, you can just run scripts dire
 Examples from the book
 ----------------------
 In branch [0.0.X](https://github.com/cvxgrp/cvxportfolio/tree/0.0.X) you can find the original material used to generate plots
-and results in the book. Those are being restored, and (slowly) translated in the new framework. As you may see from those
+and results in the book. As you may see from those
 ipython notebooks a lot of the logic that was implemented there, outside of cvxportfolio proper, is being included and made automatic
 in newer versions of cvxportfolio. 
 

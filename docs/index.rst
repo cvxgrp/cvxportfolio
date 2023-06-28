@@ -8,12 +8,7 @@ by testing their past performance with a sophisticated :doc:`market simulator <s
 
 Cvxportfolio is based on the book `Multi-Period Trading via Convex Optimization <https://www.amazon.com/Multi-Period-Trading-Convex-Optimization-Foundations/dp/1680833286>`_
 (also `available in PDF <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_).
-   
-.. note::
 
-   Cvxportfolio is under active development. We target the end of 2023 Q3 for 
-   the first stable release.
-   
 
    
 Installation
@@ -50,29 +45,22 @@ run a backtest, and show its result.
 	import matplotlib.pyplot as plt
 
 	objective = cvx.ReturnsForecast() - 3 * (cvx.FullCovariance() + \
-		0.05 * cvx.RiskForecastError()) - cvx.TransactionCost()
+		0.05 * cvx.RiskForecastError()) - cvx.StocksTransactionCost()
 	constraints = [cvx.LeverageLimit(3)]
 
 	policy = cvx.MultiPeriodOptimization(
 		objective, constraints, planning_horizon=2)
 
-	simulator = cvx.MarketSimulator(
+	simulator = cvx.StockMarketSimulator(
 		['AAPL', 'AMZN', 'TSLA', 'GM', 'CVX', 'NKE'])
 
 	result = simulator.backtest(policy, start_time='2020-01-01')
 
+	# print backtest result statistics
 	print(result)
-
-	# plot value of the portfolio in time
-	result.v.plot(figsize=(12, 5), label='Multi Period Optimization')
-	plt.ylabel('USD')
-	plt.title('Total value of the portfolio in time')
-	plt.show()
-
-	# plot weights of the (non-cash) assets for the SPO policy
-	result.w.iloc[:, :-1].plot()
-	plt.title('Weights of the portfolio in time')
-	plt.show()
+	
+	# plot backtest result
+	result.plot()
 	
 	
 Licensing
