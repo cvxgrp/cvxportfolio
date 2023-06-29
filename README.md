@@ -16,6 +16,7 @@ The documentation of the package is kindly hosted by [Read the Docs](https://rea
 
 Installation
 ------------
+All our source code and releases are kindly hosted by the [Python Package Index](https://pypi.org). You can install the latest one with
 
 ```
 pip install -U cvxportfolio
