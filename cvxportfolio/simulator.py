@@ -103,7 +103,7 @@ class MarketData:
         cash_key='USDOLLAR',
         base_location=BASE_LOCATION, 
         min_history=pd.Timedelta('365.24d'),
-        max_contiguous_missing='40d', # TODO change logic for this (it's now 40 to not drop monthly data)
+        max_contiguous_missing='365d', # TODO change logic for this (it's now this to not drop quarterly data)
         trading_frequency=None,  
         **kwargs,
     ):
@@ -246,8 +246,7 @@ class MarketData:
         data = FredTimeSeries('DFF', base_location=self.base_location)
         data._recursive_pre_evaluation()
         self.returns[cash_key] = resample_returns(data.data / 100, periods=self.PPY)
-        self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')
-        
+        self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')        
     
     DATASOURCES = {'YFinance': YfinanceTimeSeries, 'FRED': FredTimeSeries}
     
