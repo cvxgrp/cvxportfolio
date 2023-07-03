@@ -57,20 +57,22 @@ def replaceversion(new_version, version, root='.'):
 
     
 if __name__ == "__main__":
-    import sys
-    if not (len(sys.argv)>1 and sys.argv[1] in ['revision', 'minor', 'major']):
-        print('usage:')
-        print(sys.argv[0], '[revision minor major]')
-        exit(0)
+    
+    while True:
+        print('[revision/minor/major]')
+        what = input()
+        if what in ['revision', 'minor', 'major']:
+            break
+
     version = findversion()
     
     x,y,z = [int(el) for el in version.split('.')]
-    if sys.argv[1] == 'revision':
+    if what == 'revision':
         z += 1
-    if sys.argv[1] == 'minor':
+    if what == 'minor':
         y += 1
         z = 0
-    if sys.argv[1] == 'major':
+    if what == 'major':
         x += 1   
         y = 0
         z = 0
@@ -79,7 +81,7 @@ if __name__ == "__main__":
     print(new_version) 
 
     replaceversion(new_version, version)
-    subprocess.run(['git', 'commit', '-m', f"version {new_version}"])
+    subprocess.run(['git', 'commit', '-em', f"version {new_version}\n"])
     subprocess.run(['git', 'tag', new_version])
     subprocess.run(['git', 'push', 'origin', new_version])
     
