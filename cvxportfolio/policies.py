@@ -16,6 +16,7 @@
 import datetime as dt
 import copy
 import logging
+import warnings
 
 import pandas as pd
 import numpy as np
@@ -438,12 +439,12 @@ class MultiPeriodOptimization(BaseTradingPolicy):
                     current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs) 
                     
         self.w_bm.value = self.benchmark.current_value
-
-        # self.portfolio_value.value = 1. # not used current_portfolio_value
         self.w_current.value = current_weights.values
+
         try:
-            self.problem.solve(#ignore_dpp=True, 
-                **self.cvxpy_kwargs)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message='Solution may be inaccurate')
+                self.problem.solve(**self.cvxpy_kwargs)
         except cp.SolverError:
             raise PortfolioOptimizationError(
                 f"Numerical solver for policy {self.__class__.__name__} at time {t} failed;"
