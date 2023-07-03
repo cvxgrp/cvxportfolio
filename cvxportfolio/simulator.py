@@ -47,8 +47,10 @@ def _mp_init(l):
     global LOCK
     LOCK = l
     
+    
 def _hash_universe(universe):
     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
+     
         
 def _load_cache(universe, trading_frequency, base_location):
     """Load cache from disk."""
@@ -67,6 +69,7 @@ def _load_cache(universe, trading_frequency, base_location):
         if 'LOCK' in globals():
             logging.debug(f'Releasing cache lock from process {os.getpid()}')
             LOCK.release()
+    
     
 def _store_cache(cache, universe, trading_frequency, base_location):
     """Store cache to disk."""

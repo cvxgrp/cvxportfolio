@@ -93,7 +93,6 @@ class HistoricalMeanReturn(BaseForecast):
     def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
-    @online_cache
     def _values_in_time(self, t, past_returns, cache=None, **kwargs):
         self._agnostic_update(t=t, past_returns=past_returns)
         return (self.last_sum / self.last_counts).values        
@@ -149,9 +148,6 @@ class HistoricalVariance(BaseForecast):
     def _pre_evaluation(self, universe, backtest_times):
         self.__post_init__()
     
-    # We can't cache this currently because
-    # HistoricalMeanError uses one of the partial
-    # variables. We'll have to refactor them both.
     def _values_in_time(self, t, past_returns, **kwargs):
         self._agnostic_update(t=t, past_returns=past_returns)
         result = (self.last_sum / self.last_counts).values
