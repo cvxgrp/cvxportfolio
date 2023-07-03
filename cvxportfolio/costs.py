@@ -297,7 +297,8 @@ class TransactionCost(BaseCost):
         tmp = 0.
         
         if self.a is not None:
-            tmp += self.a.current_value
+            _ = self.a.current_value 
+            tmp += _ * np.ones(past_returns.shape[1]-1) if np.isscalar(_) else _ 
         if self.pershare_cost is not None:
             if current_prices is None:
                 raise SyntaxError("If you don't provide prices you should set pershare_cost to None")

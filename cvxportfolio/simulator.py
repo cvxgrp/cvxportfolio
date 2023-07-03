@@ -74,10 +74,11 @@ class MarketData:
         returns=None,
         volumes=None,
         prices=None, 
+        datasource='YFinance',
         cash_key='USDOLLAR',
         base_location=BASE_LOCATION, 
         min_history=pd.Timedelta('365.24d'),
-        max_contiguous_missing='10d',
+        max_contiguous_missing='40d', # TODO change logic for this (it's now 40 to not drop monthly data)
         trading_frequency=None,  
         **kwargs,
     ):
@@ -91,8 +92,9 @@ class MarketData:
         self.cash_key = cash_key
         
         if len(universe):
-            self._get_market_data(universe)
+            self._get_market_data(universe, datasource)
             self._add_cash_column(self.cash_key)
+            self._remove_missing_recent()
         else:
             if returns is None:
                 raise SyntaxError("If you don't specify a universe you should pass `returns`.")
@@ -114,6 +116,7 @@ class MarketData:
     
     def _reduce_universe(self, reduced_universe):
         assert reduced_universe[-1] == self.cash_key
+        logging.debug(f'Preparing MarketData with reduced_universe {reduced_universe}')
         return MarketData(
             returns=self.returns[reduced_universe],
             volumes=self.volumes[reduced_universe[:-1]] if not (self.volumes is None) else None,
@@ -137,8 +140,10 @@ class MarketData:
             raise SyntaxError('Unsopported trading interval for down-sampling.')
         interval = self.sampling_intervals[interval]
         self.returns = np.exp(np.log(1+self.returns).resample(interval, closed='left', label='left').sum(False, 1))-1
-        self.volumes = self.volumes.resample(interval, closed='left', label='left').sum(False, 1)
-        self.prices = self.prices.resample(interval, closed='left', label='left').first()
+        if self.volumes is not None:
+            self.volumes = self.volumes.resample(interval, closed='left', label='left').sum(False, 1)
+        if self.prices is not None:
+            self.prices = self.prices.resample(interval, closed='left', label='left').first()
         
     @property
     def PPY(self):
@@ -159,7 +164,6 @@ class MarketData:
         
     def _serve_data_policy(self, t):
         """Give data to policy at time t."""
-        
         tidx = self.returns.index.get_loc(t)
         past_returns = pd.DataFrame(self.returns.iloc[:tidx])
         if not self.volumes is None:
@@ -174,7 +178,6 @@ class MarketData:
     
     def _serve_data_simulator(self, t):
         """Give data to simulator at time t."""
-        
         tidx = self.returns.index.get_loc(t)
         current_and_past_returns = pd.DataFrame(self.returns.iloc[:tidx+1])
         if not self.volumes is None:
@@ -221,20 +224,27 @@ class MarketData:
         self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')
         
     
-    def _get_market_data(self, universe):
+    DATASOURCES = {'YFinance': YfinanceTimeSeries, 'FRED': FredTimeSeries}
+    
+    def _get_market_data(self, universe, datasource):
         database_accesses = {}
         print('Updating data')
-        for stock in universe:
-            print('.')
-            database_accesses[stock] = YfinanceTimeSeries(stock, base_location=self.base_location)
-            database_accesses[stock]._recursive_pre_evaluation()
-
-        self.returns = pd.DataFrame({stock: database_accesses[stock].data['Return'] for stock in universe})
-        self.volumes = pd.DataFrame({stock: database_accesses[stock].data['ValueVolume'] for stock in universe})
-        self.prices = pd.DataFrame({stock: database_accesses[stock].data['Open'] for stock in universe})
         
-        self._remove_missing_recent()
-                
+        for stock in universe:
+            logging.debug(f'Getting data for {stock} with {self.DATASOURCES[datasource]}.')
+            print('.')
+            database_accesses[stock] = self.DATASOURCES[datasource](
+                stock, base_location=self.base_location)
+            database_accesses[stock]._recursive_pre_evaluation()
+            
+        if datasource == 'YFinance':
+            self.returns = pd.DataFrame({stock: database_accesses[stock].data['Return'] for stock in universe})
+            self.volumes = pd.DataFrame({stock: database_accesses[stock].data['ValueVolume'] for stock in universe})
+            self.prices = pd.DataFrame({stock: database_accesses[stock].data['Open'] for stock in universe})
+        else: # only FRED for indexes
+            self.prices = pd.DataFrame({stock: database_accesses[stock].data for stock in universe}) # open prices
+            self.returns = 1 - self.prices / self.prices.shift(-1)
+            self.volumes = None            
         
     def _remove_missing_recent(self):
         """Clean recent data.
@@ -244,14 +254,19 @@ class MarketData:
         """
         
         if self.prices.iloc[-5:].isnull().any().any():
+            logging.debug('Removing some recent lines because there are missing values.')
             drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
-            self.prices = self.prices.loc[self.prices.index<drop_at]
+            logging.debug(f'Dropping at index {drop_at}')
             self.returns = self.returns.loc[self.returns.index<drop_at]
-            self.volumes = self.volumes.loc[self.volumes.index<drop_at]
+            if self.prices is not None:
+                self.prices = self.prices.loc[self.prices.index<drop_at]
+            if self.volumes is not None:
+                self.volumes = self.volumes.loc[self.volumes.index<drop_at]
         
         # for consistency we must also nan-out the last row of returns and volumes
         self.returns.iloc[-1] = np.nan
-        self.volumes.iloc[-1] = np.nan
+        if self.volumes is not None:
+            self.volumes.iloc[-1] = np.nan
         
         
     def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
@@ -285,7 +300,9 @@ class MarketData:
                 if (self.returns.index[-1] - exit_date) >= pd.Timedelta(self.max_contiguous_missing):
                     self.exit_dates[exit_date].append(asset) 
 
-        return sorted(set(self.exit_dates) | set(self.entry_dates))
+        _ = sorted(set(self.exit_dates) | set(self.entry_dates))
+        logging.debug(f'computing break timestamps {_}')
+        return _
         
     @property    
     def _limited_universes(self):
@@ -368,6 +385,7 @@ class MarketSimulator:
     def __init__(self, universe=[], returns=None, volumes=None,
                  prices=None, costs=[], round_trades=False, 
                  min_history=pd.Timedelta('365d'),
+                 datasource='YFinance',
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
                  trading_frequency=None, **kwargs):
         """Initialize the Simulator and download data if necessary."""
@@ -379,6 +397,7 @@ class MarketSimulator:
             cash_key=cash_key, base_location=base_location,
             trading_frequency=trading_frequency,
             min_history=min_history,
+            datasource=datasource,
             **kwargs)
             
         self.trading_frequency = trading_frequency
