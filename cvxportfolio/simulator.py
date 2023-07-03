@@ -21,13 +21,14 @@ import copy
 import logging
 import time
 from pathlib import Path
-from multiprocess import Pool
 import pickle
 import hashlib
 from functools import cached_property
 from collections import defaultdict, OrderedDict
 from itertools import starmap
+import os
 
+from multiprocess import Pool, Lock
 import numpy as np
 import pandas as pd
 
@@ -41,26 +42,47 @@ from .errors import DataError
 PPY = 252
 __all__ = ['StockMarketSimulator', 'MarketSimulator']
 
+
+def _mp_init(l):
+    global LOCK
+    LOCK = l
     
 def _hash_universe(universe):
     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
         
 def _load_cache(universe, trading_frequency, base_location):
+    """Load cache from disk."""
     folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
+    if 'LOCK' in globals():
+        logging.debug(f'Acquiring cache lock from process {os.getpid()}')
+        LOCK.acquire()
     try:
         with open(folder/'cache.pkl', 'rb') as f:
             logging.info(f'Loading cache for universe = {universe} and trading_frequency = {trading_frequency}')
             return pickle.load(f)
     except FileNotFoundError:
+        logging.info(f'Cache not found!')
         return {}
+    finally:
+        if 'LOCK' in globals():
+            logging.debug(f'Releasing cache lock from process {os.getpid()}')
+            LOCK.release()
     
 def _store_cache(cache, universe, trading_frequency, base_location):
+    """Store cache to disk."""
     folder = base_location/f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
+    if 'LOCK' in globals():
+        logging.debug(f'Acquiring cache lock from process {os.getpid()}')
+        LOCK.acquire()
     folder.mkdir(exist_ok=True)
     with open(folder/'cache.pkl', 'wb') as f:
         logging.info(f'Storing cache for universe = {universe} and trading_frequency = {trading_frequency}')
         pickle.dump(cache, f)
-    
+    if 'LOCK' in globals():
+        logging.debug(f'Releasing cache lock from process {os.getpid()}')
+        LOCK.release()
+ 
+
         
 class MarketData:
     """Prepare, hold, and serve market data. 
@@ -409,6 +431,7 @@ class MarketSimulator:
 
         self.round_trades = round_trades        
         self.costs = [el() if isinstance(el, type) else el for el in costs]
+        # self.lock = Lock()
        # self.kwargs = kwargs
 
         
@@ -538,7 +561,7 @@ class MarketSimulator:
 
         return result
 
-    def _concatenated_backtests(self, policy, start_time, end_time, h, caches_before):
+    def _concatenated_backtests(self, policy, start_time, end_time, h):#, lock): #, caches_before=None):
         constituent_backtests_params = self.market_data._get_limited_backtests(start_time, end_time)
         results = []
         caches_after = {}
@@ -561,38 +584,50 @@ class MarketSimulator:
             policy._recursive_pre_evaluation(universe = el['universe'],
                 backtest_times = self.market_data._get_backtest_times(el['start_time'], el['end_time'], include_end=True))
             
-            if hasattr(policy, 'cache') and tuple(el['universe']) in caches_before:
-                logging.info('Attaching cache loaded from disk to policy')
-                policy.cache = caches_before[tuple(el['universe'])]
+            if hasattr(policy, 'cache'):
+                logging.info('Trying to load cache from disk...')
+                policy.cache = _load_cache(universe=el['universe'], 
+                    trading_frequency = self.trading_frequency, 
+                    base_location=self.base_location)#,
+                    #lock=lock)
+            
+            # if hasattr(policy, 'cache') and tuple(el['universe']) in caches_before:
+            #     logging.info('Attaching cache loaded from disk to policy')
+            #     policy.cache = caches_before[tuple(el['universe'])]
 
             results.append(self._single_backtest(policy, el['start_time'], el['end_time'], h, el['universe']))
 
             h = results[-1].h.iloc[-1]
             
             if hasattr(policy, 'cache'):
-                logging.info('Extracting cache from policy to return to main process')
-                caches_after[tuple(el['universe'])] = policy.cache
+                logging.info('Storing cache from policy to disk...')
+                _store_cache(cache=policy.cache, universe=el['universe'], 
+                    trading_frequency=self.trading_frequency, 
+                    base_location=self.base_location)#,
+                    #lock=lock)
+                # logging.info('Extracting cache from policy to return to main process')
+                # caches_after[tuple(el['universe'])] = policy.cache
         
         self.market_data = orig_md
         
-        return self._concatenate_backtest_results(results), caches_after
+        return self._concatenate_backtest_results(results) #, caches_after
 
 
-    def _store_caches(self, caches_after):
-        """Store caches after backtest"""
-        for k in caches_after:
-            _store_cache(cache=caches_after[k], universe=list(k), trading_frequency=self.trading_frequency, 
-                base_location=self.base_location)
-
-    
-    def _load_caches(self, start_time, end_time):
-        """Load caches before backtest"""
-        caches_before = {}
-        constituent_backtests_params = self.market_data._get_limited_backtests(start_time, end_time)
-        for el in constituent_backtests_params:
-            caches_before[tuple(el['universe'])] = _load_cache(universe=el['universe'], 
-                trading_frequency = self.trading_frequency, base_location=self.base_location)
-        return caches_before
+    # def _store_caches(self, caches_after):
+    #     """Store caches after backtest"""
+    #     for k in caches_after:
+    #         _store_cache(cache=caches_after[k], universe=list(k), trading_frequency=self.trading_frequency,
+    #             base_location=self.base_location)
+    #
+    #
+    # def _load_caches(self, start_time, end_time):
+    #     """Load caches before backtest"""
+    #     caches_before = {}
+    #     constituent_backtests_params = self.market_data._get_limited_backtests(start_time, end_time)
+    #     for el in constituent_backtests_params:
+    #         caches_before[tuple(el['universe'])] = _load_cache(universe=el['universe'],
+    #             trading_frequency = self.trading_frequency, base_location=self.base_location)
+    #     return caches_before
 
         
     def _concatenate_backtest_results(self, results):
@@ -617,8 +652,8 @@ class MarketSimulator:
         
     
     @staticmethod
-    def _worker(policy, simulator, start_time, end_time, h, caches_before):
-        return simulator._concatenated_backtests(policy, start_time, end_time, h, caches_before)
+    def _worker(policy, simulator, start_time, end_time, h):#, lock): #, caches_before):
+        return simulator._concatenated_backtests(policy, start_time, end_time, h)#, lock) #, caches_before)
 
         
     def backtest(self, policy, start_time=None, end_time=None, initial_value = 1E6, h=None):
@@ -704,24 +739,26 @@ class MarketSimulator:
                 h[i] = pd.Series(0., self.market_data.universe)
                 h[i][-1] = initial_value
                 
-        caches_before = self._load_caches(start_time=start_time, end_time=end_time)
+        # caches_before = self._load_caches(start_time=start_time, end_time=end_time)
         
         n = len(policies)
-        zip_args = zip(policies, [self] * n, [start_time] * n, [end_time] * n, h, [caches_before]*n)
+        lock = Lock()
+        zip_args = zip(policies, [self] * n, [start_time] * n, [end_time] * n, h)#, [lock]*n) #, [caches_before]*n)
         
         # decide if run in parallel or not
         if (not parallel) or len(policies)==1: 
             result = list(starmap(self._worker, zip_args))
         else:
-            with Pool() as p:
+            with Pool(initializer=_mp_init, initargs=(Lock(),)) as p:
                 result = p.starmap(self._worker, zip_args)   
 
-        for el in result:
-            self._store_caches(el[1])
+        # for el in result:
+        #     self._store_caches(el[1])
         
-        return [el[0] for el in result]
+        # return [el[0] for el in result]
+        return [el for el in result]
         
-    
+
 class StockMarketSimulator(MarketSimulator):
     """This class implements a simulator of the stock market.
     
