@@ -439,7 +439,8 @@ class MarketSimulator:
         if not len(universe) and prices is None:
             if round_trades:
                 raise SyntaxError(
-                    "If you don't specify prices you can't request `round_trades`.")
+                    "If you don't specify prices you can't request "
+                    + "`round_trades`.")
 
         self.round_trades = round_trades
         self.costs = [el() if isinstance(el, type) else el for el in costs]
@@ -459,21 +460,25 @@ class MarketSimulator:
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
-        because we pass the policy directly to it, and the past returns and past volumes
-        are computed by it.
+        because we pass the policy directly to it, and the past returns 
+        and past volumes are computed by it.
         """
 
         # translate to weights
         current_portfolio_value = sum(h)
         current_weights = h / current_portfolio_value
 
-        past_returns, past_volumes, current_prices = self.market_data._serve_data_policy(
-            t)
+        past_returns, past_volumes, current_prices = \
+            self.market_data._serve_data_policy(t)
 
         # evaluate the policy
         s = time.time()
-        z = policy._recursive_values_in_time(t=t, current_weights=current_weights, current_portfolio_value=current_portfolio_value,
-                                             past_returns=past_returns, past_volumes=past_volumes, current_prices=current_prices, **kwargs)
+        z = policy._recursive_values_in_time(
+            t=t, current_weights=current_weights,
+            current_portfolio_value=current_portfolio_value,
+            past_returns=past_returns, past_volumes=past_volumes,
+            current_prices=current_prices, **kwargs)
+
         policy_time = time.time() - s
 
         # for safety recompute cash
@@ -484,8 +489,8 @@ class MarketSimulator:
         u = z * current_portfolio_value
 
         # get data for simulator
-        current_and_past_returns, current_and_past_volumes, current_prices = self.market_data._serve_data_simulator(
-            t)
+        current_and_past_returns, current_and_past_volumes, current_prices = \
+            self.market_data._serve_data_simulator(t)
 
         # zero out trades on stock that weren't trading on that day
         if not (current_and_past_volumes is None):
@@ -505,13 +510,13 @@ class MarketSimulator:
         h_plus = h + u
 
         # evaluate cost functions
-        realized_costs = {cost.__class__.__name__: cost._simulate(t=t, u=u,  h_plus=h_plus,
-                                                                  current_and_past_volumes=current_and_past_volumes,
-                                                                  current_and_past_returns=current_and_past_returns,
-                                                                  current_prices=current_prices,
-                                                                  periods_per_year=self.market_data.PPY,
-                                                                  windowsigma=self.market_data.PPY,  # **self.kwargs
-                                                                  ) for cost in self.costs}
+        realized_costs = {cost.__class__.__name__: cost._simulate(
+            t=t, u=u,  h_plus=h_plus,
+            current_and_past_volumes=current_and_past_volumes,
+            current_and_past_returns=current_and_past_returns,
+            current_prices=current_prices,
+            periods_per_year=self.market_data.PPY,
+            windowsigma=self.market_data.PPY) for cost in self.costs}
 
         # initialize tomorrow's holdings
         h_next = pd.Series(h_plus, copy=True)
@@ -525,26 +530,11 @@ class MarketSimulator:
 
         return h_next, z, u, realized_costs, policy_time
 
-    def _initialize_policy(self, policy, start_time, end_time):
-        """Initialize the policy object.
-        """
-        policy._recursive_pre_evaluation(universe=self.market_data.universe,
-                                         backtest_times=self.market_data._get_backtest_times(start_time, end_time, include_end=False))
-
-        # if policy initialized a cache, rewrite it with loaded one
-        # if hasattr(policy, 'cache'):
-        #    policy.cache = _load_cache(universe=self.market_data.universe, trading_frequency = self.trading_frequency,
-        #        base_location=self.base_location)
-
-    def _single_backtest(self, policy, start_time, end_time, h, universe=None  # , backtest_times=None
-                         ):
+    def _single_backtest(self, policy, start_time, end_time, h, universe=None):
         if universe is None:
             universe = self.market_data.universe
-        # if backtest_times is None:
         backtest_times = self.market_data._get_backtest_times(
             start_time, end_time, include_end=False)
-
-        # self._initialize_policy(policy, start_time, end_time)
 
         if hasattr(policy, '_compile_to_cvxpy'):
             policy._compile_to_cvxpy()
@@ -554,7 +544,6 @@ class MarketSimulator:
         # this is the main loop of a backtest
         for t in backtest_times:
             result.h.loc[t] = h
-            # print(t, h)
             s = time.time()
             h, result.z.loc[t], result.u.loc[t], realized_costs, \
                 result.policy_times.loc[t] = self._simulate(
@@ -566,17 +555,11 @@ class MarketSimulator:
 
         result.h.loc[pd.Timestamp(end_time)] = h
 
-        # TODO fix this
-        result.cash_returns = self.market_data.returns.iloc[:, -
-                                                            1].loc[result.u.index]
-
-        # if hasattr(policy, 'cache'):
-        #    _store_cache(cache=policy.cache, universe=universe,
-        #    trading_frequency = self.trading_frequency, base_location=self.base_location)
+        result.cash_returns = \
+            self.market_data.returns.iloc[:, -1].loc[result.u.index]
 
         return result
 
-    # , lock): #, caches_before=None):
     def _concatenated_backtests(self, policy, start_time, end_time, h):
         constituent_backtests_params = self.market_data._get_limited_backtests(
             start_time, end_time)
@@ -598,53 +581,35 @@ class MarketSimulator:
                 h = h[el['universe']]
 
             policy = copy.deepcopy(orig_policy)
-            policy._recursive_pre_evaluation(universe=el['universe'],
-                                             backtest_times=self.market_data._get_backtest_times(el['start_time'], el['end_time'], include_end=True))
+            policy._recursive_pre_evaluation(
+                universe=el['universe'],
+                backtest_times=self.market_data._get_backtest_times(
+                    el['start_time'], el['end_time'], include_end=True)
+            )
 
+            # if policy uses a cache load it from disk
             if hasattr(policy, 'cache'):
                 logging.info('Trying to load cache from disk...')
-                policy.cache = _load_cache(universe=el['universe'],
-                                           trading_frequency=self.trading_frequency,
-                                           base_location=self.base_location)  # ,
-                # lock=lock)
-
-            # if hasattr(policy, 'cache') and tuple(el['universe']) in caches_before:
-            #     logging.info('Attaching cache loaded from disk to policy')
-            #     policy.cache = caches_before[tuple(el['universe'])]
+                policy.cache = _load_cache(
+                    universe=el['universe'],
+                    trading_frequency=self.trading_frequency,
+                    base_location=self.base_location)
 
             results.append(self._single_backtest(
                 policy, el['start_time'], el['end_time'], h, el['universe']))
 
             h = results[-1].h.iloc[-1]
 
+            # if policy used a cache write it to disk
             if hasattr(policy, 'cache'):
                 logging.info('Storing cache from policy to disk...')
                 _store_cache(cache=policy.cache, universe=el['universe'],
                              trading_frequency=self.trading_frequency,
-                             base_location=self.base_location)  # ,
-                # lock=lock)
-                # logging.info('Extracting cache from policy to return to main process')
-                # caches_after[tuple(el['universe'])] = policy.cache
+                             base_location=self.base_location)
 
         self.market_data = orig_md
 
-        return self._concatenate_backtest_results(results)  # , caches_after
-
-    # def _store_caches(self, caches_after):
-    #     """Store caches after backtest"""
-    #     for k in caches_after:
-    #         _store_cache(cache=caches_after[k], universe=list(k), trading_frequency=self.trading_frequency,
-    #             base_location=self.base_location)
-    #
-    #
-    # def _load_caches(self, start_time, end_time):
-    #     """Load caches before backtest"""
-    #     caches_before = {}
-    #     constituent_backtests_params = self.market_data._get_limited_backtests(start_time, end_time)
-    #     for el in constituent_backtests_params:
-    #         caches_before[tuple(el['universe'])] = _load_cache(universe=el['universe'],
-    #             trading_frequency = self.trading_frequency, base_location=self.base_location)
-    #     return caches_before
+        return self._concatenate_backtest_results(results)
 
     def _concatenate_backtest_results(self, results):
 
@@ -669,9 +634,7 @@ class MarketSimulator:
         return res
 
     @staticmethod
-    # , lock): #, caches_before):
     def _worker(policy, simulator, start_time, end_time, h):
-        # , lock) #, caches_before)
         return simulator._concatenated_backtests(policy, start_time, end_time, h)
 
     def backtest(self, policy, start_time=None, end_time=None, initial_value=1E6, h=None):
@@ -758,25 +721,17 @@ class MarketSimulator:
                 h[i] = pd.Series(0., self.market_data.universe)
                 h[i][-1] = initial_value
 
-        # caches_before = self._load_caches(start_time=start_time, end_time=end_time)
-
         n = len(policies)
-        lock = Lock()
-        # , [lock]*n) #, [caches_before]*n)
+
         zip_args = zip(policies, [self] * n,
                        [start_time] * n, [end_time] * n, h)
 
-        # decide if run in parallel or not
         if (not parallel) or len(policies) == 1:
             result = list(starmap(self._worker, zip_args))
         else:
             with Pool(initializer=_mp_init, initargs=(Lock(),)) as p:
                 result = p.starmap(self._worker, zip_args)
 
-        # for el in result:
-        #     self._store_caches(el[1])
-
-        # return [el[0] for el in result]
         return [el for el in result]
 
 
@@ -842,35 +797,3 @@ class StockMarketSimulator(MarketSimulator):
                          costs=costs, round_trades=round_trades, min_history=min_history,
                          cash_key=cash_key, base_location=base_location,
                          trading_frequency=trading_frequency, **kwargs)
-
-# def _do_single_backtest(policy, start_time, end_time, simulator, cache):
-#     """This function can run on remote process/machine."""
-#
-#     universe = simulator.market_data.universe
-#     backtest_times = simulator.market_data._get_backtest_times(start_time, end_time)
-#
-#     policy._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
-#     if hasattr(policy, 'cache'):
-#         policy.cache = cache
-#     if hasattr(policy, '_compile_to_cvxpy'):
-#         policy._compile_to_cvxpy()
-#
-#     result = BacktestResult(universe, backtest_times, simulator.costs)
-#
-#     # this is the main loop of a backtest
-#     for t in backtest_times:
-#         result.h.loc[t] = h
-#         s = time.time()
-#         h, result.z.loc[t], result.u.loc[t], realized_costs, \
-#                 result.policy_times.loc[t] = simulator.simulate(t=t, h=h, policy=policy)
-#         for cost in realized_costs:
-#             result.costs[cost].loc[t] = realized_costs[cost]
-#         result.simulator_times.loc[t] = time.time() - s - result.policy_times.loc[t]
-#
-#     result.h.loc[pd.Timestamp(end_time)] = h
-#
-#     # TODO fix this
-#     result.cash_returns = simulator.market_data.returns.iloc[:,-1].loc[result.u.index]
-#
-#     return result, policy.cache
-#

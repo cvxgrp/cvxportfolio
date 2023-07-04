@@ -312,7 +312,8 @@ class FactorMaxLimit(BaseWeightConstraint):
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return self.factor_exposure.parameter.T @ w_plus[:-1] <= self.limit.parameter
+        return (self.factor_exposure.parameter.T @ w_plus[:-1]
+                <= self.limit.parameter)
 
 
 class FactorMinLimit(BaseWeightConstraint):
@@ -331,13 +332,15 @@ class FactorMinLimit(BaseWeightConstraint):
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return self.factor_exposure.parameter.T @ w_plus[:-1] >= self.limit.parameter
+        return (self.factor_exposure.parameter.T @ w_plus[:-1]
+                >= self.limit.parameter)
 
 
 class FixedFactorLoading(BaseWeightConstraint):
     """A constraint to fix portfolio loadings to a set of factors.
 
-    This can be used to impose market neutrality, a certain portfolio-wide alpha, ....
+    This can be used to impose market neutrality, 
+    a certain portfolio-wide alpha, ....
 
     Attributes:
         factor_exposure: An (n * r) matrix giving the factor exposure on each
@@ -352,4 +355,5 @@ class FixedFactorLoading(BaseWeightConstraint):
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return self.factor_exposure.parameter.T @ w_plus[:-1] == self.target.parameter
+        return (self.factor_exposure.parameter.T @ w_plus[:-1]
+                == self.target.parameter)

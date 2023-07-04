@@ -409,7 +409,13 @@ class TestSimulator(unittest.TestCase):
             h[-1] = 10000 - sum(h[:-1])
             h0 = pd.Series(h, simulator.market_data.universe)
             h = pd.Series(h0, copy=True)
-            simulator._initialize_policy(policy, start_time, end_time)
+
+            policy._recursive_pre_evaluation(
+                universe=simulator.market_data.universe,
+                backtest_times=simulator.market_data._get_backtest_times(
+                    start_time, end_time, include_end=False)
+            )
+
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
                 oldcash = h[-1]
                 h, z, u, costs, timer = simulator._simulate(
@@ -435,7 +441,12 @@ class TestSimulator(unittest.TestCase):
             h[-1] = 10000 - sum(h[:-1])
             h0 = pd.Series(h, simulator.market_data.returns.columns)
             h = pd.Series(h0, copy=True)
-            simulator._initialize_policy(policy, start_time, end_time)
+            policy._recursive_pre_evaluation(
+                universe=simulator.market_data.universe,
+                backtest_times=simulator.market_data._get_backtest_times(
+                    start_time, end_time, include_end=False)
+            )
+
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
                 oldcash = h[-1]
                 h, z, u, costs, timer = simulator._simulate(
