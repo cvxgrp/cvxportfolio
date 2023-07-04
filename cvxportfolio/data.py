@@ -26,9 +26,11 @@ import sqlite3
 
 from .estimator import DataEstimator
 
-__all__ = ["YfinanceTimeSeries", "FredTimeSeries", "FredRateTimeSeries", "BASE_LOCATION"]
+__all__ = ["YfinanceTimeSeries", "FredTimeSeries",
+           "FredRateTimeSeries", "BASE_LOCATION"]
 
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
+
 
 class BaseData:
     """Base class for Cvxportfolio database interface.
@@ -121,26 +123,28 @@ class YfinanceBase(BaseData):
     @staticmethod
     def internal_process(data):
         """Manipulate yfinance data for better storing."""
-        
+
         # nan-out nonpositive prices
         data.loc[data["Open"] <= 0, 'Open'] = np.nan
         data.loc[data["Close"] <= 0, "Close"] = np.nan
         data.loc[data["High"] <= 0, "High"] = np.nan
         data.loc[data["Low"] <= 0, "Low"] = np.nan
         data.loc[data["Adj Close"] <= 0, "Adj Close"] = np.nan
-        
+
         # nan-out negative volumes
         data.loc[data["Volume"] < 0, 'Volume'] = np.nan
-        
+
         intraday_logreturn = np.log(data["Close"]) - np.log(data["Open"])
         close_to_close_logreturn = np.log(data["Adj Close"]).diff().shift(-1)
         open_to_open_logreturn = (
-            close_to_close_logreturn + intraday_logreturn - intraday_logreturn.shift(-1)
+            close_to_close_logreturn + intraday_logreturn -
+            intraday_logreturn.shift(-1)
         )
         data["Return"] = np.exp(open_to_open_logreturn) - 1
         del data["Adj Close"]
         # eliminate last period's intraday data
-        data.loc[data.index[-1], ["High", "Low", "Close", "Return", "Volume"]] = np.nan
+        data.loc[data.index[-1], ["High", "Low",
+                                  "Close", "Return", "Volume"]] = np.nan
         return data
 
     def download(self, symbol, current=None, overlap=5, grace_period='5d', **kwargs):
@@ -166,7 +170,8 @@ class YfinanceBase(BaseData):
         else:
             if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta(grace_period):
                 return current
-            new = yf.download(symbol, progress=False, start=current.index[-overlap], **kwargs)
+            new = yf.download(symbol, progress=False,
+                              start=current.index[-overlap], **kwargs)
             new = self.internal_process(new)
             return pd.concat([current.iloc[:-overlap], new])
 
@@ -182,7 +187,8 @@ class YfinanceBase(BaseData):
         data["ValueVolume"] = data["Volume"] * data["Open"]
         del data["Volume"]
         # remove infty values
-        data.iloc[:, :] = np.nan_to_num(data.values, copy=True, nan=np.nan, posinf=np.nan, neginf=np.nan)
+        data.iloc[:, :] = np.nan_to_num(
+            data.values, copy=True, nan=np.nan, posinf=np.nan, neginf=np.nan)
         # remove extreme values
         # data.loc[data["Return"] < -.99, "Return"] = np.nan
         # data.loc[data["Return"] > .99, "Return"] = np.nan
@@ -245,7 +251,8 @@ class SqliteDataStore(BaseDataStore):
 
         if hasattr(data.index, "levels"):
             data.index = data.index.set_names(
-                ["index"] + [f"___level{i}" for i in range(1, len(data.index.levels))]
+                ["index"] +
+                [f"___level{i}" for i in range(1, len(data.index.levels))]
             )
             data = data.reset_index().set_index("index")
         else:
@@ -292,7 +299,6 @@ class SqliteDataStore(BaseDataStore):
             return None
 
 
-
 class PickleStore(BaseDataStore):
     """Pickle data store for pandas Series and DataFrames.
 
@@ -326,8 +332,8 @@ class PickleStore(BaseDataStore):
         """Store data locally."""
         self.__create_if_not_existent()
         data.to_pickle(self.location / f"{symbol}.pickle")
-        
-        
+
+
 class LocalDataStore(BaseDataStore):
     """Local data store for pandas Series and DataFrames.
 
@@ -404,18 +410,18 @@ class LocalDataStore(BaseDataStore):
 
 class FredBase(BaseData):
     """Base class for FRED data access."""
-    
+
     URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
-    
+
     def _download(self, symbol):
         return pd.read_csv(self.URL + f'?id={symbol}', index_col=0, parse_dates=[0])[symbol]
 
     def download(self, symbol="DFF", current=None, grace_period='5d'):
         """Download or update pandas Series from FRED. 
-        
+
         If already downloaded don't change data stored locally and only
         add new entries at the end. 
-        
+
         Additionally, we allow for a `grace period`, if the data already downloaded
         has a last entry not older than the grace period, we don't download new data.
         """
@@ -424,10 +430,10 @@ class FredBase(BaseData):
         else:
             if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta(grace_period):
                 return current
-                
+
             new = self._download(symbol)
             new = new.loc[new.index > current.index[-1]]
-            
+
             if new.empty:
                 return current
 
@@ -452,7 +458,6 @@ class Yfinance(YfinanceBase, LocalDataStore):
         base_location (pathlib.Path): filesystem directory where to store files.
     """
 
-
     def update_and_load(self, symbol):
         """Update data for symbol and load it."""
         return super().update_and_load(symbol)
@@ -465,7 +470,7 @@ class FredRate(FredBase, RateBase, SqliteDataStore):
 
 
 class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
-    
+
     def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
         self.symbol = symbol
         self.base_location = base_location
@@ -473,10 +478,10 @@ class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
 
     def _recursive_pre_evaluation(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)
-        
-        
+
+
 class FredTimeSeries(DataEstimator, FredBase, PickleStore):
-    
+
     def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
         self.symbol = symbol
         self.base_location = base_location
@@ -484,17 +489,18 @@ class FredTimeSeries(DataEstimator, FredBase, PickleStore):
 
     def _recursive_pre_evaluation(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)
-    
+
+
 class FredRateTimeSeries(DataEstimator, FredBase, RateBase, PickleStore):
-    
+
     def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
         self.symbol = symbol
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
 
     def _recursive_pre_evaluation(self, *args, **kwargs):
-        self.data = self.update_and_load(self.symbol)    
-        
+        self.data = self.update_and_load(self.symbol)
+
 
 class TimeSeries(DataEstimator):
     """Class for time series data managed by Cvxportfolio.

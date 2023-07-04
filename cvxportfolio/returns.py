@@ -22,7 +22,7 @@ import pandas as pd
 
 from .costs import BaseCost, CombinedCosts
 from .risks import BaseRiskModel
-from .estimator import DataEstimator #, ParameterEstimator
+from .estimator import DataEstimator  # , ParameterEstimator
 from .forecast import HistoricalMeanReturn, HistoricalMeanError
 
 __all__ = [
@@ -41,45 +41,44 @@ class BaseReturnsModel(BaseCost):
 
 class CashReturn(BaseReturnsModel):
     r"""Objective term representing cash return.
-    
+
     The forecast of cash return :math:`{\left(\hat{r}_t\right)}_n` is the observed value
     from last period :math:`{\left({r}_{t-1}\right)}_n`.
-    
+
     This object is included automatically in :class:`SinglePeriodOptimization`
     and :class:`MultiPeriodOptimization` policies. You can change
     this behavior by setting their ``include_cash_return`` to False.
-    
+
     :param short_margin_requirement: fraction of value of a short positions
         that is margined by portfolio cash
     :type short_margin_requirement: float
     """
-    
+
     def __init__(self, cash_returns=None, short_margin_requirement=1.):
-        self.cash_returns = None if cash_returns is None else DataEstimator(cash_returns, 
-            compile_parameter=True, non_negative=True)
+        self.cash_returns = None if cash_returns is None else DataEstimator(cash_returns,
+                                                                            compile_parameter=True, non_negative=True)
         self.short_margin_requirement = short_margin_requirement
-        
+
     def _pre_evaluation(self, universe, backtest_times):
         self.cash_return_parameter = cp.Parameter(nonneg=True) if self.cash_returns is None \
             else self.cash_returns.parameter
-            
+
         # else DataEstimator(self.cash_returns, non_negative=True, compile_parameter=True)
-        
-        
+
     def _values_in_time(self, t, past_returns, **kwargs):
         """Update cash return parameter as last cash return."""
         if self.cash_returns is None:
-            self.cash_return_parameter.value = past_returns.iloc[-1,-1]
-        
+            self.cash_return_parameter.value = past_returns.iloc[-1, -1]
+
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Apply cash return to "real" cash position (without shorts and margins)."""
-        realcash = (w_plus[-1] - (1 + self.short_margin_requirement) * cp.sum(cp.neg(w_plus[:-1])))
+        realcash = (w_plus[-1] - (1 + self.short_margin_requirement)
+                    * cp.sum(cp.neg(w_plus[:-1])))
         result = realcash * self.cash_return_parameter
         assert result.is_concave()
         return result
-        
-    
-    
+
+
 class ReturnsForecast(BaseReturnsModel):
     r"""Returns forecast for non-cash assets, provided by the user or computed from the data.
 
@@ -141,23 +140,23 @@ class ReturnsForecast(BaseReturnsModel):
     """
 
     def __init__(self, r_hat=None, decay=1.):
-        
+
         if not r_hat is None:
             self.r_hat = DataEstimator(r_hat)
         else:
             self.r_hat = HistoricalMeanReturn()
         self.decay = decay
-        
+
     def _pre_evaluation(self, universe, backtest_times):
         self.r_hat_parameter = cp.Parameter(len(universe)-1)
-        
+
     def _values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
-        self.r_hat_parameter.value = self.r_hat.current_value * self.decay**(mpo_step)
+        self.r_hat_parameter.value = self.r_hat.current_value * \
+            self.decay**(mpo_step)
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Cvxpy expression acts on non-cash assets."""
-        return w_plus[:-1].T @ self.r_hat_parameter 
-        
+        return w_plus[:-1].T @ self.r_hat_parameter
 
 
 class ReturnsForecastError(BaseRiskModel):
@@ -179,15 +178,14 @@ class ReturnsForecastError(BaseRiskModel):
     """
 
     def __init__(self, deltas=None):
-        
+
         if not deltas is None:
             self.deltas = DataEstimator(deltas)
         else:
             self.deltas = HistoricalMeanError()
-            
+
     def _pre_evaluation(self, universe, backtest_times):
         self.deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
-
 
     def _values_in_time(self, t, past_returns, **kwargs):
         self.deltas_parameter.value = self.deltas.current_value
@@ -195,7 +193,3 @@ class ReturnsForecastError(BaseRiskModel):
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile to cvxpy expression."""
         return cp.abs(w_plus_minus_w_bm[:-1]).T @ self.deltas_parameter
-
-
-
-

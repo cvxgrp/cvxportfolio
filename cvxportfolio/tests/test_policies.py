@@ -32,13 +32,15 @@ from cvxportfolio.errors import *
 
 
 class TestPolicies(unittest.TestCase):
-    
+
     @classmethod
     def setUpClass(cls):
         """Load the data and initialize cvxpy vars."""
         # cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
-        cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
-        cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
+        cls.returns = pd.read_csv(
+            Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
+        cls.volumes = pd.read_csv(
+            Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
         cls.w_plus = cp.Variable(cls.returns.shape[1])
         cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
         cls.z = cp.Variable(cls.returns.shape[1])
@@ -49,8 +51,7 @@ class TestPolicies(unittest.TestCase):
         w = pd.Series(0.5, ["AAPL", "CASH"])
         self.assertTrue(np.all(
             hold._recursive_values_in_time(current_weights=w).values == np.zeros(2)))
-            
-            
+
     def test_rank_and_long_short(self):
         hold = Hold()
         w = pd.Series(0.25, ["AAPL", "TSLA", "GOOGL", "CASH"])
@@ -68,9 +69,9 @@ class TestPolicies(unittest.TestCase):
         print(z)
         wplus = w + z
         self.assertTrue(wplus["CASH"] == 1)
-        self.assertTrue( wplus["TSLA"] == 0)
-        self.assertTrue( wplus["AAPL"] == -wplus["GOOGL"])
-        self.assertTrue( np.abs(wplus[:-1]).sum() == 3)
+        self.assertTrue(wplus["TSLA"] == 0)
+        self.assertTrue(wplus["AAPL"] == -wplus["GOOGL"])
+        self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
 
         index = pd.date_range("2020-01-01", "2020-01-03")
         signal = pd.DataFrame(
@@ -89,28 +90,27 @@ class TestPolicies(unittest.TestCase):
         z1 = rls._recursive_values_in_time(t=index[0], current_weights=w)
         print(z1)
         wplus = w + z1
-        self.assertTrue( wplus["CASH"] == 1)
-        self.assertTrue( wplus["TSLA"] == 0)
-        self.assertTrue( wplus["AAPL"] == -wplus["GOOGL"])
-        self.assertTrue( np.abs(wplus[:-1]).sum() == 3)
+        self.assertTrue(wplus["CASH"] == 1)
+        self.assertTrue(wplus["TSLA"] == 0)
+        self.assertTrue(wplus["AAPL"] == -wplus["GOOGL"])
+        self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
         z2 = rls._recursive_values_in_time(t=index[1], current_weights=w)
         print(z2)
         wplus = w + z2
-        self.assertTrue( wplus["CASH"] == 1)
-        self.assertTrue( wplus["TSLA"] == 0)
-        self.assertTrue( wplus["AAPL"] == -wplus["GOOGL"])
-        self.assertTrue( np.abs(wplus[:-1]).sum() == 3)
+        self.assertTrue(wplus["CASH"] == 1)
+        self.assertTrue(wplus["TSLA"] == 0)
+        self.assertTrue(wplus["AAPL"] == -wplus["GOOGL"])
+        self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
         z3 = rls._recursive_values_in_time(t=index[2], current_weights=w)
         wplus = w + z3
-        self.assertTrue( wplus["CASH"] == 1)
-        self.assertTrue( wplus["AAPL"] == 0)
-        self.assertTrue( wplus["TSLA"] == -wplus["GOOGL"])
-        self.assertTrue( np.abs(wplus[:-1]).sum() == 3)
+        self.assertTrue(wplus["CASH"] == 1)
+        self.assertTrue(wplus["AAPL"] == 0)
+        self.assertTrue(wplus["TSLA"] == -wplus["GOOGL"])
+        self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
         print(z3)
 
-
     def test_proportional_trade(self):
-    
+
         a = pd.Series(1., self.returns.columns)
         a[-1] = 1 - sum(a[:-1])
         b = pd.Series(-1., self.returns.columns)
@@ -121,7 +121,8 @@ class TestPolicies(unittest.TestCase):
                                 }).T
         policy = ProportionalTradeToTargets(targets)
 
-        policy._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._recursive_pre_evaluation(
+            universe=self.returns.columns, backtest_times=self.returns.index)
         start_portfolio = pd.Series(
             np.random.randn(
                 self.returns.shape[1]),
@@ -130,15 +131,16 @@ class TestPolicies(unittest.TestCase):
         for t in self.returns.index[:17]:
             print(t)
             print(start_portfolio)
-        
-            trade = policy._recursive_values_in_time(t=t, current_weights=start_portfolio)
+
+            trade = policy._recursive_values_in_time(
+                t=t, current_weights=start_portfolio)
             start_portfolio += trade
-        
+
             if t in targets.index:
                 self.assertTrue(np.all(start_portfolio == targets.loc[t]))
 
-        self.assertTrue( np.all(trade == 0.))
-        
+        self.assertTrue(np.all(trade == 0.))
+
     def test_sell_all(self):
         start_portfolio = pd.Series(
             np.random.randn(
@@ -146,12 +148,12 @@ class TestPolicies(unittest.TestCase):
             self.returns.columns)
         policy = SellAll()
         t = pd.Timestamp('2022-01-01')
-        trade = policy._recursive_values_in_time(t=t, current_weights=start_portfolio)
+        trade = policy._recursive_values_in_time(
+            t=t, current_weights=start_portfolio)
         allcash = np.zeros(len(start_portfolio))
         allcash[-1] = 1
         assert isinstance(trade, pd.Series)
         assert np.allclose(allcash, start_portfolio + trade)
-
 
     def test_fixed_trade(self):
         fixed_trades = pd.DataFrame(
@@ -171,7 +173,6 @@ class TestPolicies(unittest.TestCase):
         trade = policy._recursive_values_in_time(t=t, current_weights=trade)
         self.assertTrue(np.all(trade == 0.))
 
-
     def test_fixed_weights(self):
         fixed_weights = pd.DataFrame(
             np.random.randn(
@@ -187,58 +188,69 @@ class TestPolicies(unittest.TestCase):
         self.assertTrue(np.all(trade == fixed_weights.loc[t]))
 
         t = self.returns.index[111]
-        trade = policy._recursive_values_in_time(t=t, current_weights=fixed_weights.iloc[110])
-        self.assertTrue( np.allclose(trade + fixed_weights.iloc[110], fixed_weights.loc[t]))
+        trade = policy._recursive_values_in_time(
+            t=t, current_weights=fixed_weights.iloc[110])
+        self.assertTrue(np.allclose(
+            trade + fixed_weights.iloc[110], fixed_weights.loc[t]))
 
         t = pd.Timestamp('1900-01-01')
         trade = policy._recursive_values_in_time(t=t, current_weights=trade)
-        self.assertTrue( np.all(trade == 0.))
-
+        self.assertTrue(np.all(trade == 0.))
 
     def test_periodic_rebalance(self):
 
-        target = pd.Series(np.random.uniform(size=self.returns.shape[1]), self.returns.columns)
+        target = pd.Series(np.random.uniform(
+            size=self.returns.shape[1]), self.returns.columns)
         target /= sum(target)
-        rebalancing_times = pd.date_range(start=self.returns.index[0], end=self.returns.index[-1], 
-            freq='7d')
+        rebalancing_times = pd.date_range(start=self.returns.index[0], end=self.returns.index[-1],
+                                          freq='7d')
 
         policy = PeriodicRebalance(target, rebalancing_times=rebalancing_times)
-        init = pd.Series(np.random.randn(self.returns.shape[1]), self.returns.columns)
+        init = pd.Series(np.random.randn(
+            self.returns.shape[1]), self.returns.columns)
 
-        trade = policy._recursive_values_in_time(t=rebalancing_times[0], current_weights=init)
+        trade = policy._recursive_values_in_time(
+            t=rebalancing_times[0], current_weights=init)
         self.assertTrue(np.allclose(trade + init, target))
 
         trade = policy._recursive_values_in_time(t=rebalancing_times[0] + pd.Timedelta('1d'),
-            current_weights=init)
+                                                 current_weights=init)
         self.assertTrue(np.allclose(trade, 0))
 
     def test_uniform(self):
         pol = Uniform()
         pol._recursive_pre_evaluation(self.returns.columns, self.returns.index)
-        
-        init = pd.Series(np.random.randn(self.returns.shape[1]), self.returns.columns)
-        trade = pol._recursive_values_in_time(t=self.returns.index[123], current_weights=init)
-        self.assertTrue(np.allclose((trade + init)[:-1], 
-            np.ones(self.returns.shape[1]-1)/(self.returns.shape[1]-1)))
-        
+
+        init = pd.Series(np.random.randn(
+            self.returns.shape[1]), self.returns.columns)
+        trade = pol._recursive_values_in_time(
+            t=self.returns.index[123], current_weights=init)
+        self.assertTrue(np.allclose((trade + init)[:-1],
+                                    np.ones(self.returns.shape[1]-1)/(self.returns.shape[1]-1)))
 
     def test_proportional_rebalance(self):
 
-        target = pd.Series(np.random.uniform(size=self.returns.shape[1]), self.returns.columns)
+        target = pd.Series(np.random.uniform(
+            size=self.returns.shape[1]), self.returns.columns)
         target /= sum(target)
         target_matching_times = self.returns.index[::3]
 
-        policy = ProportionalRebalance(target, target_matching_times=target_matching_times)
-        policy._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy = ProportionalRebalance(
+            target, target_matching_times=target_matching_times)
+        policy._recursive_pre_evaluation(
+            universe=self.returns.columns, backtest_times=self.returns.index)
 
-        init = pd.Series(np.random.randn(self.returns.shape[1]), self.returns.columns)
+        init = pd.Series(np.random.randn(
+            self.returns.shape[1]), self.returns.columns)
 
-        trade = policy._recursive_values_in_time(t=self.returns.index[1], current_weights=init)
+        trade = policy._recursive_values_in_time(
+            t=self.returns.index[1], current_weights=init)
         init += trade
-        trade2 = policy._recursive_values_in_time(t=self.returns.index[2], current_weights=init)
+        trade2 = policy._recursive_values_in_time(
+            t=self.returns.index[2], current_weights=init)
         self.assertTrue(np.allclose(trade, trade2))
         self.assertTrue(np.allclose(trade + trade2 + init, target))
-    
+
     def test_adaptive_rebalance(self):
         np.random.seed(0)
         target = pd.Series(
@@ -248,41 +260,42 @@ class TestPolicies(unittest.TestCase):
         target /= sum(target)
         target = pd.DataFrame({ind: target for ind in self.returns.index}).T
 
-        init = pd.Series(np.random.uniform(size=self.returns.shape[1]), self.returns.columns)
+        init = pd.Series(np.random.uniform(
+            size=self.returns.shape[1]), self.returns.columns)
         init /= sum(init)
 
         for tracking_error in [0.01, .02, .05, .1]:
             policy = AdaptiveRebalance(target, tracking_error=tracking_error)
-            trade = policy._recursive_values_in_time(t=self.returns.index[1], current_weights=init)
+            trade = policy._recursive_values_in_time(
+                t=self.returns.index[1], current_weights=init)
             self.assertTrue(np.allclose(init + trade, target.iloc[0]))
 
         for tracking_error in [.2, .5]:
             policy = AdaptiveRebalance(target, tracking_error=tracking_error)
-            trade = policy._recursive_values_in_time(t=self.returns.index[1], current_weights=init)
+            trade = policy._recursive_values_in_time(
+                t=self.returns.index[1], current_weights=init)
             self.assertTrue(np.allclose(trade, 0.))
-
 
     def test_single_period_optimization(self):
 
         return_forecast = ReturnsForecast()
         risk_forecast = FullCovariance(kelly=False)
         tcost = TransactionCost(a=1E-3/2, pershare_cost=0., b=None, exponent=2)
-        
+
         policy = SinglePeriodOptimization(
             return_forecast
             - 2 * risk_forecast
-            -tcost
-            #- TcostModel(half_spread=5 * 1E-4)  # , power=2)
-            ,
+            # - TcostModel(half_spread=5 * 1E-4)  # , power=2)
+            - tcost,
             constraints=[LongOnly(), LeverageLimit(1)],
             include_cash_return=False,
             # verbose=True,
             solver='ECOS')
-            
 
-        policy._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._recursive_pre_evaluation(
+            universe=self.returns.columns, backtest_times=self.returns.index)
         policy._compile_to_cvxpy()
-        
+
         curw = np.zeros(self.N)
         curw[-1] = 1.
 
@@ -295,40 +308,38 @@ class TestPolicies(unittest.TestCase):
             past_returns=self.returns.iloc[:121],
             past_volumes=self.volumes.iloc[:121],
             current_prices=pd.Series(1., self.volumes.columns))
-            
-       
 
         cvxportfolio_result = pd.Series(result, self.returns.columns)
 
         print(cvxportfolio_result)
-        
+
         # print(np.linalg.eigh(self.returns.iloc[:121, :-1].cov().values)[0])
 
         # REPLICATE WITH CVXPY
-        
-        COV = self.returns.iloc[:121, :-1].cov(ddof=0).values #+ np.outer(self.returns.iloc[:121, :-1].mean(), self.returns.iloc[:121, :-1].mean())
+
+        # + np.outer(self.returns.iloc[:121, :-1].mean(), self.returns.iloc[:121, :-1].mean())
+        COV = self.returns.iloc[:121, :-1].cov(ddof=0).values
         w = cp.Variable(self.N)
         cp.Problem(cp.Maximize(w[:-1].T @ self.returns.iloc[:121, :-1].mean().values -
-                                 2 * cp.quad_form(w[:-1], COV) -
-                                 5 * 1E-4 * cp.sum(cp.abs(w - curw)[:-1])
-                                 ),
-                    [w >= 0, w <= 1, sum(w) == 1]
-                    ).solve(solver='ECOS')
+                               2 * cp.quad_form(w[:-1], COV) -
+                               5 * 1E-4 * cp.sum(cp.abs(w - curw)[:-1])
+                               ),
+                   [w >= 0, w <= 1, sum(w) == 1]
+                   ).solve(solver='ECOS')
 
         cvxpy_result = pd.Series(w.value - curw, self.returns.columns)
 
         print(cvxpy_result)
-        
+
         print(cvxportfolio_result - cvxpy_result)
-        self.assertTrue(np.allclose(cvxportfolio_result - cvxpy_result, 0., atol=1e-5))
-    
-    
-    
+        self.assertTrue(np.allclose(
+            cvxportfolio_result - cvxpy_result, 0., atol=1e-5))
+
     def test_single_period_optimization_solve_twice(self):
 
         return_forecast = ReturnsForecast()
         risk_forecast = FullCovariance()
-        
+
         policy = SinglePeriodOptimization(
             return_forecast
             - 2 * risk_forecast
@@ -338,7 +349,8 @@ class TestPolicies(unittest.TestCase):
             # verbose=True,
             solver='ECOS')
 
-        policy._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._recursive_pre_evaluation(
+            universe=self.returns.columns, backtest_times=self.returns.index)
         policy._compile_to_cvxpy()
 
         curw = np.zeros(self.N)
@@ -371,8 +383,7 @@ class TestPolicies(unittest.TestCase):
             current_prices=pd.Series(1., self.volumes.columns))
 
         self.assertTrue(np.allclose(result2, 0., atol=1e-7))
-        
-        
+
     def test_single_period_optimization_infeasible(self):
 
         return_forecast = ReturnsForecast()
@@ -386,9 +397,9 @@ class TestPolicies(unittest.TestCase):
             # verbose=True,
             solver='ECOS')
 
-        policy._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._recursive_pre_evaluation(
+            universe=self.returns.columns, backtest_times=self.returns.index)
         policy._compile_to_cvxpy()
-
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -403,24 +414,23 @@ class TestPolicies(unittest.TestCase):
                 past_returns=self.returns.iloc[:134],
                 past_volumes=self.volumes.iloc[:134],
                 current_prices=pd.Series(1., self.volumes.columns))
-            
+
     def test_single_period_optimization_unbounded(self):
 
         return_forecast = ReturnsForecast()
         risk_forecast = FullCovariance()
         policy = SinglePeriodOptimization(
-            return_forecast
-            #- 2 * risk_forecast
-            #- TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
+            return_forecast            # - 2 * risk_forecast
+            # - TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
             ,
-            constraints=[LongOnly(), #LeverageLimit(1), MaxWeights(-1)
-        ],
+            constraints=[LongOnly(),  # LeverageLimit(1), MaxWeights(-1)
+                         ],
             # verbose=True,
             solver='ECOS')
 
-        policy._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+        policy._recursive_pre_evaluation(
+            universe=self.returns.columns, backtest_times=self.returns.index)
         policy._compile_to_cvxpy()
-
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -435,27 +445,26 @@ class TestPolicies(unittest.TestCase):
                 past_returns=self.returns.iloc[:134],
                 past_volumes=self.volumes.iloc[:134],
                 current_prices=pd.Series(1., self.volumes.columns))
-     
+
     def test_multi_period_optimization2(self):
         """Test that MPO1 and MPO2 and MPO5 return same if no tcost, and diff if tcost"""
 
         results = []
-        for planning_horizon in [1,2,5]:
+        for planning_horizon in [1, 2, 5]:
             return_forecast = ReturnsForecast()
             risk_forecast = FullCovariance()
             policy = MultiPeriodOptimization(
                 return_forecast
-                - 10 * risk_forecast
-                #- TcostModel(half_spread=5 * 1E-4)  # , power=2)
-                ,
+                # - TcostModel(half_spread=5 * 1E-4)  # , power=2)
+                - 10 * risk_forecast,
                 constraints=[LongOnly(), LeverageLimit(1)],
                 # verbose=True,
                 planning_horizon=planning_horizon,
                 solver='ECOS')
 
-            policy._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+            policy._recursive_pre_evaluation(
+                universe=self.returns.columns, backtest_times=self.returns.index)
             policy._compile_to_cvxpy()
-
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
@@ -476,23 +485,23 @@ class TestPolicies(unittest.TestCase):
         # with tcost
 
         results = []
-        for planning_horizon in [1,2,5]:
+        for planning_horizon in [1, 2, 5]:
             return_forecast = ReturnsForecast()
             risk_forecast = FullCovariance()
             policy = MultiPeriodOptimization(
                 return_forecast
                 - 10 * risk_forecast
-                - TransactionCost(a=25 * 1E-4, pershare_cost=0., b=0.)
-                #- TcostModel(half_spread=5 * 1E-4)  # , power=2)
-                ,
+                # - TcostModel(half_spread=5 * 1E-4)  # , power=2)
+                - TransactionCost(a=25 * 1E-4, pershare_cost=0., b=0.),
                 constraints=[LongOnly(), LeverageLimit(1)],
                 # verbose=True,
                 planning_horizon=planning_horizon,
                 solver='ECOS')
 
-            policy._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+            policy._recursive_pre_evaluation(
+                universe=self.returns.columns, backtest_times=self.returns.index)
             policy._compile_to_cvxpy()
-            
+
             curw = np.zeros(self.N)
             curw[-1] = 1.
 
@@ -508,45 +517,46 @@ class TestPolicies(unittest.TestCase):
 
         self.assertFalse(np.allclose(results[0], results[1], atol=1e-4))
         self.assertFalse(np.allclose(results[1], results[2], atol=1e-4))
-        
+
     def test_multi_period_optimization_syntax(self):
         with self.assertRaises(SyntaxError):
             MultiPeriodOptimization([ReturnsForecast()], [])
         with self.assertRaises(SyntaxError):
-            MultiPeriodOptimization([ReturnsForecast()], [[],[]])
+            MultiPeriodOptimization([ReturnsForecast()], [[], []])
         with self.assertRaises(SyntaxError):
             MultiPeriodOptimization([ReturnsForecast()], None)
         with self.assertRaises(SyntaxError):
             MultiPeriodOptimization(ReturnsForecast())
-        MultiPeriodOptimization(ReturnsForecast(), planning_horizon = 1)
-        
+        MultiPeriodOptimization(ReturnsForecast(), planning_horizon=1)
+
     def test_multi_period_optimization3(self):
         """Check that terminal constraint brings closer to benchmark."""
-    
+
         np.random.seed(0)
         benchmark = np.random.uniform(size=self.returns.shape[1])
         benchmark /= sum(benchmark)
         benchmark = pd.Series(benchmark, self.returns.columns)
-    
+
         diff_to_benchmarks = []
-        for planning_horizon in [1,2,5]:
+        for planning_horizon in [1, 2, 5]:
 
             return_forecast = ReturnsForecast()
             risk_forecast = FullCovariance()
             policy = MultiPeriodOptimization(
                 return_forecast
                 - 10 * risk_forecast
-                - TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
-                ,
+                # , power=2)
+                - TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.),
                 constraints=[LongOnly(), LeverageLimit(1)],
-                #verbose=True,
+                # verbose=True,
                 terminal_constraint=benchmark,
                 planning_horizon=planning_horizon,
                 solver='ECOS')
 
-            policy._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
+            policy._recursive_pre_evaluation(
+                universe=self.returns.columns, backtest_times=self.returns.index)
             policy._compile_to_cvxpy()
-            
+
             curw = np.zeros(self.N)
             curw[-1] = 1.
 
@@ -559,15 +569,13 @@ class TestPolicies(unittest.TestCase):
                 past_returns=self.returns.iloc[:67],
                 past_volumes=self.volumes.iloc[:67],
                 current_prices=pd.Series(1., self.volumes.columns)) + curw - benchmark)
-                                        
+
         self.assertTrue(np.isclose(np.linalg.norm(diff_to_benchmarks[0]), 0.))
-        self.assertTrue(np.linalg.norm(diff_to_benchmarks[0]) < np.linalg.norm(diff_to_benchmarks[1]))
-        self.assertTrue(np.linalg.norm(diff_to_benchmarks[1]) < np.linalg.norm(diff_to_benchmarks[2]))
-    
-    
+        self.assertTrue(np.linalg.norm(
+            diff_to_benchmarks[0]) < np.linalg.norm(diff_to_benchmarks[1]))
+        self.assertTrue(np.linalg.norm(
+            diff_to_benchmarks[1]) < np.linalg.norm(diff_to_benchmarks[2]))
+
+
 if __name__ == '__main__':
     unittest.main()
-        
-    
-    
-        

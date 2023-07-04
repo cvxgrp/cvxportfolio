@@ -44,7 +44,7 @@ class Estimator:
         and call this base function (via `super()`) before
         they do their internal computation. CvxpyExpression estimators
         should instead define this method to update their Cvxpy parameters.
-        
+
         Once we finalize the interface all parameters will be listed here.
         """
         for _, subestimator in self.__dict__.items():
@@ -57,7 +57,6 @@ class Estimator:
 
 class PolicyEstimator(Estimator):
     """Base class for (most) estimators that are part of policy objects."""
-    
 
     def _recursive_pre_evaluation(self, universe, backtest_times):
         """Recursively initialize estimator tree for backtest.
@@ -69,10 +68,11 @@ class PolicyEstimator(Estimator):
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "_recursive_pre_evaluation"):
-                subestimator._recursive_pre_evaluation(universe, backtest_times)
+                subestimator._recursive_pre_evaluation(
+                    universe, backtest_times)
         if hasattr(self, "_pre_evaluation"):
             self._pre_evaluation(universe, backtest_times)
-    
+
 
 class CvxpyExpressionEstimator(PolicyEstimator):
     """Base class for estimators that are Cvxpy expressions."""
@@ -90,8 +90,8 @@ class CvxpyExpressionEstimator(PolicyEstimator):
         In MultiPeriodOptimization policies this is called separately
         for costs and constraints at different look-ahead steps with
         the corresponding w_plus and z.
-        
-        
+
+
         :param w_plus: post-trade weights 
         :type w_plus: cvxpy.Variable
         :param z: trade weights 
@@ -125,22 +125,22 @@ class DataEstimator(PolicyEstimator):
 
     """
 
-    def __init__(self, data, use_last_available_time=False, allow_nans=False, 
-        compile_parameter=False, non_negative=False, positive_semi_definite=False):
+    def __init__(self, data, use_last_available_time=False, allow_nans=False,
+                 compile_parameter=False, non_negative=False, positive_semi_definite=False):
         self.data = data
         self.use_last_available_time = use_last_available_time
         self.allow_nans = allow_nans
         self.compile_parameter = compile_parameter
         self.non_negative = non_negative
-        self.positive_semi_definite =positive_semi_definite
-    
+        self.positive_semi_definite = positive_semi_definite
+
     def _recursive_pre_evaluation(self, universe, backtest_times):
         # super()._recursive_pre_evaluation(universe, backtest_times)
         if self.compile_parameter:
-            value = self.internal__recursive_values_in_time(t=backtest_times[0])
-            self.parameter = cp.Parameter(value.shape if hasattr(value, "shape") else (), 
-                PSD=self.positive_semi_definite, nonneg=self.non_negative)
-            
+            value = self.internal__recursive_values_in_time(
+                t=backtest_times[0])
+            self.parameter = cp.Parameter(value.shape if hasattr(value, "shape") else (),
+                                          PSD=self.positive_semi_definite, nonneg=self.non_negative)
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned.
@@ -168,7 +168,8 @@ class DataEstimator(PolicyEstimator):
             if np.any(np.isnan(result)) and not self.allow_nans:
                 message = f"{self.__class__.__name__}._recursive_values_in_time result is an array with np.nan's."
                 if hasattr(self.data, 'columns') and len(self.data.columns) == len(result):
-                    message += "Specifically, the problem is with symbol(s): " + str(self.data.columns[np.isnan(result)])
+                    message += "Specifically, the problem is with symbol(s): " + str(
+                        self.data.columns[np.isnan(result)])
                 raise MissingValuesError(message)
             else:
                 return result
@@ -234,9 +235,10 @@ class DataEstimator(PolicyEstimator):
                 for example, a pandas object)
 
         """
-        self.current_value = self.internal__recursive_values_in_time(t, *args, **kwargs)
+        self.current_value = self.internal__recursive_values_in_time(
+            t, *args, **kwargs)
         # we do this because in some cases they never get compiled
-        if hasattr(self, 'parameter'): 
+        if hasattr(self, 'parameter'):
             self.parameter.value = self.current_value
         return self.current_value
 
@@ -315,13 +317,13 @@ class DataEstimator(PolicyEstimator):
 #
 #     def _recursive_values_in_time(self, t, **kwargs):
 #         self.parameter.value = self.internal__recursive_values_in_time(t, **kwargs)
-        
-        
+
+
 #
 # class ParameterEstimator(DataEstimator):
 #     def __init__(self, *args, **kwargs):
 #         super().__init__(self, *args, compile_parameter=True, **kwargs)
-        
+
 # class ParameterEstimator(cvxpy.Parameter, DataEstimator, PolicyEstimator):
 #     """Data estimator of point-in-time values that contains a Cvxpy Parameter.
 #

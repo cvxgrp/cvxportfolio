@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .estimator import DataEstimator 
+from .estimator import DataEstimator
 import logging
 import warnings
 
@@ -37,24 +37,20 @@ __all__ = [
 ]
 
 
-
-
 class BaseRiskModel(BaseCost):
     pass
 
 
-
-
 class FullCovariance(BaseRiskModel):
     """Quadratic risk model with full covariance matrix.
-    
+
     :param Sigma: DataFrame of covariance matrices
         supplied by the user, or None if fitting from the past data.
         The DataFrame can either represents a single constant covariance matrix
         or one for each point in time.
     :type Sigma: pandas.DataFrame or None
-    
-    
+
+
     """
     # r"""Quadratic risk model with full covariance matrix.
     #
@@ -118,15 +114,15 @@ class FullCovariance(BaseRiskModel):
             self.Sigma = DataEstimator(Sigma)
             self.alreadyfactorized = False
         else:
-            self.Sigma = HistoricalFactorizedCovariance(kelly=kelly) 
+            self.Sigma = HistoricalFactorizedCovariance(kelly=kelly)
             self.alreadyfactorized = True
-            
+
     def _pre_evaluation(self, universe, backtest_times):
         self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
     def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        
+
         if self.alreadyfactorized:
             self.Sigma_sqrt.value = self.Sigma.current_value
         else:
@@ -136,15 +132,17 @@ class FullCovariance(BaseRiskModel):
             self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        self.cvxpy_expression = cp.sum_squares(self.Sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
+        self.cvxpy_expression = cp.sum_squares(
+            self.Sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
         return self.cvxpy_expression
+
 
 class RiskForecastError(BaseRiskModel):
     """Risk forecast error. 
-    
+
     Implements the model defined in page 31 of the book. Takes same arguments
     as :class:`DiagonalCovariance`.
-    
+
     :param sigma_squares: per-stock variances, indexed by time if DataFrame.
         If None it will be fitted on past data.
     :type sigma_squares: pd.DataFrame or pd.Series or None
@@ -152,19 +150,20 @@ class RiskForecastError(BaseRiskModel):
 
     def __init__(self, sigma_squares=None):
         if sigma_squares is None:
-            self.sigma_squares = HistoricalVariance(kelly=True) #None None
+            self.sigma_squares = HistoricalVariance(kelly=True)  # None None
         else:
             self.sigma_squares = DataEstimator(sigma_squares)
         # self.standard_deviations = ParameterEstimator(standard_deviations)
         # self.zeroforcash=True
         # self.kelly=True
-        
+
     def _pre_evaluation(self, universe, backtest_times):
-        self.sigmas_parameter = cp.Parameter(len(universe)-1, nonneg=True)#+self.kelly))
+        self.sigmas_parameter = cp.Parameter(
+            len(universe)-1, nonneg=True)  # +self.kelly))
 
     def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        
+
         # if self.sigma_squares is None:
         #     sigma_squares = past_returns.var(ddof=0)
         #     if self.kelly:
@@ -175,15 +174,15 @@ class RiskForecastError(BaseRiskModel):
         #     sigma_squares = sigma_squares.values
         # else:
         #     sigma_squares = self.sigma_squares.current_value
-            
+
         sigma_squares = self.sigma_squares.current_value
-        
+
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
         return cp.square(cp.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
-                
+
 
 class DiagonalCovariance(BaseRiskModel):
     """Diagonal covariance matrix, user-provided or fit from data.
@@ -197,18 +196,18 @@ class DiagonalCovariance(BaseRiskModel):
         if not sigma_squares is None:
             self.sigma_squares = DataEstimator(sigma_squares)
         else:
-            self.sigma_squares = HistoricalVariance(kelly=True) #None
-        #self.zeroforcash = True
-        #self.kelly = True
+            self.sigma_squares = HistoricalVariance(kelly=True)  # None
+        # self.zeroforcash = True
+        # self.kelly = True
         # self.standard_deviations = ParameterEstimator(standard_deviations)
-        
+
     def _pre_evaluation(self, universe, backtest_times):
-        self.sigmas_parameter = cp.Parameter(len(universe)-1) #+self.kelly))
+        self.sigmas_parameter = cp.Parameter(len(universe)-1)  # +self.kelly))
 
     def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-        #super()._recursive_values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
-        
+        # super()._recursive_values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
+
         # if self.sigma_squares is None:
         #     sigma_squares = past_returns.var(ddof=0)
         #     if self.kelly:
@@ -219,7 +218,7 @@ class DiagonalCovariance(BaseRiskModel):
         #     sigma_squares = sigma_squares.values
         # else:
         #     sigma_squares = self.sigma_squares.current_value
-        
+
         sigma_squares = self.sigma_squares.current_value
 
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
@@ -231,14 +230,14 @@ class DiagonalCovariance(BaseRiskModel):
 
 class FactorModelCovariance(BaseRiskModel):
     """Factor model covariance, either user-provided or fitted from the data.
-    
+
     It has the structure
-    
+
     :math:`F F^T + \mathbf{diag}(d)`
-    
+
     where :math:`F` is a *tall* matrix (many more rows than columns) and the vector
     :math:`d` is all non-negative. 
-    
+
     :param F: exposure matrices either constant or varying in time; if so, use a pandas multiindexed
          dataframe. If None it will be fitted.
     :type F: pd.DataFrame or None
@@ -265,12 +264,13 @@ class FactorModelCovariance(BaseRiskModel):
 
     factor_Sigma = None
 
-    def __init__(self, F=None, d=None, num_factors=1, kelly=True):#, normalize=False):
-        self.F = F if F is None else DataEstimator(F, compile_parameter=True) 
-        self.d = d if d is None else DataEstimator(d) 
+    # , normalize=False):
+    def __init__(self, F=None, d=None, num_factors=1, kelly=True):
+        self.F = F if F is None else DataEstimator(F, compile_parameter=True)
+        self.d = d if d is None else DataEstimator(d)
         if (self.F is None) or (self.d is None):
             self.fit = True
-            self.Sigma = HistoricalFactorizedCovariance(kelly=kelly) #Sigma
+            self.Sigma = HistoricalFactorizedCovariance(kelly=kelly)  # Sigma
         else:
             self.fit = False
         self.num_factors = num_factors
@@ -278,11 +278,11 @@ class FactorModelCovariance(BaseRiskModel):
     def _pre_evaluation(self, universe, backtest_times):
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         effective_num_factors = min(self.num_factors, len(universe)-1)
-        self.F_parameter = cp.Parameter((effective_num_factors, len(universe)-1)) if self.F is None else self.F.parameter
-
+        self.F_parameter = cp.Parameter((effective_num_factors, len(
+            universe)-1)) if self.F is None else self.F.parameter
 
     def _values_in_time(self, t, past_returns, **kwargs):
-        
+
         if self.fit:
             Sigmasqrt = self.Sigma.current_value
             # numpy eigendecomposition has largest eigenvalues last
@@ -292,16 +292,17 @@ class FactorModelCovariance(BaseRiskModel):
             d = self.d.current_value
         self.idyosync_sqrt_parameter.value = np.sqrt(d)
 
-
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        self.expression = cp.sum_squares(cp.multiply(self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
+        self.expression = cp.sum_squares(cp.multiply(
+            self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
         assert self.expression.is_dcp(dpp=True)
 
-        self.expression += cp.sum_squares(self.F_parameter @ w_plus_minus_w_bm[:-1])
+        self.expression += cp.sum_squares(self.F_parameter @
+                                          w_plus_minus_w_bm[:-1])
         assert self.expression.is_dcp(dpp=True)
 
         return self.expression
-        
+
 
 class WorstCaseRisk(BaseRiskModel):
     """Select the most restrictive risk model for each value of the allocation vector.

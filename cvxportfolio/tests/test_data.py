@@ -15,7 +15,8 @@
 """Unit tests for the data interfaces."""
 
 import unittest
-import shutil, tempfile
+import shutil
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -34,52 +35,51 @@ from cvxportfolio.data import (
 
 
 class TestData(unittest.TestCase):
-    
+
     @classmethod
     def setUpClass(cls):
         """Initialize data directory."""
         cls.datadir = Path(tempfile.mkdtemp())
         print('created', cls.datadir)
-        
+
     @classmethod
     def tearDownClass(cls):
         """Remove data directory."""
         print('removing', cls.datadir)
         shutil.rmtree(cls.datadir)
-        
-        
+
     def test_time_series(self):
         ts = TimeSeries("ZM", base_location=self.datadir)
         assert not hasattr(ts, "data")
         ts._recursive_pre_evaluation()
         assert np.all(
-            ts._recursive_values_in_time(pd.Timestamp("2023-04-11"), "foo", bar=None)
+            ts._recursive_values_in_time(
+                pd.Timestamp("2023-04-11"), "foo", bar=None)
             == ts.data.loc["2023-04-11"]
         )
-        
+
     def test_yfinance_download(self):
         """Test YfinanceBase."""
 
         data = YfinanceBase().download("AAPL", start="2023-04-01", end="2023-04-15")
         print(data)
         print(data.loc["2023-04-10"]["Return"])
-        print(data.loc["2023-04-11", "Open"] / data.loc["2023-04-10", "Open"] - 1)
+        print(data.loc["2023-04-11", "Open"] /
+              data.loc["2023-04-10", "Open"] - 1)
         self.assertTrue(np.isclose(
             data.loc["2023-04-10", "Return"],
-            data.loc["2023-04-11", "Open"] / data.loc["2023-04-10", "Open"] - 1,
+            data.loc["2023-04-11", "Open"] /
+            data.loc["2023-04-10", "Open"] - 1,
         ))
         self.assertTrue(np.isnan(data.iloc[-1]["Close"]))
-    
-    
-    
+
     def test_fred(self):
         store = FredRate(self.datadir)
         data = store.update_and_load("DFF")
         print(data)
         self.assertTrue(np.isclose((1 + data["2023-04-10"]) **
-                          store.trading_days, 1 + 4.83 / 100))
-                          
-                          
+                                   store.trading_days, 1 + 4.83 / 100))
+
     def test_fred_base(self):
         data = FredBase().download("DFF")
         self.assertTrue(data["2023-04-06"] == 4.83)
@@ -88,10 +88,7 @@ class TestData(unittest.TestCase):
         olddata = data.iloc[:-123]
         newdata = FredBase().download("DFF", olddata)
         self.assertTrue(np.all(data == newdata))
-        
 
-        
-        
     def test_yfinance(self):
         """Test yfinance ability to store and retrieve."""
 
@@ -102,7 +99,8 @@ class TestData(unittest.TestCase):
 
         self.assertTrue(np.isclose(
             data.loc["2023-04-05", "Return"],
-            data.loc["2023-04-06", "Open"] / data.loc["2023-04-05", "Open"] - 1,
+            data.loc["2023-04-06", "Open"] /
+            data.loc["2023-04-05", "Open"] - 1,
         ))
 
         data1 = store.update_and_load("ZM")
@@ -115,9 +113,6 @@ class TestData(unittest.TestCase):
 
         self.assertTrue(np.allclose(
             data1.loc[data.index[:-1]].Return, data.iloc[:-1].Return))
-    
-    
-
 
     def test_sqlite3_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
@@ -126,30 +121,26 @@ class TestData(unittest.TestCase):
     def test_local_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
         self.base_test_series(LocalDataStore, self.datadir)
-  
+
     def test_pickle_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
         self.base_test_series(PickleStore, self.datadir)
-  
-    
+
     def test_sqlite3_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
         self.base_test_dataframe(SqliteDataStore, self.datadir)
 
-
     def test_local_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
         self.base_test_dataframe(LocalDataStore, self.datadir)
-    
+
     def test_pickle_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
         self.base_test_dataframe(PickleStore, self.datadir)
-    
 
     def test_local_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
         self.base_test_multiindex(LocalDataStore, self.datadir)
-
 
     def test_sqlite3_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
@@ -157,7 +148,7 @@ class TestData(unittest.TestCase):
 
     def test_pickle_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self.base_test_multiindex(PickleStore, self.datadir)  
+        self.base_test_multiindex(PickleStore, self.datadir)
 
     def base_test_series(self, storeclass, *args, **kwargs):
         """Test storing and retrieving of a Series with datetime index."""
@@ -169,7 +160,8 @@ class TestData(unittest.TestCase):
                     "2020-01-01",
                     "2020-01-10"),
                 name="prova1"),
-            pd.Series(3, pd.date_range("2020-01-01", "2020-01-10"), name="prova2"),
+            pd.Series(3, pd.date_range("2020-01-01",
+                      "2020-01-10"), name="prova2"),
             pd.Series(
                 "ciao", pd.date_range("2020-01-01", "2020-01-02", freq="H"), name="prova3"
             ),
@@ -203,8 +195,7 @@ class TestData(unittest.TestCase):
             self.assertTrue(data.dtypes == data1.dtypes)
 
         self.assertTrue(store.load("blahblah") is None)
-        
-        
+
     def base_test_dataframe(self, storeclass, *args, **kwargs):
         """Test storing and retrieving of a DataFrame with datetime index."""
         store = storeclass(*args, **kwargs)
@@ -231,7 +222,7 @@ class TestData(unittest.TestCase):
         self.assertTrue(all(data == data1))
         self.assertTrue(all(data.index == data1.index))
         self.assertTrue(all(data.dtypes == data1.dtypes))
-            
+
     def base_test_multiindex(self, storeclass, *args, **kwargs):
         """Test storing and retrieving of a Series or DataFrame with multi-index."""
         store = storeclass(*args, **kwargs)
@@ -304,37 +295,10 @@ class TestData(unittest.TestCase):
         print(data1.dtypes)
 
         self.assertTrue(all(data == data1))
-        self.assertTrue( all(data.index == data1.index))
-        self.assertTrue( all(data.index.dtypes == data1.index.dtypes))
-        self.assertTrue( all(data.dtypes == data1.dtypes))
-        
+        self.assertTrue(all(data.index == data1.index))
+        self.assertTrue(all(data.index.dtypes == data1.index.dtypes))
+        self.assertTrue(all(data.dtypes == data1.dtypes))
+
+
 if __name__ == '__main__':
     unittest.main()
-        
-
-
-
-
-
-
-
-
-
-
-
-                      
-                      
-
-
-
-
-
-
-
-
-
-
-
-
-
-

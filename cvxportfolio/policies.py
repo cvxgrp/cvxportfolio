@@ -201,17 +201,17 @@ class FixedWeights(BaseTradingPolicy):
         try:
             super()._recursive_values_in_time(t=t, current_weights=current_weights, **kwargs)
             return pd.Series(self.target_weights.current_value,
-                    current_weights.index) - current_weights
+                             current_weights.index) - current_weights
         except MissingValuesError:
             return pd.Series(0., current_weights.index)
-            
-            
+
+
 class Uniform(FixedWeights):
     """Uniform allocation on non-cash assets."""
-    
+
     def __init__(self):
         pass
-    
+
     def _pre_evaluation(self, universe, backtest_times):
         target_weights = pd.Series(1., universe)
         target_weights.iloc[-1] = 0
@@ -272,7 +272,7 @@ class AdaptiveRebalance(BaseTradingPolicy):
         target is larger than this. Pass a Series if you want to vary it in
         time.
     :type tracking_error: pd.Series or pd.DataFrame
-    
+
     """
 
     def __init__(self, target, tracking_error):
@@ -281,12 +281,10 @@ class AdaptiveRebalance(BaseTradingPolicy):
 
     def _values_in_time(self, t, current_weights, **kwargs):
         if np.linalg.norm(current_weights - self.target.current_value) > \
-          self.tracking_error.current_value:
+                self.tracking_error.current_value:
             return self.target.current_value - current_weights
         else:
             return pd.Series(0., current_weights.index)
-
-
 
 
 class MultiPeriodOptimization(BaseTradingPolicy):
@@ -303,7 +301,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
     In addition we offer a `terminal_constraint` argument to
     simply impose that at the last step in the optimization the
     post-trade weights match the given weights (see page 51).
-    
+
     When it computes the trajectory of weights for the future
     it only returns the first step (to the Simulator, typically).
     The future steps (planning horizon) are by default not returned.
@@ -343,17 +341,21 @@ class MultiPeriodOptimization(BaseTradingPolicy):
     def __init__(self, objective, constraints=[], include_cash_return=True, planning_horizon=None, terminal_constraint=None, benchmark=CashBenchmark, **kwargs):
         if hasattr(objective, '__iter__'):
             if not (hasattr(constraints, '__iter__') and len(constraints) and (hasattr(constraints[0], '__iter__') and len(objective) == len(constraints))):
-                raise SyntaxError('If you pass objective as a list, constraints should be a list of lists of the same length.')
+                raise SyntaxError(
+                    'If you pass objective as a list, constraints should be a list of lists of the same length.')
             self.planning_horizon = len(objective)
             self.objective = objective
             self.constraints = constraints
         else:
             if not np.isscalar(planning_horizon):
-                raise SyntaxError('If `objective` and `constraints` are the same for all steps you must specify `planning_horizon`.')
+                raise SyntaxError(
+                    'If `objective` and `constraints` are the same for all steps you must specify `planning_horizon`.')
             self.planning_horizon = planning_horizon
-            self.objective = [copy.deepcopy(objective) for i in range(planning_horizon)] if planning_horizon > 1 else [objective]
-            self.constraints = [copy.deepcopy(constraints) for i in range(planning_horizon)] if planning_horizon > 1 else [constraints]
-        
+            self.objective = [copy.deepcopy(objective) for i in range(
+                planning_horizon)] if planning_horizon > 1 else [objective]
+            self.constraints = [copy.deepcopy(constraints) for i in range(
+                planning_horizon)] if planning_horizon > 1 else [constraints]
+
         self.include_cash_return = include_cash_return
         if self.include_cash_return:
             self.objective = [el + CashReturn() for el in self.objective]
@@ -361,89 +363,99 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         self.benchmark = benchmark() if isinstance(benchmark, type) else benchmark
         self.cvxpy_kwargs = kwargs
 
-    def _compile_to_cvxpy(self):#, w_plus, z, value):
+    def _compile_to_cvxpy(self):  # , w_plus, z, value):
         """Compile all cvxpy expressions and the problem."""
         self.cvxpy_objective = [
-            el._compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i]) 
+            el._compile_to_cvxpy(
+                self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i])
             for i, el in enumerate(self.objective)]
         self.cvxpy_objective = sum(self.cvxpy_objective)
         assert self.cvxpy_objective.is_dcp()  # dpp=True)
         assert self.cvxpy_objective.is_concave()
         self.cvxpy_constraints = [
-            flatten_heterogeneous_list([constr._compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i]) 
-                for constr in el])
+            flatten_heterogeneous_list([constr._compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i])
+                                        for constr in el])
             for i, el in enumerate(self.constraints)]
         self.cvxpy_constraints = sum(self.cvxpy_constraints, [])
         self.cvxpy_constraints += [cp.sum(z) == 0 for z in self.z_at_lags]
         w = self.w_current
         for i in range(self.planning_horizon):
-            self.cvxpy_constraints.append(self.w_plus_at_lags[i] == self.z_at_lags[i] + w)
-            self.cvxpy_constraints.append(self.w_plus_at_lags[i] - self.w_bm == self.w_plus_minus_w_bm_at_lags[i])
+            self.cvxpy_constraints.append(
+                self.w_plus_at_lags[i] == self.z_at_lags[i] + w)
+            self.cvxpy_constraints.append(
+                self.w_plus_at_lags[i] - self.w_bm == self.w_plus_minus_w_bm_at_lags[i])
             w = self.w_plus_at_lags[i]
         if not self.terminal_constraint is None:
             self.cvxpy_constraints.append(w == self.terminal_constraint)
-        self.problem = cp.Problem(cp.Maximize(self.cvxpy_objective), self.cvxpy_constraints)
+        self.problem = cp.Problem(cp.Maximize(
+            self.cvxpy_objective), self.cvxpy_constraints)
         assert self.problem.is_dcp()  # dpp=True)
 
     def _recursive_pre_evaluation(self, universe, backtest_times):
         """No point in using recursive super() method."""
-        
+
         for obj in self.objective:
-            obj._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
+            obj._recursive_pre_evaluation(
+                universe=universe, backtest_times=backtest_times)
         for constr_at_lag in self.constraints:
             for constr in constr_at_lag:
-                constr._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
-        
-        self.benchmark._recursive_pre_evaluation(universe=universe, backtest_times=backtest_times)
+                constr._recursive_pre_evaluation(
+                    universe=universe, backtest_times=backtest_times)
+
+        self.benchmark._recursive_pre_evaluation(
+            universe=universe, backtest_times=backtest_times)
         self.w_bm = cp.Parameter(len(universe))
 
         # temporary
         # self.w_bm = np.zeros(len(universe))
         # self.w_bm[-1] = 1.
-        
+
         # initialize the problem
         # self.portfolio_value = cp.Parameter(nonneg=True)
         self.w_current = cp.Parameter(len(universe))
-        self.z_at_lags = [cp.Variable(len(universe)) for i in range(self.planning_horizon)] 
-        self.w_plus_at_lags = [cp.Variable(len(universe)) for i in range(self.planning_horizon)]
-        self.w_plus_minus_w_bm_at_lags = [cp.Variable(len(universe)) for i in range(self.planning_horizon)]
+        self.z_at_lags = [cp.Variable(len(universe))
+                          for i in range(self.planning_horizon)]
+        self.w_plus_at_lags = [cp.Variable(
+            len(universe)) for i in range(self.planning_horizon)]
+        self.w_plus_minus_w_bm_at_lags = [cp.Variable(
+            len(universe)) for i in range(self.planning_horizon)]
 
         # simulator will overwrite this with cached loaded from disk
         self.cache = {}
 
         # self._compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
-        
 
     def _recursive_values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
         """Update all cvxpy parameters and solve."""
-        
+
         assert current_portfolio_value > 0
         assert np.isclose(sum(current_weights), 1)
-                
+
         for i, obj in enumerate(self.objective):
-            obj._recursive_values_in_time(t=t, current_weights=current_weights, 
-                    current_portfolio_value=current_portfolio_value, 
-                    past_returns=past_returns, past_volumes=past_volumes, 
-                    current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)     
-                     
+            obj._recursive_values_in_time(t=t, current_weights=current_weights,
+                                          current_portfolio_value=current_portfolio_value,
+                                          past_returns=past_returns, past_volumes=past_volumes,
+                                          current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)
+
         for i, constr_at_lag in enumerate(self.constraints):
             for constr in constr_at_lag:
-                constr._recursive_values_in_time(t=t, current_weights=current_weights, 
-                    current_portfolio_value=current_portfolio_value, 
-                    past_returns=past_returns, past_volumes=past_volumes, 
-                    current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)   
-                    
-        self.benchmark._recursive_values_in_time(t=t, current_weights=current_weights, 
-                    current_portfolio_value=current_portfolio_value, 
-                    past_returns=past_returns, past_volumes=past_volumes, 
-                    current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs) 
-                    
+                constr._recursive_values_in_time(t=t, current_weights=current_weights,
+                                                 current_portfolio_value=current_portfolio_value,
+                                                 past_returns=past_returns, past_volumes=past_volumes,
+                                                 current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)
+
+        self.benchmark._recursive_values_in_time(t=t, current_weights=current_weights,
+                                                 current_portfolio_value=current_portfolio_value,
+                                                 past_returns=past_returns, past_volumes=past_volumes,
+                                                 current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)
+
         self.w_bm.value = self.benchmark.current_value
         self.w_current.value = current_weights.values
 
         try:
             with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message='Solution may be inaccurate')
+                warnings.filterwarnings(
+                    "ignore", message='Solution may be inaccurate')
                 self.problem.solve(**self.cvxpy_kwargs)
         except cp.SolverError:
             raise PortfolioOptimizationError(
@@ -461,7 +473,6 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         return pd.Series(self.z_at_lags[0].value, current_weights.index)
 
 
-    
 class SinglePeriodOptimization(MultiPeriodOptimization):
     r"""Single Period Optimization policy.
 
@@ -487,7 +498,5 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     """
 
     def __init__(self, objective, constraints=[], include_cash_return=True, benchmark=CashBenchmark, **kwargs):
-        super().__init__([objective], [constraints], include_cash_return=include_cash_return, 
-            benchmark=benchmark, **kwargs)
-        
-
+        super().__init__([objective], [constraints], include_cash_return=include_cash_return,
+                         benchmark=benchmark, **kwargs)

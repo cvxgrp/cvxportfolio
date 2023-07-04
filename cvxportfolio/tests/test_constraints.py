@@ -24,25 +24,31 @@ import cvxportfolio as cvx
 
 
 class TestConstraints(unittest.TestCase):
-    
+
     @classmethod
     def setUpClass(cls):
         """Load the data and initialize cvxpy vars."""
-        cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
-        cls.returns = pd.read_csv(Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
-        cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
+        cls.sigma = pd.read_csv(
+            Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
+        cls.returns = pd.read_csv(
+            Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
+        cls.volumes = pd.read_csv(
+            Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
         cls.w_plus = cp.Variable(cls.returns.shape[1])
         cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
         cls.z = cp.Variable(cls.returns.shape[1])
         cls.N = cls.returns.shape[1]
-        
+
     def build_constraint(self, constraint, t=None):
         """Initialize constraint, build expression, and point it to given time."""
-        constraint._recursive_pre_evaluation(self.returns.columns, self.returns.index)
-        cvxpy_expression = constraint._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
-        constraint._recursive_values_in_time(t=pd.Timestamp("2020-01-01") if t is None else t, current_portfolio_value=1000)
+        constraint._recursive_pre_evaluation(
+            self.returns.columns, self.returns.index)
+        cvxpy_expression = constraint._compile_to_cvxpy(
+            self.w_plus, self.z, self.w_plus_minus_w_bm)
+        constraint._recursive_values_in_time(t=pd.Timestamp(
+            "2020-01-01") if t is None else t, current_portfolio_value=1000)
         return cvxpy_expression
-        
+
     def test_long_only(self):
         model = cvx.LongOnly()
         cons = self.build_constraint(model)
@@ -50,34 +56,34 @@ class TestConstraints(unittest.TestCase):
         self.assertTrue(cons.value())
         self.w_plus.value = -np.ones(self.N)
         self.assertFalse(cons.value())
-        
-    
+
     def test_long_cash(self):
         model = cvx.LongCash()
         cons = self.build_constraint(model)
-        self.w_plus.value = np.ones( self.N)
+        self.w_plus.value = np.ones(self.N)
         self.assertTrue(cons.value())
-        tmp = np.ones( self.N)
+        tmp = np.ones(self.N)
         tmp[-1] = -1
         self.w_plus.value = tmp
         self.assertTrue(cons.is_dcp())
         self.assertFalse(cons.value())
-        
+
     def test_min_cash(self):
-        model = cvx.MinCashBalance(10000) # USD
+        model = cvx.MinCashBalance(10000)  # USD
         cons = self.build_constraint(model)
-        self.w_plus.value = np.zeros( self.N)
+        self.w_plus.value = np.zeros(self.N)
         self.w_plus.value[-1] = 1
-        model._recursive_values_in_time(t=pd.Timestamp("2020-01-01"), current_portfolio_value=10001)
+        model._recursive_values_in_time(t=pd.Timestamp(
+            "2020-01-01"), current_portfolio_value=10001)
         self.assertTrue(cons.value())
-        model._recursive_values_in_time(t=pd.Timestamp("2020-01-01"), current_portfolio_value=9999)
-        self.assertFalse(cons.value())        
-        
+        model._recursive_values_in_time(t=pd.Timestamp(
+            "2020-01-01"), current_portfolio_value=9999)
+        self.assertFalse(cons.value())
 
     def test_dollar_neutral(self):
         model = cvx.DollarNeutral()
         cons = self.build_constraint(model)
-        tmpvalue = np.zeros( self.N)
+        tmpvalue = np.zeros(self.N)
         tmpvalue[-1] = 1 - sum(tmpvalue[:-1])
         self.w_plus.value = tmpvalue
         self.assertTrue(cons.value())
@@ -85,7 +91,7 @@ class TestConstraints(unittest.TestCase):
         tmpvalue[-1] = 1 - sum(tmpvalue[:-1])
         self.w_plus.value = tmpvalue
         self.assertFalse(cons.value())
-        
+
     def test_leverage_limit(self):
         model = cvx.LeverageLimit(2)
         cons = self.build_constraint(model)
@@ -103,7 +109,7 @@ class TestConstraints(unittest.TestCase):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-    
+
     def test_leverage_limit_in_time(self):
         limits = pd.Series(index=self.returns.index, data=2)
         limits.iloc[1] = 7
@@ -116,7 +122,7 @@ class TestConstraints(unittest.TestCase):
         self.assertTrue(cons.value())
         model._recursive_values_in_time(t=self.returns.index[2])
         self.assertFalse(cons.value())
-        
+
     def test_max_weights(self):
         model = cvx.MaxWeights(2)
         cons = self.build_constraint(model)
@@ -150,7 +156,7 @@ class TestConstraints(unittest.TestCase):
         self.assertTrue(cons.value())
         model._recursive_values_in_time(t=self.returns.index[2])
         self.assertFalse(cons.value())
-        
+
     def test_min_weights(self):
         model = cvx.MinWeights(2)
         cons = self.build_constraint(model, self.returns.index[1])
@@ -183,8 +189,9 @@ class TestConstraints(unittest.TestCase):
         self.assertFalse(cons.value())
 
     def test_factor_max_limit(self):
-        
-        model = cvx.FactorMaxLimit(np.ones((self.N - 1, 2)), np.array([0.5, 1]))
+
+        model = cvx.FactorMaxLimit(
+            np.ones((self.N - 1, 2)), np.array([0.5, 1]))
         cons = self.build_constraint(model, self.returns.index[1])
 
         self.w_plus.value = np.ones(self.N) / self.N
@@ -194,10 +201,9 @@ class TestConstraints(unittest.TestCase):
         tmp[1] = -3
         self.w_plus.value = tmp
         self.assertFalse(cons.value())
-        
 
         model = cvx.FactorMaxLimit(np.ones((self.N - 1, 2)), np.array([4, 4]))
-        cons = self.build_constraint(model,self.returns.index[1])
+        cons = self.build_constraint(model, self.returns.index[1])
 
         tmp = np.zeros(self.N)
         tmp[0] = 4
@@ -206,8 +212,9 @@ class TestConstraints(unittest.TestCase):
         self.assertTrue(cons.value())
 
     def test_factor_min_limit(self):
-        
-        model = cvx.FactorMinLimit(np.ones((self.N - 1, 2)), np.array([0.5, 1]))
+
+        model = cvx.FactorMinLimit(
+            np.ones((self.N - 1, 2)), np.array([0.5, 1]))
         cons = self.build_constraint(model, self.returns.index[1])
 
         self.w_plus.value = np.ones(self.N) / self.N
@@ -215,10 +222,10 @@ class TestConstraints(unittest.TestCase):
         tmp = np.zeros(self.N)
         tmp[0] = 4
         tmp[1] = -3
-        
+
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        
+
         model = cvx.FactorMinLimit(np.ones((self.N - 1, 2)), np.array([4, 4]))
         cons = self.build_constraint(model, self.returns.index[1])
         # cons = model.weight_expr(t, self.w_plus, None, None)[0]
@@ -239,23 +246,22 @@ class TestConstraints(unittest.TestCase):
         tmp[1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        
+
     def test_turnover_limit(self):
         model = cvx.TurnoverLimit(0.1)
         cons = self.build_constraint(model)
         self.z.value = np.zeros(self.N)
         self.z.value[-1] = -sum(self.z.value[:-1])
         self.assertTrue(cons.value())
-        
+
         self.z.value[1] = 0.2
         self.z.value[-1] = -sum(self.z.value[:-1])
         self.assertTrue(cons.value())
-        
+
         self.z.value[2] = -0.01
         self.z.value[-1] = -sum(self.z.value[:-1])
         self.assertFalse(cons.value())
 
-        
     def test_participation_rate(self):
         """Test trading constraints."""
 
@@ -263,9 +269,12 @@ class TestConstraints(unittest.TestCase):
 
         # avg daily value limits.
         value = 1e6
-        model = cvx.ParticipationRateLimit(self.volumes, max_fraction_of_volumes=0.1)
-        model._recursive_pre_evaluation(self.returns.columns, self.returns.index)
-        cons = model._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+        model = cvx.ParticipationRateLimit(
+            self.volumes, max_fraction_of_volumes=0.1)
+        model._recursive_pre_evaluation(
+            self.returns.columns, self.returns.index)
+        cons = model._compile_to_cvxpy(
+            self.w_plus, self.z, self.w_plus_minus_w_bm)
         model._recursive_values_in_time(t=t, current_portfolio_value=value)
         print(model.portfolio_value.value)
         # cons = model.weight_expr(t, None, z, value)[0]
@@ -275,6 +284,7 @@ class TestConstraints(unittest.TestCase):
         self.assertTrue(cons.value())
         self.z.value = -100 * self.z.value  # -100*np.ones(n)
         self.assertFalse(cons.value())
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -17,16 +17,21 @@ env:
 	
 test:
 	$(BINDIR)/python -m unittest $(PROJECT)/tests/*.py
+	flake8 --per-file-ignores='$(PROJECT)/__init__.py:F401,F403' $(PROJECT)/*.py
 
 clean:
 	-rm -rf $(BUILDDIR)/* 
-	-rm -rf cvxportfolio.egg*
+	-rm -rf $(PROJECT).egg*
 
 cleanenv:
 	-rm -rf $(ENVDIR)/*
 
 docs:
 	$(BINDIR)/sphinx-build -E docs $(BUILDDIR); open build/index.html
+
+pep8:
+	# use autopep8 to make innocuous fixes 
+	$(BINDIR)/autopep8 -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
 release: test
 	$(BINDIR)/python bumpversion.py

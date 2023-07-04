@@ -23,7 +23,8 @@ class MissingValuesError(DataError):
     """Cvxportfolio tried to access numpy.nan values."""
 
     pass
-    
+
+
 class ForeCastError(DataError):
     """Forecast procedure failed."""
     pass

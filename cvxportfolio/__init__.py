@@ -25,6 +25,5 @@ from .constraints import *
 from .costs import *
 from .returns import *
 from .risks import *
-from .returns import *
 from .benchmark import *
 from .result import *
