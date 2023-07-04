@@ -66,7 +66,7 @@ class BaseWeightConstraint(BaseConstraint):
 class MarketNeutral(BaseWeightConstraint):
     """Initial implementation of market neutrality.
 
-    The benchmark portfolio weights are computed here 
+    The benchmark portfolio weights are computed here
     (weighting by rolling averages of the market volumes)
     but instead should be their own class (used as well
     by risk models, ...).
@@ -96,8 +96,8 @@ class TurnoverLimit(BaseTradeConstraint):
 
     See page 37 of the book.
 
-    :param delta: constant or changing in time turnover limit 
-    :type delta: float or pd.Series 
+    :param delta: constant or changing in time turnover limit
+    :type delta: float or pd.Series
     """
 
     def __init__(self, delta):
@@ -111,10 +111,10 @@ class ParticipationRateLimit(BaseTradeConstraint):
     """A limit on maximum trades size as a fraction of market volumes.
 
 
-    :param volumes: per-stock and per-day market volume estimates, or constant 
+    :param volumes: per-stock and per-day market volume estimates, or constant
         in time
     :type volumes: pd.Series or pd.DataFrame
-    :param max_fraction_of_volumes: max fraction of market volumes that we're 
+    :param max_fraction_of_volumes: max fraction of market volumes that we're
         allowed to trade
     :type max_fraction_of_volumes: float, pd.Series, pd.DataFrame
     """
@@ -130,9 +130,9 @@ class ParticipationRateLimit(BaseTradeConstraint):
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return cp.multiply(cp.abs(z[:-1]), self.portfolio_value) <= cp.multiply(
-            self.volumes.parameter, self.max_participation_rate.parameter
-        )
+        return cp.multiply(cp.abs(z[:-1]),
+                           self.portfolio_value) <= cp.multiply(self.volumes.parameter,
+                                                                self.max_participation_rate.parameter)
 
 
 class LongOnly(BaseWeightConstraint):
@@ -177,7 +177,7 @@ class LeverageLimit(BaseWeightConstraint):
 
     Leverage is defined as the :math:`\ell_1` norm of non-cash
     post-trade weights. Here we require that it is smaller than
-    a given value
+    a given value.
 
     :param limit: constant or varying in time leverage limit
     :type limit: float or pd.Series
@@ -194,7 +194,7 @@ class LeverageLimit(BaseWeightConstraint):
 class MinCashBalance(BaseWeightConstraint):
     """Requires that the cash account is larger than c_min dollars.
 
-    This uses logic to subtract cash used as margin for the short 
+    This uses logic to subtract cash used as margin for the short
     positions that is not documented in the book but is
     equivalent to the book definition's for long-only stock positions.
     """
@@ -299,10 +299,13 @@ class MaxWeightsAtTimes(MinMaxWeightsAtTimes):
 class FactorMaxLimit(BaseWeightConstraint):
     """A max limit on portfolio-wide factor (e.g. beta) exposure.
 
-    Args:
-        factor_exposure: An (n * r) matrix giving the factor exposure per asset
-        per factor, where n represents # of assets and r represents # of factors
-        limit: A series of list or a single list giving the factor limits
+    :param factor_exposure: DataFrame giving the factor exposure per asset
+        per factor, where the index are the assets and the columns are
+        the factors.
+    :type factor_exposure: pd.DataFrame
+    :param limit: Factor limits, either constant (pd.Series) or varying in time
+        pd.DataFrame.
+    :type limit: pd.Series or pd.DataFrame
     """
 
     def __init__(self, factor_exposure, limit):
@@ -319,10 +322,13 @@ class FactorMaxLimit(BaseWeightConstraint):
 class FactorMinLimit(BaseWeightConstraint):
     """A min limit on portfolio-wide factor (e.g. beta) exposure.
 
-    Args:
-        factor_exposure: An (n * r) matrix giving the factor exposure per asset
-        per factor, where n represents # of assets and r represents # of factors
-        limit: A series of list or a single list giving the factor limits
+    :param factor_exposure: DataFrame giving the factor exposure per asset
+        per factor, where the index are the assets and the columns are
+        the factors.
+    :type factor_exposure: pd.DataFrame
+    :param limit: Factor limits, either constant (pd.Series) or varying in time
+        pd.DataFrame.
+    :type limit: pd.Series or pd.DataFrame
     """
 
     def __init__(self, factor_exposure, limit):

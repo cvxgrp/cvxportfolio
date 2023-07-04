@@ -28,6 +28,8 @@ import inspect
 
 from .estimator import CvxpyExpressionEstimator,  DataEstimator
 from .utils import periods_per_year
+from .hyperparameters import HyperParameter
+
 __all__ = ["HoldingCost", "TransactionCost",
            "StocksTransactionCost", "StocksHoldingCost"]
 
@@ -52,8 +54,9 @@ class BaseCost(CvxpyExpressionEstimator):
 
     def __mul__(self, other):
         """Multiply by constant."""
-        if not np.isscalar(other):
-            raise SyntaxError("You can only multiply cost by a scalar.")
+        if not np.isscalar(other) or isinstance(other, HyperParameter):
+            raise SyntaxError("You can only multiply cost by a scalar "
+                              + "or a HyperParameter instance. (Have you instantiated it?)")
         return CombinedCosts([self], [other])
 
     def __add__(self, other):
@@ -102,14 +105,15 @@ class CombinedCosts(BaseCost):
         for cost in costs:
             if not isinstance(cost, BaseCost):
                 raise SyntaxError(
-                    "You can only sum `BaseCost` instances to other `BaseCost` instances.")
+                    "You can only sum cost instances to other cost instances.")
         self.costs = costs
         self.multipliers = multipliers
 
     def __add__(self, other):
         """Add other (combined) cost to self."""
         if isinstance(other, CombinedCosts):
-            return CombinedCosts(self.costs + other.costs, self.multipliers + other.multipliers)
+            return CombinedCosts(self.costs + other.costs,
+                                 self.multipliers + other.multipliers)
         else:
             return CombinedCosts(self.costs + [other], self.multipliers + [1.0])
 

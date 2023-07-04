@@ -20,6 +20,7 @@ from this.
 import numpy as np
 import pandas as pd
 from .errors import MissingValuesError, DataError
+from .hyperparameters import HyperParameter
 import cvxpy as cp
 
 
@@ -57,6 +58,24 @@ class Estimator:
 
 class PolicyEstimator(Estimator):
     """Base class for (most) estimators that are part of policy objects."""
+    
+    
+    def _collect_hyperparameters(self):
+        """This method finds all hyperparameters defined as part of a policy.
+        
+        Currently we only look for multipliers (which are part of
+        CombinedCost objects).
+        """
+        result = []
+        if hasattr(self, 'multipliers'):
+            for el in self.multipliers:
+                if isinstance(el, HyperParameter):
+                    result.append(el)
+        for _, subestimator in self.__dict__.items():
+            if hasattr(subestimator, "_collect_hyperparameters"):
+                result += subestimator._collect_hyperparameters()
+        return result
+            
 
     def _recursive_pre_evaluation(self, universe, backtest_times):
         """Recursively initialize estimator tree for backtest.
