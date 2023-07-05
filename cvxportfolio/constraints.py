@@ -140,11 +140,17 @@ class LongOnly(BaseWeightConstraint):
 
     Imposes that at each point in time the post-trade
     weights are non-negative.
+    
+    :param nocash: if True requires that the cash account is zero.
+    :type nocash: bool
     """
+    
+    def __init__(self, nocash=False):
+        self.nocash = nocash
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return w_plus[:-1] >= 0
+        return [w_plus[:-1] >= 0] + ([w_plus[-1]==0] if self.nocash else [])
 
 
 class NoTrade(BaseTradeConstraint):

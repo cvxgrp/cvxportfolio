@@ -27,3 +27,4 @@ from .returns import *
 from .risks import *
 from .benchmark import *
 from .result import *
+from .hyperparameters import *

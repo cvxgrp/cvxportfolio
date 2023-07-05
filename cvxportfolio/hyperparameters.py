@@ -24,9 +24,18 @@ import copy
 
 import numpy as np
 
+__all__ = ['GammaRisk', 'GammaTrade', 'GammaHold']
+
 
 class HyperParameter:
-    """Base Hyper Parameter class."""
+    """Base Hyper Parameter class.
+    
+    Implements arithmetic operations between hyper parameters.
+    
+    You can sum and multiply HPs between themselves and with scalars,
+    and divide by a scalar. Arbitrary algebraic combination of these
+    operations are supported.
+    """
     
     def __mul__(self, other):
         if np.isscalar(other) or isinstance(other, HyperParameter):

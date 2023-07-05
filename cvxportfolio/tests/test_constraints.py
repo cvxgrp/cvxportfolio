@@ -22,6 +22,9 @@ import pandas as pd
 import cvxpy as cp
 import cvxportfolio as cvx
 
+def listvalue(li):
+    return all([el.value() for el in li])
+
 
 class TestConstraints(unittest.TestCase):
 
@@ -53,9 +56,13 @@ class TestConstraints(unittest.TestCase):
         model = cvx.LongOnly()
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones(self.N)
-        self.assertTrue(cons.value())
+        self.assertTrue(listvalue(cons))
         self.w_plus.value = -np.ones(self.N)
-        self.assertFalse(cons.value())
+        self.assertFalse(listvalue(cons))
+        model = cvx.LongOnly(nocash=True)
+        cons = self.build_constraint(model)
+        self.w_plus.value = np.ones(self.N)
+        self.assertFalse(listvalue(cons))
 
     def test_long_cash(self):
         model = cvx.LongCash()
