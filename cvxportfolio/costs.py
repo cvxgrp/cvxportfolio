@@ -136,6 +136,11 @@ class CombinedCosts(BaseCost):
             self.expression += multiplier * \
                 cost._compile_to_cvxpy(w_plus, z, portfolio_value)
         return self.expression
+        
+    def _collect_hyperparameters(self):
+        return sum([el._collect_hyperparameters() for el in self.costs], []) + \
+            sum([el._collect_hyperparameters() for el in self.multipliers if
+                hasattr(el, '_collect_hyperparameters')], []) 
 
 
 class HoldingCost(BaseCost):

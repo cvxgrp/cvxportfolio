@@ -24,6 +24,7 @@ import copy
 
 import numpy as np
 
+
 class HyperParameter:
     """Base Hyper Parameter class."""
     
@@ -57,6 +58,10 @@ class HyperParameter:
     def __neg__(self):
         return self * (-1)
         
+    def _collect_hyperparameters(self):
+        return [self]
+
+      
 class CombinedHyperParameter(HyperParameter):
     """Algebraic combination of HyperParameters."""
     
@@ -68,8 +73,14 @@ class CombinedHyperParameter(HyperParameter):
     def current_value(self):
         return sum([h.current_value * m 
             for h,m in zip(self.hyperparameters, self.multipliers)])
-    
-
+            
+    def _collect_hyperparameters(self):
+        """Collect (not combined) hyperparameters."""
+        result = []
+        for el in self.hyperparameters:
+            result += el._collect_hyperparameters()
+        return result
+        
 
 class RangeHyperParameter(HyperParameter):
     """Range Hyper Parameter.

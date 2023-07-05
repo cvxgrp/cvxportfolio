@@ -62,15 +62,8 @@ class PolicyEstimator(Estimator):
     
     def _collect_hyperparameters(self):
         """This method finds all hyperparameters defined as part of a policy.
-        
-        Currently we only look for multipliers (which are part of
-        CombinedCost objects).
         """
         result = []
-        if hasattr(self, 'multipliers'):
-            for el in self.multipliers:
-                if isinstance(el, HyperParameter):
-                    result.append(el)
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "_collect_hyperparameters"):
                 result += subestimator._collect_hyperparameters()

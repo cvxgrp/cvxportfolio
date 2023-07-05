@@ -471,6 +471,15 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             )
 
         return pd.Series(self.z_at_lags[0].value, current_weights.index)
+        
+    def _collect_hyperparameters(self):
+        result = []
+        for el in self.objective:
+            result += el._collect_hyperparameters()
+        for el in self.constraints:
+            for constr in el:
+                result += el._collect_hyperparameters()
+        return result
 
 
 class SinglePeriodOptimization(MultiPeriodOptimization):
