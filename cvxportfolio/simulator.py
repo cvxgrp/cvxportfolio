@@ -129,11 +129,11 @@ class MarketData:
             if returns is None:
                 raise SyntaxError(
                     "If you don't specify a universe you should pass `returns`.")
-            self.returns = pd.DataFrame(returns, copy=copy)
+            self.returns = pd.DataFrame(returns, copy=copy_dataframes)
             self.volumes = volumes if volumes is None else \
-                pd.DataFrame(volumes, copy=copy)
+                pd.DataFrame(volumes, copy=copy_dataframes)
             self.prices = prices if prices is None else \
-                pd.DataFrame(prices, copy=copy)
+                pd.DataFrame(prices, copy=copy_dataframes)
             if cash_key != returns.columns[-1]:
                 self._add_cash_column(cash_key)
 
