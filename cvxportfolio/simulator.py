@@ -109,6 +109,7 @@ class MarketData:
                  # TODO change logic for this (it's now this to not drop quarterly data)
                  max_contiguous_missing='365d',
                  trading_frequency=None,
+                 copy_dataframes=True,
                  **kwargs,
                  ):
 
@@ -128,12 +129,11 @@ class MarketData:
             if returns is None:
                 raise SyntaxError(
                     "If you don't specify a universe you should pass `returns`.")
-            # if not returns.shape[1] == volumes.shape[1] + 1:
-            #     raise SyntaxError(
-            #         "In `returns` you must include the cash returns as the last column (and not in `volumes`).")
-            self.returns = returns
-            self.volumes = volumes
-            self.prices = prices
+            self.returns = pd.DataFrame(returns, copy=copy)
+            self.volumes = volumes if volumes is None else \
+                pd.DataFrame(volumes, copy=copy)
+            self.prices = prices if prices is None else \
+                pd.DataFrame(prices, copy=copy)
             if cash_key != returns.columns[-1]:
                 self._add_cash_column(cash_key)
 
@@ -153,7 +153,8 @@ class MarketData:
                                  ] if not (self.volumes is None) else None,
             prices=self.prices[reduced_universe[:-1]
                                ] if not (self.prices is None) else None,
-            cash_key=self.cash_key)
+            cash_key=self.cash_key,
+            copy_dataframes=False)
 
     @property
     def min_history(self):

@@ -18,14 +18,28 @@ for example, by risk terms of optimization-based policies.
 import numpy as np
 import pandas as pd
 
-from .estimator import PolicyEstimator
+from .estimator import PolicyEstimator, DataEstimator
 
-__all__ = ['CashBenchmark', 'UniformBenchmark', 'MarketBenchmark']
+__all__ = ['Benchmark', 'CashBenchmark', 'UniformBenchmark', 'MarketBenchmark']
 
 
 class BaseBenchmark(PolicyEstimator):
     """Base class for cvxportfolio benchmark weights."""
     pass
+
+
+class Benchmark(BaseBenchmark, DataEstimator):
+    """User-provided benchmark.
+    
+    :param benchmark_weights: benchmark weights, either constant in
+        time (pd.Series indexed by assets) or varying in time
+        (pd.DataFrame indexed by time and whose columns are the assets).
+    :type benchmark_weights: pd.Series or pd.DataFrame
+    
+    """
+    
+    def __init__(self, benchmark_weights):
+        DataEstimator.__init__(self, benchmark_weights)
 
 
 class CashBenchmark(BaseBenchmark):
