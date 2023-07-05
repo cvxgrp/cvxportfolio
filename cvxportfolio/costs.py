@@ -54,7 +54,7 @@ class BaseCost(CvxpyExpressionEstimator):
 
     def __mul__(self, other):
         """Multiply by constant."""
-        if not np.isscalar(other) or isinstance(other, HyperParameter):
+        if not (np.isscalar(other) or isinstance(other, HyperParameter)):
             raise SyntaxError("You can only multiply cost by a scalar "
                               + "or a HyperParameter instance. (Have you instantiated it?)")
         return CombinedCosts([self], [other])
