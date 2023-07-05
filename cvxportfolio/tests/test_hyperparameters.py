@@ -62,11 +62,16 @@ class TestHyperparameters(unittest.TestCase):
         gtrade = GammaRisk(initial_value = .5)
         
         self.assertTrue((grisk + gtrade).current_value == 1.5)
+        self.assertTrue((grisk * gtrade).current_value == .5)
+        self.assertTrue((2 * grisk * gtrade).current_value == 1)
+        self.assertTrue((2 * grisk * gtrade + grisk).current_value == 2)
+        self.assertTrue((1.9 * grisk * gtrade + grisk).current_value == 1.95)
         self.assertTrue((grisk + 2*gtrade).current_value == 2)
         self.assertTrue((grisk/2 + 2*gtrade).current_value == 1.5)
         self.assertTrue((grisk/2 + 2 * (gtrade + gtrade/2)).current_value == 2)
         
     def test_collect_HPs(self):
+        """Collect hyperparameters."""
         
         pol = cvx.SinglePeriodOptimization(GammaRisk() * cvx.FullCovariance())
         

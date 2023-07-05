@@ -29,7 +29,7 @@ class HyperParameter:
     """Base Hyper Parameter class."""
     
     def __mul__(self, other):
-        if np.isscalar(other):
+        if np.isscalar(other) or isinstance(other, HyperParameter):
             return CombinedHyperParameter([self], [other])
         return NotImplemented
         
@@ -65,20 +65,23 @@ class HyperParameter:
 class CombinedHyperParameter(HyperParameter):
     """Algebraic combination of HyperParameters."""
     
-    def __init__(self, hyperparameters, multipliers):
-        self.hyperparameters = hyperparameters
-        self.multipliers = multipliers
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
         
     @property
     def current_value(self):
-        return sum([h.current_value * m 
-            for h,m in zip(self.hyperparameters, self.multipliers)])
+        return sum([
+            (le.current_value if hasattr(le, 'current_value') else le)
+            * (ri.current_value if hasattr(ri, 'current_value') else ri)
+            for le,ri in zip(self.left, self.right)])
             
     def _collect_hyperparameters(self):
         """Collect (not combined) hyperparameters."""
         result = []
-        for el in self.hyperparameters:
-            result += el._collect_hyperparameters()
+        for el in self.left + self.right:
+            if hasattr(el, '_collect_hyperparameters'):
+                result += el._collect_hyperparameters()
         return result
         
 
