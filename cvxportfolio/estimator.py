@@ -193,19 +193,19 @@ class DataEstimator(PolicyEstimator):
     def internal__recursive_values_in_time(self, t, *args, **kwargs):
         """Internal method called by `self._recursive_values_in_time`."""
 
-        if hasattr(self.data, "_recursive_values_in_time"):
-            return self.value_checker(
-                self.data._recursive_values_in_time(
-                    t, *args, **kwargs))
+        if hasattr(self.data, "values_in_time"):
+            _ = self.data.values_in_time(t=t, *args, **kwargs)
+            if hasattr(_, 'values'):
+                return self.value_checker(_.values)
+            else:
+                return self.value_checker(_)
+                                
 
-        if (
-            hasattr(self.data, "loc")
-            and hasattr(self.data, "index")
-            and (
-                isinstance(self.data.index, pd.DatetimeIndex)
+        if (hasattr(self.data, "loc") and hasattr(self.data, "index")
+            and (isinstance(self.data.index, pd.DatetimeIndex)
                 or (
-                    isinstance(self.data.index, pd.MultiIndex)
-                    and isinstance(self.data.index.levels[0], pd.DatetimeIndex)
+                isinstance(self.data.index, pd.MultiIndex)
+                and isinstance(self.data.index.levels[0], pd.DatetimeIndex)
                 )
             )
         ):

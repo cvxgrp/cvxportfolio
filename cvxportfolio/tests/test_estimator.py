@@ -26,7 +26,7 @@ class PlaceholderCallable:
     def __init__(self, value):
         self.value = value
 
-    def _recursive_values_in_time(self, t, **kwargs):
+    def values_in_time(self, t, **kwargs):
         return self.value
 
 
