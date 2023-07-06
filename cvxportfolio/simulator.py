@@ -425,6 +425,8 @@ class MarketSimulator:
                  trading_frequency=None, **kwargs):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
+        
+        self.enable_caching = not len(universe)
 
         self.market_data = MarketData(
             universe=universe, returns=returns,
@@ -565,7 +567,6 @@ class MarketSimulator:
         constituent_backtests_params = self.market_data._get_limited_backtests(
             start_time, end_time)
         results = []
-        caches_after = {}
         orig_md = self.market_data
         orig_policy = policy
         for el in constituent_backtests_params:
@@ -589,7 +590,7 @@ class MarketSimulator:
             )
 
             # if policy uses a cache load it from disk
-            if hasattr(policy, 'cache'):
+            if hasattr(policy, 'cache') and self.enable_caching:
                 logging.info('Trying to load cache from disk...')
                 policy.cache = _load_cache(
                     universe=el['universe'],
@@ -602,7 +603,7 @@ class MarketSimulator:
             h = results[-1].h.iloc[-1]
 
             # if policy used a cache write it to disk
-            if hasattr(policy, 'cache'):
+            if hasattr(policy, 'cache') and self.enable_caching:
                 logging.info('Storing cache from policy to disk...')
                 _store_cache(cache=policy.cache, universe=el['universe'],
                              trading_frequency=self.trading_frequency,

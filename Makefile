@@ -17,6 +17,8 @@ env:
 	
 test:
 	$(BINDIR)/python -m unittest $(PROJECT)/tests/*.py
+
+test8:
 	flake8 --per-file-ignores='$(PROJECT)/__init__.py:F401,F403' $(PROJECT)/*.py
 
 clean:
