@@ -9,10 +9,13 @@ largest Sharpe ratio, and the one with largest growth rate,
 are shown. 
 """
 
-# import logging
 import cvxportfolio as cvx
 import numpy as np
 
+# Uncomment the logging lines to get online information 
+# from the parallel backtest routines
+
+# import logging
 # logging.basicConfig(level=logging.INFO)
 # log=logging.getLogger('=>')
 
@@ -53,22 +56,24 @@ ress = sim.backtest_many([make_policy(*key) for key in keys], parallel=True)
 
 print('LARGEST SHARPE RATIO')
 idx = np.argmax([el.sharpe_ratio for el in ress])
-ress[idx].plot()
 
 print('gamma_trade and gamma_risk')
 print(keys[idx])
 
 print('result')
 print(ress[idx])
+
+ress[idx].plot()
 
 
 print('LARGEST GROWTH RATE')
 idx = np.argmax([el.growth_rates.mean() for el in ress])
 
-ress[idx].plot()
 
 print('gamma_trade and gamma_risk')
 print(keys[idx])
 
 print('result')
 print(ress[idx])
+
+ress[idx].plot()

@@ -1,4 +1,6 @@
 """
+REQUIRES cvxportfolio >= 0.4.4
+
 This example shows how the user can provide custom-made
 predictors for expected returns and covariances, 
 at each point in time of the backtest. These can be 

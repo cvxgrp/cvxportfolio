@@ -31,8 +31,8 @@ python -m unittest discover cvxportfolio
 ```
 
 
-Example
-------------
+Simplest Example
+----------------
 In the following example market data is downloaded by a public source
 (Yahoo finance) and the forecasts are computed iteratively, at each point in the backtest, from past data. 
 That is, at each point in the backtest,
@@ -67,6 +67,21 @@ print(result)
 # plot backtest results
 result.plot()
 ```
+
+Some Other Examples
+-------------------
+We show in the example on [user-provided forecasters](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/user_provided_forecasters.py) how the user can define custom classes to forecast
+the expected returns and covariances. These provide callbacks that are
+executed at each point in time during the backtest. The system enforces 
+causality and safety against numerical errors. 
+We recommend to always include 
+the default forecasters that we provide in any analysis you may do, 
+since they are very robust and well-tested. 
+
+We show in the examples on [DOW30 components](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/dow30_example.py) and [wide assets-classes ETFs](https://github.com/cvxgrp/cvxportfolio/blob/master/examples/etfs_example.py) how a
+simple sweep over hyper-parameters, taking advantage of our sophisticated parallel backtest machinery, quickly provides results on the best strategy
+to apply to any given selection of assets.
+
 
 Development
 -----------

@@ -45,22 +45,23 @@ ress = sim.backtest_many([make_policy(*key) for key in keys])
 
 print('\n\nLARGEST SHARPE RATIO')
 idx = np.argmax([el.sharpe_ratio for el in ress])
-ress[idx].plot()
 
 print('gamma_trade and gamma_risk')
 print(keys[idx])
 
 print('result')
 print(ress[idx])
+
+ress[idx].plot()
 
 
 print('\n\nLARGEST GROWTH RATE')
 idx = np.argmax([el.growth_rates.mean() for el in ress])
 
-ress[idx].plot()
-
 print('gamma_trade and gamma_risk')
 print(keys[idx])
 
 print('result')
 print(ress[idx])
+
+ress[idx].plot()
