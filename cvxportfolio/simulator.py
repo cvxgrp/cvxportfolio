@@ -426,7 +426,7 @@ class MarketSimulator:
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
         
-        self.enable_caching = not len(universe)
+        self.enable_caching = len(universe) > 0
 
         self.market_data = MarketData(
             universe=universe, returns=returns,
