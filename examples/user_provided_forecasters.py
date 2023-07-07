@@ -32,7 +32,7 @@ class WindowMeanReturn:
 
 # Here we define a class to forecast covariances
 class WindowCovariance:
-    """Expected return as mean of recent window of past returns."""
+    """Covariance computed on recent window of past returns."""
     
     def __init__(self, window=20):
         self.window = window
