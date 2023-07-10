@@ -54,7 +54,30 @@ class Estimator:
         if hasattr(self, "_values_in_time"):
             self.current_value = self._values_in_time(**kwargs)
             return self.current_value
-
+            
+    def __repr__(self):
+        """Pretty-print the cvxportfolio object in question.
+        
+        We make sure that every object the user interacts with can be
+        pretty-printed to the interpreter, ideally in a way such that
+        copy-pasting the output to the prompt results in an identical object.
+        We can't do that all the times but we do our best. This is used 
+        throughout the library, for example it is included in backtest results 
+        so the user knows which policy generated that backtest, .... We prefer
+        to define the logic of this directly insted of relying, e.g., on
+        dataclasses logic, because we want to customize it to our usecase.
+        """
+        lhs = self.__class__.__name__ + '(' 
+        core = ''
+        for name, attr in self.__dict__.items():
+            if attr is None:
+                continue
+            if hasattr(attr, "_recursive_values_in_time") or \
+                hasattr(attr, "_values_in_time") or (name[0] != '_'):
+                core += name + '=' + attr.__repr__() + ','
+        core = core[:-1] # remove trailing comma if present
+        rhs = ')'
+        return lhs + core + rhs
 
 class PolicyEstimator(Estimator):
     """Base class for (most) estimators that are part of policy objects."""
