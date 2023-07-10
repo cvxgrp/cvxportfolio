@@ -173,6 +173,12 @@ class TestEstimators(unittest.TestCase):
         estimator._recursive_values_in_time("2022-01-05")
         self.assertTrue(
             np.all(estimator.parameter.value == data.loc["2022-01-05"]))
+            
+    def test_repr_dataestimator(self):
+        print(DataEstimator(3))
+        print(DataEstimator(np.array([1,2,3])))
+        print(DataEstimator(pd.Series([1,2,3])))
+        print(DataEstimator(pd.DataFrame([1,2,3])))
 
 
 if __name__ == '__main__':

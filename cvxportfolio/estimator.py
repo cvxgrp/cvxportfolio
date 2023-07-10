@@ -19,9 +19,12 @@ from this.
 
 import numpy as np
 import pandas as pd
+import cvxpy as cp
+
+
 from .errors import MissingValuesError, DataError
 from .hyperparameters import HyperParameter
-import cvxpy as cp
+from .utils import repr_numpy_pandas
 
 
 class Estimator:
@@ -276,7 +279,13 @@ class DataEstimator(PolicyEstimator):
         if hasattr(self, 'parameter'):
             self.parameter.value = self.current_value
         return self.current_value
-
+        
+    def __repr__(self):
+        if np.isscalar(self.data):
+            return str(self.data)
+        if hasattr(self.data, 'values_in_time'):
+            return self.data.__repr__()
+        return repr_numpy_pandas(self.data)
 
 # class ConstantEstimator(cvxpy.Constant, DataEstimator):
 #     """Cvxpy constant that uses the pre_evalution method to be initialized."""
