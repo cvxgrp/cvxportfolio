@@ -17,74 +17,73 @@ of cost terms in Single and Multi Period Optimization policies
 and can be iterated (and optimized over) automatically.
 """
 
+import numpy as np
+import copy
 GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]
 GAMMA_COST_RANGE = [0., .1, .2, .5, 1., 2., 5., 10.]
 
-import copy
-
-import numpy as np
 
 __all__ = ['GammaRisk', 'GammaTrade', 'GammaHold']
 
 
 class HyperParameter:
     """Base Hyper Parameter class.
-    
+
     Implements arithmetic operations between hyper parameters.
-    
+
     You can sum and multiply HPs between themselves and with scalars,
     and divide by a scalar. Arbitrary algebraic combination of these
     operations are supported.
     """
-    
+
     def __mul__(self, other):
         if np.isscalar(other) or isinstance(other, HyperParameter):
             return CombinedHyperParameter([self], [other])
         return NotImplemented
-        
+
     def __rmul__(self, other):
         return self.__mul__(other)
-        
+
     def __div__(self, other):
         if np.isscalar(other):
             return CombinedHyperParameter([self], [1./other])
         return NotImplemented
-        
+
     def __truediv__(self, other):
         return self.__div__(other)
-        
+
     def __add__(self, other):
         if isinstance(other, HyperParameter):
             return CombinedHyperParameter([self, other], [1., 1.])
         return NotImplemented
-        
+
     def __radd__(self, other):
         return self.__add__(other)
-        
+
     def __sub__(self, other):
         return self + (-other)
-        
+
     def __neg__(self):
         return self * (-1)
-        
+
     def _collect_hyperparameters(self):
         return [self]
 
-      
+
 class CombinedHyperParameter(HyperParameter):
     """Algebraic combination of HyperParameters."""
-    
+
     def __init__(self, left, right):
         self.left = left
         self.right = right
-        
+
     @property
     def current_value(self):
         return sum([
             (le.current_value if hasattr(le, 'current_value') else le)
             * (ri.current_value if hasattr(ri, 'current_value') else ri)
-            for le,ri in zip(self.left, self.right)])
-            
+            for le, ri in zip(self.left, self.right)])
+
     def _collect_hyperparameters(self):
         """Collect (not combined) hyperparameters."""
         result = []
@@ -92,7 +91,7 @@ class CombinedHyperParameter(HyperParameter):
             if hasattr(el, '_collect_hyperparameters'):
                 result += el._collect_hyperparameters()
         return result
-        
+
 
 class RangeHyperParameter(HyperParameter):
     """Range Hyper Parameter.
@@ -111,19 +110,19 @@ class RangeHyperParameter(HyperParameter):
 class GammaRisk(RangeHyperParameter):
     """Multiplier of a risk term."""
 
-    def __init__(self, values_range = GAMMA_RISK_RANGE, initial_value = 1.):
+    def __init__(self, values_range=GAMMA_RISK_RANGE, initial_value=1.):
         super().__init__(values_range, initial_value)
 
 
 class GammaTrade(RangeHyperParameter):
     """Multiplier of a transaction cost term."""
 
-    def __init__(self, values_range = GAMMA_COST_RANGE, initial_value = 1.):
+    def __init__(self, values_range=GAMMA_COST_RANGE, initial_value=1.):
         super().__init__(values_range, initial_value)
 
 
 class GammaHold(RangeHyperParameter):
     """Multiplier of a holding cost term."""
 
-    def __init__(self, values_range = GAMMA_COST_RANGE, initial_value = 1.):
+    def __init__(self, values_range=GAMMA_COST_RANGE, initial_value=1.):
         super().__init__(values_range, initial_value)

@@ -57,10 +57,10 @@ class Estimator:
         if hasattr(self, "_values_in_time"):
             self.current_value = self._values_in_time(**kwargs)
             return self.current_value
-            
+
     def __repr__(self):
         """Pretty-print the cvxportfolio object in question.
-        
+
         We make sure that every object the user interacts with can be
         pretty-printed to the interpreter, ideally in a way such that
         copy-pasting the output to the prompt results in an identical object.
@@ -70,22 +70,22 @@ class Estimator:
         to define the logic of this directly insted of relying, e.g., on
         dataclasses logic, because we want to customize it to our usecase.
         """
-        lhs = self.__class__.__name__ + '(' 
+        lhs = self.__class__.__name__ + '('
         core = ''
         for name, attr in self.__dict__.items():
             if attr is None:
                 continue
             if hasattr(attr, "_recursive_values_in_time") or \
-                hasattr(attr, "_values_in_time") or (name[0] != '_'):
+                    hasattr(attr, "_values_in_time") or (name[0] != '_'):
                 core += name + '=' + attr.__repr__() + ', '
-        core = core[:-2] # remove trailing comma and space if present
+        core = core[:-2]  # remove trailing comma and space if present
         rhs = ')'
         return lhs + core + rhs
 
+
 class PolicyEstimator(Estimator):
     """Base class for (most) estimators that are part of policy objects."""
-    
-    
+
     def _collect_hyperparameters(self):
         """This method finds all hyperparameters defined as part of a policy.
         """
@@ -94,7 +94,6 @@ class PolicyEstimator(Estimator):
             if hasattr(subestimator, "_collect_hyperparameters"):
                 result += subestimator._collect_hyperparameters()
         return result
-            
 
     def _recursive_pre_evaluation(self, universe, backtest_times):
         """Recursively initialize estimator tree for backtest.
@@ -225,15 +224,14 @@ class DataEstimator(PolicyEstimator):
                 return self.value_checker(_.values)
             else:
                 return self.value_checker(_)
-                                
 
         if (hasattr(self.data, "loc") and hasattr(self.data, "index")
             and (isinstance(self.data.index, pd.DatetimeIndex)
-                or (
+                 or (
                 isinstance(self.data.index, pd.MultiIndex)
                 and isinstance(self.data.index.levels[0], pd.DatetimeIndex)
-                )
             )
+        )
         ):
             try:
                 if self.use_last_available_time:
@@ -279,7 +277,7 @@ class DataEstimator(PolicyEstimator):
         if hasattr(self, 'parameter'):
             self.parameter.value = self.current_value
         return self.current_value
-        
+
     def __repr__(self):
         if np.isscalar(self.data):
             return str(self.data)

@@ -119,8 +119,8 @@ class CombinedCosts(BaseCost):
 
     def __mul__(self, other):
         """Multiply by constant."""
-        return CombinedCosts(self.costs, 
-            [el * other for el in self.multipliers])
+        return CombinedCosts(self.costs,
+                             [el * other for el in self.multipliers])
 
     def _recursive_pre_evaluation(self, *args, **kwargs):
         """Iterate over constituent costs."""
@@ -137,15 +137,15 @@ class CombinedCosts(BaseCost):
             self.expression += multiplier * \
                 cost._compile_to_cvxpy(w_plus, z, portfolio_value)
         return self.expression
-        
+
     def _collect_hyperparameters(self):
         return sum([el._collect_hyperparameters() for el in self.costs], []) + \
             sum([el._collect_hyperparameters() for el in self.multipliers if
-                hasattr(el, '_collect_hyperparameters')], []) 
-                
+                hasattr(el, '_collect_hyperparameters')], [])
+
     def __repr__(self):
         """Pretty-print."""
-        result = '('  
+        result = '('
         for i, (mult, cost) in enumerate(zip(self.multipliers, self.costs)):
             if mult == 0:
                 continue
@@ -312,7 +312,8 @@ class TransactionCost(BaseCost):
     to the stock market.
     """
 
-    def __init__(self, a=None, pershare_cost=None, b=0., window_sigma_est=None, window_volume_est=None, exponent=None):
+    def __init__(self, a=None, pershare_cost=None, b=0., window_sigma_est=None,
+                 window_volume_est=None, exponent=None):
 
         self.a = None if a is None else DataEstimator(a)
         self.pershare_cost = None if pershare_cost is None else DataEstimator(
@@ -330,7 +331,8 @@ class TransactionCost(BaseCost):
             self.second_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
 
-    def _values_in_time(self, t,  current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
+    def _values_in_time(self, t,  current_portfolio_value, past_returns,
+                        past_volumes, current_prices, **kwargs):
 
         tmp = 0.
 
@@ -349,7 +351,8 @@ class TransactionCost(BaseCost):
 
         if self.b is not None:
 
-            if (self.window_sigma_est is None) or (self.window_volume_est is None):
+            if (self.window_sigma_est is None) or \
+                    (self.window_volume_est is None):
                 ppy = periods_per_year(past_returns.index)
             windowsigma = ppy if (
                 self.window_sigma_est is None) else self.window_sigma_est
@@ -365,7 +368,8 @@ class TransactionCost(BaseCost):
                 (current_portfolio_value /
                  volume_est) ** ((2 if self.exponent is None else self.exponent) - 1)
 
-    def _simulate(self, t, u, current_and_past_returns, current_and_past_volumes, current_prices, **kwargs):
+    def _simulate(self, t, u, current_and_past_returns,
+                  current_and_past_volumes, current_prices, **kwargs):
 
         if self.window_sigma_est is None:
             windowsigma = periods_per_year(current_and_past_returns.index)
@@ -394,8 +398,9 @@ class TransactionCost(BaseCost):
                 raise SyntaxError(
                     "If you don't provide volumes you should set b to None")
             # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
-            result += (np.abs(u.iloc[:-1])**exponent) @ (self.b._recursive_values_in_time(t) *
-                                                         sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (exponent - 1)))
+            result += (np.abs(u.iloc[:-1])**exponent) @ (
+                self.b._recursive_values_in_time(t) *
+                sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (exponent - 1)))
 
         assert not np.isnan(result)
         assert not np.isinf(result)

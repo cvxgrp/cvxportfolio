@@ -425,7 +425,7 @@ class MarketSimulator:
                  trading_frequency=None, **kwargs):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
-        
+
         self.enable_caching = len(universe) > 0
 
         self.market_data = MarketData(

@@ -26,6 +26,7 @@ import pandas as pd
 import cvxportfolio as cvx
 from cvxportfolio.hyperparameters import *
 
+
 class TestHyperparameters(unittest.TestCase):
 
     @classmethod
@@ -39,28 +40,27 @@ class TestHyperparameters(unittest.TestCase):
         cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
         cls.z = cp.Variable(cls.returns.shape[1])
         cls.N = cls.returns.shape[1]
-        
-    
+
     def test_basic_HP(self):
-        
-        gamma = GammaRisk(initial_value = 1)
-        
+
+        gamma = GammaRisk(initial_value=1)
+
         self.assertTrue((-gamma).current_value == -1)
         self.assertTrue((gamma * .5).current_value == .5)
         self.assertTrue((.5 * gamma).current_value == .5)
         self.assertTrue((gamma).current_value == 1)
-        
+
         cvx.SinglePeriodOptimization(GammaRisk() * cvx.FullCovariance())
-        
+
         with self.assertRaises(SyntaxError):
             cvx.SinglePeriodOptimization(GammaRisk * cvx.FullCovariance())
-            
+
         cvx.SinglePeriodOptimization(-GammaRisk() * cvx.FullCovariance())
-        
+
     def test_HP_algebra(self):
-        grisk = GammaRisk(initial_value = 1)
-        gtrade = GammaRisk(initial_value = .5)
-        
+        grisk = GammaRisk(initial_value=1)
+        gtrade = GammaRisk(initial_value=.5)
+
         self.assertTrue((grisk + gtrade).current_value == 1.5)
         self.assertTrue((grisk * gtrade).current_value == .5)
         self.assertTrue((2 * grisk * gtrade).current_value == 1)
@@ -69,30 +69,30 @@ class TestHyperparameters(unittest.TestCase):
         self.assertTrue((grisk + 2*gtrade).current_value == 2)
         self.assertTrue((grisk/2 + 2*gtrade).current_value == 1.5)
         self.assertTrue((grisk/2 + 2 * (gtrade + gtrade/2)).current_value == 2)
-        
+
     def test_collect_HPs(self):
         """Collect hyperparameters."""
-        
+
         pol = cvx.SinglePeriodOptimization(GammaRisk() * cvx.FullCovariance())
-        
+
         res = pol._collect_hyperparameters()
         print(res)
         self.assertTrue(len(res) == 1)
-        
-        pol = cvx.SinglePeriodOptimization(-GammaRisk() * cvx.FullCovariance()\
-             - GammaTrade() * cvx.TransactionCost())
-        
+
+        pol = cvx.SinglePeriodOptimization(-GammaRisk() * cvx.FullCovariance()
+                                           - GammaTrade() * cvx.TransactionCost())
+
         res = pol._collect_hyperparameters()
         print(res)
         self.assertTrue(len(res) == 2)
-        
-        pol = cvx.SinglePeriodOptimization(-(GammaRisk()+ .5 * GammaRisk()) 
-            * cvx.FullCovariance() - GammaTrade() * cvx.TransactionCost())
-        
+
+        pol = cvx.SinglePeriodOptimization(-(GammaRisk() + .5 * GammaRisk())
+                                           * cvx.FullCovariance() - GammaTrade() * cvx.TransactionCost())
+
         res = pol._collect_hyperparameters()
         print(res)
         self.assertTrue(len(res) == 3)
-        
-        
+
+
 if __name__ == '__main__':
     unittest.main()

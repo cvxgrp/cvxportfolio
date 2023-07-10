@@ -233,7 +233,7 @@ class TestData(unittest.TestCase):
         index = pd.MultiIndex.from_product([timeindex, second_level])
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
         data.columns = ["one", "two", "tre", "quattro",
-            "cinque", "sei", "sette", "otto", "nove", "dieci"]
+                        "cinque", "sei", "sette", "otto", "nove", "dieci"]
 
         print(data.index)
         print(data)

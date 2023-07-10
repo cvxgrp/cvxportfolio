@@ -30,14 +30,14 @@ class BaseBenchmark(PolicyEstimator):
 
 class Benchmark(BaseBenchmark, DataEstimator):
     """User-provided benchmark.
-    
+
     :param benchmark_weights: benchmark weights, either constant in
         time (pd.Series indexed by assets) or varying in time
         (pd.DataFrame indexed by time and whose columns are the assets).
     :type benchmark_weights: pd.Series or pd.DataFrame
-    
+
     """
-    
+
     def __init__(self, benchmark_weights):
         DataEstimator.__init__(self, benchmark_weights)
 

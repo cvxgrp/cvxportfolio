@@ -24,48 +24,44 @@ import cvxportfolio as cvx
 from cvxportfolio.utils import *
 
 
-
 class TestUtils(unittest.TestCase):
-    
+
     def test_hasher(self):
-        a = np.array([1,2,3])
+        a = np.array([1, 2, 3])
         re = repr_numpy_pandas(a)
         print(re)
-        b = np.array([[1,2,3]])
+        b = np.array([[1, 2, 3]])
         re1 = repr_numpy_pandas(b)
         print(re1)
         self.assertTrue(re == re1)
 
-        a = pd.Series([1,2,3], ['2020-01-01', '2021-01-01', '2022-01-01'])
+        a = pd.Series([1, 2, 3], ['2020-01-01', '2021-01-01', '2022-01-01'])
         re = repr_numpy_pandas(a)
         print(re)
         b = pd.Series(a.values, a.index)
         re1 = repr_numpy_pandas(b)
-        print(re1) 
+        print(re1)
         self.assertTrue(re == re1)
-        
-        # multiindexed df  
+
+        # multiindexed df
         timeindex = pd.date_range("2022-01-01", "2022-01-30")
         second_level = ["hello", "ciao", "hola"]
         index = pd.MultiIndex.from_product([timeindex, second_level])
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
         data.columns = ["one", "two", "tre", "quattro",
-            "cinque", "sei", "sette", "otto", "nove", "dieci"]
-        
+                        "cinque", "sei", "sette", "otto", "nove", "dieci"]
+
         re = repr_numpy_pandas(data)
         print(re)
-        
-        data1 = pd.DataFrame(data.values, 
-            index=data.index, columns=data.columns)
-            
+
+        data1 = pd.DataFrame(data.values,
+                             index=data.index, columns=data.columns)
+
         re1 = repr_numpy_pandas(data1)
         print(re1)
         self.assertTrue(re == re1)
-             
-    
+
 
 if __name__ == '__main__':
-    
 
-        
     unittest.main()

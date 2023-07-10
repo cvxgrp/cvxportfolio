@@ -22,6 +22,7 @@ import pandas as pd
 import cvxpy as cp
 import cvxportfolio as cvx
 
+
 def listvalue(li):
     return all([el.value() for el in li])
 

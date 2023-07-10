@@ -471,7 +471,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             )
 
         return pd.Series(self.z_at_lags[0].value, current_weights.index)
-        
+
     def _collect_hyperparameters(self):
         result = []
         for el in self.objective:
