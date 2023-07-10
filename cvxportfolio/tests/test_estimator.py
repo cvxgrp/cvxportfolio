@@ -20,7 +20,7 @@ import unittest
 
 from cvxportfolio.estimator import DataEstimator  # , ParameterEstimator
 from cvxportfolio.errors import MissingValuesError, DataError
-
+import cvxportfolio as cvx
 
 class PlaceholderCallable:
     def __init__(self, value):
@@ -179,6 +179,13 @@ class TestEstimators(unittest.TestCase):
         print(DataEstimator(np.array([1,2,3])))
         print(DataEstimator(pd.Series([1,2,3])))
         print(DataEstimator(pd.DataFrame([1,2,3])))
+        
+    def test_repr(self):
+        print(cvx.FactorModelCovariance(num_factors=10))
+        print(cvx.ReturnsForecast() - .5 * cvx.FullCovariance())
+        print(cvx.SinglePeriodOptimization(cvx.ReturnsForecast(), 
+            [cvx.LongOnly(nocash=True)]))
+        print(cvx.LeverageLimit(3))
 
 
 if __name__ == '__main__':

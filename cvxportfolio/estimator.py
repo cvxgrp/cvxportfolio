@@ -77,8 +77,8 @@ class Estimator:
                 continue
             if hasattr(attr, "_recursive_values_in_time") or \
                 hasattr(attr, "_values_in_time") or (name[0] != '_'):
-                core += name + '=' + attr.__repr__() + ','
-        core = core[:-1] # remove trailing comma if present
+                core += name + '=' + attr.__repr__() + ', '
+        core = core[:-2] # remove trailing comma and space if present
         rhs = ')'
         return lhs + core + rhs
 

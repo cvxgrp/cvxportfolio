@@ -119,7 +119,8 @@ class CombinedCosts(BaseCost):
 
     def __mul__(self, other):
         """Multiply by constant."""
-        return CombinedCosts(self.costs, [el * other for el in self.multipliers])
+        return CombinedCosts(self.costs, 
+            [el * other for el in self.multipliers])
 
     def _recursive_pre_evaluation(self, *args, **kwargs):
         """Iterate over constituent costs."""
@@ -141,6 +142,20 @@ class CombinedCosts(BaseCost):
         return sum([el._collect_hyperparameters() for el in self.costs], []) + \
             sum([el._collect_hyperparameters() for el in self.multipliers if
                 hasattr(el, '_collect_hyperparameters')], []) 
+                
+    def __repr__(self):
+        """Pretty-print."""
+        result = '('  
+        for i, (mult, cost) in enumerate(zip(self.multipliers, self.costs)):
+            if mult == 0:
+                continue
+            if mult < 0:
+                operand = str(mult) + ' * '
+            else:
+                operand = (' + ' if i > 0 else '') \
+                    + (str(mult) + ' * ' if mult != 1 else '')
+            result += operand + cost.__repr__()
+        return result + ')'
 
 
 class HoldingCost(BaseCost):
