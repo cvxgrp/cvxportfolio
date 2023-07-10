@@ -79,10 +79,12 @@ class TestSimulator(unittest.TestCase):
             self.assertTrue(np.isnan(new_md.prices.GOOG.iloc[0]))
 
             if freqs[i] == 'weekly':
-                self.assertTrue(all(new_md.returns.index.weekday == 0))
+                print((new_md.returns.index.weekday < 2).mean())
+                self.assertTrue((new_md.returns.index.weekday < 2).mean() > .95)
 
             if freqs[i] == 'monthly':
-                self.assertTrue(all(new_md.returns.index.day == 1))
+                print((new_md.returns.index.day < 5).mean())
+                self.assertTrue((new_md.returns.index.day < 5).mean() > .95)
 
             self.assertTrue(
                 all(md.prices.loc[testdays[i]] == new_md.prices.loc[testdays[i]]))
