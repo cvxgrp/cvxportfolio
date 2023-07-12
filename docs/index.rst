@@ -42,7 +42,6 @@ run a backtest, and show its result.
 .. code-block:: python
 
 	import cvxportfolio as cvx
-	import matplotlib.pyplot as plt
 
 	objective = cvx.ReturnsForecast() - 3 * (cvx.FullCovariance() + \
 		0.05 * cvx.RiskForecastError()) - cvx.StocksTransactionCost()

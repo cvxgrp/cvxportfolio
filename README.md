@@ -46,7 +46,6 @@ are applied to make sure the system works well with real data.
 
 ```python
 import cvxportfolio as cvx
-import matplotlib.pyplot as plt
 
 gamma = 3       # risk aversion parameter (Chapter 4.2)
 kappa = 0.05    # covariance forecast error risk parameter (Chapter 4.3)
