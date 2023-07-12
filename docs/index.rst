@@ -21,6 +21,7 @@ Cvxportolio is written in pure Python and can be easily installed in your favori
 	pip install -U cvxportfolio
 	
 
+We show how this is done on our `Installation and Hello World <https://youtu.be/1ThOKEu371M>`_ youtube video.
 	
 Testing locally
 ---------------

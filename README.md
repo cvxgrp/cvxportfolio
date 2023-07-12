@@ -11,7 +11,8 @@
 based on the book [Multi-Period Trading via Convex Optimization](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf)
 (also [available in print](https://www.amazon.com/Multi-Period-Trading-Convex-Optimization-Foundations/dp/1680833286/)).
 
-The documentation of the package is kindly hosted by [Read the Docs](https://readthedocs.org) at [www.cvxportfolio.com](https://www.cvxportfolio.com).
+The documentation of the package is kindly hosted by [Read the Docs](https://readthedocs.org) at [www.cvxportfolio.com](https://www.cvxportfolio.com). We also show some of our tutorials and examples on our
+[youtube channel](https://www.youtube.com/@Cvxportfolio).
 
 
 Installation
@@ -21,6 +22,7 @@ All our source code and releases are kindly hosted by the [Python Package Index]
 ```
 pip install -U cvxportfolio
 ```
+You can see how this works on our [Installation and Hello World](https://youtu.be/1ThOKEu371M) youtube video.
 
 Testing locally
 ------------
