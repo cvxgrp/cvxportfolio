@@ -145,17 +145,17 @@ class CombinedCosts(BaseCost):
 
     def __repr__(self):
         """Pretty-print."""
-        result = '('
+        result = ''
         for i, (mult, cost) in enumerate(zip(self.multipliers, self.costs)):
             if mult == 0:
                 continue
             if mult < 0:
-                operand = str(mult) + ' * '
+                result += ' - ' if i > 0 else '-'
             else:
-                operand = (' + ' if i > 0 else '') \
-                    + (str(mult) + ' * ' if mult != 1 else '')
-            result += operand + cost.__repr__()
-        return result + ')'
+                result += ' + ' if i > 0 else ''
+            result += (str(abs(mult)) + ' * ' if abs(mult) != 1 else '')
+            result += cost.__repr__()
+        return result
 
 
 class HoldingCost(BaseCost):

@@ -509,3 +509,10 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     def __init__(self, objective, constraints=[], include_cash_return=True, benchmark=CashBenchmark, **kwargs):
         super().__init__([objective], [constraints], include_cash_return=include_cash_return,
                          benchmark=benchmark, **kwargs)
+                         
+    # def __repr__(self):
+    #     return self.__class__.__name__ + '(' \
+    #         + 'objective=' + str(self.objective[0]) \
+    #         + ', constraints=' + str(self.constraints[0])
+    #         + ', benchmark=' + str(self.constraints[0])
+    #         + ', cvxpy_kwargs=' + str(self.cvxpy_kwargs)

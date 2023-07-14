@@ -112,10 +112,10 @@ class FullCovariance(BaseRiskModel):
 
         if not Sigma is None:
             self.Sigma = DataEstimator(Sigma)
-            self.alreadyfactorized = False
+            self._alreadyfactorized = False
         else:
             self.Sigma = HistoricalFactorizedCovariance(kelly=kelly)
-            self.alreadyfactorized = True
+            self._alreadyfactorized = True
 
     def _pre_evaluation(self, universe, backtest_times):
         self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
@@ -123,7 +123,7 @@ class FullCovariance(BaseRiskModel):
     def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
 
-        if self.alreadyfactorized:
+        if self._alreadyfactorized:
             self.Sigma_sqrt.value = self.Sigma.current_value
         else:
             Sigma = self.Sigma.current_value
@@ -269,10 +269,10 @@ class FactorModelCovariance(BaseRiskModel):
         self.F = F if F is None else DataEstimator(F, compile_parameter=True)
         self.d = d if d is None else DataEstimator(d)
         if (self.F is None) or (self.d is None):
-            self.fit = True
+            self._fit = True
             self.Sigma = HistoricalFactorizedCovariance(kelly=kelly)  # Sigma
         else:
-            self.fit = False
+            self._fit = False
         self.num_factors = num_factors
 
     def _pre_evaluation(self, universe, backtest_times):
@@ -283,7 +283,7 @@ class FactorModelCovariance(BaseRiskModel):
 
     def _values_in_time(self, t, past_returns, **kwargs):
 
-        if self.fit:
+        if self._fit:
             Sigmasqrt = self.Sigma.current_value
             # numpy eigendecomposition has largest eigenvalues last
             self.F_parameter.value = Sigmasqrt[:, -self.num_factors:].T
