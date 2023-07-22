@@ -305,13 +305,23 @@ class MaxWeightsAtTimes(MinMaxWeightsAtTimes):
 class FactorMaxLimit(BaseWeightConstraint):
     """A max limit on portfolio-wide factor (e.g. beta) exposure.
 
-    :param factor_exposure: DataFrame giving the factor exposure per asset
-        per factor, where the index are the assets and the columns are
-        the factors.
-    :type factor_exposure: pd.DataFrame
-    :param limit: Factor limits, either constant (pd.Series) or varying in time
-        pd.DataFrame.
-    :type limit: pd.Series or pd.DataFrame
+    :param factor_exposure: Series or DataFrame giving the factor exposure.
+        If Series it is indexed by assets' names and represents factor
+        exposures constant in time. If DataFrame it is indexed by time 
+        and has the assets names as columns, and it represents factor 
+        exposures that change in time. In the latter case an observation
+        must be present for every point in time of a backtest.
+        If you want you can also pass multiple factor exposures at once:
+        as a dataframe indexed by assets' names and whose columns are the
+        factors (if constant in time), or a dataframe with multiindex: 
+        first level is time, second level are assets' names (if changing 
+        in time). However this latter usecase is probably better served
+        by making multiple instances of this constraint, one for each 
+        factor.
+    :type factor_exposure: pd.Series or pd.DataFrame
+    :param limit: Factor limit, either constant or varying in time. Use
+        a DataFrame if you pass multiple factors as once.
+    :type limit: float or pd.Series or pd.DataFrame
     """
 
     def __init__(self, factor_exposure, limit):
@@ -328,13 +338,23 @@ class FactorMaxLimit(BaseWeightConstraint):
 class FactorMinLimit(BaseWeightConstraint):
     """A min limit on portfolio-wide factor (e.g. beta) exposure.
 
-    :param factor_exposure: DataFrame giving the factor exposure per asset
-        per factor, where the index are the assets and the columns are
-        the factors.
-    :type factor_exposure: pd.DataFrame
-    :param limit: Factor limits, either constant (pd.Series) or varying in time
-        pd.DataFrame.
-    :type limit: pd.Series or pd.DataFrame
+    :param factor_exposure: Series or DataFrame giving the factor exposure.
+        If Series it is indexed by assets' names and represents factor
+        exposures constant in time. If DataFrame it is indexed by time 
+        and has the assets names as columns, and it represents factor 
+        exposures that change in time. In the latter case an observation
+        must be present for every point in time of a backtest.
+        If you want you can also pass multiple factor exposures at once:
+        as a dataframe indexed by assets' names and whose columns are the
+        factors (if constant in time), or a dataframe with multiindex: 
+        first level is time, second level are assets' names (if changing 
+        in time). However this latter usecase is probably better served
+        by making multiple instances of this constraint, one for each 
+        factor.
+    :type factor_exposure: pd.Series or pd.DataFrame
+    :param limit: Factor limit, either constant or varying in time. Use
+        a DataFrame if you pass multiple factors as once.
+    :type limit: float or pd.Series or pd.DataFrame
     """
 
     def __init__(self, factor_exposure, limit):
@@ -354,10 +374,24 @@ class FixedFactorLoading(BaseWeightConstraint):
     This can be used to impose market neutrality, 
     a certain portfolio-wide alpha, ....
 
-    Attributes:
-        factor_exposure: An (n * r) matrix giving the factor exposure on each
-        factor
-        target: A series or number giving the targeted factor loading
+    :param factor_exposure: Series or DataFrame giving the factor exposure.
+        If Series it is indexed by assets' names and represents factor
+        exposures constant in time. If DataFrame it is indexed by time 
+        and has the assets names as columns, and it represents factor 
+        exposures that change in time. In the latter case an observation
+        must be present for every point in time of a backtest.
+        If you want you can also pass multiple factor exposures at once:
+        as a dataframe indexed by assets' names and whose columns are the
+        factors (if constant in time), or a dataframe with multiindex: 
+        first level is time, second level are assets' names (if changing 
+        in time). However this latter usecase is probably better served
+        by making multiple instances of this constraint, one for each 
+        factor.
+    :type factor_exposure: pd.Series or pd.DataFrame
+    :param target: Target portfolio factor exposures, 
+        either constant or varying in time. Use
+        a DataFrame if you pass multiple factors as once.
+    :type target: float or pd.Series or pd.DataFrame
     """
 
     def __init__(self, factor_exposure, target):
