@@ -233,7 +233,7 @@ class FactorModelCovariance(BaseRiskModel):
 
     It has the structure
 
-    :math:`F Sigma_{F} F^T + \mathbf{diag}(d)`
+    :math:`F \Sigma_{F} F^T + \mathbf{diag}(d)`
 
     where the factors exposure :math:`F` has as many rows as the number of assets and as many
     columns as the number of factors,
@@ -292,9 +292,8 @@ class FactorModelCovariance(BaseRiskModel):
     def _pre_evaluation(self, universe, backtest_times):
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         effective_num_factors = min(self.num_factors, len(universe)-1)
-        if self.F is None:
-            self.F_parameter = cp.Parameter((effective_num_factors, len(
-                universe)-1)) 
+        if self._fit:
+            self.F_parameter = cp.Parameter((effective_num_factors, len(universe)-1)) 
         else:
             if self.Sigma_F is None:
                 self.F_parameter = self.F.parameter
@@ -303,7 +302,6 @@ class FactorModelCovariance(BaseRiskModel):
                 self.F_parameter = cp.Parameter(self.F.parameter.shape)        
 
     def _values_in_time(self, t, past_returns, **kwargs):
-
         if self._fit:
             Sigmasqrt = self.Sigma.current_value
             # numpy eigendecomposition has largest eigenvalues last
