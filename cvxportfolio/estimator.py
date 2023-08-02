@@ -209,7 +209,8 @@ class DataEstimator(PolicyEstimator):
                         self.data.columns[np.isnan(result)])
                 raise MissingValuesError(message)
             else:
-                return result
+                # we pass a copy because it can be accidentally overwritten
+                return np.array(result)
 
         raise DataError(
             f"{self.__class__.__name__}._recursive_values_in_time result is not a scalar or array."
@@ -273,7 +274,6 @@ class DataEstimator(PolicyEstimator):
         """
         self.current_value = self.internal__recursive_values_in_time(
             t, *args, **kwargs)
-        # we do this because in some cases they never get compiled
         if hasattr(self, 'parameter'):
             self.parameter.value = self.current_value
         return self.current_value

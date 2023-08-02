@@ -192,6 +192,31 @@ class TestRisks(unittest.TestCase):
         self.assertTrue(np.isclose(cvxpy_expression.value,
                                    self.w_plus_minus_w_bm.value[:-1] @ np.diag(d) @ self.w_plus_minus_w_bm.value[:-1] +
                                    ((F @ self.w_plus_minus_w_bm.value[:-1])**2).sum()))
+                                   
+
+
+    def test_low_rank_covariance_with_SigmaF(self):
+
+        F = pd.DataFrame(np.random.randn(2, self.N-1),
+                         columns=self.returns.columns[:-1])
+        d = pd.Series(np.random.uniform(size=(self.N-1)),
+                      self.returns.columns[:-1])
+        SigmaF = np.random.randn(2,2)
+        SigmaF = SigmaF.T @ SigmaF
+        risk_model = FactorModelCovariance(F=F, d=d, Sigma_F = SigmaF)
+
+        cvxpy_expression = self.boilerplate(risk_model)
+        self.assertTrue(cvxpy_expression.is_convex())
+
+        risk_model._recursive_values_in_time(
+            t=self.returns.index[12], past_returns='hello')
+        self.w_plus_minus_w_bm.value = np.random.randn(self.N)
+
+        self.assertTrue(np.isclose(cvxpy_expression.value,
+                                   self.w_plus_minus_w_bm.value[:-1] @ np.diag(d) @ self.w_plus_minus_w_bm.value[:-1] +
+                                   self.w_plus_minus_w_bm.value[:-1].T @ F.T @ SigmaF @ F @ self.w_plus_minus_w_bm.value[:-1])
+                                   )
+                                            
 
     def test_estimated_low_rank_covariance(self):
 

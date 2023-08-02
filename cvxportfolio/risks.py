@@ -233,44 +233,58 @@ class FactorModelCovariance(BaseRiskModel):
 
     It has the structure
 
-    :math:`F F^T + \mathbf{diag}(d)`
+    :math:`F Sigma_{F} F^T + \mathbf{diag}(d)`
 
-    where :math:`F` is a *tall* matrix (many more rows than columns) and the vector
-    :math:`d` is all non-negative. 
+    where the factors exposure :math:`F` has as many rows as the number of assets and as many
+    columns as the number of factors,
+    the factors covariance matrix :math:`Sigma_{F}` is positive semi-definite,
+    and the idyosyncratic variances vector :math:`d` is non-negative. 
+    
+    The advantage of this risk model over the standard :class:`FullCovariance` is mostly
+    computational. When well-specified (as we do here) it costs much less to solve an 
+    optimization problem with this model than with a full covariance. It is a standard 
+    model that has been used for many decades in the portfolio optimization community
+    and multiple vendors exist for covariance matrices in this form. We also provide
+    the functionality to compute this automatically (which happens if you only specify
+    the number of factors to the constructor) with a standard PCA of the historical 
+    covariance at each point in time of the backtest (only looking at past returns).
 
-    :param F: exposure matrices either constant or varying in time; if so, use a pandas multiindexed
-         dataframe. If None it will be fitted.
+    :param F: factors exposure matrix either constant or varying in time. If constant
+        use a dataframe where the index are the factors and the columns are the asset names.
+        If varying in time use a pandas multiindexed dataframe where the first index level
+        is time and the second level are the factors. The columns
+        should always be the asset names. If None the constructor will default to fit the model from
+        past returns at each point of the backtest.
     :type F: pd.DataFrame or None
-    :param d: idyosyncratic variances either constant or varying in time; If None it will be fitted.
+    :param Sigma_F: factors covariance matrix either constant or varying in time. If varying in time
+        use a multiindexed dataframe where the first index level is time, and the second are the
+        factors (like the columns). If None it is assumed that :math:`Sigma_F` is the identity matrix: Leaving
+        this to None will not trigger automatic fit of the model. You can also have a factors
+        exposure matrix that is fixed in time and a factors covariance that instead changes in time,
+        or the opposite.
+    :type Sigma_F: pd.DataFrame or None
+    :param d: idyosyncratic variances either constant or varying in time. If constant use a pandas series,
+        if varying in time use a pandas dataframe where the index is time and the columns are the asset
+        names. You can have this varying in time and the exposures or the factors covariance fixed, or the
+        opposite. If you leave this to None you will trigger automatic fit of the model. If you wish
+        to have no idyosyncratic variances you can for example just pass 0.
     :type d: pd.Series or pd.DataFrame or None
-    :param num_factors: number of factors (columns of F), used if fitting the model
+    :param num_factors: number of factors (columns of F) that are obtained when fitting the model automatically
     :type num_factors: int    
+    :param kelly: when fitting the model you can perform a PCA on the covariance defined in the standard way
+        with this equal to False, or use the the quadratic term of the Taylor approximation of the Kelly
+        gambling objective with this equal to True. The difference is very small and it's better both
+        computationally and in terms of portfolio performance to leave this to True.
+    :type kelly: bool
     """
 
-    # Args:
-    #     exposures (pd.DataFrame): constant factor exposure matrix or a dataframe
-    #         where the first index is time.
-    #     idyosync (pd.DataFrame or pd.Series): idyosyncratic variances for the symbol,
-    #         either fixed (pd.Series) or through time (pd.DataFrame).
-    #     factor_Sigma (pd.DataFrame or None): a constant factor covariance matrix
-    #         or a DataFrame with multiindex where the first index is time. If None,
-    #         the default, it is understood that the factor covariance is the identity.
-    #         (Otherwise we compute its matrix square root at each step internally and
-    #          apply it to the exposures).
-    #     forecast_error_kappa (float or pd.Series): uncertainty on the
-    #         assets' correlations. See the paper, pages 32-33.
-
-    # """
-
-    factor_Sigma = None
-
-    # , normalize=False):
-    def __init__(self, F=None, d=None, num_factors=1, kelly=True):
+    def __init__(self, F=None, d=None, Sigma_F=None, num_factors=1, kelly=True):
         self.F = F if F is None else DataEstimator(F, compile_parameter=True)
         self.d = d if d is None else DataEstimator(d)
+        self.Sigma_F = Sigma_F if Sigma_F is None else DataEstimator(Sigma_F)
         if (self.F is None) or (self.d is None):
             self._fit = True
-            self.Sigma = HistoricalFactorizedCovariance(kelly=kelly)  # Sigma
+            self.Sigma = HistoricalFactorizedCovariance(kelly=kelly)
         else:
             self._fit = False
         self.num_factors = num_factors
@@ -278,8 +292,15 @@ class FactorModelCovariance(BaseRiskModel):
     def _pre_evaluation(self, universe, backtest_times):
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         effective_num_factors = min(self.num_factors, len(universe)-1)
-        self.F_parameter = cp.Parameter((effective_num_factors, len(
-            universe)-1)) if self.F is None else self.F.parameter
+        if self.F is None:
+            self.F_parameter = cp.Parameter((effective_num_factors, len(
+                universe)-1)) 
+        else:
+            if self.Sigma_F is None:
+                self.F_parameter = self.F.parameter
+            else:
+                # we could refactor the code here so we don't create duplicate parameters
+                self.F_parameter = cp.Parameter(self.F.parameter.shape)        
 
     def _values_in_time(self, t, past_returns, **kwargs):
 
@@ -290,6 +311,9 @@ class FactorModelCovariance(BaseRiskModel):
             d = np.sum(Sigmasqrt[:, :-self.num_factors]**2, axis=1)
         else:
             d = self.d.current_value
+            if not (self.Sigma_F is None):
+                self.F_parameter.value = (self.F.parameter.value.T @ np.linalg.cholesky(self.Sigma_F.current_value)).T
+
         self.idyosync_sqrt_parameter.value = np.sqrt(d)
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
