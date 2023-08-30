@@ -19,7 +19,7 @@ setup(
     description='Portfolio optimization.',
     install_requires=["pandas",
                       "numpy",
-                      "scipy<1.11.0",  # on 2023-06-26 introduced bug in cvxpy
+                      "scipy",
                       "matplotlib",
                       "yfinance",
                       "cvxpy",
