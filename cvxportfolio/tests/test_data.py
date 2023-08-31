@@ -28,7 +28,7 @@ from cvxportfolio.data import (
     Yfinance,
     FredBase,
     FredRate,
-    SqliteDataStore,
+    # SqliteDataStore,
     TimeSeries,
     PickleStore,
 )
@@ -114,9 +114,9 @@ class TestData(unittest.TestCase):
         self.assertTrue(np.allclose(
             data1.loc[data.index[:-1]].Return, data.iloc[:-1].Return))
 
-    def test_sqlite3_store_series(self):
-        """Test storing and retrieving of a Series with datetime index."""
-        self.base_test_series(SqliteDataStore, self.datadir)
+    # def test_sqlite3_store_series(self):
+    #     """Test storing and retrieving of a Series with datetime index."""
+    #     self.base_test_series(SqliteDataStore, self.datadir)
 
     def test_local_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
@@ -126,9 +126,9 @@ class TestData(unittest.TestCase):
         """Test storing and retrieving of a Series with datetime index."""
         self.base_test_series(PickleStore, self.datadir)
 
-    def test_sqlite3_store_dataframe(self):
-        """Test storing and retrieving of a DataFrame with datetime index."""
-        self.base_test_dataframe(SqliteDataStore, self.datadir)
+    # def test_sqlite3_store_dataframe(self):
+    #     """Test storing and retrieving of a DataFrame with datetime index."""
+    #     self.base_test_dataframe(SqliteDataStore, self.datadir)
 
     def test_local_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
@@ -142,9 +142,9 @@ class TestData(unittest.TestCase):
         """Test storing and retrieving of a DataFrame with datetime index."""
         self.base_test_multiindex(LocalDataStore, self.datadir)
 
-    def test_sqlite3_store_multiindex(self):
-        """Test storing and retrieving of a DataFrame with datetime index."""
-        self.base_test_multiindex(SqliteDataStore, self.datadir)
+    # def test_sqlite3_store_multiindex(self):
+    #     """Test storing and retrieving of a DataFrame with datetime index."""
+    #     self.base_test_multiindex(SqliteDataStore, self.datadir)
 
     def test_pickle_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""

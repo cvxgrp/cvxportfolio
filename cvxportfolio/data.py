@@ -205,98 +205,98 @@ class BaseDataStore(BaseData):
     base_location = None
 
 
-class SqliteDataStore(BaseDataStore):
-    """Local sqlite3 database using python standard library.
-
-    Args:
-        location (pathlib.Path or None): pathlib.Path base location of the databases
-            directory or, if None, use ":memory:" for storing in RAM instead. Default
-            is ~/cvxportfolio/
-    """
-
-    def __init__(self, base_location=BASE_LOCATION):
-        """Initialize sqlite connection and if necessary create database."""
-        self.base_location = base_location
-
-    def __open__(self):
-        """Open database connection."""
-        if self.base_location is None:
-            self.connection = sqlite3.connect(":memory:")
-        else:
-            self.connection = sqlite3.connect(
-                (self.base_location / self.__class__.__name__).with_suffix(".sqlite"))
-
-    def __close__(self):
-        """Close database connection."""
-        self.connection.close()
-
-    def store(self, symbol, data):
-        """Store Pandas object to sqlite.
-
-        We separately store dtypes for data consistency and safety.
-
-        Limitations: if your pandas object's index has a name it will be lost,
-            the index is renamed 'index'.
-        """
-        self.__open__()
-        exists = pd.read_sql_query(
-            f"SELECT name FROM sqlite_master WHERE type='table' AND name='{symbol}'",
-            self.connection,
-        )
-        if len(exists):
-            res = self.connection.cursor().execute(f"DROP TABLE '{symbol}'")
-            res = self.connection.cursor().execute(
-                f"DROP TABLE '{symbol}___dtypes'")
-            self.connection.commit()
-
-        if hasattr(data.index, "levels"):
-            data.index = data.index.set_names(
-                ["index"] +
-                [f"___level{i}" for i in range(1, len(data.index.levels))]
-            )
-            data = data.reset_index().set_index("index")
-        else:
-            data.index.name = "index"
-
-        data.to_sql(f"{symbol}", self.connection)
-        pd.DataFrame(data).dtypes.astype("string").to_sql(
-            f"{symbol}___dtypes", self.connection
-        )
-        self.__close__()
-
-    def load_raw(self, symbol):
-        """Load Pandas object with datetime index from sqlite.
-
-        If data is not present in in the database, return None.
-        """
-        try:
-            self.__open__()
-            dtypes = pd.read_sql_query(
-                f"SELECT * FROM {symbol}___dtypes",
-                self.connection,
-                index_col="index",
-                dtype={"index": "str", "0": "str"},
-            )
-            tmp = pd.read_sql_query(
-                f"SELECT * FROM {symbol}",
-                self.connection,
-                index_col="index",
-                parse_dates="index",
-                dtype=dict(dtypes["0"]),
-            )
-            self.__close__()
-            multiindex = []
-            for col in tmp.columns:
-                if col[:8] == "___level":
-                    multiindex.append(col)
-                else:
-                    break
-            if len(multiindex):
-                multiindex = [tmp.index.name] + multiindex
-                tmp = tmp.reset_index().set_index(multiindex)
-            return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
-        except pd.errors.DatabaseError:
-            return None
+# class SqliteDataStore(BaseDataStore):
+#     """Local sqlite3 database using python standard library.
+#
+#     Args:
+#         location (pathlib.Path or None): pathlib.Path base location of the databases
+#             directory or, if None, use ":memory:" for storing in RAM instead. Default
+#             is ~/cvxportfolio/
+#     """
+#
+#     def __init__(self, base_location=BASE_LOCATION):
+#         """Initialize sqlite connection and if necessary create database."""
+#         self.base_location = base_location
+#
+#     def __open__(self):
+#         """Open database connection."""
+#         if self.base_location is None:
+#             self.connection = sqlite3.connect(":memory:")
+#         else:
+#             self.connection = sqlite3.connect(
+#                 (self.base_location / self.__class__.__name__).with_suffix(".sqlite"))
+#
+#     def __close__(self):
+#         """Close database connection."""
+#         self.connection.close()
+#
+#     def store(self, symbol, data):
+#         """Store Pandas object to sqlite.
+#
+#         We separately store dtypes for data consistency and safety.
+#
+#         Limitations: if your pandas object's index has a name it will be lost,
+#             the index is renamed 'index'.
+#         """
+#         self.__open__()
+#         exists = pd.read_sql_query(
+#             f"SELECT name FROM sqlite_master WHERE type='table' AND name='{symbol}'",
+#             self.connection,
+#         )
+#         if len(exists):
+#             res = self.connection.cursor().execute(f"DROP TABLE '{symbol}'")
+#             res = self.connection.cursor().execute(
+#                 f"DROP TABLE '{symbol}___dtypes'")
+#             self.connection.commit()
+#
+#         if hasattr(data.index, "levels"):
+#             data.index = data.index.set_names(
+#                 ["index"] +
+#                 [f"___level{i}" for i in range(1, len(data.index.levels))]
+#             )
+#             data = data.reset_index().set_index("index")
+#         else:
+#             data.index.name = "index"
+#
+#         data.to_sql(f"{symbol}", self.connection)
+#         pd.DataFrame(data).dtypes.astype("string").to_sql(
+#             f"{symbol}___dtypes", self.connection
+#         )
+#         self.__close__()
+#
+#     def load_raw(self, symbol):
+#         """Load Pandas object with datetime index from sqlite.
+#
+#         If data is not present in in the database, return None.
+#         """
+#         try:
+#             self.__open__()
+#             dtypes = pd.read_sql_query(
+#                 f"SELECT * FROM {symbol}___dtypes",
+#                 self.connection,
+#                 index_col="index",
+#                 dtype={"index": "str", "0": "str"},
+#             )
+#             tmp = pd.read_sql_query(
+#                 f"SELECT * FROM {symbol}",
+#                 self.connection,
+#                 index_col="index",
+#                 parse_dates="index",
+#                 dtype=dict(dtypes["0"]),
+#             )
+#             self.__close__()
+#             multiindex = []
+#             for col in tmp.columns:
+#                 if col[:8] == "___level":
+#                     multiindex.append(col)
+#                 else:
+#                     break
+#             if len(multiindex):
+#                 multiindex = [tmp.index.name] + multiindex
+#                 tmp = tmp.reset_index().set_index(multiindex)
+#             return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
+#         except pd.errors.DatabaseError:
+#             return None
 
 
 class PickleStore(BaseDataStore):
@@ -463,7 +463,7 @@ class Yfinance(YfinanceBase, LocalDataStore):
         return super().update_and_load(symbol)
 
 
-class FredRate(FredBase, RateBase, SqliteDataStore):
+class FredRate(FredBase, RateBase, PickleStore):
     """Load and store FRED rates like DFF."""
 
     pass
