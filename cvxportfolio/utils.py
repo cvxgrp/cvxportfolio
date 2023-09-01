@@ -21,7 +21,7 @@ TRUNCATE_REPR_HASH = 10  # probability of conflict is 1e-16
 
 
 __all__ = ['periods_per_year', 'resample_returns',
-           'flatten_heterogeneous_list', 'repr_numpy_pandas']
+           'flatten_heterogeneous_list', 'repr_numpy_pandas', 'hash_']
 
 
 def periods_per_year(idx):
@@ -41,11 +41,12 @@ def flatten_heterogeneous_list(li):
                 else el for el in li), [])
 
 
-def hash_(array_like):
-    """Hash np.array."""
+def hash_(iterable):
+    """Hash iterable, also np.array."""
     return hashlib.sha256(
-        bytes(str(list(array_like.flatten())), 'utf-8')).hexdigest()[
-            :TRUNCATE_REPR_HASH]
+        bytes(str(tuple(
+            iterable.flatten() if hasattr(iterable, 'flatten') else iterable)), 'utf-8')
+        ).hexdigest()[:TRUNCATE_REPR_HASH]
 
 
 def repr_numpy_pandas(nppd):

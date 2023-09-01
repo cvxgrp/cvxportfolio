@@ -39,7 +39,6 @@ from .result import BacktestResult
 from .utils import *
 from .errors import DataError
 
-PPY = 252
 __all__ = ['StockMarketSimulator', 'MarketSimulator']
 
 
@@ -48,21 +47,33 @@ def _mp_init(l):
     LOCK = l
 
 
-def _hash_universe(universe):
-    return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
+# def _hash_universe(universe):
+#     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
+    
+
+def _cache_address(base_location, universe=None, datasource=None, trading_frequency=None, returns=None):
+    """Get cache address. 
+    
+    This works both with user-provided data (only returns matter)
+    and cvxportfolio-managed data.
+    """
+    return (base_location / 'backtest_caches' 
+        /((f'hash(universe)={hash_(universe)}' if not (universe is None) else '')
+        +(f'returns={repr_numpy_pandas(returns)}' if not (returns is None) else '')
+        +(f',datasource={datasource}' if not (datasource is None) else '')
+        +(f',trading_frequency={trading_frequency}' if not (trading_frequency is None) else '')
+        +'.pkl'))
 
 
-def _load_cache(universe, trading_frequency, base_location):
+def _load_cache(**kwargs):
     """Load cache from disk."""
-    folder = base_location / \
-        f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
+    addr = _cache_address(**kwargs)
     if 'LOCK' in globals():
         logging.debug(f'Acquiring cache lock from process {os.getpid()}')
         LOCK.acquire()
     try:
-        with open(folder/'cache.pkl', 'rb') as f:
-            logging.info(
-                f'Loading cache for universe = {universe} and trading_frequency = {trading_frequency}')
+        with open(addr, 'rb') as f:
+            logging.info(f'Loading cache at {addr}')
             return pickle.load(f)
     except FileNotFoundError:
         logging.info(f'Cache not found!')
@@ -73,17 +84,15 @@ def _load_cache(universe, trading_frequency, base_location):
             LOCK.release()
 
 
-def _store_cache(cache, universe, trading_frequency, base_location):
+def _store_cache(cache, **kwargs):
     """Store cache to disk."""
-    folder = base_location / \
-        f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
+    addr = _cache_address(**kwargs)
     if 'LOCK' in globals():
         logging.debug(f'Acquiring cache lock from process {os.getpid()}')
         LOCK.acquire()
-    folder.mkdir(exist_ok=True)
-    with open(folder/'cache.pkl', 'wb') as f:
-        logging.info(
-            f'Storing cache for universe = {universe} and trading_frequency = {trading_frequency}')
+    addr.parent.mkdir(exist_ok=True)
+    with open(addr, 'wb') as f:
+        logging.info(f'Storing cache at {addr}')
         pickle.dump(cache, f)
     if 'LOCK' in globals():
         logging.debug(f'Releasing cache lock from process {os.getpid()}')
@@ -106,8 +115,8 @@ class MarketData:
                  cash_key='USDOLLAR',
                  base_location=BASE_LOCATION,
                  min_history=pd.Timedelta('365.24d'),
-                 # TODO change logic for this (it's now this to not drop quarterly data)
-                 max_contiguous_missing='365d',
+                 # TODO change logic for this (it's now this to not cause problems when resampling to annual)
+                 max_contiguous_missing='366d',
                  trading_frequency=None,
                  copy_dataframes=True,
                  **kwargs,
@@ -125,6 +134,8 @@ class MarketData:
             self._get_market_data(universe, datasource)
             self._add_cash_column(self.cash_key)
             self._remove_missing_recent()
+            self.datasource = datasource
+            self.user_provided_data = False
         else:
             if returns is None:
                 raise SyntaxError(
@@ -136,12 +147,40 @@ class MarketData:
                 pd.DataFrame(prices, copy=copy_dataframes)
             if cash_key != returns.columns[-1]:
                 self._add_cash_column(cash_key)
+            self.datasource = None
+            self.user_provided_data = True
 
         if trading_frequency:
             self._downsample(trading_frequency)
+            self.trading_frequency = trading_frequency
+        else:
+            self.trading_frequency = None
 
         self._set_read_only()
         self._check_sizes()
+        
+    def __repr__(self):
+        """Print self, used for signing data for caching.
+        
+        Whenever the uses invokes the market simulator with
+        the same data, the string returned by this method 
+        is the same. 
+        """
+        result = self.__class__.__name__ + '(' 
+        
+        if not self.user_provided_data:
+            result += f'hash(universe)={hash_(self.universe)}'
+        else:
+            result += f'returns={repr_numpy_pandas(self.returns)}'
+            if not (self.volumes is None):
+                result += f', volumes={repr_numpy_pandas(self.volumes)}'
+            if not (self.prices is None):
+                result += f', prices={repr_numpy_pandas(self.prices)}'
+                
+        if not self.trading_frequency is None:
+            result += f', trading_frequency={self.trading_frequency}'
+                
+        return result + ')'
 
     def _reduce_universe(self, reduced_universe):
         assert reduced_universe[-1] == self.cash_key
@@ -181,12 +220,14 @@ class MarketData:
             1+self.returns).resample(interval, closed='left', label='left'
                 ).sum(False, 1))-1
         self.returns.index = new_returns_index
+        self.returns.iloc[-1] = np.nan
         if self.volumes is not None:
             new_volumes_index = pd.Series(self.volumes.index, self.volumes.index
                 ).resample(interval, closed='left', label='left').first().values
             self.volumes = self.volumes.resample(
                 interval, closed='left', label='left').sum(False, 1)
             self.volumes.index = new_volumes_index
+            self.volumes.iloc[-1] = np.nan
         if self.prices is not None:
             new_prices_index = pd.Series(self.prices.index, self.prices.index
                 ).resample(interval, closed='left', label='left').first().values
@@ -437,8 +478,6 @@ class MarketSimulator:
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
 
-        self.enable_caching = len(universe) > 0
-
         self.market_data = MarketData(
             universe=universe, returns=returns,
             volumes=volumes, prices=prices,
@@ -536,7 +575,7 @@ class MarketSimulator:
         h_next = pd.Series(h_plus, copy=True)
 
         # credit costs to cash account
-        h_next[-1] = h_plus[-1] + sum(realized_costs.values())
+        h_next.iloc[-1] = h_plus.iloc[-1] + sum(realized_costs.values())
 
         # multiply positions by market returns
         current_returns = current_and_past_returns.iloc[-1]
@@ -601,11 +640,13 @@ class MarketSimulator:
             )
 
             # if policy uses a cache load it from disk
-            if hasattr(policy, 'cache') and self.enable_caching:
+            if hasattr(policy, 'cache'):
                 logging.info('Trying to load cache from disk...')
                 policy.cache = _load_cache(
                     universe=el['universe'],
-                    trading_frequency=self.trading_frequency,
+                    datasource=self.market_data.datasource,
+                    returns=self.market_data.returns if (self.market_data.datasource is None) else None,
+                    trading_frequency=self.market_data.trading_frequency,
                     base_location=self.base_location)
 
             results.append(self._single_backtest(
@@ -614,10 +655,13 @@ class MarketSimulator:
             h = results[-1].h.iloc[-1]
 
             # if policy used a cache write it to disk
-            if hasattr(policy, 'cache') and self.enable_caching:
+            if hasattr(policy, 'cache'):
                 logging.info('Storing cache from policy to disk...')
-                _store_cache(cache=policy.cache, universe=el['universe'],
+                _store_cache(cache=policy.cache, 
+                             universe=el['universe'],
                              trading_frequency=self.trading_frequency,
+                             returns=self.market_data.returns if (self.market_data.datasource is None) else None,
+                             datasource=self.market_data.datasource,
                              base_location=self.base_location)
 
         self.market_data = orig_md
