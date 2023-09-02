@@ -108,7 +108,7 @@ class TestCosts(unittest.TestCase):
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         hcost._recursive_values_in_time(
             t=self.returns.index[t], past_returns=self.returns.iloc[:t])
-        cash_ret = self.returns.iloc[t-1][-1]
+        cash_ret = self.returns.iloc[t-1].iloc[-1]
 
         for i in range(10):
             self.w_plus.value = np.random.randn(self.N)

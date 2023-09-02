@@ -259,12 +259,12 @@ class TestSimulator(unittest.TestCase):
             np.random.seed(i)
             h_plus = np.random.randn(self.returns.shape[1])*1000
             h_plus = pd.Series(h_plus, self.returns.columns)
-            h_plus[-1] = 1000 - sum(h_plus[:-1])
+            h_plus.iloc[-1] = 1000 - sum(h_plus.iloc[:-1])
 
             sim_cash_hcost = hcost._simulate(
                 t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
 
-            real_cash_position = h_plus[-1] + sum(np.minimum(h_plus[:-1], 0.))
+            real_cash_position = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
             if real_cash_position > 0:
                 cash_hcost = real_cash_position * \
                     (np.maximum(cash_return - 0.005/252, 0.) - cash_return)
@@ -396,7 +396,7 @@ class TestSimulator(unittest.TestCase):
 
                 print(u)
 
-    def test__simulate_policy(self):
+    def test_simulate_policy(self):
         simulator = StockMarketSimulator(
             ['META', 'AAPL'], base_location=self.datadir)
 
@@ -419,7 +419,7 @@ class TestSimulator(unittest.TestCase):
             )
 
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
-                oldcash = h[-1]
+                oldcash = h.iloc[-1]
                 h, z, u, costs, timer = simulator._simulate(
                     t=t, h=h, policy=policy)
                 tcost, hcost = costs['StocksTransactionCost'], costs['StocksHoldingCost']
@@ -427,7 +427,7 @@ class TestSimulator(unittest.TestCase):
                 # if np.all(h0[:2] > 0):
                 #    assert hcost == 0.
                 assert np.isclose(
-                    (oldcash + hcost) * (1+simulator.market_data.returns.loc[t, 'USDOLLAR']), h[-1])
+                    (oldcash + hcost) * (1+simulator.market_data.returns.loc[t, 'USDOLLAR']), h.iloc[-1])
 
             simh = h0[:-1] * simulator.market_data.prices.loc[pd.Timestamp(
                 end_time) + pd.Timedelta('1d')] / simulator.market_data.prices.loc[start_time]
@@ -450,7 +450,7 @@ class TestSimulator(unittest.TestCase):
             )
 
             for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
-                oldcash = h[-1]
+                oldcash = h.iloc[-1]
                 h, z, u, costs, timer = simulator._simulate(
                     t=t, h=h, policy=policy)
                 tcost, hcost = costs['StocksTransactionCost'], costs['StocksHoldingCost']

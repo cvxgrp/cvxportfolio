@@ -60,7 +60,7 @@ class BacktestResult(Estimator):
     @property
     def profit(self):
         """The profit made, in dollars."""
-        return self.v[-1] - self.v[0]
+        return self.v.iloc[-1] - self.v.iloc[0]
 
     @property
     def w(self):

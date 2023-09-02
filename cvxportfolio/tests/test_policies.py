@@ -112,9 +112,9 @@ class TestPolicies(unittest.TestCase):
     def test_proportional_trade(self):
 
         a = pd.Series(1., self.returns.columns)
-        a[-1] = 1 - sum(a[:-1])
+        a.iloc[-1] = 1 - sum(a.iloc[:-1])
         b = pd.Series(-1., self.returns.columns)
-        b[-1] = 1 - sum(b[:-1])
+        b.iloc[-1] = 1 - sum(b.iloc[:-1])
 
         targets = pd.DataFrame({self.returns.index[3]: a,
                                 self.returns.index[15]: b
@@ -127,7 +127,7 @@ class TestPolicies(unittest.TestCase):
             np.random.randn(
                 self.returns.shape[1]),
             self.returns.columns)
-        start_portfolio[-1] = 1 - sum(start_portfolio[:-1])
+        start_portfolio.iloc[-1] = 1 - sum(start_portfolio.iloc[:-1])
         for t in self.returns.index[:17]:
             print(t)
             print(start_portfolio)

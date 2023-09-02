@@ -272,7 +272,7 @@ class MarketData:
         data._recursive_pre_evaluation()
         self.returns[cash_key] = resample_returns(
             data.data / 100, periods=self.PPY)
-        self.returns[cash_key] = self.returns[cash_key].fillna(method='ffill')
+        self.returns[cash_key] = self.returns[cash_key].ffill()
 
     DATASOURCES = {'YFinance': YfinanceTimeSeries, 'FRED': FredTimeSeries}
 
@@ -466,8 +466,8 @@ class MarketSimulator:
         """Round dollar trade vector u.
         """
         result = pd.Series(u, copy=True)
-        result[:-1] = np.round(u[:-1] / current_prices) * current_prices
-        result[-1] = -sum(result[:-1])
+        result.iloc[:-1] = np.round(u[:-1] / current_prices) * current_prices
+        result.iloc[-1] = -sum(result.iloc[:-1])
         return result
 
     def _simulate(self, t, h, policy, **kwargs):
@@ -496,7 +496,7 @@ class MarketSimulator:
         policy_time = time.time() - s
 
         # for safety recompute cash
-        z[-1] = -sum(z[:-1])
+        z.iloc[-1] = -sum(z.iloc[:-1])
         assert sum(z) == 0.
 
         # trades in dollars
@@ -517,7 +517,7 @@ class MarketSimulator:
             u = self._round_trade_vector(u, current_prices)
 
         # for safety recompute cash
-        u[-1] = -sum(u[:-1])
+        u.iloc[-1] = -sum(u.iloc[:-1])
         assert sum(u) == 0.
 
         # compute post-trade holdings (including cash balance)
@@ -536,7 +536,7 @@ class MarketSimulator:
         h_next = pd.Series(h_plus, copy=True)
 
         # credit costs to cash account
-        h_next[-1] = h_plus[-1] + sum(realized_costs.values())
+        h_next.iloc[-1] = h_plus.iloc[-1] + sum(realized_costs.values())
 
         # multiply positions by market returns
         current_returns = current_and_past_returns.iloc[-1]
@@ -587,8 +587,8 @@ class MarketSimulator:
 
             # TODO improve
             if len(el['universe']) > len(h):
-                tmp = pd.Series(0, el['universe'])
-                tmp[h.index] = h
+                tmp = pd.Series(0., el['universe'])
+                tmp.loc[h.index] = h
                 h = tmp
             else:
                 h = h[el['universe']]
@@ -732,7 +732,7 @@ class MarketSimulator:
         for i in range(len(policies)):
             if h[i] is None:
                 h[i] = pd.Series(0., self.market_data.universe)
-                h[i][-1] = initial_value
+                h[i].iloc[-1] = initial_value
 
         n = len(policies)
 
