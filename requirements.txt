@@ -16,3 +16,4 @@ multiprocess
 flake8
 autopep8
 sphinx-rtd-theme
+pytest

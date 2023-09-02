@@ -12,11 +12,13 @@ endif
 
 env:
 	$(PYTHON) -m venv $(ENVDIR)
-	$(BINDIR)/python -m pip install -r requirements.txt
 	$(BINDIR)/python -m pip install --editable .
+	$(BINDIR)/python -m pip install -r requirements.txt
 	
 test:
-	$(BINDIR)/python -m unittest $(PROJECT)/tests/*.py
+	$(BINDIR)/pytest $(PROJECT)/tests/*.py
+	
+hardtest: cleanenv env test  
 
 test8:
 	flake8 --per-file-ignores='$(PROJECT)/__init__.py:F401,F403' $(PROJECT)/*.py
@@ -35,7 +37,7 @@ pep8:
 	# use autopep8 to make innocuous fixes 
 	$(BINDIR)/autopep8 -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
-release: test
+release: hardtest
 	$(BINDIR)/python bumpversion.py
 	git push
 	$(BINDIR)/python -m build
