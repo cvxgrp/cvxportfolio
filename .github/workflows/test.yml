@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
             python-version: ${{ matrix.python-version }}
-	    
+
 # rationale: we test against an environment which had 
 # current packages as of ~ Q4 2022 for python 3.10
 # and ~ Q4 2021 for python 3.9
