@@ -57,7 +57,7 @@ class TestSimulator(unittest.TestCase):
 
     def test_market_data__downsample(self):
         "Test downsampling of market data."
-        md = MarketData(['AAPL', 'GOOG'])
+        md = MarketData(['AAPL', 'GOOG'], base_location=self.datadir)
 
         idx = md.returns.index
 
@@ -474,7 +474,7 @@ class TestSimulator(unittest.TestCase):
         print(result)
 
     def test_backtest_concatenation(self):
-        sim = cvx.MarketSimulator(['AAPL', 'ZM'])
+        sim = cvx.MarketSimulator(['AAPL', 'ZM'], base_location=self.datadir)
         pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
                                            cvx.ReturnsForecastError() -
                                            .5 * cvx.FullCovariance(),

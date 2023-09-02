@@ -179,13 +179,14 @@ class MarketData:
         # print(new_returns_index)
         self.returns = np.exp(np.log(
             1+self.returns).resample(interval, closed='left', label='left'
-                ).sum(False, 1))-1
+                ).sum(numeric_only=False, min_count=1))-1
         self.returns.index = new_returns_index
         if self.volumes is not None:
             new_volumes_index = pd.Series(self.volumes.index, self.volumes.index
                 ).resample(interval, closed='left', label='left').first().values
             self.volumes = self.volumes.resample(
-                interval, closed='left', label='left').sum(False, 1)
+                interval, closed='left', label='left').sum(
+                    numeric_only=False, min_count=1)
             self.volumes.index = new_volumes_index
         if self.prices is not None:
             new_prices_index = pd.Series(self.prices.index, self.prices.index
