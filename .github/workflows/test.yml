@@ -30,7 +30,7 @@ jobs:
 
      # - name: Old versions for py 3.10
      #   if: ${{ matrix.python-version == '3.10'}}
-     #   run: env/bin/python -m pip install cvxpy==1.2.3 
+     #   run: python -m pip install cvxpy==1.2.3 
 
       - name: Install package
         run: |
@@ -39,7 +39,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-              coverage run -m unittest cvxportfolio/tests/*.py
+              coverage run -m unittest cvxportfolio
               coverage lcov
 
       - name: Coveralls GitHub Action
