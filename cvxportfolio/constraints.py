@@ -122,7 +122,7 @@ class CostInequalityConstraint(InequalityConstraint):
     
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile constraint to cvxpy."
-        return self.cost(w_plus, z, w_plus_minus_w_bm) 
+        return self.cost._compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm) 
         
     def _rhs(self):
         return self.value.parameter

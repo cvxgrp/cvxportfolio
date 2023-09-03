@@ -91,6 +91,22 @@ class BaseCost(CvxpyExpressionEstimator):
     def __rsub__(self, other):
         """Subtract from other cost."""
         return other.__add__(-self)
+        
+    def __le__(self, other):
+        """self <= other, return CostInequalityConstraint.
+        
+        For now we check here the type of "other"
+        but it would be nicer to have CostInequalityConstraint's
+        internal DataEstimator throw NotImplemented instead.
+        """
+        if isinstance(other, float) \
+            or isinstance(other, int) \
+            or isinstance(other, pd.Series):
+            return CostInequalityConstraint(self, other)
+    
+    def __ge__(self, other):
+        """self >= other, return CostInequalityConstraint."""
+        return (-self).__le__(other)
 
 
 class CombinedCosts(BaseCost):

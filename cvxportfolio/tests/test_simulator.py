@@ -714,6 +714,24 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(allshorts[0] < allshorts[1])
         self.assertTrue(allshorts[1] < allshorts[2])
         self.assertTrue(allshorts[2] < allshorts[3])
+        
+    def test_cost_constraints(self):
+        "We check that cost constraints work as expected."
+        
+        sim = cvx.StockMarketSimulator(
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            
+        policies = [
+            cvx.SinglePeriodOptimization(cvx.ReturnsForecast(), [cvx.FullCovariance() <= el**2]) 
+                for el in [0.01, .02, .05, .1]]
+        
+        results = sim.backtest_many(policies, start_time='2023-01-01')
+        print(results)
+        
+        self.assertTrue(results[0].volatility < results[1].volatility)
+        self.assertTrue(results[1].volatility < results[2].volatility)
+        self.assertTrue(results[2].volatility < results[3].volatility)
+
 
 
 if __name__ == '__main__':
