@@ -619,11 +619,62 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(results[0].w.USDOLLAR.mean() >= results[2].w.USDOLLAR.mean())
         
         # check that uniform bm sol is closer to uniform alloc than market bm sol
-        
         norm_smaller = ((results[1].w.iloc[:,:-1] - 0.2)**2).mean(1) < ((results[2].w.iloc[:,:-1] - 0.2)**2).mean(1)
-        
         print(norm_smaller.describe())
         self.assertTrue(norm_smaller.mean() > .5)
+        
+    def test_market_neutral(self):
+        """Test SPO with market neutral constraint."""
+        
+        sim = cvx.MarketSimulator(
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            
+        objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
+        
+        policies = [cvx.SinglePeriodOptimization(objective, co) for co in [
+            [], [cvx.MarketNeutral()], [cvx.DollarNeutral()]]]
+        
+        results = sim.backtest_many(policies, start_time='2023-01-01')
+        print(results)
+        
+        # check that market neutral sol is closer to 
+        dists_from_dollar_neutral = [np.abs(result.w.iloc[:,-1] - 1).mean() for result in results]
+        print('dists_from_dollar_neutral')
+        print(dists_from_dollar_neutral)
+        self.assertTrue(dists_from_dollar_neutral[2] < dists_from_dollar_neutral[1])
+        self.assertTrue(dists_from_dollar_neutral[1] < dists_from_dollar_neutral[0])
+        
+    def test_timed_constraints(self):
+        """Test some constraints that depend on time."""
+        
+        sim = cvx.StockMarketSimulator(
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+        
+        ## cvx.NoTrade
+        objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
+        
+        no_trade_ts = [sim.market_data.returns.index[-2], sim.market_data.returns.index[-6]] 
+        
+        policy = cvx.SinglePeriodOptimization(objective, [cvx.NoTrade('AAPL', no_trade_ts)])
+        
+        result = sim.backtest(policy, start_time='2023-01-01')
+        print(result.z)
+        for t in no_trade_ts:
+            self.assertTrue(np.isclose(result.z['AAPL'].loc[t], 0., atol=1E-3))
+            
+        ## cvx.MinWeightsAtTimes, cvx.MaxWeightsAtTimes   
+        policies = [cvx.MultiPeriodOptimization(objective - cvx.StocksTransactionCost(), 
+            [cvx.MinWeightsAtTimes(0., no_trade_ts), cvx.MaxWeightsAtTimes(0., no_trade_ts)],
+            planning_horizon=p) for p in [1,2,5] ]
+            
+        results = sim.backtest_many(policies, start_time='2023-01-01', initial_value=1E9)
+        print(results)
+
+        total_tcosts = [result.costs['StocksTransactionCost'].sum() for result in results]
+        print(total_tcosts)
+        self.assertTrue(total_tcosts[0] < total_tcosts[1])
+        self.assertTrue(total_tcosts[1] < total_tcosts[2])
+        
 
 
 if __name__ == '__main__':
