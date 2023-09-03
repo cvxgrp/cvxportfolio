@@ -82,7 +82,8 @@ class TestSimulator(unittest.TestCase):
 
             if freqs[i] == 'weekly':
                 print((new_md.returns.index.weekday < 2).mean())
-                self.assertTrue((new_md.returns.index.weekday < 2).mean() > .95)
+                self.assertTrue(
+                    (new_md.returns.index.weekday < 2).mean() > .95)
 
             if freqs[i] == 'monthly':
                 print((new_md.returns.index.day < 5).mean())
@@ -266,7 +267,8 @@ class TestSimulator(unittest.TestCase):
             sim_cash_hcost = hcost._simulate(
                 t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
 
-            real_cash_position = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
+            real_cash_position = h_plus.iloc[-1] + \
+                sum(np.minimum(h_plus.iloc[:-1], 0.))
             if real_cash_position > 0:
                 cash_hcost = real_cash_position * \
                     (np.maximum(cash_return - 0.005/252, 0.) - cash_return)
@@ -566,7 +568,6 @@ class TestSimulator(unittest.TestCase):
             results_first.append(sim.backtest(pol, pd.Timestamp('2020-12-01')))
             print(results_first[-1])
             time_first += time.time() - s
-            
 
         time_second = 0.
         results_second = []
@@ -594,161 +595,184 @@ class TestSimulator(unittest.TestCase):
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], base_location=self.datadir)
         sim.backtest(cvx.Uniform(), pd.Timestamp(
             '2023-01-01')).plot(show=False)
-            
+
     def test_spo_benchmark(self):
         """Test the effect of benchmark on SPO policies."""
-        
+
         sim = cvx.MarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
-            
+
         objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
         constraints = [cvx.LongOnly(), cvx.LeverageLimit(1)]
-        
+
         myunif = pd.Series(0.2, ['AAPL', 'MSFT', 'GE', 'ZM', 'META'])
         myunif['USDOLLAR'] = 0.
-        
-        policies = [cvx.SinglePeriodOptimization(objective, constraints, benchmark=bm) 
-            for bm in [cvx.CashBenchmark(), cvx.UniformBenchmark(), cvx.MarketBenchmark(),
-                        cvx.Benchmark(myunif)]]
-            
-        results = sim.backtest_many(policies, start_time='2023-01-01')
-        
+
+        policies = [cvx.SinglePeriodOptimization(objective, constraints, benchmark=bm)
+                    for bm in [cvx.CashBenchmark(), cvx.UniformBenchmark(), cvx.MarketBenchmark(),
+                               cvx.Benchmark(myunif)]]
+
+        results = sim.backtest_many(policies, start_time='2023-01-01',
+             parallel=False)  # important for test coverage!!
+
         # check myunif is the same as uniform
-        self.assertTrue(np.isclose(results[1].sharpe_ratio, results[3].sharpe_ratio))
-        
+        self.assertTrue(np.isclose(
+            results[1].sharpe_ratio, results[3].sharpe_ratio))
+
         # check cash benchmark sol has higher cash weights
-        self.assertTrue(results[0].w.USDOLLAR.mean() >= results[1].w.USDOLLAR.mean())
-        self.assertTrue(results[0].w.USDOLLAR.mean() >= results[2].w.USDOLLAR.mean())
-        
+        self.assertTrue(results[0].w.USDOLLAR.mean() >=
+                        results[1].w.USDOLLAR.mean())
+        self.assertTrue(results[0].w.USDOLLAR.mean() >=
+                        results[2].w.USDOLLAR.mean())
+
         # check that uniform bm sol is closer to uniform alloc than market bm sol
-        norm_smaller = ((results[1].w.iloc[:,:-1] - 0.2)**2).mean(1) < ((results[2].w.iloc[:,:-1] - 0.2)**2).mean(1)
+        norm_smaller = ((results[1].w.iloc[:, :-1] - 0.2) **
+                        2).mean(1) < ((results[2].w.iloc[:, :-1] - 0.2)**2).mean(1)
         print(norm_smaller.describe())
         self.assertTrue(norm_smaller.mean() > .5)
-        
+
     def test_market_neutral(self):
         """Test SPO with market neutral constraint."""
-        
+
         sim = cvx.MarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
-            
+
         objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
-        
+
         policies = [cvx.SinglePeriodOptimization(objective, co) for co in [
             [], [cvx.MarketNeutral()], [cvx.DollarNeutral()]]]
-        
-        results = sim.backtest_many(policies, start_time='2023-01-01')
+
+        results = sim.backtest_many(policies, start_time='2023-01-01',
+            parallel=False)  # important for test coverage
         print(results)
-        
-        # check that market neutral sol is closer to 
-        dists_from_dollar_neutral = [np.abs(result.w.iloc[:,-1] - 1).mean() for result in results]
+
+        # check that market neutral sol is closer to
+        dists_from_dollar_neutral = [
+            np.abs(result.w.iloc[:, -1] - 1).mean() for result in results]
         print('dists_from_dollar_neutral')
         print(dists_from_dollar_neutral)
-        self.assertTrue(dists_from_dollar_neutral[2] < dists_from_dollar_neutral[1])
-        self.assertTrue(dists_from_dollar_neutral[1] < dists_from_dollar_neutral[0])
-        
+        self.assertTrue(
+            dists_from_dollar_neutral[2] < dists_from_dollar_neutral[1])
+        self.assertTrue(
+            dists_from_dollar_neutral[1] < dists_from_dollar_neutral[0])
+
     def test_timed_constraints(self):
         """Test some constraints that depend on time."""
-        
+
         sim = cvx.StockMarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
-        
-        ## cvx.NoTrade
+
+        # cvx.NoTrade
         objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
-        
-        no_trade_ts = [sim.market_data.returns.index[-2], sim.market_data.returns.index[-6]] 
-        
-        policy = cvx.SinglePeriodOptimization(objective, [cvx.NoTrade('AAPL', no_trade_ts)])
-        
+
+        no_trade_ts = [sim.market_data.returns.index[-2],
+                       sim.market_data.returns.index[-6]]
+
+        policy = cvx.SinglePeriodOptimization(
+            objective, [cvx.NoTrade('AAPL', no_trade_ts)])
+
         result = sim.backtest(policy, start_time='2023-01-01')
         print(result.z)
         for t in no_trade_ts:
             self.assertTrue(np.isclose(result.z['AAPL'].loc[t], 0., atol=1E-3))
-            
-        ## cvx.MinWeightsAtTimes, cvx.MaxWeightsAtTimes   
-        policies = [cvx.MultiPeriodOptimization(objective - cvx.StocksTransactionCost(), 
-            [cvx.MinWeightsAtTimes(0., no_trade_ts), cvx.MaxWeightsAtTimes(0., no_trade_ts)],
-            planning_horizon=p) for p in [1,2,5] ]
-            
-        results = sim.backtest_many(policies, start_time='2023-01-01', initial_value=1E9)
+
+        # cvx.MinWeightsAtTimes, cvx.MaxWeightsAtTimes
+        policies = [cvx.MultiPeriodOptimization(objective - cvx.StocksTransactionCost(),
+                                                [cvx.MinWeightsAtTimes(
+                                                    0., no_trade_ts), cvx.MaxWeightsAtTimes(0., no_trade_ts)],
+                                                planning_horizon=p) for p in [1, 2, 5]]
+
+        results = sim.backtest_many(
+            policies, start_time='2023-01-01', initial_value=1E9,
+            parallel=False)  # important for test coverage
         print(results)
 
-        total_tcosts = [result.costs['StocksTransactionCost'].sum() for result in results]
+        total_tcosts = [result.costs['StocksTransactionCost'].sum()
+                        for result in results]
         print(total_tcosts)
         self.assertTrue(total_tcosts[0] < total_tcosts[1])
         self.assertTrue(total_tcosts[1] < total_tcosts[2])
-        
+
     def test_eq_soft_constraints(self):
         """We check that soft DollarNeutral penalizes non-dollar-neutrality."""
-        
+
         sim = cvx.StockMarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
-            
+
         objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance()
-        
+
         policies = [cvx.SinglePeriodOptimization(objective - cvx.SoftConstraint(cvx.DollarNeutral()) * gamma)
-            for gamma in [.0001, .001, .01]]
-        policies.append(cvx.SinglePeriodOptimization(objective, [cvx.DollarNeutral()]))
-        results = sim.backtest_many(policies, start_time='2023-01-01')
+                    for gamma in [.0001, .001, .01]]
+        policies.append(cvx.SinglePeriodOptimization(
+            objective, [cvx.DollarNeutral()]))
+        results = sim.backtest_many(policies, start_time='2023-01-01',
+            parallel=False)  # important for test coverage
         print(results)
-        allcashpos = [((res.w.iloc[:,-1]-1)**2).mean() for res in results]
+        allcashpos = [((res.w.iloc[:, -1]-1)**2).mean() for res in results]
         print(allcashpos)
         self.assertTrue(allcashpos[0] > allcashpos[1])
         self.assertTrue(allcashpos[1] > allcashpos[2])
         self.assertTrue(allcashpos[2] > allcashpos[3])
-            
-            
+
     def test_ineq_soft_constraints(self):
         """We check that soft LongOnly penalizes shorts."""
-        
+
         sim = cvx.StockMarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
-            
+
         objective = cvx.ReturnsForecast() - .5 * cvx.FullCovariance()
-        
+
         policies = [cvx.SinglePeriodOptimization(objective - cvx.SoftConstraint(cvx.LongOnly()) * gamma,
-            [cvx.MarketNeutral()])
-            for gamma in [.0001, .001, .01]]
-        policies.append(cvx.SinglePeriodOptimization(objective, [cvx.LongOnly(), cvx.MarketNeutral()]))
-        results = sim.backtest_many(policies, start_time='2023-01-01')
+                                                 [cvx.MarketNeutral()])
+                    for gamma in [.0001, .001, .01]]
+        policies.append(cvx.SinglePeriodOptimization(
+            objective, [cvx.LongOnly(), cvx.MarketNeutral()]))
+        results = sim.backtest_many(policies, start_time='2023-01-01',
+            parallel=False)  # important for test coverage
         print(results)
-        allshorts = [np.minimum(res.w.iloc[:,:-1], 0.).sum().sum() for res in results]
+        allshorts = [np.minimum(res.w.iloc[:, :-1], 0.).sum().sum()
+                     for res in results]
         print(allshorts)
         self.assertTrue(allshorts[0] < allshorts[1])
         self.assertTrue(allshorts[1] < allshorts[2])
         self.assertTrue(allshorts[2] < allshorts[3])
-        
+
     def test_cost_constraints(self):
         "We check that cost constraints work as expected."
-        
+
         sim = cvx.StockMarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
-            
+
         policies = [
-            cvx.SinglePeriodOptimization(cvx.ReturnsForecast(), [cvx.FullCovariance() <= el**2]) 
-                for el in [0.01, .02, .05, .1]]
-        
-        results = sim.backtest_many(policies, start_time='2023-01-01')
+            cvx.SinglePeriodOptimization(cvx.ReturnsForecast(), [
+                                         cvx.FullCovariance() <= el**2])
+            for el in [0.01, .02, .05, .1]]
+
+        results = sim.backtest_many(policies, start_time='2023-01-01',
+            parallel=False)  # important for test coverage
         print(results)
-        
+
         self.assertTrue(results[0].volatility < results[1].volatility)
         self.assertTrue(results[1].volatility < results[2].volatility)
         self.assertTrue(results[2].volatility < results[3].volatility)
 
     def test_dcp_convex_raises(self):
-        
+
         sim = cvx.StockMarketSimulator(
             ['AAPL'], base_location=self.datadir)
-            
-        policy = cvx.SinglePeriodOptimization(cvx.ReturnsForecast(), [cvx.FullCovariance() >= 2])
-        
+
+        policy = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast(), [cvx.FullCovariance() >= 2])
+
         with self.assertRaises(ConvexSpecificationError):
             sim.backtest(policy)
-            
-        policy = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() + .5 * cvx.FullCovariance())
-        
+
+        policy = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast() + .5 * cvx.FullCovariance())
+
         with self.assertRaises(ConvexityError):
             sim.backtest(policy)
-        
+
 
 if __name__ == '__main__':
     unittest.main()

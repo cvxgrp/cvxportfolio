@@ -61,7 +61,7 @@ class TestConstraints(unittest.TestCase):
         # self.assertTrue(listvalue(cons))
         self.w_plus.value = -np.ones(self.N)
         self.assertFalse(cons.value())
-        #self.assertFalse(listvalue(cons))
+        # self.assertFalse(listvalue(cons))
         # model = cvx.LongOnly(nocash=True)
         # cons = self.build_constraint(model)
         # self.w_plus.value = np.ones(self.N)

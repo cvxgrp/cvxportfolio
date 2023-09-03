@@ -239,7 +239,7 @@ class FactorModelCovariance(BaseRiskModel):
     columns as the number of factors,
     the factors covariance matrix :math:`Sigma_{F}` is positive semi-definite,
     and the idyosyncratic variances vector :math:`d` is non-negative. 
-    
+
     The advantage of this risk model over the standard :class:`FullCovariance` is mostly
     computational. When well-specified (as we do here) it costs much less to solve an 
     optimization problem with this model than with a full covariance. It is a standard 
@@ -293,13 +293,14 @@ class FactorModelCovariance(BaseRiskModel):
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         effective_num_factors = min(self.num_factors, len(universe)-1)
         if self._fit:
-            self.F_parameter = cp.Parameter((effective_num_factors, len(universe)-1)) 
+            self.F_parameter = cp.Parameter(
+                (effective_num_factors, len(universe)-1))
         else:
             if self.Sigma_F is None:
                 self.F_parameter = self.F.parameter
             else:
                 # we could refactor the code here so we don't create duplicate parameters
-                self.F_parameter = cp.Parameter(self.F.parameter.shape)        
+                self.F_parameter = cp.Parameter(self.F.parameter.shape)
 
     def _values_in_time(self, t, past_returns, **kwargs):
         if self._fit:
@@ -310,7 +311,8 @@ class FactorModelCovariance(BaseRiskModel):
         else:
             d = self.d.current_value
             if not (self.Sigma_F is None):
-                self.F_parameter.value = (self.F.parameter.value.T @ np.linalg.cholesky(self.Sigma_F.current_value)).T
+                self.F_parameter.value = (
+                    self.F.parameter.value.T @ np.linalg.cholesky(self.Sigma_F.current_value)).T
 
         self.idyosync_sqrt_parameter.value = np.sqrt(d)
 

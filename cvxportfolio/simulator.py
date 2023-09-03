@@ -175,21 +175,21 @@ class MarketData:
                 'Unsopported trading interval for down-sampling.')
         interval = self.sampling_intervals[interval]
         new_returns_index = pd.Series(self.returns.index, self.returns.index
-            ).resample(interval, closed='left', label='left').first().values
+                                      ).resample(interval, closed='left', label='left').first().values
         # print(new_returns_index)
         self.returns = np.exp(np.log(
             1+self.returns).resample(interval, closed='left', label='left'
-                ).sum(min_count=1))-1
+                                     ).sum(min_count=1))-1
         self.returns.index = new_returns_index
         if self.volumes is not None:
             new_volumes_index = pd.Series(self.volumes.index, self.volumes.index
-                ).resample(interval, closed='left', label='left').first().values
+                                          ).resample(interval, closed='left', label='left').first().values
             self.volumes = self.volumes.resample(
                 interval, closed='left', label='left').sum(min_count=1)
             self.volumes.index = new_volumes_index
         if self.prices is not None:
             new_prices_index = pd.Series(self.prices.index, self.prices.index
-                ).resample(interval, closed='left', label='left').first().values
+                                         ).resample(interval, closed='left', label='left').first().values
             self.prices = self.prices.resample(
                 interval, closed='left', label='left').first()
             self.prices.index = new_prices_index

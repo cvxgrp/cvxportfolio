@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['DataError', 'MissingValuesError', 'ForeCastError', 
-    'PortfolioOptimizationError', 'Bankruptcy', 'ConvexSpecificationError',
-    'ConvexityError']
+__all__ = ['DataError', 'MissingValuesError', 'ForeCastError',
+           'PortfolioOptimizationError', 'Bankruptcy', 'ConvexSpecificationError',
+           'ConvexityError']
+
 
 class DataError(Exception):
     """Base class for exception related to data."""
@@ -36,24 +37,26 @@ class ForeCastError(DataError):
 class PortfolioOptimizationError(Exception):
     """Errors with portfolio optimization problems."""
     pass
-    
+
+
 class Bankruptcy(Exception):
     """A backtest resulted in a bankruptcy."""
     pass
-    
+
+
 class ConvexSpecificationError(SyntaxError):
     def __init__(self, term):
         super().__init__(
-        "The convex optimization term"
-        f" {term} does not follow the convex optimization specifications."
-        " This could be due to a mis-specified custom term, or a non-convex"
-        " cost inequality used as constraint (e.g., `[cvx.FullCovariance() >= constant]`)."
+            "The convex optimization term"
+            f" {term} does not follow the convex optimization specifications."
+            " This could be due to a mis-specified custom term, or a non-convex"
+            " cost inequality used as constraint (e.g., `[cvx.FullCovariance() >= constant]`)."
         )
-        
+
+
 class ConvexityError(SyntaxError):
     def __init__(self, cost):
         super().__init__(
-        f"The cost term {cost}"
-         " is not concave. (We need concavity since we maximize it.) You probably have" 
-         " a cost's multiplier with the wrong sign.")
-    
+            f"The cost term {cost}"
+            " is not concave. (We need concavity since we maximize it.) You probably have"
+            " a cost's multiplier with the wrong sign.")

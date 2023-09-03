@@ -206,7 +206,6 @@ class TestCosts(unittest.TestCase):
         print(expression.value)
         self.assertTrue(np.isclose(expression.value,
                         est_tcost_lin+est_tcost_nonnlin))
-                                
 
 
 if __name__ == '__main__':

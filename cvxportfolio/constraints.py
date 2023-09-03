@@ -52,28 +52,29 @@ class BaseTradeConstraint(BaseConstraint):
 
     pass
 
-    
+
 class EqualityConstraint(BaseConstraint):
     """Base class for equality constraints.
-    
+
     This class is not exposed to the user, each equality
     constraint inherits from this and overrides the 
     :func:`InequalityConstraint._compile_constr_to_cvxpy` and 
     :func:`InequalityConstraint._rhs` methods.
-    
+
     We factor this code in order to streamline the
     design of :class:`SoftConstraint` costs.
     """
+
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile constraint to cvxpy."
         return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) == \
             self._rhs()
-            
+
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Cvxpy expression of the left-hand side of the constraint.        
         """
         raise NotImplementedError
-    
+
     def _rhs(self):
         """Cvxpy expression of the right-hand side of the constraint.        
         """
@@ -82,25 +83,26 @@ class EqualityConstraint(BaseConstraint):
 
 class InequalityConstraint(BaseConstraint):
     """Base class for inequality constraints.
-    
+
     This class is not exposed to the user, each inequality
     constraint inherits from this and overrides the 
     :func:`InequalityConstraint._compile_constr_to_cvxpy` and 
     :func:`InequalityConstraint._rhs` methods.
-    
+
     We factor this code in order to streamline the
     design of :class:`SoftConstraint` costs.
     """
+
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile constraint to cvxpy."
         return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) <= \
             self._rhs()
-    
+
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Cvxpy expression of the left-hand side of the constraint.        
         """
         raise NotImplementedError
-    
+
     def _rhs(self):
         """Cvxpy expression of the right-hand side of the constraint.        
         """
@@ -109,27 +111,27 @@ class InequalityConstraint(BaseConstraint):
 
 class CostInequalityConstraint(InequalityConstraint):
     """Linear inequality constraint applied to a cost term.
-    
+
     The user does not interact with this class directly,
     it is returned by an expression such as `cost <= value`
     where `cost` is a :class:`BaseCost` instance and `value`
     is a scalar.
     """
-    
+
     def __init__(self, cost, value):
         self.cost = cost
-        self.value = DataEstimator(value, compile_parameter=True) 
-    
+        self.value = DataEstimator(value, compile_parameter=True)
+
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile constraint to cvxpy."
-        return self.cost._compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm) 
-        
+        return self.cost._compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
+
     def _rhs(self):
         return self.value.parameter
-        
+
     def __repr__(self):
         return self.cost.__repr__() + ' <= ' + self.value.__repr__()
-        
+
 
 class BaseWeightConstraint(BaseConstraint):
     """Base class for constraints that operate on weights.
@@ -167,7 +169,7 @@ class MarketNeutral(BaseWeightConstraint, EqualityConstraint):
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
         return w_plus[:-1].T @ self.market_vector
-    
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return 0
@@ -187,8 +189,8 @@ class TurnoverLimit(BaseTradeConstraint, InequalityConstraint):
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
-        return .5 * cp.norm1(z[:-1]) 
-        
+        return .5 * cp.norm1(z[:-1])
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return self.delta.parameter
@@ -217,11 +219,12 @@ class ParticipationRateLimit(BaseTradeConstraint, InequalityConstraint):
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
-        return cp.multiply(cp.abs(z[:-1]), self.portfolio_value) 
-        
+        return cp.multiply(cp.abs(z[:-1]), self.portfolio_value)
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
-        return cp.multiply(self.volumes.parameter, self.max_participation_rate.parameter)                                                        
+        return cp.multiply(self.volumes.parameter, self.max_participation_rate.parameter)
+
 
 class LongOnly(BaseWeightConstraint, InequalityConstraint):
     """A long only constraint.
@@ -234,7 +237,7 @@ class LongOnly(BaseWeightConstraint, InequalityConstraint):
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
         return -w_plus[:-1]
-    
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return 0
@@ -248,7 +251,8 @@ class NoTrade(BaseTradeConstraint):
         self.periods = periods
 
     def _pre_evaluation(self, universe, backtest_times):
-        self.index = (universe.get_loc if hasattr(universe, 'get_loc') else universe.index)(self.asset)
+        self.index = (universe.get_loc if hasattr(
+            universe, 'get_loc') else universe.index)(self.asset)
         self.low = cp.Parameter()
         self.high = cp.Parameter()
 
@@ -320,11 +324,10 @@ class LongCash(MinCashBalance):
 class DollarNeutral(BaseWeightConstraint, EqualityConstraint):
     """Long-short dollar neutral strategy."""
 
-
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
-        return w_plus[-1] 
-    
+        return w_plus[-1]
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return 1
@@ -343,7 +346,7 @@ class MaxWeights(BaseWeightConstraint, InequalityConstraint):
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
         return w_plus[:-1]
-        
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return self.limit.parameter
@@ -362,7 +365,7 @@ class MinWeights(BaseWeightConstraint, InequalityConstraint):
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
         return -w_plus[:-1]
-        
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return -self.limit.parameter
@@ -390,12 +393,12 @@ class MinMaxWeightsAtTimes(BaseWeightConstraint):
 
 class MinWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
-    sign = -1. # used in _values_in_time of parent class
+    sign = -1.  # used in _values_in_time of parent class
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
         return -w_plus[:-1]
-    
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return -self.limit
@@ -403,12 +406,12 @@ class MinWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
 class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
-    sign = 1. # used in _values_in_time of parent class
-        
+    sign = 1.  # used in _values_in_time of parent class
+
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
         return w_plus[:-1]
-    
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return self.limit
@@ -444,7 +447,7 @@ class FactorMaxLimit(BaseWeightConstraint, InequalityConstraint):
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
         return self.factor_exposure.parameter.T @ w_plus[:-1]
-    
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return self.limit.parameter
@@ -480,7 +483,7 @@ class FactorMinLimit(BaseWeightConstraint, InequalityConstraint):
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
         return -self.factor_exposure.parameter.T @ w_plus[:-1]
-    
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return -self.limit.parameter
@@ -520,7 +523,7 @@ class FixedFactorLoading(BaseWeightConstraint, EqualityConstraint):
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
         return self.factor_exposure.parameter.T @ w_plus[:-1]
-                
+
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return self.target.parameter

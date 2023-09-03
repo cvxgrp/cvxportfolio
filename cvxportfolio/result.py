@@ -81,13 +81,13 @@ class BacktestResult(Estimator):
     def mean_return(self):
         """The annualized mean portfolio return."""
         return self.PPY * np.mean(self.returns)
-        
+
     @property
     def sharpe_ratio(self):
         return (np.sqrt(self.PPY)
-            * np.mean(self.excess_returns)
-            / np.std(self.excess_returns)
-        )
+                * np.mean(self.excess_returns)
+                / np.std(self.excess_returns)
+                )
 
     @property
     def returns(self):
@@ -110,18 +110,18 @@ class BacktestResult(Estimator):
     def excess_growth_rates(self):
         """The growth rate log(v_{t+1}/v_t)"""
         return np.log(self.excess_returns + 1)
-    
+
     @staticmethod
     def _print_growth_rate(gr):
         """Transform growth rate into return and pretty-print it.
-        
+
         Either prints in basis points, percentage, or
         multiplication.
         """
         ret = np.exp(gr)-1
-        if np.abs(ret)<0.005:
+        if np.abs(ret) < 0.005:
             return f'{int(ret*1E4):d}bp'
-        if np.abs(gr)<1:
+        if np.abs(gr) < 1:
             return f'{ret*100:.2f}%'
         return f'{1+ret:.1f}X'
 

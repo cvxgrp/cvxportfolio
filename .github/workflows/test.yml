@@ -46,7 +46,6 @@ jobs:
               coverage lcov
 
       - name: Coveralls GitHub Action
-        if: ${{ matrix.python-version == '3.10'}} && ${{ matrix.os == 'ubuntu-latest'}}
         uses: coverallsapp/github-action@v1
         with:
           path-to-lcov: coverage.lcov

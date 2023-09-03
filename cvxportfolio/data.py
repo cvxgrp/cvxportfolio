@@ -27,7 +27,8 @@ import sqlite3
 from .estimator import DataEstimator
 
 __all__ = ["YfinanceTimeSeries", "FredTimeSeries",
-           "FredRateTimeSeries", "BASE_LOCATION"]
+           # "FredRateTimeSeries", 
+           "BASE_LOCATION"]
 
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
 
@@ -491,15 +492,15 @@ class FredTimeSeries(DataEstimator, FredBase, PickleStore):
         self.data = self.update_and_load(self.symbol)
 
 
-class FredRateTimeSeries(DataEstimator, FredBase, RateBase, PickleStore):
-
-    def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
-        self.symbol = symbol
-        self.base_location = base_location
-        self.use_last_available_time = use_last_available_time
-
-    def _recursive_pre_evaluation(self, *args, **kwargs):
-        self.data = self.update_and_load(self.symbol)
+# class FredRateTimeSeries(DataEstimator, FredBase, RateBase, PickleStore):
+#
+#     def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
+#         self.symbol = symbol
+#         self.base_location = base_location
+#         self.use_last_available_time = use_last_available_time
+#
+#     def _recursive_pre_evaluation(self, *args, **kwargs):
+#         self.data = self.update_and_load(self.symbol)
 
 
 class TimeSeries(DataEstimator):
@@ -545,8 +546,8 @@ class TimeSeries(DataEstimator):
             cls.__name__ + "With" + source.__name__, (cls, source), {}
         )
 
-        if isinstance(storage, str) and storage == "sqlite":
-            storage = SqliteDataStore
+        # if isinstance(storage, str) and storage == "sqlite":
+        #     storage = SqliteDataStore
         if isinstance(storage, str) and storage == "csv":
             storage = LocalDataStore
         if isinstance(storage, str) and storage == "pickle":
