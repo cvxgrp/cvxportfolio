@@ -25,11 +25,11 @@ import matplotlib.pyplot as plt
 __all__ = ['BacktestResult']
 
 
-def getFiscalQuarter(dt):
-    """Convert a time to a fiscal quarter."""
-    year = dt.year
-    quarter = (dt.month - 1) // 3 + 1
-    return "Q%i %s" % (quarter, year)
+# def getFiscalQuarter(dt):
+#     """Convert a time to a fiscal quarter."""
+#     year = dt.year
+#     quarter = (dt.month - 1) // 3 + 1
+#     return "Q%i %s" % (quarter, year)
 
 
 class BacktestResult(Estimator):
@@ -81,6 +81,13 @@ class BacktestResult(Estimator):
     def mean_return(self):
         """The annualized mean portfolio return."""
         return self.PPY * np.mean(self.returns)
+        
+    @property
+    def sharpe_ratio(self):
+        return (np.sqrt(self.PPY)
+            * np.mean(self.excess_returns)
+            / np.std(self.excess_returns)
+        )
 
     @property
     def returns(self):
@@ -103,6 +110,20 @@ class BacktestResult(Estimator):
     def excess_growth_rates(self):
         """The growth rate log(v_{t+1}/v_t)"""
         return np.log(self.excess_returns + 1)
+    
+    @staticmethod
+    def _print_growth_rate(gr):
+        """Transform growth rate into return and pretty-print it.
+        
+        Either prints in basis points, percentage, or
+        multiplication.
+        """
+        ret = np.exp(gr)-1
+        if np.abs(ret)<0.005:
+            return f'{int(ret*1E4):d}bp'
+        if np.abs(gr)<1:
+            return f'{ret*100:.2f}%'
+        return f'{1+ret:.1f}X'
 
     # @property
     # def annual_growth_rate(self):
@@ -132,14 +153,6 @@ class BacktestResult(Estimator):
     # def get_worst_quarter(self, benchmark=None):
     #     ret = self.get_quarterly_returns(benchmark)
     #     return (ret.argmin(), ret.min())
-
-    @property
-    def sharpe_ratio(self):
-        return (
-            np.sqrt(self.PPY)
-            * np.mean(self.excess_returns)
-            / np.std(self.excess_returns)
-        )
 
     @property
     def turnover(self):
@@ -180,13 +193,21 @@ class BacktestResult(Estimator):
             "Universe size": self.h.shape[1],
             "Final timestamp": self.h.index[-1],
             "Total profit (PnL)": self.profit,
-            "Annualized portfolio return (%)": self.returns.mean() * 100 * self.PPY,
+            "Initial portfolio value": self.v.iloc[0],
+            "Final portfolio value": self.v.iloc[-1],
+            # returns
+            "Annualized absolute return (%)": 100 * self.mean_return,
+            "Annualized absolute risk (%)": 100 * self.volatility,
             "Annualized excess return (%)": self.excess_returns.mean() * 100 * self.PPY,
             "Annualized excess risk (%)": self.excess_returns.std() * 100 * np.sqrt(self.PPY),
-            "Sharpe ratio": self.sharpe_ratio,
+            # growth rates
+            "Per-period absolute growth rate": self._print_growth_rate(self.growth_rates.mean()),
+            "Per-period excess growth rate": self._print_growth_rate(self.excess_growth_rates.mean()),
+            # stats
+            "Sharpe ratio (w/ excess returns)": self.sharpe_ratio,
             "Worst drawdown (%)": self.drawdown.min() * 100,
             "Average drawdown (%)": self.drawdown.mean() * 100,
-            "Daily Turnover (%)": self.turnover.mean() * 100,
+            "Per-period Turnover (%)": self.turnover.mean() * 100,
             "Annualized Turnover (%)": self.turnover.mean() * 100 * self.PPY,
 
             "Average leverage (%)": self.leverage.mean() * 100,

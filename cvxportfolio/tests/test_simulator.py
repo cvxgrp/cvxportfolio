@@ -561,8 +561,10 @@ class TestSimulator(unittest.TestCase):
             pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast(
             ) - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
             s = time.time()
-            results_first.append(sim.backtest(pol, pd.Timestamp('2021-12-01')))
+            results_first.append(sim.backtest(pol, pd.Timestamp('2020-12-01')))
+            print(results_first[-1])
             time_first += time.time() - s
+            
 
         time_second = 0.
         results_second = []
@@ -573,7 +575,8 @@ class TestSimulator(unittest.TestCase):
             ) - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
             s = time.time()
             results_second.append(sim.backtest(
-                pol, pd.Timestamp('2021-12-01')))
+                pol, pd.Timestamp('2020-12-01')))
+            print(results_second[-1])
             time_second += time.time() - s
 
         # example is too small to see speed difference w/ cache
