@@ -592,6 +592,38 @@ class TestSimulator(unittest.TestCase):
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], base_location=self.datadir)
         sim.backtest(cvx.Uniform(), pd.Timestamp(
             '2023-01-01')).plot(show=False)
+            
+    def test_spo_benchmark(self):
+        """Test the effect of benchmark on SPO policies."""
+        
+        sim = cvx.MarketSimulator(
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            
+        objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
+        constraints = [cvx.LongOnly(), cvx.LeverageLimit(1)]
+        
+        myunif = pd.Series(0.2, ['AAPL', 'MSFT', 'GE', 'ZM', 'META'])
+        myunif['USDOLLAR'] = 0.
+        
+        policies = [cvx.SinglePeriodOptimization(objective, constraints, benchmark=bm) 
+            for bm in [cvx.CashBenchmark(), cvx.UniformBenchmark(), cvx.MarketBenchmark(),
+                        cvx.Benchmark(myunif)]]
+            
+        results = sim.backtest_many(policies, start_time='2023-01-01')
+        
+        # check myunif is the same as uniform
+        self.assertTrue(np.isclose(results[1].sharpe_ratio, results[3].sharpe_ratio))
+        
+        # check cash benchmark sol has higher cash weights
+        self.assertTrue(results[0].w.USDOLLAR.mean() >= results[1].w.USDOLLAR.mean())
+        self.assertTrue(results[0].w.USDOLLAR.mean() >= results[2].w.USDOLLAR.mean())
+        
+        # check that uniform bm sol is closer to uniform alloc than market bm sol
+        
+        norm_smaller = ((results[1].w.iloc[:,:-1] - 0.2)**2).mean(1) < ((results[2].w.iloc[:,:-1] - 0.2)**2).mean(1)
+        
+        print(norm_smaller.describe())
+        self.assertTrue(norm_smaller.mean() > .5)
 
 
 if __name__ == '__main__':
