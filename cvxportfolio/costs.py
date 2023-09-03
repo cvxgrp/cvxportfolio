@@ -104,6 +104,7 @@ class BaseCost(CvxpyExpressionEstimator):
             or isinstance(other, int) \
             or isinstance(other, pd.Series):
             return CostInequalityConstraint(self, other)
+        return NotImplemented
     
     def __ge__(self, other):
         """self >= other, return CostInequalityConstraint."""
