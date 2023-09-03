@@ -26,6 +26,8 @@ import pandas as pd
 
 from cvxportfolio.simulator import StockMarketSimulator, MarketSimulator, MarketData
 from cvxportfolio.estimator import DataEstimator
+from cvxportfolio.errors import *
+
 
 from copy import deepcopy
 import cvxportfolio as cvx
@@ -732,7 +734,21 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(results[1].volatility < results[2].volatility)
         self.assertTrue(results[2].volatility < results[3].volatility)
 
-
+    def test_dcp_convex_raises(self):
+        
+        sim = cvx.StockMarketSimulator(
+            ['AAPL'], base_location=self.datadir)
+            
+        policy = cvx.SinglePeriodOptimization(cvx.ReturnsForecast(), [cvx.FullCovariance() >= 2])
+        
+        with self.assertRaises(ConvexSpecificationError):
+            sim.backtest(policy)
+            
+        policy = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() + .5 * cvx.FullCovariance())
+        
+        with self.assertRaises(ConvexityError):
+            sim.backtest(policy)
+        
 
 if __name__ == '__main__':
     unittest.main()

@@ -30,6 +30,7 @@ from .estimator import CvxpyExpressionEstimator,  DataEstimator
 from .utils import periods_per_year
 from .hyperparameters import HyperParameter
 from .constraints import EqualityConstraint, InequalityConstraint, CostInequalityConstraint
+from .errors import *
 
 __all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
            "StocksTransactionCost", "StocksHoldingCost"]
@@ -151,8 +152,13 @@ class CombinedCosts(BaseCost):
         """Iterate over constituent costs."""
         self.expression = 0
         for multiplier, cost in zip(self.multipliers, self.costs):
-            self.expression += multiplier * \
+            add = multiplier * \
                 cost._compile_to_cvxpy(w_plus, z, portfolio_value)
+            if not add.is_dcp():
+                raise ConvexSpecificationError(cost * multiplier)
+            if not add.is_concave():
+                raise ConvexityError(cost * multiplier)
+            self.expression += add
         return self.expression
 
     def _collect_hyperparameters(self):

@@ -26,7 +26,7 @@ from .costs import BaseCost
 from .returns import BaseReturnsModel
 from .constraints import BaseConstraint
 from .estimator import PolicyEstimator, DataEstimator
-from .errors import MissingValuesError, PortfolioOptimizationError
+from .errors import *
 from .returns import ReturnsForecast, CashReturn
 from .benchmark import *
 from .utils import *
@@ -130,7 +130,8 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
     def _values_in_time(self, t, current_weights, **kwargs):
         """Get current trade weights."""
         next_targets = self.targets.loc[self.targets.index >= t]
-        assert np.allclose(next_targets.sum(1), 1.)
+        if not np.allclose(next_targets.sum(1), 1.):
+            raise ValueError(f"The target weights provided to {self.__class__.__name__} at time {t} do not sum to 1.")
         if not len(next_targets):
             return pd.Series(0., index=current_weights.index)
         next_target = next_targets.iloc[0]
@@ -369,13 +370,26 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             el._compile_to_cvxpy(
                 self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i])
             for i, el in enumerate(self.objective)]
+        for el,term in zip(self.objective, self.cvxpy_objective):
+            if not term.is_dcp():
+                raise ConvexSpecificationError(el)
+            if not term.is_concave():
+                raise ConvexityError(el)
         self.cvxpy_objective = sum(self.cvxpy_objective)
-        assert self.cvxpy_objective.is_dcp()  # dpp=True)
-        assert self.cvxpy_objective.is_concave()
+        
+        def compile_and_check_constraint(constr, i):
+            result = constr._compile_to_cvxpy(
+                self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i])
+            for el in (result if hasattr(result, '__iter__') else [result]):
+                if not el.is_dcp():
+                    raise ConvexSpecificationError(constr)
+            return result
+                
         self.cvxpy_constraints = [
-            flatten_heterogeneous_list([constr._compile_to_cvxpy(self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i])
-                                        for constr in el])
+            flatten_heterogeneous_list([
+                compile_and_check_constraint(constr, i) for constr in el])
             for i, el in enumerate(self.constraints)]
+
         self.cvxpy_constraints = sum(self.cvxpy_constraints, [])
         self.cvxpy_constraints += [cp.sum(z) == 0 for z in self.z_at_lags]
         w = self.w_current
@@ -389,7 +403,11 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             self.cvxpy_constraints.append(w == self.terminal_constraint)
         self.problem = cp.Problem(cp.Maximize(
             self.cvxpy_objective), self.cvxpy_constraints)
-        assert self.problem.is_dcp()  # dpp=True)
+        if not self.problem.is_dcp():  # dpp=True)
+            raise SyntaxError(f"The optimization problem compiled by {self.__class__.__name__}"
+                " does not follow the convex optimization rules. This should not happen"
+                " if you're using the default cvxportfolio terms and is probably due to a"
+                " mis-specified custom term.")
 
     def _recursive_pre_evaluation(self, universe, backtest_times):
         """No point in using recursive super() method."""
@@ -428,7 +446,8 @@ class MultiPeriodOptimization(BaseTradingPolicy):
     def _recursive_values_in_time(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
         """Update all cvxpy parameters and solve."""
 
-        assert current_portfolio_value > 0
+        if not current_portfolio_value > 0:
+            raise Bankruptcy(f"The backtest of policy:\n{self}\nat time {t} has resulted in bankruptcy.")
         assert np.isclose(sum(current_weights), 1)
 
         for i, obj in enumerate(self.objective):

@@ -51,8 +51,8 @@ class TestCosts(unittest.TestCase):
         self.w_plus_minus_w_bm.value /= sum(self.w_plus_minus_w_bm.value)
         t = self.returns.index[1]
 
-        cost1 = DiagonalCovariance()
-        cost2 = FullCovariance(
+        cost1 = -.5 * DiagonalCovariance()
+        cost2 = -.5 * FullCovariance(
             self.returns.iloc[:, :-1].T @ self.returns.iloc[:, :-1] / len(self.returns))
         cost3 = cost1 + cost2
 
@@ -73,27 +73,27 @@ class TestCosts(unittest.TestCase):
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue(expr4.value == expr1.value * 2)
 
-        cost3 = cost1 - cost2
+        cost3 = cost1 + 3 * cost2
         expr3 = cost3._compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        self.assertTrue(expr3.value == expr1.value - expr2.value)
+        self.assertTrue(expr3.value == expr1.value + 3 * expr2.value)
 
-        cost3 = -cost1 + 2 * cost2
+        cost3 = 3 * cost1 + 2 * cost2
         expr3 = cost3._compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        self.assertTrue(expr3.value == -expr1.value + 2 * expr2.value)
+        self.assertTrue(expr3.value == 3 * expr1.value + 2 * expr2.value)
 
-        cost3 = -cost1 + 2 * (cost2 + cost1)
+        cost3 = .1 * cost1 + 2 * (cost2 + cost1)
         expr3 = cost3._compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        self.assertTrue(np.isclose(expr3.value, -expr1.value +
+        self.assertTrue(np.isclose(expr3.value, .1 * expr1.value +
                         2 * (expr2.value + expr1.value)))
 
-        cost3 = cost1 - 2 * (cost2 + cost1)
+        cost3 = cost1 + 5 * (cost2 + cost1)
         expr3 = cost3._compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        self.assertTrue(expr3.value == expr1.value -
-                        2 * (expr2.value + expr1.value))
+        self.assertTrue(np.isclose(expr3.value, expr1.value +
+                        5 * (expr2.value + expr1.value)))
 
     def test_hcost(self):
         """Test holding cost model."""
