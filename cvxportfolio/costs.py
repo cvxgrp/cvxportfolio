@@ -29,8 +29,9 @@ import inspect
 from .estimator import CvxpyExpressionEstimator,  DataEstimator
 from .utils import periods_per_year
 from .hyperparameters import HyperParameter
+from .constraints import EqualityConstraint, InequalityConstraint, CostInequalityConstraint
 
-__all__ = ["HoldingCost", "TransactionCost",
+__all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
            "StocksTransactionCost", "StocksHoldingCost"]
 
 
@@ -156,6 +157,31 @@ class CombinedCosts(BaseCost):
             result += (str(abs(mult)) + ' * ' if abs(mult) != 1 else '')
             result += cost.__repr__()
         return result
+
+
+class SoftConstraint(BaseCost):
+    """Soft constraint cost.
+    
+    :param constraint: cvxportfolio constraint instance whose
+        violation we penalize
+    :type constraint: cvx.BaseConstraint
+    """
+    
+    def __init__(self, constraint):
+        self.constraint = constraint
+        
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile cost to cvxpy expression."""
+        try:
+            expr = (self.constraint._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
+                    - self.constraint._rhs())
+        except AttributeError:
+            raise SyntaxError(f"{self.__class__.__name__} can only be used with"
+               " EqualityConstraint or InequalityConstraint instances.")
+        if isinstance(self.constraint, EqualityConstraint):
+            return cp.sum(cp.abs(expr))
+        if isinstance(self.constraint, InequalityConstraint):
+            return cp.sum(cp.pos(expr))
 
 
 class HoldingCost(BaseCost):

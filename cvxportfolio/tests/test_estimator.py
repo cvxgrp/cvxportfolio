@@ -185,7 +185,7 @@ class TestEstimators(unittest.TestCase):
         print(cvx.FactorModelCovariance(num_factors=10))
         print(cvx.ReturnsForecast() - .5 * cvx.FullCovariance())
         print(cvx.SinglePeriodOptimization(cvx.ReturnsForecast(),
-                                           [cvx.LongOnly(nocash=True)]))
+                                           [cvx.LongOnly()]))
         print(cvx.LeverageLimit(3))
 
 

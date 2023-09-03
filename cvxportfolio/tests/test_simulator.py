@@ -675,6 +675,45 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(total_tcosts[0] < total_tcosts[1])
         self.assertTrue(total_tcosts[1] < total_tcosts[2])
         
+    def test_eq_soft_constraints(self):
+        """We check that soft DollarNeutral penalizes non-dollar-neutrality."""
+        
+        sim = cvx.StockMarketSimulator(
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            
+        objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance()
+        
+        policies = [cvx.SinglePeriodOptimization(objective - cvx.SoftConstraint(cvx.DollarNeutral()) * gamma)
+            for gamma in [.0001, .001, .01]]
+        policies.append(cvx.SinglePeriodOptimization(objective, [cvx.DollarNeutral()]))
+        results = sim.backtest_many(policies, start_time='2023-01-01')
+        print(results)
+        allcashpos = [((res.w.iloc[:,-1]-1)**2).mean() for res in results]
+        print(allcashpos)
+        self.assertTrue(allcashpos[0] > allcashpos[1])
+        self.assertTrue(allcashpos[1] > allcashpos[2])
+        self.assertTrue(allcashpos[2] > allcashpos[3])
+            
+            
+    def test_ineq_soft_constraints(self):
+        """We check that soft LongOnly penalizes shorts."""
+        
+        sim = cvx.StockMarketSimulator(
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            
+        objective = cvx.ReturnsForecast() - .5 * cvx.FullCovariance()
+        
+        policies = [cvx.SinglePeriodOptimization(objective - cvx.SoftConstraint(cvx.LongOnly()) * gamma,
+            [cvx.MarketNeutral()])
+            for gamma in [.0001, .001, .01]]
+        policies.append(cvx.SinglePeriodOptimization(objective, [cvx.LongOnly(), cvx.MarketNeutral()]))
+        results = sim.backtest_many(policies, start_time='2023-01-01')
+        print(results)
+        allshorts = [np.minimum(res.w.iloc[:,:-1], 0.).sum().sum() for res in results]
+        print(allshorts)
+        self.assertTrue(allshorts[0] < allshorts[1])
+        self.assertTrue(allshorts[1] < allshorts[2])
+        self.assertTrue(allshorts[2] < allshorts[3])
 
 
 if __name__ == '__main__':

@@ -17,9 +17,11 @@
 import unittest
 from pathlib import Path
 
-import cvxpy as cvx
+import cvxpy as cp
 import numpy as np
 import pandas as pd
+
+import cvxportfolio as cvx
 
 from cvxportfolio.costs import *
 from cvxportfolio.returns import *
@@ -37,9 +39,9 @@ class TestCosts(unittest.TestCase):
             Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
         cls.volumes = pd.read_csv(
             Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
-        cls.w_plus = cvx.Variable(cls.returns.shape[1])
-        cls.w_plus_minus_w_bm = cvx.Variable(cls.returns.shape[1])
-        cls.z = cvx.Variable(cls.returns.shape[1])
+        cls.w_plus = cp.Variable(cls.returns.shape[1])
+        cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
+        cls.z = cp.Variable(cls.returns.shape[1])
         cls.N = cls.returns.shape[1]
 
     def test_cost_algebra(self):
@@ -204,6 +206,7 @@ class TestCosts(unittest.TestCase):
         print(expression.value)
         self.assertTrue(np.isclose(expression.value,
                         est_tcost_lin+est_tcost_nonnlin))
+                                
 
 
 if __name__ == '__main__':
