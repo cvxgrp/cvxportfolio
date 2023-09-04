@@ -442,7 +442,8 @@ class FactorMaxLimit(BaseWeightConstraint, InequalityConstraint):
     def __init__(self, factor_exposure, limit):
         self.factor_exposure = DataEstimator(
             factor_exposure, compile_parameter=True)
-        self.limit = DataEstimator(limit, compile_parameter=True)
+        self.limit = DataEstimator(limit, compile_parameter=True, 
+            ignore_shape_check=True)
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
@@ -478,7 +479,8 @@ class FactorMinLimit(BaseWeightConstraint, InequalityConstraint):
     def __init__(self, factor_exposure, limit):
         self.factor_exposure = DataEstimator(
             factor_exposure, compile_parameter=True)
-        self.limit = DataEstimator(limit, compile_parameter=True)
+        self.limit = DataEstimator(limit, compile_parameter=True,
+            ignore_shape_check=True)
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."

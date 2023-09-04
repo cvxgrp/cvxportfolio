@@ -146,30 +146,35 @@ class DataEstimator(PolicyEstimator):
     by its `_recursive_values_in_time` method, which is the way `cvxportfolio`
     objects use this class to get data.
 
-    Args:
-        data (object, pandas.Series, pandas.DataFrame): Data expressed
-            preferably as pandas Series or DataFrame where the first
-            index is a pandas.DateTimeIndex. Otherwise you can
-            pass a callable object which implements the _recursive_values_in_time method
-            (with the standard signature) and returns the corresponding value in time,
-             or a constant float, numpy.array, or even pandas Series or DataFrame not
-            indexed by time (e.g., a covariance matrix where both index and columns
-            are the stock symbols).
-        use_last_available_time (bool): if the pandas index exists
-            and is a pandas.DateTimeIndex you can instruct self._recursive_values_in_time
-            to retrieve the last available value at time t by setting
-            this to True. Default is False.
-
+    :param data: Data expressed preferably as pandas Series or DataFrame 
+        where the first index is a pandas.DateTimeIndex. Otherwise you can
+        pass a callable object which implements the _recursive_values_in_time method
+        (with the standard signature) and returns the corresponding value in time,
+        or a constant float, numpy.array, or even pandas Series or DataFrame not
+        indexed by time (e.g., a covariance matrix where both index and columns
+        are the stock symbols).
+    :type data: object, pandas.Series, pandas.DataFrame 
+    :param use_last_available_time: if the pandas index exists
+        and is a pandas.DateTimeIndex you can instruct self._recursive_values_in_time
+        to retrieve the last available value at time t by setting
+        this to True. Default is False.
+    :type use_last_available_time: bool 
     """
 
     def __init__(self, data, use_last_available_time=False, allow_nans=False,
-                 compile_parameter=False, non_negative=False, positive_semi_definite=False):
+                 compile_parameter=False, non_negative=False, positive_semi_definite=False,
+                 data_includes_cash=False, # affects _universe_subselect
+                 ignore_shape_check=False # affects _universe_subselect
+                 ):
         self.data = data
         self.use_last_available_time = use_last_available_time
         self.allow_nans = allow_nans
         self.compile_parameter = compile_parameter
         self.non_negative = non_negative
         self.positive_semi_definite = positive_semi_definite
+        self.universe_maybe_noncash = None
+        self.data_includes_cash = data_includes_cash
+        self.ignore_shape_check = ignore_shape_check
 
     def _recursive_pre_evaluation(self, universe, backtest_times):
         # super()._recursive_pre_evaluation(universe, backtest_times)
@@ -177,7 +182,9 @@ class DataEstimator(PolicyEstimator):
             value = self.internal__recursive_values_in_time(
                 t=backtest_times[0])
             self.parameter = cp.Parameter(value.shape if hasattr(value, "shape") else (),
-                                          PSD=self.positive_semi_definite, nonneg=self.non_negative)
+                                          PSD=self.positive_semi_definite, nonneg=self.non_negative)          
+        
+        self.universe_maybe_noncash = universe if self.data_includes_cash else universe[:-1]
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned.
@@ -215,50 +222,110 @@ class DataEstimator(PolicyEstimator):
         raise DataError(
             f"{self.__class__.__name__}._recursive_values_in_time result is not a scalar or array."
         )
+        
+    def _universe_subselect(self, data):
+        """This function subselects from ``data`` the relevant universe.
+        
+        See github issue #106.
+        
+        If data is a pandas Series we subselect its index. If we fail
+        we throw an error. If data is a pandas DataFrame (covariance, exposure matrix) 
+        we try to subselect its index and columns. If we fail on either
+        we ignore the failure, but if we fail on both we throw an error.
+        If data is a numpy 1-d array we check that its length is the same as the 
+        universe's.
+        If it is a 2-d array we check that at least one dimension is the
+        same as the universe's.
+        If the universe is None we skip all checks. (We may revisit this choice.) This only happens
+        if the DataEstimator instance is not part of a PolicyEstimator tree 
+        (a usecase which we will probably drop).
+        """
+        
+        if (self.universe_maybe_noncash is None) or self.ignore_shape_check:
+            return data
+        
+        if isinstance(data, pd.Series):
+            try:
+                return data.loc[self.universe_maybe_noncash]
+            except KeyError:
+                raise MissingValuesError(
+                f"The pandas Series found by {self.__class__.__name__} has index {self.data.index}"
+                f" while the current universe (minus cash) is {self.universe_maybe_noncash}."
+                " It was not possibly to reconcile the two.")
+        
+        if isinstance(data, pd.DataFrame):
+            try:
+                return data.loc[self.universe_maybe_noncash, self.universe_maybe_noncash]
+            except KeyError:
+                try:
+                    return data.loc[:, self.universe_maybe_noncash]
+                except KeyError:
+                    try:
+                        return data.loc[self.universe_maybe_noncash, :]
+                    except KeyError:
+                        pass
+            raise MissingValuesError(
+                f"The pandas DataFrame found by {self.__class__.__name__} has index {self.data.index}"
+                f" and columns {self.data.columns}"
+                f" while the current universe (minus cash) is {self.universe_maybe_noncash}."
+                " It was not possibly to reconcile the two.")
+        
+        if isinstance(data, np.ndarray):
+            dimensions = data.shape
+            if not len(self.universe_maybe_noncash) in dimensions:
+                raise MissingValuesError(
+                    f"The numpy array found by {self.__class__.__name__} has dimensions {self.data.shape}"
+                    f" while the current universe (minus cash) has size {len(self.universe_maybe_noncash)}.")
+            return data
+        
+        # scalar
+        return data
+
+                            
 
     def internal__recursive_values_in_time(self, t, *args, **kwargs):
         """Internal method called by `self._recursive_values_in_time`."""
 
+        # if self.data has values_in_time we use it
         if hasattr(self.data, "values_in_time"):
-            _ = self.data.values_in_time(t=t, *args, **kwargs)
-            if hasattr(_, 'values'):
-                return self.value_checker(_.values)
+            tmp = self.data.values_in_time(t=t, *args, **kwargs)
+            tmp = self._universe_subselect(tmp)
+            if hasattr(tmp, 'values'):
+                return self.value_checker(tmp.values)
             else:
-                return self.value_checker(_)
+                return self.value_checker(tmp)
 
+        # if self.data is pandas and has datetime (first) index
         if (hasattr(self.data, "loc") and hasattr(self.data, "index")
             and (isinstance(self.data.index, pd.DatetimeIndex)
-                 or (
-                isinstance(self.data.index, pd.MultiIndex)
-                and isinstance(self.data.index.levels[0], pd.DatetimeIndex)
-            )
-        )
-        ):
+                 or (isinstance(self.data.index, pd.MultiIndex) and 
+                     isinstance(self.data.index.levels[0], pd.DatetimeIndex)))):
             try:
                 if self.use_last_available_time:
                     if isinstance(self.data.index, pd.MultiIndex):
                         newt = self.data.index.levels[0][
-                            self.data.index.levels[0] <= t
-                        ][-1]
+                            self.data.index.levels[0] <= t][-1]
                     else:
                         newt = self.data.index[self.data.index <= t][-1]
                     tmp = self.data.loc[newt]
                 else:
                     tmp = self.data.loc[t]
                 if hasattr(tmp, "values"):
-                    return self.value_checker(tmp.values)
+                    return self.value_checker(self._universe_subselect(tmp.values))
                 else:
-                    return self.value_checker(tmp)
+                    return self.value_checker(self._universe_subselect(tmp))
 
             except (KeyError, IndexError):
                 raise MissingValuesError(
                     f"{self.__class__.__name__}._recursive_values_in_time could not find data for requested time."
                 )
 
+        # if data is pandas but no datetime index (constant in time)
         if hasattr(self.data, "values"):
-            return self.value_checker(self.data.values)
+            return self.value_checker(self._universe_subselect(self.data.values))
 
-        return self.value_checker(self.data)
+        # if data is scalar or numpy
+        return self.value_checker(self._universe_subselect(self.data))
 
     def _recursive_values_in_time(self, t, *args, **kwargs):
         """Obtain value of `self.data` at time t or right before.

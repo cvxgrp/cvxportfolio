@@ -281,7 +281,7 @@ class FactorModelCovariance(BaseRiskModel):
     def __init__(self, F=None, d=None, Sigma_F=None, num_factors=1, kelly=True):
         self.F = F if F is None else DataEstimator(F, compile_parameter=True)
         self.d = d if d is None else DataEstimator(d)
-        self.Sigma_F = Sigma_F if Sigma_F is None else DataEstimator(Sigma_F)
+        self.Sigma_F = Sigma_F if Sigma_F is None else DataEstimator(Sigma_F, ignore_shape_check=True)
         if (self.F is None) or (self.d is None):
             self._fit = True
             self.Sigma = HistoricalFactorizedCovariance(kelly=kelly)

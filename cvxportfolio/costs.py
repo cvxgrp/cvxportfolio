@@ -380,7 +380,7 @@ class HoldingCost(BaseCost):
         # TODO this is a temporary fix, we should plug this into a recursive tree
         for est in [self.short_fees, self.long_fees, self.dividends]:
             if not (est is None):
-                est._recursive_pre_evaluation(universe=h_plus.index[:-1], backtest_times=[t])
+                est._recursive_pre_evaluation(universe=h_plus.index, backtest_times=[t])
                 est._recursive_values_in_time(t=t)
 
         if not (self.short_fees is None):
