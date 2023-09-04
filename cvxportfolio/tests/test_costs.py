@@ -100,8 +100,7 @@ class TestCosts(unittest.TestCase):
         dividends = pd.Series(np.random.randn(self.N-1),
                               self.returns.columns[:-1])
         dividends *= 0.
-        hcost = StocksHoldingCost(short_fees=5,
-                                  dividends=dividends)
+        hcost = HoldingCost(short_fees=5, dividends=dividends)
 
         t = 100  # this is picked so that periods_per_year evaluates to 252
         hcost._recursive_pre_evaluation(

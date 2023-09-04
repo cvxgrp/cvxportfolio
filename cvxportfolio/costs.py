@@ -217,13 +217,78 @@ def _annual_percent_to_per_period(value, ppy):
 
 
 class HoldingCost(BaseCost):
-    """Generic holding cost model, as described in page 11 of the book.
-
-    :param short_fees:
+    r"""Generic holding cost model, as described in page 11 of the book.
+    
+    There are two ways to use this class. Either in the costs attribute
+    of a :class:`MarketSimulator`, in which case the costs are evaluated
+    on the post-trade dollar positions :math:`h^+_t`. Or, 
+    as part of the objective function (or as a constraint!) 
+    of a :class:`SinglePeriodOptimization` 
+    or :class:`MultiPeriodOptimization` trading policy, in which case they
+    are evaluated on the post-trade weights :math:`w_t + z_t`. The mathematical
+    form is the same (see the discussion at pages 11-12 of the book).
+    
+    This particular implementation represents the following objective terms
+    (expressed here in terms of the post-trade dollar positions):
+    
+    .. math::
+ 
+        s^T_t {(h^+_t)}_- + l^T_t {(h^+_t)}_+ - d^T_t h^+_t
+    
+    where :math:`s_t` are the (short) borrowing fees, 
+    :math:`l_t` are the fees on long positions,
+    and :math:`d_t` are dividend rates (their sign is flipped because
+    the costs are deducted from the cash account at each period). See
+    below for their precise definition.
+    
+    Example usage as simulator cost:
+    
+    .. code-block:: python
+    
+        borrow_fees = pd.Series([5, 10], index=['AAPL', 'ZM'])
+        simulator = cvx.MarketSimulator(['AAPL', 'ZM'], 
+            costs=cvx.HoldingCost(short_fees=borrow_fees))
+    
+    Example usage as trading policy cost:
+    
+    .. code-block:: python
+        
+        objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance() \
+            - cvx.HoldingCost(short_fees=10)
+        constraints = [cvx.LeverageLimit(3)]    
+        policy = cvx.SinglePeriodOptimization(objective, constraints)
+    
+    :param short_fees: Short borrowing fees expressed as annual percentage;
+        you can provide them as a float (constant for all times and all 
+        assets), a :class:`pd.Series` indexed by time (constant for all
+        assets but varying in time) or by assets' names (constant in time
+        but varying across assets), or a :class:`pd.DataFrame` indexed by 
+        time and whose columns are the assets' names, if varying both
+        in time and across assets. If you use a time-indexed pandas object
+        be careful to include all times at which a backtest is evaluated
+        (otherwise you'll get a :class:`MissingValueError` exception). If `None`,
+        the term is ignored.
     :type short_fees: float, pd.Series, pd.DataFrame or None
-    :param long_fees:
+    :param long_fees: Fees on long positions expressed as annual percentage;
+        same convention as above applies.
     :type long_fees: float, pd.Series, pd.DataFrame or None
-    :param periods_per_year:
+    :param dividends: Dividend rates per period. Dividends are already included in the market
+        returns by the default data interface (based on Yahoo Finance "adjusted prices")
+        and thus this parameter should not be used in normal circumstances.
+    :type dividends: float, pd.Series, pd.DataFrame or None
+    :param periods_per_year: How many trading periods are there in a year, for
+        example 252 (for trading days in the US). This is
+        only relevant when using this class as part of a trading policy. If you leave
+        this to `None` the following happens.
+        The value of periods per year are estimated at each period by looking at 
+        the past market returns at that point in time: the number of past periods is divided by 
+        the timestamp of the most recent period minus the timestamp of the
+        first period (in years). That works well in most cases where there is enough history
+        (say, a few years) and saves the user from having to manually enter this.
+        If instead you use this object as a cost in a market simulator the parameter has no
+        effect. (The length of each trading period in the simulation is known and so the per-period
+        rates are evaluated exactly. For example, the rate over a weekend will be higher
+        than overnight.)
     :type periods_per_year: float or None
     """
 
@@ -334,26 +399,31 @@ class HoldingCost(BaseCost):
 
 
 class StocksHoldingCost(HoldingCost):
-    """A model for holding cost of stocks.
+    """A simplified version of :class:`HoldingCost` for the holding cost of stocks.
+    
+    This implements the simple model describe at page 11 of the book, *i.e.*
+    the cost (in terms of the post-trade dollar positions):
+    
+    .. math::
+ 
+        s^T_t {(h^+_t)}_-
+    
+    This class is a specialized version of :class:`HoldingCost`, and you should
+    read its documentation for all details. Here we
+    drop most of the parameters and use the default values explained above.
+    We use a default value of :math:`5\%` annualized borrowing
+    fee which is a rough (optimistic) approximation of the cost
+    of shorting liquid US stocks. This cost is included **by default**
+    in :class:`StockMarketSimulator`, the market simulator specialized
+    to US (liquid) stocks.
 
-    :param short_fees:
+    :param short_fees: Same as in :class:`HoldingCost`.
     :type short_fees: float, pd.Series, pd.DataFrame or None
-    :param short_fees:
-    :type short_fees:  float, pd.Series, pd.DataFrame or None
-    :param dividends:
-    :type short_fees: float, pd.Series, pd.DataFrame or None
-    :param periods_per_year:
-    :type periods_per_year: float or None
     """
 
-    def __init__(self, short_fees=5, long_fees=None, dividends=None, 
-        periods_per_year=None):
+    def __init__(self, short_fees=5):
 
-        super().__init__(
-            short_fees=short_fees,
-            long_fees=long_fees,
-            dividends=dividends,
-            periods_per_year=periods_per_year)
+        super().__init__(short_fees=short_fees)
 
 
 class TransactionCost(BaseCost):

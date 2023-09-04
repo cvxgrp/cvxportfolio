@@ -244,7 +244,7 @@ class TestSimulator(unittest.TestCase):
 
 
     def test_holding_cost(self):
-        """Test the simulator interface of cvx.StocksHoldingCost."""
+        """Test the simulator interface of cvx.HoldingCost."""
 
         t = self.returns.index[-20]
 
@@ -262,7 +262,7 @@ class TestSimulator(unittest.TestCase):
 
             dividends = np.random.uniform(size=len(h_plus)-1) * 1E-4
 
-            hcost = cvx.StocksHoldingCost(short_fees=5, dividends=dividends)
+            hcost = cvx.HoldingCost(short_fees=5, dividends=dividends)
 
             sim_hcost = hcost._simulate(
                 t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns, t_next=t + pd.Timedelta('1d'))
