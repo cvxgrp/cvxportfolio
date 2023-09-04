@@ -55,7 +55,7 @@ class TestReturns(unittest.TestCase):
             t=None, past_returns=self.returns.iloc[:123])
         cr = self.returns.iloc[122, -1]
         self.assertTrue(cvxpy_expression.value == cr * (
-            self.w_plus[-1].value + 2 * np.sum(np.minimum(self.w_plus[:-1].value, 0.))))
+            self.w_plus[-1].value ))
 
     def test_cash_returns_provided(self):
         "Test CashReturn object with provided cash returns."
@@ -66,7 +66,7 @@ class TestReturns(unittest.TestCase):
             t=self.returns.index[123], past_returns=None)
         cr = self.returns.iloc[123, -1]
         self.assertTrue(cvxpy_expression.value == cr * (
-            self.w_plus[-1].value + 2 * np.sum(np.minimum(self.w_plus[:-1].value, 0.))))
+            self.w_plus[-1].value))
 
     def test_returns_forecast(self):
         "Test ReturnsForecast object with provided assets' returns."

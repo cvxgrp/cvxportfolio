@@ -153,8 +153,9 @@ class CombinedCosts(BaseCost):
         """Iterate over constituent costs."""
         self.expression = 0
         for multiplier, cost in zip(self.multipliers, self.costs):
-            add = multiplier * \
-                cost._compile_to_cvxpy(w_plus, z, portfolio_value)
+            add = (multiplier.current_value 
+                if hasattr(multiplier, 'current_value') else multiplier) * \
+                    cost._compile_to_cvxpy(w_plus, z, portfolio_value)
             if not add.is_dcp():
                 raise ConvexSpecificationError(cost * multiplier)
             if not add.is_concave():
@@ -171,13 +172,16 @@ class CombinedCosts(BaseCost):
         """Pretty-print."""
         result = ''
         for i, (mult, cost) in enumerate(zip(self.multipliers, self.costs)):
-            if mult == 0:
-                continue
-            if mult < 0:
-                result += ' - ' if i > 0 else '-'
+            if not isinstance(mult, HyperParameter):
+                if mult == 0:
+                    continue
+                if mult < 0:
+                    result += ' - ' if i > 0 else '-'
+                else:
+                    result += ' + ' if i > 0 else ''
+                    result += (str(abs(mult)) + ' * ' if abs(mult) != 1 else '')
             else:
-                result += ' + ' if i > 0 else ''
-            result += (str(abs(mult)) + ' * ' if abs(mult) != 1 else '')
+                result += str(mult) + ' * '
             result += cost.__repr__()
         return result
 

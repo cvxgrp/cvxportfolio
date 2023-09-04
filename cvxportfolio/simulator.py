@@ -649,6 +649,26 @@ class MarketSimulator:
     @staticmethod
     def _worker(policy, simulator, start_time, end_time, h):
         return simulator._concatenated_backtests(policy, start_time, end_time, h)
+        
+    def optimize_hyperparameters(self, policy, start_time=None, end_time=None, 
+        initial_value=1E6, h=None, objective='sharpe_ratio'):
+        """Optimize hyperparameters of a policy to maximize backtest objective.
+        
+        EXPERIMENTAL: this method is currently being developed.
+        """
+        hyperparameters = policy._collect_hyperparameters()
+        print(hyperparameters)
+        
+        # def evaluate()
+        result_init = self.backtest(policy, start_time=start_time, end_time=end_time, 
+            initial_value=1E6, h=h)
+        
+        objective_init = getattr(result_init, objective)
+        print(result_init)
+        
+        print(objective_init)
+        
+        
 
     def backtest(self, policy, start_time=None, end_time=None, initial_value=1E6, h=None):
         """Backtest trading policy.

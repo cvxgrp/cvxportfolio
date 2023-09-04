@@ -91,6 +91,12 @@ class CombinedHyperParameter(HyperParameter):
             if hasattr(el, '_collect_hyperparameters'):
                 result += el._collect_hyperparameters()
         return result
+        
+    def __repr__(self):
+        result = ''
+        for le, ri in zip(self.left, self.right):
+            result += str(le) + ' * ' + str(ri)
+        return result
 
 
 class RangeHyperParameter(HyperParameter):
@@ -100,29 +106,34 @@ class RangeHyperParameter(HyperParameter):
     its subclasses for ones that you can use.
     """
 
-    def __init__(self, values_range, initial_value):
-        if not (initial_value in values_range):
+    def __init__(self, values_range, current_value):
+        if not (current_value in values_range):
             raise SyntaxError('Initial value must be in the provided range')
         self.values_range = values_range
-        self.current_value = initial_value
+        self.current_value = current_value
+        
+    def __repr__(self):
+        return self.__class__.__name__ \
+            + f'(values_range={self.values_range}'\
+            + f', current_value={self.current_value})'
 
 
 class GammaRisk(RangeHyperParameter):
     """Multiplier of a risk term."""
 
-    def __init__(self, values_range=GAMMA_RISK_RANGE, initial_value=1.):
-        super().__init__(values_range, initial_value)
+    def __init__(self, values_range=GAMMA_RISK_RANGE, current_value=1.):
+        super().__init__(values_range, current_value)
 
 
 class GammaTrade(RangeHyperParameter):
     """Multiplier of a transaction cost term."""
 
-    def __init__(self, values_range=GAMMA_COST_RANGE, initial_value=1.):
-        super().__init__(values_range, initial_value)
+    def __init__(self, values_range=GAMMA_COST_RANGE, current_value=1.):
+        super().__init__(values_range, current_value)
 
 
 class GammaHold(RangeHyperParameter):
     """Multiplier of a holding cost term."""
 
-    def __init__(self, values_range=GAMMA_COST_RANGE, initial_value=1.):
-        super().__init__(values_range, initial_value)
+    def __init__(self, values_range=GAMMA_COST_RANGE, current_value=1.):
+        super().__init__(values_range, current_value)

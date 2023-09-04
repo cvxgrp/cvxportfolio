@@ -204,7 +204,7 @@ class BacktestResult(Estimator):
             "Per-period absolute growth rate": self._print_growth_rate(self.growth_rates.mean()),
             "Per-period excess growth rate": self._print_growth_rate(self.excess_growth_rates.mean()),
             # stats
-            "Sharpe ratio (w/ excess returns)": self.sharpe_ratio,
+            "Sharpe ratio": self.sharpe_ratio,
             "Worst drawdown (%)": self.drawdown.min() * 100,
             "Average drawdown (%)": self.drawdown.mean() * 100,
             "Per-period Turnover (%)": self.turnover.mean() * 100,

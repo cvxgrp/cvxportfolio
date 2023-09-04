@@ -43,7 +43,7 @@ class TestHyperparameters(unittest.TestCase):
 
     def test_basic_HP(self):
 
-        gamma = GammaRisk(initial_value=1)
+        gamma = GammaRisk(current_value=1)
 
         self.assertTrue((-gamma).current_value == -1)
         self.assertTrue((gamma * .5).current_value == .5)
@@ -58,8 +58,8 @@ class TestHyperparameters(unittest.TestCase):
         cvx.SinglePeriodOptimization(-GammaRisk() * cvx.FullCovariance())
 
     def test_HP_algebra(self):
-        grisk = GammaRisk(initial_value=1)
-        gtrade = GammaRisk(initial_value=.5)
+        grisk = GammaRisk(current_value=1)
+        gtrade = GammaRisk(current_value=.5)
 
         self.assertTrue((grisk + gtrade).current_value == 1.5)
         self.assertTrue((grisk * gtrade).current_value == .5)

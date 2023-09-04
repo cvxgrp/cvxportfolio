@@ -345,21 +345,21 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             if not (hasattr(constraints, '__iter__') and len(constraints) and (hasattr(constraints[0], '__iter__') and len(objective) == len(constraints))):
                 raise SyntaxError(
                     'If you pass objective as a list, constraints should be a list of lists of the same length.')
-            self.planning_horizon = len(objective)
+            self._planning_horizon = len(objective)
             self.objective = objective
             self.constraints = constraints
         else:
             if not np.isscalar(planning_horizon):
                 raise SyntaxError(
                     'If `objective` and `constraints` are the same for all steps you must specify `planning_horizon`.')
-            self.planning_horizon = planning_horizon
+            self._planning_horizon = planning_horizon
             self.objective = [copy.deepcopy(objective) for i in range(
                 planning_horizon)] if planning_horizon > 1 else [objective]
             self.constraints = [copy.deepcopy(constraints) for i in range(
                 planning_horizon)] if planning_horizon > 1 else [constraints]
 
-        self.include_cash_return = include_cash_return
-        if self.include_cash_return:
+        self._include_cash_return = include_cash_return
+        if self._include_cash_return:
             self.objective = [el + CashReturn() for el in self.objective]
         self.terminal_constraint = terminal_constraint
         self.benchmark = benchmark() if isinstance(benchmark, type) else benchmark
@@ -394,7 +394,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         self.cvxpy_constraints = sum(self.cvxpy_constraints, [])
         self.cvxpy_constraints += [cp.sum(z) == 0 for z in self.z_at_lags]
         w = self.w_current
-        for i in range(self.planning_horizon):
+        for i in range(self._planning_horizon):
             self.cvxpy_constraints.append(
                 self.w_plus_at_lags[i] == self.z_at_lags[i] + w)
             self.cvxpy_constraints.append(
@@ -433,11 +433,11 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         # self.portfolio_value = cp.Parameter(nonneg=True)
         self.w_current = cp.Parameter(len(universe))
         self.z_at_lags = [cp.Variable(len(universe))
-                          for i in range(self.planning_horizon)]
+                          for i in range(self._planning_horizon)]
         self.w_plus_at_lags = [cp.Variable(
-            len(universe)) for i in range(self.planning_horizon)]
+            len(universe)) for i in range(self._planning_horizon)]
         self.w_plus_minus_w_bm_at_lags = [cp.Variable(
-            len(universe)) for i in range(self.planning_horizon)]
+            len(universe)) for i in range(self._planning_horizon)]
 
         # simulator will overwrite this with cached loaded from disk
         self.cache = {}
@@ -499,7 +499,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             result += el._collect_hyperparameters()
         for el in self.constraints:
             for constr in el:
-                result += el._collect_hyperparameters()
+                result += constr._collect_hyperparameters()
         return result
 
 

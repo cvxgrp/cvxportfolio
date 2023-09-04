@@ -613,7 +613,7 @@ class TestSimulator(unittest.TestCase):
                                cvx.Benchmark(myunif)]]
 
         results = sim.backtest_many(policies, start_time='2023-01-01',
-             parallel=False)  # important for test coverage!!
+                                    parallel=False)  # important for test coverage!!
 
         # check myunif is the same as uniform
         self.assertTrue(np.isclose(
@@ -635,15 +635,15 @@ class TestSimulator(unittest.TestCase):
         """Test SPO with market neutral constraint."""
 
         sim = cvx.MarketSimulator(
-            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            ['AAPL', 'MSFT', 'GE', 'GOOG', 'META', 'GLD'], trading_frequency='monthly', base_location=self.datadir)
 
-        objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
+        objective = cvx.ReturnsForecast() - 2 * cvx.FullCovariance()
 
         policies = [cvx.SinglePeriodOptimization(objective, co) for co in [
             [], [cvx.MarketNeutral()], [cvx.DollarNeutral()]]]
 
         results = sim.backtest_many(policies, start_time='2023-01-01',
-            parallel=False)  # important for test coverage
+                                    parallel=False)  # important for test coverage
         print(results)
 
         # check that market neutral sol is closer to
@@ -660,7 +660,8 @@ class TestSimulator(unittest.TestCase):
         """Test some constraints that depend on time."""
 
         sim = cvx.StockMarketSimulator(
-            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            ['AAPL', 'MSFT', 'GE', 'GLD', 'META'], 
+            trading_frequency='monthly', base_location=self.datadir)
 
         # cvx.NoTrade
         objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
@@ -706,7 +707,7 @@ class TestSimulator(unittest.TestCase):
         policies.append(cvx.SinglePeriodOptimization(
             objective, [cvx.DollarNeutral()]))
         results = sim.backtest_many(policies, start_time='2023-01-01',
-            parallel=False)  # important for test coverage
+                                    parallel=False)  # important for test coverage
         print(results)
         allcashpos = [((res.w.iloc[:, -1]-1)**2).mean() for res in results]
         print(allcashpos)
@@ -728,7 +729,7 @@ class TestSimulator(unittest.TestCase):
         policies.append(cvx.SinglePeriodOptimization(
             objective, [cvx.LongOnly(), cvx.MarketNeutral()]))
         results = sim.backtest_many(policies, start_time='2023-01-01',
-            parallel=False)  # important for test coverage
+                                    parallel=False)  # important for test coverage
         print(results)
         allshorts = [np.minimum(res.w.iloc[:, :-1], 0.).sum().sum()
                      for res in results]
@@ -749,7 +750,7 @@ class TestSimulator(unittest.TestCase):
             for el in [0.01, .02, .05, .1]]
 
         results = sim.backtest_many(policies, start_time='2023-01-01',
-            parallel=False)  # important for test coverage
+                                    parallel=False)  # important for test coverage
         print(results)
 
         self.assertTrue(results[0].volatility < results[1].volatility)
@@ -772,6 +773,19 @@ class TestSimulator(unittest.TestCase):
 
         with self.assertRaises(ConvexityError):
             sim.backtest(policy)
+
+    def test_hyperparameters_optimize(self):
+
+        objective = cvx.ReturnsForecast() - cvx.GammaRisk() * cvx.FullCovariance()
+        policy = cvx.SinglePeriodOptimization(
+            objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
+
+        simulator = cvx.StockMarketSimulator(
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+            trading_frequency='monthly',
+            base_location=self.datadir)
+
+        simulator.optimize_hyperparameters(policy, start_time='2023-01-01')
 
 
 if __name__ == '__main__':
