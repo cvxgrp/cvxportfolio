@@ -470,7 +470,7 @@ class MarketSimulator:
         result.iloc[-1] = -sum(result.iloc[:-1])
         return result
 
-    def _simulate(self, t, h, policy, **kwargs):
+    def _simulate(self, t, t_next, h, policy, **kwargs):
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
@@ -510,13 +510,17 @@ class MarketSimulator:
         if not (current_and_past_volumes is None):
             current_volumes = current_and_past_volumes.iloc[-1]
             non_tradable_stocks = current_volumes[current_volumes <= 0].index
+            if len(non_tradable_stocks):
+                logger.info(
+                    f"At time {t} the simulator canceled trades on assets {non_tradable_stocks}"
+                    " because their market volumes for the period are zero.")
             u[non_tradable_stocks] = 0.
 
         # round trades
         if self.round_trades:
             u = self._round_trade_vector(u, current_prices)
 
-        # for safety recompute cash
+        # recompute cash
         u.iloc[-1] = -sum(u.iloc[:-1])
         assert sum(u) == 0.
 
@@ -529,16 +533,17 @@ class MarketSimulator:
             current_and_past_volumes=current_and_past_volumes,
             current_and_past_returns=current_and_past_returns,
             current_prices=current_prices,
+            t_next=t_next,
             periods_per_year=self.market_data.PPY,
             windowsigma=self.market_data.PPY) for cost in self.costs}
 
         # initialize tomorrow's holdings
         h_next = pd.Series(h_plus, copy=True)
 
-        # credit costs to cash account
-        h_next.iloc[-1] = h_plus.iloc[-1] + sum(realized_costs.values())
+        # debit costs from cash account
+        h_next.iloc[-1] = h_plus.iloc[-1] - sum(realized_costs.values())
 
-        # multiply positions by market returns
+        # multiply positions (including cash) by market returns
         current_returns = current_and_past_returns.iloc[-1]
         h_next *= (1 + current_returns)
 
@@ -548,7 +553,7 @@ class MarketSimulator:
         if universe is None:
             universe = self.market_data.universe
         backtest_times = self.market_data._get_backtest_times(
-            start_time, end_time, include_end=False)
+            start_time, end_time, include_end=True)
 
         if hasattr(policy, '_compile_to_cvxpy'):
             policy._compile_to_cvxpy()
@@ -556,12 +561,12 @@ class MarketSimulator:
         result = BacktestResult(universe, backtest_times, self.costs)
 
         # this is the main loop of a backtest
-        for t in backtest_times:
+        for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
             result.h.loc[t] = h
             s = time.time()
             h, result.z.loc[t], result.u.loc[t], realized_costs, \
                 result.policy_times.loc[t] = self._simulate(
-                    t=t, h=h, policy=policy)
+                    t=t, h=h, policy=policy, t_next=t_next)
             for cost in realized_costs:
                 result.costs[cost].loc[t] = realized_costs[cost]
             result.simulator_times.loc[t] = time.time(

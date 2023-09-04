@@ -100,7 +100,7 @@ class TestCosts(unittest.TestCase):
         dividends = pd.Series(np.random.randn(self.N-1),
                               self.returns.columns[:-1])
         dividends *= 0.
-        hcost = StocksHoldingCost(spread_on_borrowing_stocks_percent=.5,
+        hcost = StocksHoldingCost(short_fees=5,
                                   dividends=dividends)
 
         t = 100  # this is picked so that periods_per_year evaluates to 252
@@ -118,14 +118,14 @@ class TestCosts(unittest.TestCase):
 
             print(expression.value)
 
-            print(-np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (
-                cash_ret + .5/(100 * 252)))
-            print(- self.w_plus.value[:-1].T @ dividends)
-            print(-np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (cash_ret + 0.5/(100 * 252))
-                  - self.w_plus.value[:-1].T @ dividends)
+            # print(-np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (
+            #     cash_ret + 5/(100 * 252)))
+            # print(- self.w_plus.value[:-1].T @ dividends)
+            # print(-np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (cash_ret + 0.5/(100 * 252))
+            #       - self.w_plus.value[:-1].T @ dividends)
 
             self.assertTrue(np.isclose(expression.value,
-                                       -np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (cash_ret + 0.5/(100 * 252))
+                                       -np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (np.exp(np.log(1.05)/252) - 1)
                                        # + np.abs(self.w_plus.value[-1])* 0.5/(100 * 252)
                                        - self.w_plus.value[:-1].T @ dividends
                                        ))

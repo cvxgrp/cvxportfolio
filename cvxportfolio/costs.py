@@ -221,15 +221,13 @@ class HoldingCost(BaseCost):
 
     :param short_fees:
     :type short_fees: float, pd.Series, pd.DataFrame or None
-    :param short_fees:
-    :type short_fees:  float, pd.Series, pd.DataFrame or None
-    :param dividends:
-    :type short_fees: float, pd.Series, pd.DataFrame or None
+    :param long_fees:
+    :type long_fees: float, pd.Series, pd.DataFrame or None
     :param periods_per_year:
     :type periods_per_year: float or None
     """
 
-    def __init__(self, short_fees=0.05, long_fees=None, dividends=None,
+    def __init__(self, short_fees=None, long_fees=None, dividends=None,
                  periods_per_year=None):
 
         self.short_fees = None if short_fees is None else DataEstimator(short_fees)
@@ -245,10 +243,10 @@ class HoldingCost(BaseCost):
         """
 
         if not (self.short_fees is None):
-            self._short_fees_parameter = cp.Parameter(len(universe) - 1)
+            self._short_fees_parameter = cp.Parameter(len(universe) - 1, nonneg=True)
 
         if not (self.long_fees is None):
-            self._long_fees_parameter = cp.Parameter(len(universe) - 1)
+            self._long_fees_parameter = cp.Parameter(len(universe) - 1, nonneg=True)
 
         if not (self.dividends is None):
             self._dividends_parameter = cp.Parameter(len(universe) - 1)
@@ -280,8 +278,7 @@ class HoldingCost(BaseCost):
 
         if not (self.dividends is None):
             self._dividends_parameter.value = \
-                np.ones(past_returns.shape[1]-1) * \
-                     _annual_percent_to_per_period(self.dividends.current_value, ppy)
+                np.ones(past_returns.shape[1]-1) * self.dividends.current_value
 
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -306,64 +303,57 @@ class HoldingCost(BaseCost):
     
     def _simulate(self, t, h_plus, current_and_past_returns, t_next, **kwargs):
         """
-        TODO: make sure simulator cost sign convention is the same as optimization cost!
-        TODO: make sure DataEstimator returns np.array of correct size!
-        TODO: make sure simulator cost estimators are recursively evaluated!
+        TODO: make sure simulator cost sign convention is the same as optimization cost! OK
+        TODO: make sure DataEstimator returns np.array of correct size! ~OK
+        TODO: make sure simulator cost estimators are recursively evaluated! ~OK
         """
         
-        year_divided_by_period = pd.TimeDelta('365.24d') / (t_next - t)
+        year_divided_by_period = pd.Timedelta('365.24d') / (t_next - t)
 
         cost = 0. 
+        
+        # TODO this is a temporary fix, we should plug this into a recursive tree
+        for est in [self.short_fees, self.long_fees, self.dividends]:
+            if not (est is None):
+                est._recursive_pre_evaluation(universe=h_plus.index[:-1], backtest_times=[t])
+                est._recursive_values_in_time(t=t)
 
         if not (self.short_fees is None):
-            cost += _annual_percent_to_per_period(
-                self.short_fees.current_value, year_divided_by_period).T @ cp.neg(h_plus[:-1])
+            cost += np.sum(_annual_percent_to_per_period(
+                self.short_fees.current_value, year_divided_by_period) * (-np.minimum(h_plus[:-1], 0.)))
         
         if not (self.long_fees is None):
-            cost += _annual_percent_to_per_period(
-                self.long_fees.current_value, year_divided_by_period).T @ cp.pos(h_plus[:-1])
+            cost += np.sum(_annual_percent_to_per_period(
+                self.long_fees.current_value, year_divided_by_period) * np.maximum(h_plus[:-1], 0.))
 
         if not (self.dividends is None):
             # we have a minus sign because costs are deducted from PnL
-            cost -= _annual_percent_to_per_period(
-                self.dividends.current_value, year_divided_by_period).T @ h_plus[:-1]
+            cost -= np.sum(self.dividends.current_value * h_plus[:-1])
 
         return cost
 
 
-# class StocksHoldingCost(HoldingCost):
-#     """A model for holding cost of stocks.
-#
-#     :param spread_on_borrowing_stocks_percent: spread on top of cash return payed for borrowing assets,
-#         including cash. If ``None``, the default, it gets from :class:`Backtest` the
-#         value for the period.
-#     :type spread_on_borrowing_stocks_percent: float or pd.Series or pd.DataFrame or None
-#     :param spread_on_lending_cash_percent: spread that subtracts from the cash return for
-#         uninvested cash.
-#     :type spread_on_lending_cash_percent: float or pd.Series or None
-#     :param spread_on_borrowing_cash_percent: spread that adds to the cash return as rate payed for
-#         borrowed cash. This is not used as a policy optimization cost but is for the simulator cost.
-#     :type spread_on_borrowing_cash_percent: float or pd.Series or None
-#     :param dividends: dividends payed (expressed as fraction of the stock value)
-#         for each period.  If ``None``, the default, it gets from :class:`Backtest` the
-#         value for the period.
-#     :type dividends: pd.DataFrame or None
-#     :param periods_per_year: period per year (used in calculation of per-period cost). If None it is calculated
-#         automatically.
-#     :type periods_per_year: int or None
-#     :param cash_return_on_borrow: whether to add (negative of) cash return to borrow cost of assets
-#     :type cash_return_on_borrow: bool
-#     """
-#
-#     def __init__(self, short_fees=0.05, long_fees=None, dividends=None, periods_per_year=None):
-#
-#         super().__init__(
-#             spread_on_borrowing_assets_percent=spread_on_borrowing_stocks_percent,
-#             spread_on_lending_cash_percent=spread_on_lending_cash_percent,
-#             spread_on_borrowing_cash_percent=spread_on_borrowing_cash_percent,
-#             periods_per_year=periods_per_year,
-#             cash_return_on_borrow=cash_return_on_borrow,
-#             dividends=dividends)
+class StocksHoldingCost(HoldingCost):
+    """A model for holding cost of stocks.
+
+    :param short_fees:
+    :type short_fees: float, pd.Series, pd.DataFrame or None
+    :param short_fees:
+    :type short_fees:  float, pd.Series, pd.DataFrame or None
+    :param dividends:
+    :type short_fees: float, pd.Series, pd.DataFrame or None
+    :param periods_per_year:
+    :type periods_per_year: float or None
+    """
+
+    def __init__(self, short_fees=5, long_fees=None, dividends=None, 
+        periods_per_year=None):
+
+        super().__init__(
+            short_fees=short_fees,
+            long_fees=long_fees,
+            dividends=dividends,
+            periods_per_year=periods_per_year)
 
 
 class TransactionCost(BaseCost):
@@ -467,7 +457,7 @@ class TransactionCost(BaseCost):
         assert not np.isnan(result)
         assert not np.isinf(result)
 
-        return -result
+        return result
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 

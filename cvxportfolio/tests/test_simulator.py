@@ -241,43 +241,10 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(
             simulator.market_data.returns.index[-1] == simulator.market_data.prices.index[-1])
 
-    def test_cash_holding_cost(self):
 
-        t = self.returns.index[-40]
 
-        current_and_past_returns, current_and_past_volumes, current_prices = self.market_data._serve_data_simulator(
-            t)
-
-        cash_return = self.returns.loc[t, 'cash']
-
-        hcost = cvx.StocksHoldingCost(
-            # spread_on_lending_cash_percent=0.,
-            # spread_on_borrowing_cash_percent=0.,
-            dividends=0.,
-            periods_per_year=252,
-            spread_on_borrowing_stocks_percent=0.,
-            cash_return_on_borrow=False)
-
-        for i in range(10):
-            np.random.seed(i)
-            h_plus = np.random.randn(self.returns.shape[1])*1000
-            h_plus = pd.Series(h_plus, self.returns.columns)
-            h_plus.iloc[-1] = 1000 - sum(h_plus.iloc[:-1])
-
-            sim_cash_hcost = hcost._simulate(
-                t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
-
-            real_cash_position = h_plus.iloc[-1] + \
-                sum(np.minimum(h_plus.iloc[:-1], 0.))
-            if real_cash_position > 0:
-                cash_hcost = real_cash_position * \
-                    (np.maximum(cash_return - 0.005/252, 0.) - cash_return)
-            if real_cash_position < 0:
-                cash_hcost = real_cash_position * (0.005/252)
-
-            self.assertTrue(np.isclose(cash_hcost, sim_cash_hcost))
-
-    def test_stocks_holding_cost(self):
+    def test_holding_cost(self):
+        """Test the simulator interface of cvx.StocksHoldingCost."""
 
         t = self.returns.index[-20]
 
@@ -295,19 +262,15 @@ class TestSimulator(unittest.TestCase):
 
             dividends = np.random.uniform(size=len(h_plus)-1) * 1E-4
 
-            hcost = cvx.StocksHoldingCost(
-                spread_on_lending_cash_percent=0.,
-                spread_on_borrowing_cash_percent=0.,
-                dividends=dividends, periods_per_year=252)
+            hcost = cvx.StocksHoldingCost(short_fees=5, dividends=dividends)
 
             sim_hcost = hcost._simulate(
-                t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns)
+                t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns, t_next=t + pd.Timedelta('1d'))
 
-            total_borrow_cost = cash_return + (0.005)/252
-            hcost = -total_borrow_cost * sum(-np.minimum(h_plus, 0.)[:-1])
+            hcost = -(np.exp(np.log(1.05)/365.24)-1) * sum(-np.minimum(h_plus, 0.)[:-1])
             hcost += dividends @ h_plus[:-1]
-
-            self.assertTrue(np.isclose(hcost, sim_hcost))
+            print(hcost, -sim_hcost)
+            self.assertTrue(np.isclose(hcost, -sim_hcost))
 
     def test_transaction_cost_syntax(self):
 
@@ -375,7 +338,7 @@ class TestSimulator(unittest.TestCase):
             # sim_tcost = simulator.transaction_costs(u)
             #
             print(tcost, sim_cost)
-            self.assertTrue(np.isclose(tcost, sim_cost))
+            self.assertTrue(np.isclose(tcost, -sim_cost))
 
     def test_methods(self):
         simulator = MarketSimulator(
@@ -422,16 +385,18 @@ class TestSimulator(unittest.TestCase):
                     start_time, end_time, include_end=False)
             )
 
-            for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
+            for (i, t) in enumerate(simulator.market_data.returns.index[
+                    (simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]):
+                t_next = simulator.market_data.returns.index[i+1]
                 oldcash = h.iloc[-1]
                 h, z, u, costs, timer = simulator._simulate(
-                    t=t, h=h, policy=policy)
+                    t=t, h=h, policy=policy, t_next=t_next)
                 tcost, hcost = costs['StocksTransactionCost'], costs['StocksHoldingCost']
                 assert tcost == 0.
                 # if np.all(h0[:2] > 0):
                 #    assert hcost == 0.
                 assert np.isclose(
-                    (oldcash + hcost) * (1+simulator.market_data.returns.loc[t, 'USDOLLAR']), h.iloc[-1])
+                    (oldcash - hcost) * (1+simulator.market_data.returns.loc[t, 'USDOLLAR']), h.iloc[-1])
 
             simh = h0[:-1] * simulator.market_data.prices.loc[pd.Timestamp(
                 end_time) + pd.Timedelta('1d')] / simulator.market_data.prices.loc[start_time]
@@ -453,10 +418,13 @@ class TestSimulator(unittest.TestCase):
                     start_time, end_time, include_end=False)
             )
 
-            for t in simulator.market_data.returns.index[(simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]:
+            for i, t in enumerate(simulator.market_data.returns.index[
+                    (simulator.market_data.returns.index >= start_time) & 
+                        (simulator.market_data.returns.index <= end_time)]):
+                t_next = simulator.market_data.returns.index[i+1]
                 oldcash = h.iloc[-1]
                 h, z, u, costs, timer = simulator._simulate(
-                    t=t, h=h, policy=policy)
+                    t=t, h=h, policy=policy, t_next=t_next)
                 tcost, hcost = costs['StocksTransactionCost'], costs['StocksHoldingCost']
                 print(h)
                 # print(tcost, stock_hcost, cash_hcost)
@@ -660,11 +628,11 @@ class TestSimulator(unittest.TestCase):
         """Test some constraints that depend on time."""
 
         sim = cvx.StockMarketSimulator(
-            ['AAPL', 'MSFT', 'GE', 'GLD', 'META'], 
+            ['AAPL', 'MSFT', 'GE', 'META'], 
             trading_frequency='monthly', base_location=self.datadir)
 
         # cvx.NoTrade
-        objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
+        objective = cvx.ReturnsForecast() - 2 * cvx.FullCovariance()
 
         no_trade_ts = [sim.market_data.returns.index[-2],
                        sim.market_data.returns.index[-6]]
@@ -681,18 +649,18 @@ class TestSimulator(unittest.TestCase):
         policies = [cvx.MultiPeriodOptimization(objective - cvx.StocksTransactionCost(),
                                                 [cvx.MinWeightsAtTimes(
                                                     0., no_trade_ts), cvx.MaxWeightsAtTimes(0., no_trade_ts)],
-                                                planning_horizon=p) for p in [1, 2, 5]]
+                                                planning_horizon=p) for p in [1, 3, 5]]
 
         results = sim.backtest_many(
-            policies, start_time='2023-01-01', initial_value=1E9,
+            policies, start_time='2023-01-01', initial_value=1E6,
             parallel=False)  # important for test coverage
         print(results)
 
         total_tcosts = [result.costs['StocksTransactionCost'].sum()
                         for result in results]
         print(total_tcosts)
-        self.assertTrue(total_tcosts[0] < total_tcosts[1])
-        self.assertTrue(total_tcosts[1] < total_tcosts[2])
+        self.assertTrue(total_tcosts[0] > total_tcosts[1])
+        self.assertTrue(total_tcosts[1] > total_tcosts[2])
 
     def test_eq_soft_constraints(self):
         """We check that soft DollarNeutral penalizes non-dollar-neutrality."""
