@@ -229,7 +229,7 @@ class HoldingCost(BaseCost):
     :type periods_per_year: float or None
     """
 
-    def __init__(self, short_fees=None, long_fees=None, dividends=None,
+    def __init__(self, short_fees=0.05, long_fees=None, dividends=None,
                  periods_per_year=None):
 
         self.short_fees = None if short_fees is None else DataEstimator(short_fees)
@@ -320,58 +320,50 @@ class HoldingCost(BaseCost):
                 self.short_fees.current_value, year_divided_by_period).T @ cp.neg(h_plus[:-1])
         
         if not (self.long_fees is None):
-            expression += _annual_percent_to_per_period(
+            cost += _annual_percent_to_per_period(
                 self.long_fees.current_value, year_divided_by_period).T @ cp.pos(h_plus[:-1])
 
         if not (self.dividends is None):
             # we have a minus sign because costs are deducted from PnL
-            expression -= _annual_percent_to_per_period(
+            cost -= _annual_percent_to_per_period(
                 self.dividends.current_value, year_divided_by_period).T @ h_plus[:-1]
 
-        return result
+        return cost
 
 
-class StocksHoldingCost(HoldingCost):
-    """A model for holding cost of stocks.
-
-    :param spread_on_borrowing_stocks_percent: spread on top of cash return payed for borrowing assets,
-        including cash. If ``None``, the default, it gets from :class:`Backtest` the
-        value for the period.
-    :type spread_on_borrowing_stocks_percent: float or pd.Series or pd.DataFrame or None
-    :param spread_on_lending_cash_percent: spread that subtracts from the cash return for
-        uninvested cash.
-    :type spread_on_lending_cash_percent: float or pd.Series or None
-    :param spread_on_borrowing_cash_percent: spread that adds to the cash return as rate payed for
-        borrowed cash. This is not used as a policy optimization cost but is for the simulator cost.
-    :type spread_on_borrowing_cash_percent: float or pd.Series or None
-    :param dividends: dividends payed (expressed as fraction of the stock value)
-        for each period.  If ``None``, the default, it gets from :class:`Backtest` the
-        value for the period.
-    :type dividends: pd.DataFrame or None
-    :param periods_per_year: period per year (used in calculation of per-period cost). If None it is calculated
-        automatically.
-    :type periods_per_year: int or None
-    :param cash_return_on_borrow: whether to add (negative of) cash return to borrow cost of assets
-    :type cash_return_on_borrow: bool
-    """
-
-    def __init__(self,
-                 
-                 spread_on_borrowing_stocks_percent=.5,
-                 spread_on_lending_cash_percent=.5,
-                 spread_on_borrowing_cash_percent=.5,
-                 periods_per_year=None,
-                 # TODO revisit this plus spread_on_borrowing_stocks_percent syntax
-                 cash_return_on_borrow=True,
-                 dividends=0.):
-
-        super().__init__(
-            spread_on_borrowing_assets_percent=spread_on_borrowing_stocks_percent,
-            spread_on_lending_cash_percent=spread_on_lending_cash_percent,
-            spread_on_borrowing_cash_percent=spread_on_borrowing_cash_percent,
-            periods_per_year=periods_per_year,
-            cash_return_on_borrow=cash_return_on_borrow,
-            dividends=dividends)
+# class StocksHoldingCost(HoldingCost):
+#     """A model for holding cost of stocks.
+#
+#     :param spread_on_borrowing_stocks_percent: spread on top of cash return payed for borrowing assets,
+#         including cash. If ``None``, the default, it gets from :class:`Backtest` the
+#         value for the period.
+#     :type spread_on_borrowing_stocks_percent: float or pd.Series or pd.DataFrame or None
+#     :param spread_on_lending_cash_percent: spread that subtracts from the cash return for
+#         uninvested cash.
+#     :type spread_on_lending_cash_percent: float or pd.Series or None
+#     :param spread_on_borrowing_cash_percent: spread that adds to the cash return as rate payed for
+#         borrowed cash. This is not used as a policy optimization cost but is for the simulator cost.
+#     :type spread_on_borrowing_cash_percent: float or pd.Series or None
+#     :param dividends: dividends payed (expressed as fraction of the stock value)
+#         for each period.  If ``None``, the default, it gets from :class:`Backtest` the
+#         value for the period.
+#     :type dividends: pd.DataFrame or None
+#     :param periods_per_year: period per year (used in calculation of per-period cost). If None it is calculated
+#         automatically.
+#     :type periods_per_year: int or None
+#     :param cash_return_on_borrow: whether to add (negative of) cash return to borrow cost of assets
+#     :type cash_return_on_borrow: bool
+#     """
+#
+#     def __init__(self, short_fees=0.05, long_fees=None, dividends=None, periods_per_year=None):
+#
+#         super().__init__(
+#             spread_on_borrowing_assets_percent=spread_on_borrowing_stocks_percent,
+#             spread_on_lending_cash_percent=spread_on_lending_cash_percent,
+#             spread_on_borrowing_cash_percent=spread_on_borrowing_cash_percent,
+#             periods_per_year=periods_per_year,
+#             cash_return_on_borrow=cash_return_on_borrow,
+#             dividends=dividends)
 
 
 class TransactionCost(BaseCost):
