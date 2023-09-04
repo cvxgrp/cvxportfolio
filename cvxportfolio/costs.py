@@ -214,7 +214,8 @@ class SoftConstraint(BaseCost):
 def _annual_percent_to_per_period(value, ppy):
     """Transform annual percent to per-period return."""
     return np.exp(np.log(1 + value / 100) / ppy) - 1
-    
+
+
 class HoldingCost(BaseCost):
     """Generic holding cost model, as described in page 11 of the book.
 
@@ -296,52 +297,38 @@ class HoldingCost(BaseCost):
 
         if not (self.dividends is None):
             # we have a minus sign because costs are deducted from PnL
-            expression -= self.dividends.parameter.T @ w_plus[:-1]
+            expression -= self._dividends_parameter.T @ w_plus[:-1]
             
         assert expression.is_convex()
         
         return expression
 
     
-    def _simulate(self, t, h_plus, current_and_past_returns, **kwargs):
-        """Simulate cost."""
+    def _simulate(self, t, h_plus, current_and_past_returns, t_next, **kwargs):
+        """
+        TODO: make sure simulator cost sign convention is the same as optimization cost!
+        TODO: make sure DataEstimator returns np.array of correct size!
+        TODO: make sure simulator cost estimators are recursively evaluated!
+        """
+        
+        year_divided_by_period = pd.TimeDelta('365.24d') / (t_next - t)
 
-        ppy = periods_per_year(current_and_past_returns.index) if self.periods_per_year is None else \
-            self.periods_per_year
+        cost = 0. 
 
-        cash_return = current_and_past_returns.iloc[-1, -1]
-        multiplier = 1 / (100 * ppy)
-        result = 0.
-        borrowed_stock_positions = np.minimum(h_plus.iloc[:-1], 0.)
-        result += np.sum(((cash_return if self.cash_return_on_borrow else 0.) +
-                          (self.spread_on_borrowing_assets_percent._recursive_values_in_time(t) * multiplier if
-                           self.spread_on_borrowing_assets_percent is not None else 0.))
-                         * borrowed_stock_positions)
+        if not (self.short_fees is None):
+            cost += _annual_percent_to_per_period(
+                self.short_fees.current_value, year_divided_by_period).T @ cp.neg(h_plus[:-1])
+        
+        if not (self.long_fees is None):
+            expression += _annual_percent_to_per_period(
+                self.long_fees.current_value, year_divided_by_period).T @ cp.pos(h_plus[:-1])
 
-        if self.dividends is not None:
-            result += np.sum(h_plus[:-1] *
-                             self.dividends._recursive_values_in_time(t))
-
-        # lending_spread = DataEstimator(spread_on_lending_cash_percent)._recursive_values_in_time(t) * multiplier
-        # borrowing_spread = DataEstimator(spread_on_borrowing_cash_percent)._recursive_values_in_time(t) * multiplier
-
-        # cash_return = current_and_past_returns.iloc[-1,-1]
-        real_cash = h_plus.iloc[-1] + sum(np.minimum(h_plus.iloc[:-1], 0.))
-
-        if real_cash > 0:
-            if self.spread_on_lending_cash_percent is not None:
-                result += real_cash * \
-                    (max(cash_return - self.spread_on_lending_cash_percent._recursive_values_in_time(
-                        t) * multiplier, 0.) - cash_return)
-        else:
-            if self.spread_on_borrowing_cash_percent is not None:
-                result += real_cash * \
-                    self.spread_on_borrowing_cash_percent._recursive_values_in_time(
-                        t) * multiplier
+        if not (self.dividends is None):
+            # we have a minus sign because costs are deducted from PnL
+            expression -= _annual_percent_to_per_period(
+                self.dividends.current_value, year_divided_by_period).T @ h_plus[:-1]
 
         return result
-
-
 
 
 class StocksHoldingCost(HoldingCost):
