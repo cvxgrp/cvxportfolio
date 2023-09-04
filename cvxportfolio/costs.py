@@ -211,59 +211,100 @@ class SoftConstraint(BaseCost):
             return cp.sum(cp.pos(expr))
 
 
+def _annual_percent_to_per_period(value, ppy):
+    """Transform annual percent to per-period return."""
+    return np.exp(np.log(1 + value / 100) / ppy) - 1
+    
 class HoldingCost(BaseCost):
-    """This is a generic holding cost model.
+    """Generic holding cost model, as described in page 11 of the book.
 
-    Currently it is not meant to be used directly. Look at
-    :class:`StocksHoldingCost` for its version specialized to
-    the stock market.
+    :param short_fees:
+    :type short_fees: float, pd.Series, pd.DataFrame or None
+    :param short_fees:
+    :type short_fees:  float, pd.Series, pd.DataFrame or None
+    :param dividends:
+    :type short_fees: float, pd.Series, pd.DataFrame or None
+    :param periods_per_year:
+    :type periods_per_year: float or None
     """
 
-    def __init__(self,
-                 spread_on_borrowing_assets_percent=None,
-                 spread_on_lending_cash_percent=None,
-                 spread_on_borrowing_cash_percent=None,
-                 periods_per_year=None,
-                 # TODO revisit this plus spread_on_borrowing_stocks_percent syntax
-                 cash_return_on_borrow=False,
-                 dividends=None):
+    def __init__(self, short_fees=None, long_fees=None, dividends=None,
+                 periods_per_year=None):
 
-        self.spread_on_borrowing_assets_percent = None if spread_on_borrowing_assets_percent is None else \
-            DataEstimator(spread_on_borrowing_assets_percent)
-        self.dividends = None if dividends is None else DataEstimator(
-            dividends, compile_parameter=True)
-        self.spread_on_lending_cash_percent = None if spread_on_lending_cash_percent is None else \
-            DataEstimator(spread_on_lending_cash_percent)
-        self.spread_on_borrowing_cash_percent = None if spread_on_borrowing_cash_percent is None else \
-            DataEstimator(spread_on_borrowing_cash_percent)
-
+        self.short_fees = None if short_fees is None else DataEstimator(short_fees)
+        self.long_fees = None if long_fees is None else DataEstimator(long_fees)
+        self.dividends = None if dividends is None else DataEstimator(dividends)
         self.periods_per_year = periods_per_year
-        self.cash_return_on_borrow = cash_return_on_borrow
 
     def _pre_evaluation(self, universe, backtest_times):
+        """Initialize cvxpy parameters.
+        
+        We don't use the parameter from DataEstimator because we need to
+        divide the value by periods_per_year.
+        """
 
-        if self.spread_on_borrowing_assets_percent is not None or self.cash_return_on_borrow:
-            self.borrow_cost_stocks = cp.Parameter(
-                len(universe) - 1, nonneg=True)
+        if not (self.short_fees is None):
+            self._short_fees_parameter = cp.Parameter(len(universe) - 1)
+
+        if not (self.long_fees is None):
+            self._long_fees_parameter = cp.Parameter(len(universe) - 1)
+
+        if not (self.dividends is None):
+            self._dividends_parameter = cp.Parameter(len(universe) - 1)
 
     def _values_in_time(self, t, past_returns, **kwargs):
-        """We use yesterday's value of the cash return here while in the simulator
-        we use today's. In the US, updates to the FED rate are published outside
-        of trading hours so we might as well use the actual value for today's. The difference
-        is very small so for now we do this. 
+        """Update cvxpy parameters.
+        
+        We compute the estimate of periods per year from past returns
+        (if not provided by the user) and populate the cvxpy parameters
+        with the current values of the user-provided data, transformed
+        to per-period.
         """
-        ppy = periods_per_year(past_returns.index) if self.periods_per_year is None else \
-            self.periods_per_year
+        
+        if not ((self.short_fees is None) 
+                and (self.long_fees is None) 
+                and (self.dividends is None)):
+            ppy = periods_per_year(past_returns.index) if self.periods_per_year is None else \
+                self.periods_per_year
 
-        cash_return = past_returns.iloc[-1, -1]
+        if not (self.short_fees is None):
+            self._short_fees_parameter.value = \
+                np.ones(past_returns.shape[1]-1) * \
+                     _annual_percent_to_per_period(self.short_fees.current_value, ppy)
 
-        if self.spread_on_borrowing_assets_percent is not None or self.cash_return_on_borrow:
-            self.borrow_cost_stocks.value = np.ones(past_returns.shape[1] - 1) * (
-                cash_return if self.cash_return_on_borrow else 0.) + \
-                self.spread_on_borrowing_assets_percent.current_value / \
-                (100 * ppy)
+        if not (self.long_fees is None):
+            self._long_fees_parameter.value = \
+                np.ones(past_returns.shape[1]-1) * \
+                     _annual_percent_to_per_period(self.long_fees.current_value, ppy)
 
+        if not (self.dividends is None):
+            self._dividends_parameter.value = \
+                np.ones(past_returns.shape[1]-1) * \
+                     _annual_percent_to_per_period(self.dividends.current_value, ppy)
+
+
+    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile cost to cvxpy expression."""
+
+        expression = 0.
+        
+        if not (self.short_fees is None):
+            expression += self._short_fees_parameter.T @ cp.neg(w_plus[:-1])
+        
+        if not (self.long_fees is None):
+            expression += self._long_fees_parameter.T @ cp.pos(w_plus[:-1])
+
+        if not (self.dividends is None):
+            # we have a minus sign because costs are deducted from PnL
+            expression -= self.dividends.parameter.T @ w_plus[:-1]
+            
+        assert expression.is_convex()
+        
+        return expression
+
+    
     def _simulate(self, t, h_plus, current_and_past_returns, **kwargs):
+        """Simulate cost."""
 
         ppy = periods_per_year(current_and_past_returns.index) if self.periods_per_year is None else \
             self.periods_per_year
@@ -300,19 +341,7 @@ class HoldingCost(BaseCost):
 
         return result
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile cost to cvxpy expression."""
 
-        expression = 0.
-
-        if not (self.spread_on_borrowing_assets_percent is None):
-            expression += cp.multiply(self.borrow_cost_stocks,
-                                      cp.neg(w_plus)[:-1])
-
-        if not (self.dividends is None):
-            expression -= cp.multiply(self.dividends.parameter, w_plus[:-1])
-        assert cp.sum(expression).is_convex()
-        return cp.sum(expression)
 
 
 class StocksHoldingCost(HoldingCost):
@@ -340,6 +369,7 @@ class StocksHoldingCost(HoldingCost):
     """
 
     def __init__(self,
+                 
                  spread_on_borrowing_stocks_percent=.5,
                  spread_on_lending_cash_percent=.5,
                  spread_on_borrowing_cash_percent=.5,
