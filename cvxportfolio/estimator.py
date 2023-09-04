@@ -250,8 +250,8 @@ class DataEstimator(PolicyEstimator):
             except KeyError:
                 raise MissingValuesError(
                 f"The pandas Series found by {self.__class__.__name__} has index {self.data.index}"
-                f" while the current universe (minus cash) is {self.universe_maybe_noncash}."
-                " It was not possibly to reconcile the two.")
+                f" while the current universe {'minus cash' if not self.data_includes_cash else ''}"
+                f" is {self.universe_maybe_noncash}. It was not possibly to reconcile the two.")
         
         if isinstance(data, pd.DataFrame):
             try:
@@ -267,15 +267,16 @@ class DataEstimator(PolicyEstimator):
             raise MissingValuesError(
                 f"The pandas DataFrame found by {self.__class__.__name__} has index {self.data.index}"
                 f" and columns {self.data.columns}"
-                f" while the current universe (minus cash) is {self.universe_maybe_noncash}."
-                " It was not possibly to reconcile the two.")
+                f" while the current universe {'minus cash' if not self.data_includes_cash else ''}"
+                f" is {self.universe_maybe_noncash}. It was not possibly to reconcile the two.")
         
         if isinstance(data, np.ndarray):
             dimensions = data.shape
             if not len(self.universe_maybe_noncash) in dimensions:
                 raise MissingValuesError(
                     f"The numpy array found by {self.__class__.__name__} has dimensions {self.data.shape}"
-                    f" while the current universe (minus cash) has size {len(self.universe_maybe_noncash)}.")
+                    f" while the current universe {'minus cash' if not self.data_includes_cash else ''}" 
+                    f" has size {len(self.universe_maybe_noncash)}.")
             return data
         
         # scalar
