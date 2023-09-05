@@ -143,18 +143,18 @@ class MarketData:
         self._set_read_only()
         self._check_sizes()
 
-    def _reduce_universe(self, reduced_universe):
-        assert reduced_universe[-1] == self.cash_key
-        logging.debug(
-            f'Preparing MarketData with reduced_universe {reduced_universe}')
-        return MarketData(
-            returns=self.returns[reduced_universe],
-            volumes=self.volumes[reduced_universe[:-1]
-                                 ] if not (self.volumes is None) else None,
-            prices=self.prices[reduced_universe[:-1]
-                               ] if not (self.prices is None) else None,
-            cash_key=self.cash_key,
-            copy_dataframes=False)
+    # def _reduce_universe(self, reduced_universe):
+    #     assert reduced_universe[-1] == self.cash_key
+    #     logging.debug(
+    #         f'Preparing MarketData with reduced_universe {reduced_universe}')
+    #     return MarketData(
+    #         returns=self.returns[reduced_universe],
+    #         volumes=self.volumes[reduced_universe[:-1]
+    #                              ] if not (self.volumes is None) else None,
+    #         prices=self.prices[reduced_universe[:-1]
+    #                            ] if not (self.prices is None) else None,
+    #         cash_key=self.cash_key,
+    #         copy_dataframes=False)
 
     @property
     def min_history(self):
@@ -211,31 +211,47 @@ class MarketData:
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
 
-    def _serve_data_policy(self, t):
+    def _serve_data_policy(self, t, mask=None):
         """Give data to policy at time t."""
         tidx = self.returns.index.get_loc(t)
         past_returns = pd.DataFrame(self.returns.iloc[:tidx])
+        if not (mask is None):
+            past_returns = past_returns[mask]
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
             past_volumes = pd.DataFrame(self.volumes.iloc[:tidx])
+            if not (mask is None):
+                past_volumes = past_volumes[mask[:-1]]
         else:
             past_volumes = None
-        current_prices = pd.Series(
-            self.prices.loc[t]) if not self.prices is None else None
+        if not self.prices is None:
+            current_prices = pd.Series(self.prices.loc[t])
+            if not (mask is None):
+                current_prices = current_prices[mask[:-1]]
+        else:
+            current_prices = None
 
         return past_returns, past_volumes, current_prices
 
-    def _serve_data_simulator(self, t):
+    def _serve_data_simulator(self, t, mask=None):
         """Give data to simulator at time t."""
         tidx = self.returns.index.get_loc(t)
         current_and_past_returns = pd.DataFrame(self.returns.iloc[:tidx+1])
+        if not (mask is None):
+            current_and_past_returns = current_and_past_returns[mask]
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
             current_and_past_volumes = pd.DataFrame(self.volumes.iloc[:tidx+1])
+            if not (mask is None):
+                current_and_past_volumes = current_and_past_volumes[mask[:-1]]
         else:
             current_and_past_volumes = None
-        current_prices = pd.Series(
-            self.prices.loc[t]) if not self.prices is None else None
+        if not (self.prices is None):
+            current_prices = pd.Series(self.prices.loc[t])
+            if not (mask is None):
+                current_prices = current_prices[mask[:-1]]
+        else:
+            current_prices = None
 
         return current_and_past_returns, current_and_past_volumes, current_prices
 
@@ -323,6 +339,12 @@ class MarketData:
         self.returns.iloc[-1] = np.nan
         if self.volumes is not None:
             self.volumes.iloc[-1] = np.nan
+            
+    def _universe_at_time(self, t):
+        """Return the valid universe at time t."""
+        past_returns = self.returns.loc[self.returns.index < t]
+        return self.universe[(past_returns.count() >= self.min_history) &
+            (~self.returns.loc[t].isnull())]
 
     def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
         """Get trading calendar from market data."""
@@ -470,7 +492,7 @@ class MarketSimulator:
         result.iloc[-1] = -sum(result.iloc[:-1])
         return result
 
-    def _simulate(self, t, t_next, h, policy, **kwargs):
+    def _simulate(self, t, t_next, h, policy, mask=None, **kwargs):
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
@@ -483,7 +505,7 @@ class MarketSimulator:
         current_weights = h / current_portfolio_value
 
         past_returns, past_volumes, current_prices = \
-            self.market_data._serve_data_policy(t)
+            self.market_data._serve_data_policy(t, mask=mask)
 
         # evaluate the policy
         s = time.time()
@@ -504,7 +526,7 @@ class MarketSimulator:
 
         # get data for simulator
         current_and_past_returns, current_and_past_volumes, current_prices = \
-            self.market_data._serve_data_simulator(t)
+            self.market_data._serve_data_simulator(t, mask=mask)
 
         # zero out trades on stock that weren't trading on that day
         if not (current_and_past_volumes is None):
@@ -550,15 +572,17 @@ class MarketSimulator:
         return h_next, z, u, realized_costs, policy_time
 
     def _single_backtest(self, policy, start_time, end_time, h, universe=None):
-        if universe is None:
-            universe = self.market_data.universe
+        # if universe is None:
+        #    universe = self.market_data.universe
         backtest_times = self.market_data._get_backtest_times(
             start_time, end_time, include_end=True)
 
         if hasattr(policy, '_compile_to_cvxpy'):
             policy._compile_to_cvxpy()
 
-        result = BacktestResult(universe, backtest_times, self.costs)
+        result = BacktestResult(
+            self.market_data.universe if universe is None else universe, 
+            backtest_times, self.costs)
 
         # this is the main loop of a backtest
         for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
@@ -566,7 +590,7 @@ class MarketSimulator:
             s = time.time()
             h, result.z.loc[t], result.u.loc[t], realized_costs, \
                 result.policy_times.loc[t] = self._simulate(
-                    t=t, h=h, policy=policy, t_next=t_next)
+                    t=t, h=h, policy=policy, t_next=t_next, mask=universe)
             for cost in realized_costs:
                 result.costs[cost].loc[t] = realized_costs[cost]
             result.simulator_times.loc[t] = time.time(
@@ -583,12 +607,12 @@ class MarketSimulator:
         constituent_backtests_params = self.market_data._get_limited_backtests(
             start_time, end_time)
         results = []
-        orig_md = self.market_data
+        # orig_md = self.market_data
         orig_policy = policy
         for el in constituent_backtests_params:
             logging.info(f"current universe: {el['universe']}")
             logging.info(f"interval: {el['start_time']}, {el['end_time']}")
-            self.market_data = orig_md._reduce_universe(el['universe'])
+            # self.market_data = orig_md._reduce_universe(el['universe'])
 
             # TODO improve
             if len(el['universe']) > len(h):
@@ -625,7 +649,7 @@ class MarketSimulator:
                              trading_frequency=self.trading_frequency,
                              base_location=self.base_location)
 
-        self.market_data = orig_md
+        # self.market_data = orig_md
 
         return self._concatenate_backtest_results(results)
 
