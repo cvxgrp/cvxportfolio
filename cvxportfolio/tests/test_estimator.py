@@ -165,10 +165,11 @@ class TestEstimators(unittest.TestCase):
         second_level = ["hello", "ciao", "hola"]
         index = pd.MultiIndex.from_product([timeindex, second_level])
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
-        estimator = DataEstimator(data, compile_parameter=True)
+        estimator = DataEstimator(data, compile_parameter=True, 
+            data_includes_cash=True)
         self.assertTrue(not hasattr(estimator, "parameter"))
         estimator._recursive_pre_evaluation(
-            universe=None, backtest_times=timeindex)
+            universe=data.columns, backtest_times=timeindex)
         # assert hasattr(estimator, 'parameter')
         self.assertTrue(hasattr(estimator, "parameter"))
         estimator._recursive_values_in_time("2022-01-05")

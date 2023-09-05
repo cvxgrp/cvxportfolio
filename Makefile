@@ -16,7 +16,7 @@ env:
 	$(BINDIR)/python -m pip install -r requirements.txt
 
 test:
-	$(BINDIR)/python -m unittest $(PROJECT)/tests/*.py
+	$(BINDIR)/coverage run -m unittest $(PROJECT)/tests/*.py
 		
 pytest:
 	$(BINDIR)/pytest $(PROJECT)/tests/*.py
@@ -35,6 +35,10 @@ cleanenv:
 
 docs:
 	$(BINDIR)/sphinx-build -E docs $(BUILDDIR); open build/index.html
+
+coverage: test
+	$(BINDIR)/coverage html
+	open htmlcov/index.html
 
 pep8:
 	# use autopep8 to make innocuous fixes 

@@ -39,7 +39,9 @@ class Benchmark(BaseBenchmark, DataEstimator):
     """
 
     def __init__(self, benchmark_weights):
-        DataEstimator.__init__(self, benchmark_weights)
+        DataEstimator.__init__(self, 
+            benchmark_weights, 
+            data_includes_cash=True)
 
 
 class CashBenchmark(BaseBenchmark):

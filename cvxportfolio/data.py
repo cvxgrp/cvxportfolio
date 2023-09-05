@@ -560,6 +560,7 @@ class TimeSeries(DataEstimator):
 
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
+        self.universe_maybe_noncash = None # fix, but we should retire this class
 
     def _recursive_pre_evaluation(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)

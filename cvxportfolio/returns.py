@@ -42,28 +42,30 @@ class BaseReturnsModel(BaseCost):
 class CashReturn(BaseReturnsModel):
     r"""Objective term representing cash return.
 
-    The forecast of cash return :math:`{\left(\hat{r}_t\right)}_n` is the observed value
-    from last period :math:`{\left({r}_{t-1}\right)}_n`.
+    By default, the forecast of cash return :math:`{\left(\hat{r}_t\right)}_n` 
+    is the observed value from last period :math:`{\left({r}_{t-1}\right)}_n`.
 
     This object is included automatically in :class:`SinglePeriodOptimization`
     and :class:`MultiPeriodOptimization` policies. You can change
-    this behavior by setting their ``include_cash_return`` to False.
+    this behavior by setting their ``include_cash_return`` to False. If you do
+    so, you may include this cost explicitely in the objective. You need
+    to do so (only) if you provide your own cash return forecast.
 
-    :param short_margin_requirement: fraction of value of a short positions
-        that is margined by portfolio cash
-    :type short_margin_requirement: float
+    :param cash_returns: if you have your forecast for the cash return, you
+        should pass it here, either as a float (if constant) or as pd.Series
+        with datetime index (if it changes in time). If you leave the default,
+        None, the cash return forecast at time t is the observed cash return 
+        at time t-1. (As is suggested in the book.)
+    :type cash_returns: float or pd.Series or None
     """
 
-    def __init__(self, cash_returns=None, short_margin_requirement=1.):
-        self.cash_returns = None if cash_returns is None else DataEstimator(cash_returns,
-                                                                            compile_parameter=True, non_negative=True)
-        self.short_margin_requirement = short_margin_requirement
+    def __init__(self, cash_returns=None):
+        self.cash_returns = None if cash_returns is None else DataEstimator(
+            cash_returns, compile_parameter=True)
 
     def _pre_evaluation(self, universe, backtest_times):
-        self.cash_return_parameter = cp.Parameter(nonneg=True) if self.cash_returns is None \
+        self.cash_return_parameter = cp.Parameter() if self.cash_returns is None \
             else self.cash_returns.parameter
-
-        # else DataEstimator(self.cash_returns, non_negative=True, compile_parameter=True)
 
     def _values_in_time(self, t, past_returns, **kwargs):
         """Update cash return parameter as last cash return."""
@@ -71,12 +73,8 @@ class CashReturn(BaseReturnsModel):
             self.cash_return_parameter.value = past_returns.iloc[-1, -1]
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Apply cash return to "real" cash position (without shorts and margins)."""
-        realcash = (w_plus[-1] - (1 + self.short_margin_requirement)
-                    * cp.sum(cp.neg(w_plus[:-1])))
-        result = realcash * self.cash_return_parameter
-        assert result.is_concave()
-        return result
+        """Apply cash return to cash position."""
+        return w_plus[-1] * self.cash_return_parameter
 
 
 class ReturnsForecast(BaseReturnsModel):
