@@ -451,7 +451,7 @@ class TestSimulator(unittest.TestCase):
                                            cvx.ReturnsForecastError() -
                                            .5 * cvx.FullCovariance(),
                                            [  # cvx.LongOnly(),
-            cvx.LeverageLimit(1)], verbose=True)
+            cvx.LeverageLimit(1)])#, verbose=True)
 
         result = sim.backtest(pol, pd.Timestamp(
             '2020-04-01'), pd.Timestamp('2020-05-01'))  # zoom enters in mid-april

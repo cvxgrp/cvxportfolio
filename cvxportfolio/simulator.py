@@ -571,7 +571,7 @@ class MarketSimulator:
 
         return h_next, z, u, realized_costs, policy_time
 
-    def _single_backtest(self, policy, start_time, end_time, h, universe=None):
+    def _single_backtest(self, policy, start_time, end_time, h, universe=None, result=None):
         # if universe is None:
         #    universe = self.market_data.universe
         backtest_times = self.market_data._get_backtest_times(
@@ -580,9 +580,10 @@ class MarketSimulator:
         if hasattr(policy, '_compile_to_cvxpy'):
             policy._compile_to_cvxpy()
 
-        result = BacktestResult(
-            self.market_data.universe if universe is None else universe, 
-            backtest_times, self.costs)
+        if result is None:
+            result = BacktestResult(
+                self.market_data.universe if universe is None else universe, 
+                backtest_times, self.costs)
 
         # this is the main loop of a backtest
         for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
@@ -603,17 +604,44 @@ class MarketSimulator:
             self.market_data.returns.iloc[:, -1].loc[result.u.index]
 
         return result
+    
+    
+    def _initialize_policy(self, policy, universe, backtest_times):
+        
+        policy._recursive_pre_evaluation(
+            universe=universe, backtest_times=backtest_times)
+
+        # if policy uses a cache load it from disk
+        if hasattr(policy, 'cache') and self.enable_caching:
+            logging.info('Trying to load cache from disk...')
+            policy.cache = _load_cache(
+                universe=universe,
+                trading_frequency=self.trading_frequency,
+                base_location=self.base_location)
+    
+    def _finalize_policy(self, policy, universe):
+        if hasattr(policy, 'cache') and self.enable_caching:
+            logging.info('Storing cache from policy to disk...')
+            _store_cache(cache=policy.cache, universe=universe,
+                          trading_frequency=self.trading_frequency,
+                          base_location=self.base_location)
 
     def _concatenated_backtests(self, policy, start_time, end_time, h):
         constituent_backtests_params = self.market_data._get_limited_backtests(
             start_time, end_time)
-        results = []
-        # orig_md = self.market_data
+            
+        result = BacktestResult(
+            universe=constituent_backtests_params[0]['universe'],
+            backtest_times=self.market_data._get_backtest_times(
+                start_time, end_time, include_end=True), costs=self.costs)
+            
+        #results = []
+        
         orig_policy = policy
+        
         for el in constituent_backtests_params:
             logging.info(f"current universe: {el['universe']}")
             logging.info(f"interval: {el['start_time']}, {el['end_time']}")
-            # self.market_data = orig_md._reduce_universe(el['universe'])
 
             # TODO improve
             if len(el['universe']) > len(h):
@@ -624,34 +652,23 @@ class MarketSimulator:
                 h = h[el['universe']]
 
             policy = copy.deepcopy(orig_policy)
-            policy._recursive_pre_evaluation(
-                universe=el['universe'],
+            
+            self._initialize_policy(policy, universe=el['universe'],
                 backtest_times=self.market_data._get_backtest_times(
-                    el['start_time'], el['end_time'], include_end=True)
-            )
+                    el['start_time'], el['end_time'], include_end=True))
 
-            # if policy uses a cache load it from disk
-            if hasattr(policy, 'cache') and self.enable_caching:
-                logging.info('Trying to load cache from disk...')
-                policy.cache = _load_cache(
-                    universe=el['universe'],
-                    trading_frequency=self.trading_frequency,
-                    base_location=self.base_location)
+            #results.append(self._single_backtest(
+            #    policy, el['start_time'], el['end_time'], h, el['universe']))
+            self._single_backtest(
+                policy, el['start_time'], el['end_time'], h, el['universe'], result=result)
 
-            results.append(self._single_backtest(
-                policy, el['start_time'], el['end_time'], h, el['universe']))
+            #h = results[-1].h.loc[el['end_time']]
+            h = result.h.loc[el['end_time']]
+            
+            self._finalize_policy(policy, el['universe'])
 
-            h = results[-1].h.iloc[-1]
-
-            # if policy used a cache write it to disk
-            if hasattr(policy, 'cache') and self.enable_caching:
-                logging.info('Storing cache from policy to disk...')
-                _store_cache(cache=policy.cache, universe=el['universe'],
-                             trading_frequency=self.trading_frequency,
-                             base_location=self.base_location)
-
-        # self.market_data = orig_md
-        return self._concatenate_backtest_results(results)
+        #return self._concatenate_backtest_results(results)
+        return result
 
     def _concatenate_backtest_results(self, results):
 

@@ -51,10 +51,10 @@ class BacktestResult:
     def _change_universe(self, new_universe):
         """Change current universe (columns of dataframes) during backtest."""
         
-        print('new universe')
-        print(new_universe)
-        print('old universe')
-        print(self._current_universe)
+        # print('new universe')
+        # print(new_universe)
+        # print('old universe')
+        # print(self._current_universe)
         
         # if necessary, expand columns of dataframes
         if not new_universe.isin(self._current_universe).all():
@@ -75,9 +75,11 @@ class BacktestResult:
                         
             joined.append(new_universe[-1:])
             
-            self.h.reindex(columns = joined)
-            self.u.reindex(columns = joined)
-            self.z.reindex(columns = joined)
+            self.h = self.h.reindex(columns = joined)
+            self.u = self.u.reindex(columns = joined)
+            self.z = self.z.reindex(columns = joined)
+        
+        assert new_universe.isin(self.h.columns).all()
             
         self._current_universe = new_universe
         
