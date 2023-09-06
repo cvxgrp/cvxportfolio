@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from __future__ import print_function, annotations
 import collections
 import numpy as np
 import pandas as pd
 import copy
+from typing import Dict
 
 from .estimator import Estimator
 from .utils import periods_per_year
@@ -32,21 +33,70 @@ __all__ = ['BacktestResult']
 #     return "Q%i %s" % (quarter, year)
 
 
-class BacktestResult(Estimator):
+class BacktestResult:
     """Holds the data from a Backtest and producs metrics and plots."""
 
     def __init__(self, universe, backtest_times, costs):
         """Initialization of backtest result."""
-        self.h = pd.DataFrame(index=backtest_times,
-                              columns=universe, dtype=float)
-        self.u = pd.DataFrame(index=backtest_times,
-                              columns=universe, dtype=float)
-        self.z = pd.DataFrame(index=backtest_times,
-                              columns=universe, dtype=float)
+        self.h = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
+        self.u = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
+        self.z = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
         self.costs = {cost.__class__.__name__: pd.Series(
             index=backtest_times, dtype=float) for cost in costs}
         self.policy_times = pd.Series(index=backtest_times, dtype=float)
         self.simulator_times = pd.Series(index=backtest_times, dtype=float)
+        
+        self._current_universe = pd.Index(universe)
+        
+    def _change_universe(self, new_universe):
+        """Change current universe (columns of dataframes) during backtest."""
+        
+        print('new universe')
+        print(new_universe)
+        print('old universe')
+        print(self._current_universe)
+        
+        # if necessary, expand columns of dataframes
+        if not new_universe.isin(self._current_universe).all():
+
+            # check that cash key didn't change!
+            assert new_universe[-1] == self._current_universe[-1]
+            
+            # if new universe is larger we use it as ordering
+            # this is the default situation with yfinance data
+            if self._current_universe.isin(new_universe).all():
+                joined = new_universe
+                
+            # otherwise we lose the ordering :(
+            else:
+                joined = pd.Index(
+                    sorted(set(self._current_universe[:-1]
+                        ).union(new_universe[:-1])))
+                        
+            joined.append(new_universe[-1:])
+            
+            self.h.reindex(columns = joined)
+            self.u.reindex(columns = joined)
+            self.z.reindex(columns = joined)
+            
+        self._current_universe = new_universe
+        
+    def _log_trading(self, t: pd.Timestamp,
+        h: pd.Series[float], u: pd.Series[float], 
+        z: pd.Series[float], costs: Dict[str, float],
+        policy_time: float, simulator_time: float):
+        "Log one trading period."
+        
+        if not h.index.equals(self._current_universe):
+            self._change_universe(h.index)
+        
+        self.h.loc[t] = h
+        self.u.loc[t] = u
+        self.z.loc[t] = z
+        for cost in costs:
+            self.costs[cost].loc[t] = costs[cost]
+        self.simulator_times.loc[t] = simulator_time
+        self.policy_times.loc[t] = policy_time
 
     @property
     def PPY(self):
@@ -66,7 +116,15 @@ class BacktestResult(Estimator):
     def w(self):
         """The weights of the portfolio in time."""
         return (self.h.T / self.v).T
-
+    
+    @property
+    def w_plus(self):
+        return self.w + self.z
+    
+    @property
+    def h_plus(self):
+        return self.h + self.u
+        
     @property
     def leverage(self):
         """Portfolio leverage"""
