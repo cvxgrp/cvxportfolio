@@ -600,9 +600,6 @@ class MarketSimulator:
 
         result.h.loc[pd.Timestamp(end_time)] = h
 
-        result.cash_returns = \
-            self.market_data.returns.iloc[:, -1].loc[result.u.index]
-
         return result
     
     
@@ -626,6 +623,48 @@ class MarketSimulator:
                           trading_frequency=self.trading_frequency,
                           base_location=self.base_location)
 
+
+    def _adjust_h_new_universe(self, h: pd.Series, new_universe: pd.Index) -> pd.Series:
+        """Adjust holdings vector for change in universe.
+        
+        :param h: (Pre-trade) holdings vector in value units (e.g., USDOLLAR).
+            Its index is the trading universe in the period before the present one.
+        :type h: pd.Series
+        :param new_universe: New trading universe for the current trading period.
+        :type new_universe: pd.Index
+        
+        :returns: new pre-trade holdings vector with index is ``new_universe``
+        :rtype: pd.Series
+        
+        For any new asset that is present in ``new_universe`` but not in ``h.index``
+        we set the corrensponding value of ``h`` to 0. Any removed asset that is present in 
+        ``h.index`` instead is removed from h and its value is added to the cash account.
+        
+        Note that we ignore the transaction cost involved in liquidating the position. 
+        You can redefine this method in a derived class to change this behavior.
+        """
+        
+        # check that cash key didn't change
+        assert new_universe[-1] == h.index[-1]
+        
+        intersection = pd.Index(set(new_universe).intersection(h.index))
+        new_h = pd.Series(0., new_universe)
+        new_h[intersection] = h[intersection]
+        
+        new_assets = pd.Index(set(new_universe).difference(h.index))
+        if len(new_assets):
+            logging.info(f'Adjusting h vector by adding assets {new_assets}')
+            
+        remove_assets = pd.Index(set(h.index).difference(new_universe))
+        if len(remove_assets):
+            total_liquidation = h[remove_assets].sum()
+            logging.info(f"Adjusting h vector by removing assets {remove_assets}."
+                " Their current market value of {total_liquidation} is added"
+                " to the cash account.")
+            new_h.iloc[-1] += total_liquidation
+        
+        return new_h        
+    
     def _concatenated_backtests(self, policy, start_time, end_time, h):
         constituent_backtests_params = self.market_data._get_limited_backtests(
             start_time, end_time)
@@ -643,13 +682,7 @@ class MarketSimulator:
             logging.info(f"current universe: {el['universe']}")
             logging.info(f"interval: {el['start_time']}, {el['end_time']}")
 
-            # TODO improve
-            if len(el['universe']) > len(h):
-                tmp = pd.Series(0., el['universe'])
-                tmp.loc[h.index] = h
-                h = tmp
-            else:
-                h = h[el['universe']]
+            h = self._adjust_h_new_universe(h, el['universe'])
 
             policy = copy.deepcopy(orig_policy)
             
@@ -666,31 +699,34 @@ class MarketSimulator:
             h = result.h.loc[el['end_time']]
             
             self._finalize_policy(policy, el['universe'])
+            
+        result.cash_returns = \
+            self.market_data.returns.iloc[:, -1].loc[result.u.index]
 
         #return self._concatenate_backtest_results(results)
         return result
 
-    def _concatenate_backtest_results(self, results):
-
-        res = BacktestResult.__new__(BacktestResult)
-        res.costs = {}
-
-        res.h = pd.concat([el.h.iloc[:-1] if i < len(results) -
-                          1 else el.h for i, el in enumerate(results)])
-        for attr in ['cash_returns', 'u', 'z', 'simulator_times', 'policy_times']:
-            res.__setattr__(attr, pd.concat(
-                [el.__getattribute__(attr) for el in results]))
-
-        # pandas concat can misalign the columns ordering
-        ck = self.market_data.cash_key
-        sortcol = sorted([el for el in res.u.columns if not el == ck]) + [ck]
-        res.u = res.u[sortcol]
-        res.z = res.z[sortcol]
-        res.h = res.h[sortcol]
-        for k in results[0].costs:
-            res.costs[k] = pd.concat([el.costs[k] for el in results])
-
-        return res
+    # def _concatenate_backtest_results(self, results):
+    #
+    #     res = BacktestResult.__new__(BacktestResult)
+    #     res.costs = {}
+    #
+    #     res.h = pd.concat([el.h.iloc[:-1] if i < len(results) -
+    #                       1 else el.h for i, el in enumerate(results)])
+    #     for attr in ['cash_returns', 'u', 'z', 'simulator_times', 'policy_times']:
+    #         res.__setattr__(attr, pd.concat(
+    #             [el.__getattribute__(attr) for el in results]))
+    #
+    #     # pandas concat can misalign the columns ordering
+    #     ck = self.market_data.cash_key
+    #     sortcol = sorted([el for el in res.u.columns if not el == ck]) + [ck]
+    #     res.u = res.u[sortcol]
+    #     res.z = res.z[sortcol]
+    #     res.h = res.h[sortcol]
+    #     for k in results[0].costs:
+    #         res.costs[k] = pd.concat([el.costs[k] for el in results])
+    #
+    #     return res
 
     @staticmethod
     def _worker(policy, simulator, start_time, end_time, h):
