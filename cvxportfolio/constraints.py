@@ -15,9 +15,10 @@
 Here we define many realistic constraints that apply to 
 :ref:`portfolio optimization trading policies <optimization-policies-page>`.
 
-Some of them, like :class:`LongOnly`, do not take any parameter, and are 
-very simple to use. Some others, for example :class:`FactorMaxLimit`, are more advanced
-(that one takes time-varying factor exposures as parameters).
+Some of them, like :class:`LongOnly`, are 
+very simple to use. Some others are more advanced,
+for example :class:`FactorNeutral`
+takes time-varying factor exposures as parameters.
 
 For a minimal example we present the classic Markowitz allocation.
 
@@ -54,6 +55,7 @@ __all__ = [
     "LeverageLimit",
     "LongCash",
     "DollarNeutral",
+    "FactorNeutral",
     "ParticipationRateLimit",
     "MaxWeights",
     "MinWeights",
@@ -274,14 +276,15 @@ class ParticipationRateLimit(BaseTradeConstraint, InequalityConstraint):
 class LongOnly(BaseWeightConstraint, InequalityConstraint):
     """A long only constraint.
     
-    ..math::
+    .. math::
         
         w_t + z_t \geq 0
 
     Imposes that at each point in time the post-trade
-    weights are non-negative. By default we only apply it
-    to the non-cash assets, but you can also require that
-    the cash account is non-negative.
+    weights are non-negative. By default it applies
+    to all elements of the post-trade weights vector
+    but you can also exclude the cash account (and let
+    cash be negative).
     
     :param applies_to_cash: Whether the long only requirement
         also applies to the cash account.
@@ -328,13 +331,20 @@ class NoTrade(BaseTradeConstraint):
 
 
 class LeverageLimit(BaseWeightConstraint, InequalityConstraint):
-    """A limit on leverage.
+    r"""Constraints on the leverage of the portfolio.
+    
+    In the notation of the book, this is
+    
+    .. math::
+        
+        \|{(w_t + z_t)}_{1:n}\|_1 \leq L^\text{max},
+    
+    where :math:`(w_t + z_t)` are the post-trade weights, and we
+    exclude the cash account from the :math:`\ell_1` norm.
 
-    Leverage is defined as the :math:`\ell_1` norm of non-cash
-    post-trade weights. Here we require that it is smaller than
-    a given value.
-
-    :param limit: constant or varying in time leverage limit
+    :param limit: Constant or varying in time leverage limit
+        :math:`L^\text{max}`. If varying in time it is expressed
+        as a :class:`pd.Series` with datetime index.
     :type limit: float or pd.Series
     """
 
@@ -350,12 +360,22 @@ class LeverageLimit(BaseWeightConstraint, InequalityConstraint):
         return self.limit.parameter
 
 
-class MinCashBalance(BaseWeightConstraint):
-    """Requires that the cash account is larger than c_min dollars.
+class MinCashBalance(BaseWeightConstraint, InequalityConstraint):
+    """Require that the cash balance is above a threshold.
 
-    This uses logic to subtract cash used as margin for the short
-    positions that is not documented in the book but is
-    equivalent to the book definition's for long-only stock positions.
+    In our notation this is
+    
+    .. math::
+        
+        {(w_t + z_t)}_{n+1} \geq c_\text{min} / v_t,
+    
+    where :math:`v_t` is the portfolio value at time :math:`t`.
+    
+    :param c_min: The miminimum cash balance required, 
+        either constant in time or varying. This is expressed
+        in dollars.
+    :type c_min: float or pd.Series
+
     """
 
     def __init__(self, c_min):
@@ -364,23 +384,35 @@ class MinCashBalance(BaseWeightConstraint):
 
     def _values_in_time(self, current_portfolio_value, **kwargs):
         self.rhs.value = self.c_min.current_value/current_portfolio_value
-
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Return a Cvxpy constraint."""
-        # TODO clarify this
-        realcash = (w_plus[-1] - 2 * cp.sum(cp.neg(w_plus[:-1])))
-        return realcash >= self.rhs
+        
+    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        "Compile left hand side of the constraint expression."
+        return -w_plus[-1]
+        
+    def _rhs(self):
+        "Compile right hand side of the constraint expression."
+        return -self.rhs
 
 
 class LongCash(MinCashBalance):
-    """Requires that cash be non-negative."""
+    """Require that cash be non-negative."""
 
     def __init__(self):
         super().__init__(0.)
 
 
 class DollarNeutral(BaseWeightConstraint, EqualityConstraint):
-    """Long-short dollar neutral strategy."""
+    """Long-short dollar neutral strategy.
+    
+    In our notation, this is
+    
+    .. math::
+        
+        \mathbf{1}^T \max({(w_t + z_t)}_{1:n}, 0) = 
+            -\mathbf{1}^T \min({(w_t + z_t)}_{1:n}, 0)
+    
+    which is simply :math:`{(w_t + z_t)}_{n+1} = 1`.
+    """
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         "Compile left hand side of the constraint expression."
@@ -394,8 +426,8 @@ class DollarNeutral(BaseWeightConstraint, EqualityConstraint):
 class MaxWeights(BaseWeightConstraint, InequalityConstraint):
     """A max limit on weights.
 
-    Attributes:
-      limit: A series or number giving the weights limit.
+    :param limit: A series or number giving the weights limit.
+    :type limit: float or pd.Series
     """
 
     def __init__(self, limit):
@@ -413,8 +445,8 @@ class MaxWeights(BaseWeightConstraint, InequalityConstraint):
 class MinWeights(BaseWeightConstraint, InequalityConstraint):
     """A min limit on weights.
 
-    Attributes:
-      limit: A series or number giving the weights limit.
+    :param limit: A series or number giving the weights limit.
+    :type limit: float or pd.Series
     """
 
     def __init__(self, limit):
@@ -476,8 +508,8 @@ class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
 
 class FactorMaxLimit(BaseWeightConstraint, InequalityConstraint):
-    """A max limit on portfolio-wide factor (e.g. beta) exposure.
-
+    r"""A max limit on portfolio-wide factor (e.g. beta) exposure.
+    
     :param factor_exposure: Series or DataFrame giving the factor exposure.
         If Series it is indexed by assets' names and represents factor
         exposures constant in time. If DataFrame it is indexed by time 
@@ -587,3 +619,25 @@ class FixedFactorLoading(BaseWeightConstraint, EqualityConstraint):
     def _rhs(self):
         "Compile right hand side of the constraint expression."
         return self.target.parameter
+        
+class FactorNeutral(FixedFactorLoading):
+    r"""Require neutrality with respect to certain risk factors.
+    
+    This is developed at page 35 of 
+    `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+    We require
+    
+    .. math::
+        {(F_t)}^T_i (w_t + z_t) = 0,
+    
+    where :math:`{(F_t)}_i` is the exposure to the :math:`i`-th factor
+    of a risk model at time :math:`t`.
+    
+    :param factor_exposure: Either constant (if Series) or varying in time
+        (if Dataframe with datetime index) factor exposure.
+    :type factor_exposure: pd.Series or pd.DataFrame
+    
+    """
+    
+    def __init__(self, factor_exposure):
+        super().__init(self, factor_exposure, 0.)
