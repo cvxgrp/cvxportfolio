@@ -754,6 +754,22 @@ class TestSimulator(unittest.TestCase):
             base_location=self.datadir)
 
         simulator.optimize_hyperparameters(policy, start_time='2023-01-01')
+        
+    def test_cancel_trades(self):
+        
+        sim = cvx.StockMarketSimulator(
+            ['AAPL', 'ZM'],
+            trading_frequency='monthly',
+            base_location=self.datadir)
+            
+        sim.market_data.volumes['ZM'] = 0.
+        
+        objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance()
+        policy = cvx.SinglePeriodOptimization(
+            objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
+        
+        sim.backtest(policy, start_time='2023-01-01')
+        
 
 
 if __name__ == '__main__':

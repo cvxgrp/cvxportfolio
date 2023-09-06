@@ -533,7 +533,7 @@ class MarketSimulator:
             current_volumes = current_and_past_volumes.iloc[-1]
             non_tradable_stocks = current_volumes[current_volumes <= 0].index
             if len(non_tradable_stocks):
-                logger.info(
+                logging.info(
                     f"At time {t} the simulator canceled trades on assets {non_tradable_stocks}"
                     " because their market volumes for the period are zero.")
             u[non_tradable_stocks] = 0.
