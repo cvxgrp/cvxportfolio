@@ -122,7 +122,7 @@ class ReturnsForecast(BaseReturnsModel):
         while ``decay`` close to one a `slow` signal. The default value is 1.    
     :type decay: float
 
-    :raises cvxportfolio.MissingValuesError: If the class accesses
+    :raises cvxportfolio.MissingTimesError: If the class accesses
         user-provided elements of ``r_hat`` that are :class:`numpy.nan`.
 
     :Example:

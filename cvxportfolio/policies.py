@@ -161,24 +161,26 @@ class FixedTrades(BaseTradingPolicy):
     If there are no weights defined for the given day, default to no
     trades.
 
-    Args:
-        trades_weights (pd.Series or pd.DataFrame): Series of weights
-            (if constant in time) or DataFrame of trade weights
-            indexed by time. It trades each day the corresponding vector.
+    :param trades_weights: target trade weights :math:`z_t` to trade at each period.
+        If constant in time use a pandas Series indexed by the assets'
+        names, including the cash account name (``cash_key`` option 
+        to the simulator). If varying in time, use a pandas DataFrame
+        with datetime index and as columns the assets names including cash.
+        If a certain time in the backtest is not present in the data provided
+        the policy defaults to not trading in that period.
+    :type trades_weights: pd.Series or pd.DataFrame
     """
 
     def __init__(self, trades_weights):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
-        self.trades_weights = DataEstimator(trades_weights)
+        self.trades_weights = DataEstimator(trades_weights, data_includes_cash=True)
 
     def _recursive_values_in_time(self, t, current_weights, **kwargs):
         """We need to override recursion b/c we catch exception."""
         try:
             super()._recursive_values_in_time(t=t, current_weights=current_weights, **kwargs)
-            return pd.Series(
-                self.trades_weights.current_value,
-                current_weights.index)
-        except MissingValuesError:
+            return pd.Series(self.trades_weights.current_value, current_weights.index)
+        except MissingTimesError:
             return pd.Series(0., current_weights.index)
 
 
@@ -188,15 +190,20 @@ class FixedWeights(BaseTradingPolicy):
     If there are no weights defined for the given day, default to no
     trades.
 
-    Args:
-        target_weights (pd.Series or pd.DataFrame): Series of weights
-            (if constant in time) or DataFrame of trade weights
-            indexed by time. It trades each day to the corresponding vector.
+    :param target_weights: target weights :math:`w_t^+` to trade to at each period.
+        If constant in time use a pandas Series indexed by the assets'
+        names, including the cash account name (``cash_key`` option 
+        to the simulator). If varying in time, use a pandas DataFrame
+        with datetime index and as columns the assets names including cash.
+        If a certain time in the backtest is not present in the data provided
+        the policy defaults to not trading in that period.
+    :type target_weights: pd.Series or pd.DataFrame 
+            
     """
 
     def __init__(self, target_weights):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
-        self.target_weights = DataEstimator(target_weights)
+        self.target_weights = DataEstimator(target_weights, data_includes_cash=True)
 
     def _recursive_values_in_time(self, t, current_weights, **kwargs):
         """We need to override recursion b/c we catch exception."""
@@ -204,7 +211,7 @@ class FixedWeights(BaseTradingPolicy):
             super()._recursive_values_in_time(t=t, current_weights=current_weights, **kwargs)
             return pd.Series(self.target_weights.current_value,
                              current_weights.index) - current_weights
-        except MissingValuesError:
+        except MissingTimesError:
             return pd.Series(0., current_weights.index)
 
 

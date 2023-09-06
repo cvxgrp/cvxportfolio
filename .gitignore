@@ -10,6 +10,7 @@ __pycache__/
 examples/test_*
 examples/*.txt
 examples/*.png
+experiments/*
 
 # C extensions
 *.so

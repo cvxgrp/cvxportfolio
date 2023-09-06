@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['DataError', 'MissingValuesError', 'ForeCastError',
+__all__ = ['DataError', 'MissingTimesError', 'NaNError', 'MissingAssetsError', 'ForeCastError',
            'PortfolioOptimizationError', 'Bankruptcy', 'ConvexSpecificationError',
            'ConvexityError']
 
@@ -23,9 +23,19 @@ class DataError(Exception):
     pass
 
 
-class MissingValuesError(DataError):
-    """Cvxportfolio tried to access numpy.nan values."""
+class MissingTimesError(DataError):
+    """Cvxportfolio couldn't find data for a certain time."""
 
+    pass
+    
+
+class NaNError(DataError):
+    """Cvxportfolio tried to access data that includes np.nan."""
+    pass
+
+
+class MissingAssetsError(DataError):
+    """Cvxportfolio couldn't find data for certain assets."""
     pass
 
 

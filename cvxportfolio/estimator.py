@@ -22,7 +22,7 @@ import pandas as pd
 import cvxpy as cp
 
 
-from .errors import MissingValuesError, DataError
+from .errors import MissingTimesError, DataError, NaNError, MissingAssetsError
 from .hyperparameters import HyperParameter
 from .utils import repr_numpy_pandas
 
@@ -159,6 +159,11 @@ class DataEstimator(PolicyEstimator):
         to retrieve the last available value at time t by setting
         this to True. Default is False.
     :type use_last_available_time: bool 
+    
+    :raises cvxportfolio.NaNError: If np.nan's are present in result.
+    :raises cvxportfolio.MissingTimesError: If some times are missing.
+    :raises cvxportfolio.MissingAssetsError: If some assets are missing.
+    :raises cvxportfolio.DataError: If data is not in the right form.
     """
 
     def __init__(self, data, use_last_available_time=False, allow_nans=False,
@@ -188,21 +193,11 @@ class DataEstimator(PolicyEstimator):
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned.
-
-        Args:
-            result (int, float, or np.array): data produced by self._recursive_values_in_time
-
-        Returns:
-            result (int, float, or np.array): same data if no np.nan are present and type is correct
-
-        Raises:
-            cvxportfolio.MissingValuesError: if np.nan's are present in result
-            cvxportfolio.DataError: if data is not in the right form
         """
 
         if np.isscalar(result):
             if np.isnan(result) and not self.allow_nans:
-                raise MissingValuesError(
+                raise NaNError(
                     f"{self.__class__.__name__}._recursive_values_in_time result is a np.nan scalar."
                 )
             else:
@@ -214,7 +209,7 @@ class DataEstimator(PolicyEstimator):
                 if hasattr(self.data, 'columns') and len(self.data.columns) == len(result):
                     message += "Specifically, the problem is with symbol(s): " + str(
                         self.data.columns[np.isnan(result)])
-                raise MissingValuesError(message)
+                raise NaNError(message)
             else:
                 # we pass a copy because it can be accidentally overwritten
                 return np.array(result)
@@ -242,39 +237,39 @@ class DataEstimator(PolicyEstimator):
         """
         
         if (self.universe_maybe_noncash is None) or self.ignore_shape_check:
-            return data
+            return data.values if hasattr(data, 'values') else data
         
         if isinstance(data, pd.Series):
             try:
-                return data.loc[self.universe_maybe_noncash]
+                return data.loc[self.universe_maybe_noncash].values
             except KeyError:
-                raise MissingValuesError(
-                f"The pandas Series found by {self.__class__.__name__} has index {self.data.index}"
+                raise MissingAssetsError(
+                f"The pandas Series found by {self.__class__.__name__} has index {data.index}"
                 f" while the current universe {'minus cash' if not self.data_includes_cash else ''}"
-                f" is {self.universe_maybe_noncash}. It was not possibly to reconcile the two.")
+                f" is {self.universe_maybe_noncash}. It was not possible to reconcile the two.")
         
         if isinstance(data, pd.DataFrame):
             try:
-                return data.loc[self.universe_maybe_noncash, self.universe_maybe_noncash]
+                return data.loc[self.universe_maybe_noncash, self.universe_maybe_noncash].values
             except KeyError:
                 try:
-                    return data.loc[:, self.universe_maybe_noncash]
+                    return data.loc[:, self.universe_maybe_noncash].values
                 except KeyError:
                     try:
-                        return data.loc[self.universe_maybe_noncash, :]
+                        return data.loc[self.universe_maybe_noncash, :].values
                     except KeyError:
                         pass
-            raise MissingValuesError(
-                f"The pandas DataFrame found by {self.__class__.__name__} has index {self.data.index}"
-                f" and columns {self.data.columns}"
+            raise MissingAssetsError(
+                f"The pandas DataFrame found by {self.__class__.__name__} has index {data.index}"
+                f" and columns {data.columns}"
                 f" while the current universe {'minus cash' if not self.data_includes_cash else ''}"
-                f" is {self.universe_maybe_noncash}. It was not possibly to reconcile the two.")
+                f" is {self.universe_maybe_noncash}. It was not possible to reconcile the two.")
         
         if isinstance(data, np.ndarray):
             dimensions = data.shape
             if not len(self.universe_maybe_noncash) in dimensions:
-                raise MissingValuesError(
-                    f"The numpy array found by {self.__class__.__name__} has dimensions {self.data.shape}"
+                raise MissingAssetsError(
+                    f"The numpy array found by {self.__class__.__name__} has dimensions {data.shape}"
                     f" while the current universe {'minus cash' if not self.data_includes_cash else ''}" 
                     f" has size {len(self.universe_maybe_noncash)}.")
             return data
@@ -290,11 +285,7 @@ class DataEstimator(PolicyEstimator):
         # if self.data has values_in_time we use it
         if hasattr(self.data, "values_in_time"):
             tmp = self.data.values_in_time(t=t, *args, **kwargs)
-            tmp = self._universe_subselect(tmp)
-            if hasattr(tmp, 'values'):
-                return self.value_checker(tmp.values)
-            else:
-                return self.value_checker(tmp)
+            return self.value_checker(self._universe_subselect(tmp) )
 
         # if self.data is pandas and has datetime (first) index
         if (hasattr(self.data, "loc") and hasattr(self.data, "index")
@@ -311,19 +302,17 @@ class DataEstimator(PolicyEstimator):
                     tmp = self.data.loc[newt]
                 else:
                     tmp = self.data.loc[t]
-                if hasattr(tmp, "values"):
-                    return self.value_checker(self._universe_subselect(tmp.values))
-                else:
-                    return self.value_checker(self._universe_subselect(tmp))
+                
+                return self.value_checker(self._universe_subselect(tmp))
+
 
             except (KeyError, IndexError):
-                raise MissingValuesError(
-                    f"{self.__class__.__name__}._recursive_values_in_time could not find data for requested time."
-                )
+                raise MissingTimesError(
+                    f"{self.__class__.__name__}._recursive_values_in_time could not find data for time {t}.")
 
         # if data is pandas but no datetime index (constant in time)
         if hasattr(self.data, "values"):
-            return self.value_checker(self._universe_subselect(self.data.values))
+            return self.value_checker(self._universe_subselect(self.data))
 
         # if data is scalar or numpy
         return self.value_checker(self._universe_subselect(self.data))
