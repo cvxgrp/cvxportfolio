@@ -1,15 +1,16 @@
 Simulator
 =========
 
-.. toctree::
-	
-	:maxdepth: 2
 
 .. py:module:: cvxportfolio
+     :noindex:
 
-.. autoclass:: StockMarketSimulator
+.. autoclass:: MarketSimulator
 
     .. automethod:: backtest
     
     .. automethod:: backtest_many
+    
+.. autoclass:: StockMarketSimulator
+
 

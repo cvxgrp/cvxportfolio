@@ -8,7 +8,7 @@ ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
 endif
 
-.PHONY: env docs clean pytest test releasetest cleanenv
+.PHONY: env docs clean pytest test releasetest cleanenv opendocs
 
 env:
 	$(PYTHON) -m venv $(ENVDIR)
@@ -34,7 +34,10 @@ cleanenv:
 	-rm -rf $(ENVDIR)/*
 
 docs:
-	$(BINDIR)/sphinx-build -E docs $(BUILDDIR); open build/index.html
+	$(BINDIR)/sphinx-build -E docs $(BUILDDIR)
+	
+opendocs: docs
+	open build/index.html
 
 coverage: test
 	$(BINDIR)/coverage html

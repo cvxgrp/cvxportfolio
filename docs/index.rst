@@ -102,5 +102,4 @@ Table of Contents
    returns
    constraints
    result
-   
-   
+

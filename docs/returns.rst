@@ -1,3 +1,5 @@
+.. _objective-terms-page:
+
 Objective terms
 ===============
 
@@ -6,6 +8,7 @@ Objective terms
 	
 .. py:module:: cvxportfolio
 
+.. _returns-page:
 
 Return models
 -------------
@@ -13,11 +16,33 @@ Return models
 .. automodule:: cvxportfolio.returns
 
 .. py:module:: cvxportfolio
+    :noindex:
 
 .. autoclass:: ReturnsForecast
 
 .. autoclass:: CashReturn
 
+.. _costs-page:
+
+Cost models
+-----------
+
+.. automodule:: cvxportfolio.costs
+
+.. py:module:: cvxportfolio
+    :noindex:
+    
+.. autoclass:: HoldingCost
+
+.. autoclass:: StocksHoldingCost
+
+.. autoclass:: TransactionCost
+
+.. autoclass:: StocksTransactionCost
+
+.. autoclass:: SoftConstraint
+
+.. _risks-page:
 
 Risk models
 -----------
@@ -25,6 +50,7 @@ Risk models
 .. automodule:: cvxportfolio.risks
 
 .. py:module:: cvxportfolio
+    :noindex:
 
 .. autoclass:: DiagonalCovariance
 
@@ -41,21 +67,3 @@ Forecast error models
 .. autoclass:: ReturnsForecastError
 
 .. autoclass:: RiskForecastError
-
-
-Cost models
------------
-
-.. automodule:: cvxportfolio.costs
-
-.. py:module:: cvxportfolio
-
-.. autoclass:: HoldingCost
-
-.. autoclass:: StocksHoldingCost
-
-.. autoclass:: TransactionCost
-
-.. autoclass:: StocksTransactionCost
-
-

@@ -287,7 +287,7 @@ class TestPolicies(unittest.TestCase):
             - 2 * risk_forecast
             # - TcostModel(half_spread=5 * 1E-4)  # , power=2)
             - tcost,
-            constraints=[LongOnly(), LeverageLimit(1)],
+            constraints=[LongOnly(applies_to_cash=False), LeverageLimit(1)],
             include_cash_return=False,
             # verbose=True,
             solver='ECOS')
@@ -423,7 +423,7 @@ class TestPolicies(unittest.TestCase):
             return_forecast            # - 2 * risk_forecast
             # - TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
             ,
-            constraints=[LongOnly(),  # LeverageLimit(1), MaxWeights(-1)
+            constraints=[LongOnly(applies_to_cash=False),  # LeverageLimit(1), MaxWeights(-1)
                          ],
             # verbose=True,
             solver='ECOS')

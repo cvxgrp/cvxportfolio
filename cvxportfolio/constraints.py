@@ -11,9 +11,35 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module implements realistic constraints to be used with
-SinglePeriodOptimization and MultiPeriodOptimization policies,
-or other Cvxpy-based policies.
+"""
+Here we define many realistic constraints that apply to 
+:ref:`portfolio optimization trading policies <optimization-policies-page>`.
+
+Some of them, like :class:`LongOnly`, do not take any parameter, and are 
+very simple to use. Some others, for example :class:`FactorMaxLimit`, are more advanced
+(that one takes time-varying factor exposures as parameters).
+
+For a minimal example we present the classic Markowitz allocation.
+
+.. code-block:: python
+
+    import cvxportfolio as cvx
+
+    objective = cvx.ReturnsForecast() - gamma_risk * cvx.FullCovariance()
+
+    # the policy takes a list of constraint instances
+    constraints = [cvx.LongOnly()]
+
+    policy = cvx.SinglePeriodOptimization(objective, constraints)
+    print(cvx.MarketSimulator(universe).backtest(policy))
+
+
+With this, we require that the optimal post-trade weights 
+found by the single-period optimization policy are non-negative.
+In our formulation the full portfolio weights vector (which includes
+the cash account) sums to one,
+see equation :math:`(4.9)` at page 43 of 
+`the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
 """
 
 
@@ -113,8 +139,8 @@ class CostInequalityConstraint(InequalityConstraint):
     """Linear inequality constraint applied to a cost term.
 
     The user does not interact with this class directly,
-    it is returned by an expression such as `cost <= value`
-    where `cost` is a :class:`BaseCost` instance and `value`
+    it is returned by an expression such as ``cost <= value``
+    where ``cost`` is a :class:`BaseCost` instance and ``value``
     is a scalar.
     """
 
@@ -143,22 +169,30 @@ class BaseWeightConstraint(BaseConstraint):
 
 
 class MarketNeutral(BaseWeightConstraint, EqualityConstraint):
-    """Initial implementation of market neutrality.
+    """Simple implementation of β- (or market-) neutrality.
+    
+    See the equation at page 35 of
+    `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+    
 
-    The benchmark portfolio weights are computed here
-    (weighting by rolling averages of the market volumes)
-    but instead should be their own class (used as well
-    by risk models, ...).
+    The benchmark portfolio weights are computed here,
+    and are proportional to the rolling averages of 
+    the market volumes over the recent past 
+    
+    :param window: How many past observations of the volumes
+        are used to estimate the market benchmark.
+    :type window: int
     """
 
-    def __init__(self):
+    def __init__(self, window=250):
         self.covarianceforecaster = HistoricalFactorizedCovariance()
+        self.window = window
 
     def _pre_evaluation(self, universe, backtest_times):
         self.market_vector = cp.Parameter(len(universe)-1)
 
     def _values_in_time(self, t, past_volumes, past_returns, **kwargs):
-        tmp = past_volumes.iloc[-250:].mean()
+        tmp = past_volumes.iloc[-self.window:].mean()
         tmp /= sum(tmp)
 
         tmp2 = self.covarianceforecaster.current_value @ (
@@ -176,11 +210,22 @@ class MarketNeutral(BaseWeightConstraint, EqualityConstraint):
 
 
 class TurnoverLimit(BaseTradeConstraint, InequalityConstraint):
-    """Turnover limit as a fraction of the portfolio value.
+    r"""Turnover limit as a fraction of the portfolio value.
 
-    See page 37 of the book.
-
-    :param delta: constant or changing in time turnover limit
+    See the equation at page 37 of
+    `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+    
+    The turnover is defined as half the :math:`\ell_1`-norm of 
+    the trade weight vector, without cash. Here we ask that it is smaller 
+    than some constant:
+    
+    .. math::
+        \|{(z_t)}_{1:n}\|_1/2 \leq \delta.
+    
+    :param delta: We require that the turnover over each trading period
+        is smaller than this value. This is either constant, expressed
+        as :class:`float`, or changing in time, expressed as a 
+        :class:`pd.Series` with datetime index. 
     :type delta: float or pd.Series
     """
 
@@ -228,15 +273,28 @@ class ParticipationRateLimit(BaseTradeConstraint, InequalityConstraint):
 
 class LongOnly(BaseWeightConstraint, InequalityConstraint):
     """A long only constraint.
+    
+    ..math::
+        
+        w_t + z_t \geq 0
 
     Imposes that at each point in time the post-trade
-    weights are non-negative.
+    weights are non-negative. By default we only apply it
+    to the non-cash assets, but you can also require that
+    the cash account is non-negative.
+    
+    :param applies_to_cash: Whether the long only requirement
+        also applies to the cash account.
+    :type applies_to_cash: bool
 
     """
+    
+    def __init__(self, applies_to_cash=True):
+        self.applies_to_cash = applies_to_cash
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Return a Cvxpy constraint."""
-        return -w_plus[:-1]
+        return -(w_plus if self.applies_to_cash else w_plus[:-1])
 
     def _rhs(self):
         "Compile right hand side of the constraint expression."

@@ -1,12 +1,14 @@
+.. _policies-page:
+
 Trading policies
 ================
-
-.. toctree::
-	:maxdepth: 2
 
 .. automodule:: cvxportfolio.policies
 
 .. py:module:: cvxportfolio
+    :noindex:
+
+.. _optimization-policies-page:
 
 Optimization-based policies
 ---------------------------
@@ -19,6 +21,8 @@ Optimization-based policies
 Simple policies
 ---------------
 
+.. autoclass:: AdaptiveRebalance
+
 .. autoclass:: Hold
 
 .. autoclass:: FixedTrades
@@ -28,8 +32,6 @@ Simple policies
 .. autoclass:: PeriodicRebalance
 
 .. autoclass:: ProportionalRebalance
-
-.. autoclass:: AdaptiveRebalance
 
 .. autoclass:: ProportionalTradeToTargets
 
