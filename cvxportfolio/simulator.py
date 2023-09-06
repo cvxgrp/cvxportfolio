@@ -638,26 +638,6 @@ class MarketSimulator:
         
         return new_h        
     
-    def _single_backtest(self, policy, backtest_times, h, universe, result):
-
-        # this is the main loop of a backtest
-        for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
-
-            s = time.time()
-            h_next, z, u, realized_costs, policy_time = \
-                self._simulate(t=t, h=h, policy=policy, t_next=t_next, mask=universe)
-            simulator_time = time.time() - s - policy_time
-            
-            result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs, 
-                policy_time=policy_time, simulator_time=simulator_time)
-
-            h = h_next
-
-        result.h.loc[pd.Timestamp(backtest_times[-1])] = h
-
-        return result
-    
-    
     def _concatenated_backtests(self, policy, start_time, end_time, h):
         constituent_backtests_params = self.market_data._get_limited_backtests(
             start_time, end_time)
@@ -686,16 +666,25 @@ class MarketSimulator:
             self._initialize_policy(policy, universe=el['universe'],
                 backtest_times=reduced_backtest_times)
 
+            # this is the main loop of a backtest
+            for t, t_next in zip(reduced_backtest_times[:-1], reduced_backtest_times[1:]):
 
-            self._single_backtest(
-                policy=policy, backtest_times=reduced_backtest_times, h=h, universe=el['universe'], result=result)
+                s = time.time()
+                h_next, z, u, realized_costs, policy_time = \
+                    self._simulate(t=t, h=h, policy=policy, t_next=t_next, mask=el['universe'])
+                simulator_time = time.time() - s - policy_time
+            
+                result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs, 
+                    policy_time=policy_time, simulator_time=simulator_time)
 
-            h = result.h.loc[el['end_time']]
+                h = h_next
             
             self._finalize_policy(policy, el['universe'])
             
         result.cash_returns = \
             self.market_data.returns.iloc[:, -1].loc[result.u.index]
+            
+        result.h.loc[pd.Timestamp(reduced_backtest_times[-1])] = h
 
         return result
 
