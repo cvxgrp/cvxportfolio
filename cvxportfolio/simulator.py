@@ -571,37 +571,7 @@ class MarketSimulator:
 
         return h_next, z, u, realized_costs, policy_time
 
-    def _single_backtest(self, policy, start_time, end_time, h, universe=None, result=None):
-        # if universe is None:
-        #    universe = self.market_data.universe
-        backtest_times = self.market_data._get_backtest_times(
-            start_time, end_time, include_end=True)
 
-        if hasattr(policy, '_compile_to_cvxpy'):
-            policy._compile_to_cvxpy()
-
-        if result is None:
-            result = BacktestResult(
-                self.market_data.universe if universe is None else universe, 
-                backtest_times, self.costs)
-
-        # this is the main loop of a backtest
-        for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
-
-            s = time.time()
-            h_next, z, u, realized_costs, policy_time = \
-                self._simulate(t=t, h=h, policy=policy, t_next=t_next, mask=universe)
-            simulator_time = time.time() - s - policy_time
-            
-            result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs, 
-                policy_time=policy_time, simulator_time=simulator_time)
-
-            h = h_next
-
-        result.h.loc[pd.Timestamp(end_time)] = h
-
-        return result
-    
     
     def _initialize_policy(self, policy, universe, backtest_times):
         
@@ -615,6 +585,9 @@ class MarketSimulator:
                 universe=universe,
                 trading_frequency=self.trading_frequency,
                 base_location=self.base_location)
+                
+        if hasattr(policy, '_compile_to_cvxpy'):
+            policy._compile_to_cvxpy()
     
     def _finalize_policy(self, policy, universe):
         if hasattr(policy, 'cache') and self.enable_caching:
@@ -665,6 +638,26 @@ class MarketSimulator:
         
         return new_h        
     
+    def _single_backtest(self, policy, backtest_times, h, universe, result):
+
+        # this is the main loop of a backtest
+        for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
+
+            s = time.time()
+            h_next, z, u, realized_costs, policy_time = \
+                self._simulate(t=t, h=h, policy=policy, t_next=t_next, mask=universe)
+            simulator_time = time.time() - s - policy_time
+            
+            result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs, 
+                policy_time=policy_time, simulator_time=simulator_time)
+
+            h = h_next
+
+        result.h.loc[pd.Timestamp(backtest_times[-1])] = h
+
+        return result
+    
+    
     def _concatenated_backtests(self, policy, start_time, end_time, h):
         constituent_backtests_params = self.market_data._get_limited_backtests(
             start_time, end_time)
@@ -674,7 +667,6 @@ class MarketSimulator:
             backtest_times=self.market_data._get_backtest_times(
                 start_time, end_time, include_end=True), costs=self.costs)
             
-        #results = []
         
         orig_policy = policy
         
@@ -686,16 +678,18 @@ class MarketSimulator:
 
             policy = copy.deepcopy(orig_policy)
             
+            
+            reduced_backtest_times = self.market_data._get_backtest_times(
+                    el['start_time'], el['end_time'], include_end=True)
+                
+                
             self._initialize_policy(policy, universe=el['universe'],
-                backtest_times=self.market_data._get_backtest_times(
-                    el['start_time'], el['end_time'], include_end=True))
+                backtest_times=reduced_backtest_times)
 
-            #results.append(self._single_backtest(
-            #    policy, el['start_time'], el['end_time'], h, el['universe']))
+
             self._single_backtest(
-                policy, el['start_time'], el['end_time'], h, el['universe'], result=result)
+                policy=policy, backtest_times=reduced_backtest_times, h=h, universe=el['universe'], result=result)
 
-            #h = results[-1].h.loc[el['end_time']]
             h = result.h.loc[el['end_time']]
             
             self._finalize_policy(policy, el['universe'])
@@ -703,7 +697,6 @@ class MarketSimulator:
         result.cash_returns = \
             self.market_data.returns.iloc[:, -1].loc[result.u.index]
 
-        #return self._concatenate_backtest_results(results)
         return result
 
     # def _concatenate_backtest_results(self, results):
