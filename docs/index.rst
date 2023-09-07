@@ -22,15 +22,42 @@ Cvxportolio is written in pure Python and can be easily installed in your favori
 	
 
 We show how this is done on our `Installation and Hello World <https://youtu.be/1ThOKEu371M>`_ youtube video.
-	
-Testing locally
----------------
-We ship our unit test suite with the software package, so after installing you can test with:
 
-.. code-block:: console
 
-	python -m unittest discover cvxportfolio
-	
+Introduction
+------------
+
+Cvxportfolio is an object-oriented library for portfolio optimization and backtesting
+which focuses on ease of use. It implements the models described 
+in the `accompanying book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
+and can be extended with user-defined objects and methods to accommodate ingestion
+of different data sources, custom cost models (both for simulation and optimization),
+constraints, and so on.
+
+The main abstractions used are the :class:`MarketSimulator`, which faithfully mimics
+the trading activity of a financial market, the collection of 
+:doc:`policies <policies>`, which include both simple policies such as
+:class:`RankAndLongShort`, and the optimization-based policies :class:`SinglePeriodOptimization`
+and :class:`MultiPeriodOptimization`.
+For these two, the user specifies the objective function (which is maximized)
+and a list of constraints which apply to the optimization. All these types
+of objects can be customized in many ways, including by deriving or redefining them.
+
+Then, we provide the :class:`MarketData` abstraction, which both serves historical
+data during a backtest and real-time data in online usage. We implement the interface
+to public data sources (`Yahoo finance <https://finance.yahoo.com>`_ 
+and `FRED <https://fred.stlouisfed.org/>`_), in addition to user-provided data (which
+can also be passed to all other objects).
+
+In addition, we provide logic to easily parallelize backtesting of many different policies,
+or the same policy with different choices of hyperparameters, and cache on disk both
+historical data (for reproducibility) and various expensive calculations, such as
+estimates of covariance matrices. 
+
+We present the results of each backtest with a clear interface, :class:`BacktestResult`,
+which defines various metrics of backtest performance and the logic to both print
+and plot them.
+
 
 	
 Example
@@ -61,7 +88,20 @@ run a backtest, and show its result.
 	
 	# plot backtest result
 	result.plot()
+
 	
+Testing locally
+---------------
+We ship our unit test suite with the software package, so after installing you can test 
+in your local environment with:
+
+.. code-block:: console
+
+	python -m unittest discover cvxportfolio
+
+We test against recent python versions (3.9, 3.10, 3.11) and recent versions of the main
+dependencies (from pandas 1.4, cvxpy 1.1, ..., up to the current versions) on all major 
+operating systems.
 	
 Licensing
 ---------
