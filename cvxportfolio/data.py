@@ -413,6 +413,13 @@ class FredBase(BaseData):
     """Base class for FRED data access."""
 
     URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+    
+    ## TODO: implement FRED point-in-time
+    ## example:
+    ## https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=CES0500000003&vintage_date=2023-07-06
+    ## hourly wages time series **as it appeared** on 2023-07-06 (try one day after, there's 1 new datapoint)
+    ## store using pd.Series() of diff'ed values only, in practice they only revise recent 1-2 monthly
+    ## obs.
 
     def _download(self, symbol):
         return pd.read_csv(self.URL + f'?id={symbol}', index_col=0, parse_dates=[0])[symbol]

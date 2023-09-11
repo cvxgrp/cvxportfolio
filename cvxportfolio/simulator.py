@@ -562,15 +562,16 @@ class MarketSimulator:
 
         # this is the main loop of a backtest
         for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
+            # s = time.time()
             result.h.loc[t] = h
-            s = time.time()
             h, result.z.loc[t], result.u.loc[t], realized_costs, \
                 result.policy_times.loc[t] = self._simulate(
                     t=t, h=h, policy=policy, t_next=t_next)
             for cost in realized_costs:
                 result.costs[cost].loc[t] = realized_costs[cost]
             result.simulator_times.loc[t] = time.time(
-            ) - s - result.policy_times.loc[t]
+            ) - self.simulator_timer - result.policy_times.loc[t]
+            self.simulator_timer = time.time()
 
         result.h.loc[pd.Timestamp(end_time)] = h
 
@@ -580,6 +581,7 @@ class MarketSimulator:
         return result
 
     def _concatenated_backtests(self, policy, start_time, end_time, h):
+        self.simulator_timer = time.time()
         constituent_backtests_params = self.market_data._get_limited_backtests(
             start_time, end_time)
         results = []
@@ -627,7 +629,11 @@ class MarketSimulator:
 
         self.market_data = orig_md
 
-        return self._concatenate_backtest_results(results)
+        result = self._concatenate_backtest_results(results)
+        
+        # temporary, will refactor these methods
+        result.simulator_times.iloc[-2] += time.time() - self.simulator_timer
+        return result
 
     def _concatenate_backtest_results(self, results):
 

@@ -30,8 +30,8 @@ Introduction
 Cvxportfolio is an object-oriented library for portfolio optimization and backtesting
 which focuses on ease of use. It implements the models described 
 in the `accompanying book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
-and can be extended with user-defined objects and methods to accommodate ingestion
-of different data sources, custom cost models (both for simulation and optimization),
+and can be extended with user-defined objects and methods to accommodate
+different data sources, custom cost models (both for simulation and optimization),
 constraints, and so on.
 
 The main abstractions used are the :class:`MarketSimulator`, which faithfully mimics
@@ -46,7 +46,7 @@ of objects can be customized in many ways, including by deriving or redefining t
 Then, we provide the :class:`MarketData` abstraction, which both serves historical
 data during a backtest and real-time data in online usage. We implement the interface
 to public data sources (`Yahoo finance <https://finance.yahoo.com>`_ 
-and `FRED <https://fred.stlouisfed.org/>`_), in addition to user-provided data (which
+and `FRED <https://fred.stlouisfed.org/>`_), as well as user-provided data (which
 can also be passed to all other objects).
 
 In addition, we provide logic to easily parallelize backtesting of many different policies,
