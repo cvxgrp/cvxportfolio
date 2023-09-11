@@ -100,13 +100,22 @@ policy = cvx.SinglePeriodOptimization(
     constraints = [
         cvx.LeverageLimit(3),
     ],
-    # You can select any cvxpy
+    
+    # You can select any CVXPY
     # solver here to see how it
     # affects performance of your
     # particular problem. This one
     # is the default for this type
     # of problems.
-    solver='ECOS'
+    solver='ECOS',
+    
+    # this is a CVXPY compilation flag, it is 
+    # recommended for large optimization problems
+    # (like this one) but not for small ones
+    ignore_dpp=True,
+    
+    # you can add any other cvxpy.Problem.solve option
+    # here, see https://www.cvxpy.org/tutorial/advanced/index.html
 )
 
 # this downloads data for all the sp500
