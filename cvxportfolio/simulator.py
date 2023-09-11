@@ -645,6 +645,8 @@ class MarketSimulator:
     def _concatenated_backtests(self, policy, start_time, end_time, h):
         """Run a backtest with changing universe."""
         
+        timer = time.time()
+        
         backtest_times = self.market_data._get_backtest_times(start_time, end_time, include_end=True)
         
         universe = self.market_data._universe_at_time(backtest_times[0])
@@ -652,7 +654,6 @@ class MarketSimulator:
         used_policy = self._get_initialized_policy(policy, universe=universe, backtest_times=backtest_times)
             
         result = BacktestResult(universe=universe, backtest_times=backtest_times, costs=self.costs)
-            
         
         for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
             
@@ -665,20 +666,23 @@ class MarketSimulator:
                 h = self._adjust_h_new_universe(h, current_universe)
                 used_policy = self._get_initialized_policy(policy, universe=current_universe, backtest_times=backtest_times[backtest_times>=t])
                 
-            s = time.time()
             h_next, z, u, realized_costs, policy_time = self._simulate(t=t, h=h, policy=used_policy, t_next=t_next, mask=current_universe)
-            
-            simulator_time = time.time() - s - policy_time
         
             result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs, policy_time=policy_time, simulator_time=simulator_time)
 
             h = h_next
+            
+            simulator_time = time.time() - timer - policy_time
+            
+            timer = time.time()
             
         self._finalize_policy(used_policy, h.index)
         
         result.cash_returns = self.market_data.returns.iloc[:, -1].loc[result.u.index]
             
         result.h.loc[pd.Timestamp(backtest_times[-1])] = h
+        
+        result.simulator_times.iloc[-2] += time.time() - timer
 
         return result
         
