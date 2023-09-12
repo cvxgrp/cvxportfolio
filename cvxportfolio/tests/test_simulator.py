@@ -744,7 +744,10 @@ class TestSimulator(unittest.TestCase):
 
     def test_hyperparameters_optimize(self):
 
-        objective = cvx.ReturnsForecast() - cvx.GammaRisk() * cvx.FullCovariance()
+        GAMMA_RISK = cvx.GammaRisk()
+        GAMMA_TRADE = cvx.GammaTrade()
+        objective = cvx.ReturnsForecast() - GAMMA_RISK * cvx.FullCovariance()\
+             - GAMMA_TRADE * cvx.StocksTransactionCost()
         policy = cvx.SinglePeriodOptimization(
             objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
 
@@ -752,8 +755,14 @@ class TestSimulator(unittest.TestCase):
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
             trading_frequency='monthly',
             base_location=self.datadir)
+            
+        self.assertTrue(GAMMA_RISK.current_value == 1.)
+        self.assertTrue(GAMMA_TRADE.current_value == 1.)
 
-        simulator.optimize_hyperparameters(policy, start_time='2023-01-01')
+        simulator.optimize_hyperparameters(policy, start_time='2023-01-01', end_time='2023-10-01')
+        
+        self.assertTrue(GAMMA_RISK.current_value == 5.)
+        self.assertTrue(GAMMA_TRADE.current_value == 0.)
         
     def test_cancel_trades(self):
         

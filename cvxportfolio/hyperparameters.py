@@ -110,12 +110,26 @@ class RangeHyperParameter(HyperParameter):
         if not (current_value in values_range):
             raise SyntaxError('Initial value must be in the provided range')
         self.values_range = values_range
-        self.current_value = current_value
+        self._index = self.values_range.index(current_value)
+    
+    @property
+    def current_value(self):
+        return self.values_range[self._index]
         
     def __repr__(self):
         return self.__class__.__name__ \
             + f'(values_range={self.values_range}'\
             + f', current_value={self.current_value})'
+            
+    def _increment(self):
+        if self._index == len(self.values_range) - 1:
+            raise IndexError
+        self._index += 1
+    
+    def _decrement(self):
+        if self._index == 0:
+            raise IndexError
+        self._index -= 1
 
 
 class GammaRisk(RangeHyperParameter):

@@ -29,7 +29,7 @@ For a minimal example we present the classic Markowitz allocation.
     objective = cvx.ReturnsForecast() - gamma_risk * cvx.FullCovariance()
 
     # the policy takes a list of constraint instances
-    constraints = [cvx.LongOnly()]
+    constraints = [cvx.LongOnly(applies_to_cash=True)]
 
     policy = cvx.SinglePeriodOptimization(objective, constraints)
     print(cvx.MarketSimulator(universe).backtest(policy))
@@ -292,7 +292,7 @@ class LongOnly(BaseWeightConstraint, InequalityConstraint):
 
     """
     
-    def __init__(self, applies_to_cash=True):
+    def __init__(self, applies_to_cash=False):
         self.applies_to_cash = applies_to_cash
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):

@@ -661,26 +661,75 @@ class MarketSimulator:
     def _worker(policy, simulator, start_time, end_time, h):
         return simulator._concatenated_backtests(policy, start_time, end_time, h)
         
+        
     def optimize_hyperparameters(self, policy, start_time=None, end_time=None, 
         initial_value=1E6, h=None, objective='sharpe_ratio'):
         """Optimize hyperparameters of a policy to maximize backtest objective.
         
         EXPERIMENTAL: this method is currently being developed.
         """
-        hyperparameters = policy._collect_hyperparameters()
-        print(hyperparameters)
         
-        # def evaluate()
-        result_init = self.backtest(policy, start_time=start_time, end_time=end_time, 
-            initial_value=1E6, h=h)
-        
-        objective_init = getattr(result_init, objective)
-        print(result_init)
-        
-        print(objective_init)
-        
-        
+        def modify_orig_policy(target_policy):
+            hps = policy._collect_hyperparameters()
+            thps = target_policy._collect_hyperparameters()
+            for h,t in zip(hps, thps):
+                h._index = t._index
+            
+        results = {}
 
+        result_init = self.backtest(policy, start_time=start_time, end_time=end_time, 
+            initial_value=initial_value, h=h)
+        
+        current_objective = getattr(result_init, objective)
+        
+        results[str(policy)] = current_objective
+
+        for i in range(100):
+            print('iteration', i)
+            print('Current optimal hyper-parameters:')
+            print(policy)
+            print()
+        
+            test_policies = []
+            for hp in policy._collect_hyperparameters():
+                try:
+                    hp._increment()
+                    if not (str(policy) in results):
+                        test_policies.append(copy.deepcopy(policy))
+                    hp._decrement()
+                except IndexError:
+                    pass
+                try:
+                    hp._decrement()
+                    if not (str(policy) in results):
+                        test_policies.append(copy.deepcopy(policy))
+                    hp._increment()
+                except IndexError:
+                    pass
+            
+            if not len(test_policies):
+                break
+                        
+            results_partial = self.backtest_many(test_policies, 
+                start_time=start_time, end_time=end_time, initial_value=initial_value, h=h)
+                
+            objectives_partial = [getattr(res, objective) for res in results_partial]
+            
+            for pol, obje in zip(test_policies, objectives_partial):
+                results[str(pol)] = obje
+                
+            # print(results)
+            
+            if max(objectives_partial) <= current_objective:
+                break
+            
+            current_objective = max(objectives_partial)   
+            # policy = test_policies[np.argmax(objectives_partial)]
+            modify_orig_policy(test_policies[np.argmax(objectives_partial)])
+            
+
+        
+        
     def backtest(self, policy, start_time=None, end_time=None, initial_value=1E6, h=None):
         """Backtest trading policy.
 
