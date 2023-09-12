@@ -47,6 +47,10 @@ class BacktestResult(Estimator):
             index=backtest_times, dtype=float) for cost in costs}
         self.policy_times = pd.Series(index=backtest_times, dtype=float)
         self.simulator_times = pd.Series(index=backtest_times, dtype=float)
+        
+    @property
+    def cash_key(self):
+        return self.h.columns[-1]
 
     @property
     def PPY(self):
@@ -170,55 +174,91 @@ class BacktestResult(Estimator):
 
     def plot(self, show=True, how_many_weights=7):
         """Make plots."""
+        
+         # US Letter size
+        fig, axes = plt.subplots(3, figsize=(8.5, 11), layout='constrained')
+        fig.suptitle('Back-test result')
 
         # value
-        self.v.plot(figsize=(12, 5), label='Multi Period Optimization')
-        plt.ylabel('USD')
-        plt.yscale('log')
-        plt.title('Total value of the portfolio in time')
+        self.v.plot(label='Portfolio value', ax=axes[0])
+        axes[0].set_ylabel(self.cash_key)
+        axes[0].set_yscale('log')
+        axes[0].legend()
+        axes[0].grid(True, linestyle='--', which="both")
 
         # weights
         biggest_weights = np.abs(self.w).mean(
-        ).sort_values().iloc[-how_many_weights:].index
-        self.w[biggest_weights].plot()
-        plt.title('Largest weights of the portfolio in time')
-
+            ).sort_values().iloc[-how_many_weights:].index
+        self.w[biggest_weights].plot(ax=axes[1])
+        axes[1].set_ylabel('Weights')
+        axes[1].grid(True, linestyle='--')
+        
+        # leverage / turnover
+        self.leverage.plot(ax=axes[2], linestyle='--', color='k', label='Leverage')
+        self.turnover.plot(ax=axes[2], linestyle='-', color='r', label='Turnover')
+        axes[2].legend()
+        axes[2].grid(True, linestyle='--')
+        
         if show:
-            plt.show()
-
+            fig.show()
+            
     def __repr__(self):
-        data = collections.OrderedDict({
-            "Number of periods": self.u.shape[0],
-            "Initial timestamp": self.h.index[0],
+        
+        stats = collections.OrderedDict({
+
             "Universe size": self.h.shape[1],
+            "Initial timestamp": self.h.index[0],
             "Final timestamp": self.h.index[-1],
-            "Total profit (PnL)": self.profit,
-            "Initial portfolio value": self.v.iloc[0],
-            "Final portfolio value": self.v.iloc[-1],
-            # returns
-            "Annualized absolute return (%)": 100 * self.mean_return,
-            "Annualized absolute risk (%)": 100 * self.volatility,
-            "Annualized excess return (%)": self.excess_returns.mean() * 100 * self.PPY,
-            "Annualized excess risk (%)": self.excess_returns.std() * 100 * np.sqrt(self.PPY),
-            # growth rates
-            "Per-period absolute growth rate": self._print_growth_rate(self.growth_rates.mean()),
-            "Per-period excess growth rate": self._print_growth_rate(self.excess_growth_rates.mean()),
-            # stats
-            "Sharpe ratio": self.sharpe_ratio,
-            "Worst drawdown (%)": self.drawdown.min() * 100,
-            "Average drawdown (%)": self.drawdown.mean() * 100,
-            "Per-period Turnover (%)": self.turnover.mean() * 100,
-            "Annualized Turnover (%)": self.turnover.mean() * 100 * self.PPY,
+            "Number of periods": self.u.shape[0],
+            
+            ' '*3:'',
+            f"Initial value ({self.cash_key})": f"{self.v.iloc[0]:.3e}",
+            f"Final value ({self.cash_key})": f"{self.v.iloc[-1]:.3e}",
+            f"Profit ({self.cash_key})": f"{self.profit:.3e}",
+            
+            ' '*4:'',
+            "Absolute return (annualized)": f"{100 * self.mean_return:.1f}%",
+            "Absolute risk (annualized)": f"{100 * self.volatility:.1f}%",
+            "Excess return (annualized)": f"{self.excess_returns.mean() * 100 * self.PPY:.1f}%",
+            "Excess risk (annualized)": f"{self.excess_returns.std() * 100 * np.sqrt(self.PPY):.1f}%",
 
-            "Average leverage (%)": self.leverage.mean() * 100,
-            "Max leverage (%)": self.leverage.max() * 100})
+            ' '*5:'',
+            "Avg. growth rate (absolute)": self._print_growth_rate(self.growth_rates.mean()),
+            "Avg. growth rate (excess)": self._print_growth_rate(self.excess_growth_rates.mean()),
 
-        data.update(collections.OrderedDict({f'Average of {cost} per period (bp)': (
-            self.costs[cost]/self.v).mean()*1E4 for cost in self.costs}))
+        })
+        
+        if len(self.costs):
+            stats[' '*6]=''
+        for cost in self.costs:
+            stats[f'Avg. {cost}'] = f"{(self.costs[cost]/self.v).mean()*1E4:.0f}bp"
+            stats[f'Max. {cost}'] = f"{(self.costs[cost]/self.v).max()*1E4:.0f}bp"
+        
+        stats.update(collections.OrderedDict({
+            
+            ' '*7:'',
+            "Sharpe ratio": f"{self.sharpe_ratio:.2f}",
+            
+            ' '*8:'',
+            
+            "Avg. drawdown": f"{self.drawdown.mean() * 100:.1f}%",
+            "Min. drawdown": f"{self.drawdown.min() * 100:.1f}%",
+            
+            "Avg. leverage": f"{self.leverage.mean() * 100:.1f}%",
+            "Max. leverage": f"{self.leverage.max() * 100:.1f}%",
+            
+            "Avg. turnover": f"{self.turnover.mean() * 100:.1f}%",
+            "Max. turnover": f"{self.turnover.max() * 100:.1f}%",
+            
+            ' '*9:'',
 
-        data.update(collections.OrderedDict(
-            {"Average policy time (sec)": self.policy_times.mean(),
-             "Average simulator time (sec)": self.simulator_times.mean()
-             }))
+            "Avg. policy time": f"{self.policy_times.mean():.3f}s",
+            "Avg. simulator time": f"{self.simulator_times.mean():.3f}s",
+            "Total time": f"{self.simulator_times.sum() + self.policy_times.sum():.3f}s",
+            }))
 
-        return 'Backtest Result:\n' + pd.Series(data=data).to_string(float_format="{:,.3f}".format)
+        content = pd.Series(stats).to_string()
+        lenline = len(content.split('\n')[0])
+
+        return '\n' + '#'*lenline + '\n' + content + '\n' + '#'*lenline + '\n' 
+        

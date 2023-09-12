@@ -179,7 +179,7 @@ class CombinedCosts(BaseCost):
                     result += ' - ' if i > 0 else '-'
                 else:
                     result += ' + ' if i > 0 else ''
-                    result += (str(abs(mult)) + ' * ' if abs(mult) != 1 else '')
+                result += (str(abs(mult)) + ' * ' if abs(mult) != 1 else '')
             else:
                 result += str(mult) + ' * '
             result += cost.__repr__()
