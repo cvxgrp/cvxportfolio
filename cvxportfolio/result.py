@@ -190,7 +190,7 @@ class BacktestResult(Estimator):
         biggest_weights = np.abs(self.w).mean(
             ).sort_values().iloc[-how_many_weights:].index
         self.w[biggest_weights].plot(ax=axes[1])
-        axes[1].set_ylabel('Weights')
+        axes[1].set_ylabel(f'Largest {how_many_weights} weights')
         axes[1].grid(True, linestyle='--')
         
         # leverage / turnover
