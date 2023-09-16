@@ -24,6 +24,12 @@ Cvxportolio is written in pure Python and can be easily installed in your favori
 We show how this is done on our `Installation and Hello World <https://youtu.be/1ThOKEu371M>`_ youtube video.
 
 
+Example
+-------
+
+Have a look at the :doc:`hello_world` to see Cvxportfolio in action.
+
+
 Introduction
 ------------
 
@@ -57,37 +63,6 @@ estimates of covariance matrices.
 We present the results of each backtest with a clear interface, :class:`BacktestResult`,
 which defines various metrics of backtest performance and the logic to both print
 and plot them.
-
-
-	
-Example
--------
-
-The following example, `available in the repository <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/hello_world.py>`_,
-shows how to define an optimization policy, initialize the market simulator (which downloads and stores stock market data behind the scenes),
-run a backtest, and show its result. 
-
-.. code-block:: python
-
-	import cvxportfolio as cvx
-
-	objective = cvx.ReturnsForecast() - 3 * (cvx.FullCovariance() + \
-		0.05 * cvx.RiskForecastError()) - cvx.StocksTransactionCost()
-	constraints = [cvx.LeverageLimit(3)]
-
-	policy = cvx.MultiPeriodOptimization(
-		objective, constraints, planning_horizon=2)
-
-	simulator = cvx.StockMarketSimulator(
-		['AAPL', 'AMZN', 'TSLA', 'GM', 'CVX', 'NKE'])
-
-	result = simulator.backtest(policy, start_time='2020-01-01')
-
-	# print backtest result statistics
-	print(result)
-	
-	# plot backtest result
-	result.plot()
 
 	
 Testing locally
@@ -136,7 +111,8 @@ Table of Contents
 
 .. toctree::
    :maxdepth: 2
-
+   
+   hello_world
    policies
    simulator
    returns
