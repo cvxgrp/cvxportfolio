@@ -118,8 +118,8 @@ class RangeHyperParameter(HyperParameter):
         
     def __repr__(self):
         return self.__class__.__name__ \
-            + f'(values_range={self.values_range}'\
-            + f', current_value={self.current_value})'
+            + f'(current_value={self.current_value})'
+            #+ f'(values_range={self.values_range}'\
             
     def _increment(self):
         if self._index == len(self.values_range) - 1:
