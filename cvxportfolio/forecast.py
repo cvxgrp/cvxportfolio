@@ -170,6 +170,45 @@ class HistoricalVariance(BaseForecast):
         self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
         self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)**2
         self.last_time = t
+        
+        
+## brought back from old commit https://github.com/cvxgrp/cvxportfolio/commit/aa3d2150d12d85a6fb1befdf22cb7967fcc27f30
+## currently unused
+def build_low_rank_model(rets, num_factors=10, iters=10, normalize=True, shrink=True):
+    r"""Build a low rank risk model from past returns that include NaNs.
+
+    This is an experimental procedure that may work well on past returns
+    matrices with few NaN values (say, below 20% of the total entries). 
+    If there are (many) NaNs, one should probably also use a rather 
+    large risk forecast error.
+    """
+    # rets = past_returns.iloc[:,:-1] # drop cash
+    nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
+    normalizer = np.sqrt((rets**2).mean()) 
+    if normalize:
+        normalized = rets/(normalizer + 1E-8)
+    else:
+        normalized = rets
+    if nan_fraction:
+        if nan_fraction > 0.1 and not shrink:
+            warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
+        nan_implicit_imputation = pd.DataFrame(0., columns=normalized.columns, index = normalized.index)
+        for i in range(iters):
+            u, s, v = np.linalg.svd(normalized.fillna(nan_implicit_imputation), full_matrices=False)
+            nan_implicit_imputation = pd.DataFrame(
+                (u[:, :num_factors] * (s[:num_factors] - s[num_factors] * shrink)) @ v[:num_factors], 
+                columns = normalized.columns, index = normalized.index) 
+    else:
+        u, s, v = np.linalg.svd(normalized, full_matrices=False)
+    F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
+    if normalize:
+        F = pd.DataFrame(F.T * (normalizer.values + 1E-8), columns=normalizer.index)
+    else:
+        F = pd.DataFrame(F.T, columns=normalizer.index)
+    idyosyncratic = normalizer**2 - (F**2).sum(0)
+    if not np.all(idyosyncratic >= 0.):
+        raise ForeCastError("Low rank risk estimation with iterative SVD did not work.")
+    return F, idyosyncratic
 
 
 @dataclass(unsafe_hash=True)
