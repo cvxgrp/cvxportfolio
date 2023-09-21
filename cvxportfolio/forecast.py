@@ -224,6 +224,9 @@ class HistoricalFactorizedCovariance(BaseForecast):
     """
 
     kelly: bool = True
+    
+    # this is used by FullCovariance
+    FACTORIZED = True
 
     def __post_init__(self):
         self.last_time = None

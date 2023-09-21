@@ -29,6 +29,7 @@ from cvxportfolio.risks import *
 from cvxportfolio.costs import *
 from cvxportfolio.constraints import *
 from cvxportfolio.errors import *
+from cvxportfolio.forecast import HistoricalFactorizedCovariance
 
 
 class TestPolicies(unittest.TestCase):
@@ -279,7 +280,7 @@ class TestPolicies(unittest.TestCase):
     def test_single_period_optimization(self):
 
         return_forecast = ReturnsForecast()
-        risk_forecast = FullCovariance(kelly=False)
+        risk_forecast = FullCovariance(HistoricalFactorizedCovariance(kelly=False))
         tcost = TransactionCost(a=1E-3/2, pershare_cost=0., b=None, exponent=2)
 
         policy = SinglePeriodOptimization(

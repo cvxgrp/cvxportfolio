@@ -57,6 +57,9 @@ class Estimator:
         if hasattr(self, "_values_in_time"):
             self.current_value = self._values_in_time(**kwargs)
             return self.current_value
+        if hasattr(self, "values_in_time"):
+            self.current_value = self.values_in_time(**kwargs)
+            return self.current_value
 
     def __repr__(self):
         """Pretty-print the cvxportfolio object in question.
@@ -106,9 +109,11 @@ class PolicyEstimator(Estimator):
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "_recursive_pre_evaluation"):
                 subestimator._recursive_pre_evaluation(
-                    universe, backtest_times)
+                    universe=universe, backtest_times=backtest_times)
         if hasattr(self, "_pre_evaluation"):
-            self._pre_evaluation(universe, backtest_times)
+            self._pre_evaluation(universe=universe, backtest_times=backtest_times)
+        if hasattr(self, "pre_evaluation"):
+            self.pre_evaluation(universe=universe, backtest_times=backtest_times)
 
 
 class CvxpyExpressionEstimator(PolicyEstimator):
@@ -181,8 +186,7 @@ class DataEstimator(PolicyEstimator):
         self.data_includes_cash = data_includes_cash
         self.ignore_shape_check = ignore_shape_check
 
-    def _recursive_pre_evaluation(self, universe, backtest_times):
-        # super()._recursive_pre_evaluation(universe, backtest_times)
+    def _pre_evaluation(self, universe, backtest_times):
         if self.compile_parameter:
             value = self.internal__recursive_values_in_time(
                 t=backtest_times[0])
@@ -281,12 +285,20 @@ class DataEstimator(PolicyEstimator):
 
     def internal__recursive_values_in_time(self, t, *args, **kwargs):
         """Internal method called by `self._recursive_values_in_time`."""
-
-        # if self.data has values_in_time we use it
+        
+        # if it's an underscored method we trust the result
+        if hasattr(self.data, "_recursive_values_in_time"):
+            return self.data._recursive_values_in_time(t=t, *args, **kwargs)
+        
+        # if it's an underscored method we trust the result
+        if hasattr(self.data, "_values_in_time"):
+            return self.data._values_in_time(t=t, *args, **kwargs)
+        
+        # user-provided we check
         if hasattr(self.data, "values_in_time"):
-            tmp = self.data.values_in_time(t=t, *args, **kwargs)
-            return self.value_checker(self._universe_subselect(tmp) )
-
+            return self.value_checker(self._universe_subselect(
+                self.data.values_in_time(t=t, *args, **kwargs)))
+        
         # if self.data is pandas and has datetime (first) index
         if (hasattr(self.data, "loc") and hasattr(self.data, "index")
             and (isinstance(self.data.index, pd.DatetimeIndex)
@@ -338,7 +350,7 @@ class DataEstimator(PolicyEstimator):
     def __repr__(self):
         if np.isscalar(self.data):
             return str(self.data)
-        if hasattr(self.data, 'values_in_time'):
+        if hasattr(self.data, 'values_in_time') or hasattr(self.data, '_values_in_time'):
             return self.data.__repr__()
         return repr_numpy_pandas(self.data)
 

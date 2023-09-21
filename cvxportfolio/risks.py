@@ -108,14 +108,15 @@ class FullCovariance(BaseRiskModel):
     # :type kelly: bool
     # """
 
-    def __init__(self, Sigma=None, kelly=True):
-
-        if not Sigma is None:
-            self.Sigma = DataEstimator(Sigma)
-            self._alreadyfactorized = False
-        else:
-            self.Sigma = HistoricalFactorizedCovariance(kelly=kelly)
-            self._alreadyfactorized = True
+    def __init__(self, Sigma=HistoricalFactorizedCovariance):
+        
+        if isinstance(Sigma, type):
+            Sigma = Sigma()
+        
+        self._alreadyfactorized = hasattr(Sigma, 'FACTORIZED') \
+            and Sigma.FACTORIZED
+            
+        self.Sigma = DataEstimator(Sigma)
 
     def _pre_evaluation(self, universe, backtest_times):
         self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
@@ -144,18 +145,18 @@ class RiskForecastError(BaseRiskModel):
     as :class:`DiagonalCovariance`.
 
     :param sigma_squares: per-stock variances, indexed by time if DataFrame.
-        If None it will be fitted on past data.
+        Default is to use historical variances, using
+        past returns at each point in time of a backtest.
     :type sigma_squares: pd.DataFrame or pd.Series or None
     """
 
-    def __init__(self, sigma_squares=None):
-        if sigma_squares is None:
-            self.sigma_squares = HistoricalVariance(kelly=True)  # None None
-        else:
-            self.sigma_squares = DataEstimator(sigma_squares)
-        # self.standard_deviations = ParameterEstimator(standard_deviations)
-        # self.zeroforcash=True
-        # self.kelly=True
+    def __init__(self, sigma_squares=HistoricalVariance):
+        
+        if isinstance(sigma_squares, type):
+            sigma_squares = sigma_squares()
+
+        self.sigma_squares = DataEstimator(sigma_squares)
+
 
     def _pre_evaluation(self, universe, backtest_times):
         self.sigmas_parameter = cp.Parameter(
@@ -163,17 +164,6 @@ class RiskForecastError(BaseRiskModel):
 
     def _values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
-
-        # if self.sigma_squares is None:
-        #     sigma_squares = past_returns.var(ddof=0)
-        #     if self.kelly:
-        #         mean = past_returns.mean()
-        #         sigma_squares += mean**2
-        #     if self.zeroforcash:
-        #         sigma_squares.iloc[-1] = 0.
-        #     sigma_squares = sigma_squares.values
-        # else:
-        #     sigma_squares = self.sigma_squares.current_value
 
         sigma_squares = self.sigma_squares.current_value
 
@@ -188,44 +178,27 @@ class DiagonalCovariance(BaseRiskModel):
     """Diagonal covariance matrix, user-provided or fit from data.
 
     :param sigma_squares: per-stock variances, indexed by time if DataFrame.
-        If None it will be fitted on past data.
+        Default is to use historical variances, using
+        past returns at each point in time of a backtest.
     :type sigma_squares: pd.DataFrame or pd.Series or None 
     """
 
-    def __init__(self, sigma_squares=None):
-        if not sigma_squares is None:
-            self.sigma_squares = DataEstimator(sigma_squares)
-        else:
-            self.sigma_squares = HistoricalVariance(kelly=True)  # None
-        # self.zeroforcash = True
-        # self.kelly = True
-        # self.standard_deviations = ParameterEstimator(standard_deviations)
+    def __init__(self, sigma_squares=HistoricalVariance):
+        
+        if isinstance(sigma_squares, type):
+            sigma_squares = sigma_squares()
+        self.sigma_squares = DataEstimator(sigma_squares)
 
     def _pre_evaluation(self, universe, backtest_times):
         self.sigmas_parameter = cp.Parameter(len(universe)-1)  # +self.kelly))
 
     def _values_in_time(self, t, past_returns, **kwargs):
-        """Update forecast error risk here, and take square root of Sigma."""
-        # super()._recursive_values_in_time(t, current_weights, current_portfolio_value, past_returns, past_volumes, **kwargs)
-
-        # if self.sigma_squares is None:
-        #     sigma_squares = past_returns.var(ddof=0)
-        #     if self.kelly:
-        #         mean = past_returns.mean()
-        #         sigma_squares += mean**2
-        #     if self.zeroforcash:
-        #         sigma_squares[-1] = 0.
-        #     sigma_squares = sigma_squares.values
-        # else:
-        #     sigma_squares = self.sigma_squares.current_value
-
         sigma_squares = self.sigma_squares.current_value
-
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-
-        return cp.sum_squares(cp.multiply(w_plus_minus_w_bm[:-1], self.sigmas_parameter))
+        return cp.sum_squares(cp.multiply(w_plus_minus_w_bm[:-1], 
+            self.sigmas_parameter))
 
 
 class FactorModelCovariance(BaseRiskModel):

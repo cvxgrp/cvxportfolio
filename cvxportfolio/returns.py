@@ -137,18 +137,20 @@ class ReturnsForecast(BaseReturnsModel):
     and the risk model is the full covariance, also computed from the past returns.
     """
 
-    def __init__(self, r_hat=None, decay=1.):
+    def __init__(self, r_hat=HistoricalMeanReturn, decay=1.):
 
-        if not r_hat is None:
-            self.r_hat = DataEstimator(r_hat)
-        else:
-            self.r_hat = HistoricalMeanReturn()
+        if isinstance(r_hat, type):
+            r_hat = r_hat()
+        
+        # we don't use DataEstimator's parameter
+        # because we apply the decay
+        self.r_hat = DataEstimator(r_hat)
         self.decay = decay
 
     def _pre_evaluation(self, universe, backtest_times):
         self.r_hat_parameter = cp.Parameter(len(universe)-1)
 
-    def _values_in_time(self, t, past_returns, mpo_step=0, **kwargs):
+    def _values_in_time(self, mpo_step=0, **kwargs):
         self.r_hat_parameter.value = self.r_hat.current_value * \
             self.decay**(mpo_step)
 
@@ -175,13 +177,12 @@ class ReturnsForecastError(BaseRiskModel):
     :type deltas_errors: pd.DataFrame or pd.Series or None
     """
 
-    def __init__(self, deltas=None):
-
-        if not deltas is None:
-            self.deltas = DataEstimator(deltas)
-        else:
-            self.deltas = HistoricalMeanError()
-
+    def __init__(self, deltas=HistoricalMeanError):
+        
+        if isinstance(deltas, type):
+            deltas = deltas()
+        self.deltas = DataEstimator(deltas)
+    
     def _pre_evaluation(self, universe, backtest_times):
         self.deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
 
