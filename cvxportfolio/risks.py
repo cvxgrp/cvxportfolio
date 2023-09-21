@@ -23,7 +23,9 @@ import numpy as np
 import pandas as pd
 
 from .costs import BaseCost
-from .forecast import HistoricalVariance, HistoricalFactorizedCovariance
+from .forecast import HistoricalVariance, \
+    HistoricalFactorizedCovariance, project_on_psd_cone_and_factorize, \
+    HistoricalLowRankCovarianceSVD
 
 logger = logging.getLogger(__name__)
 
@@ -42,71 +44,24 @@ class BaseRiskModel(BaseCost):
 
 
 class FullCovariance(BaseRiskModel):
-    """Quadratic risk model with full covariance matrix.
+    """Quadratic risk model with full covariance matrix. 
+    
+    It represents the objective term:
+    
+    .. math::
+        {(w^+_t - w^\text{b}_t )}^T \Sigma_t (w^+_t - w^\text{b}_t)
+    
+    where :math:`w^+_t` and :math:`w^\text{b}_t` are the post-trade 
+    and the benchmark weights, respectively, at time :math:`t`. 
 
     :param Sigma: DataFrame of covariance matrices
-        supplied by the user, or None if fitting from the past data.
+        supplied by the user, or by default Covariance fitted from the past data.
         The DataFrame can either represents a single constant covariance matrix
-        or one for each point in time.
-    :type Sigma: pandas.DataFrame or None
-
-
+        or one for each point in time. If it is a class we instantiate 
+        it with default parameters. At each time :math:`t` we project the value of
+        :math:`\Sigma_t` on the cone of positive semi-definite matrices. 
+    :type Sigma: pandas.DataFrame or Estimator
     """
-    # r"""Quadratic risk model with full covariance matrix.
-    #
-    # This class represents the term :math:`\Sigma_t`, *i.e.,*
-    # the :math:`(n-1) \times (n-1)` positive semi-definite matrix
-    # which estimates the covariance of the (non-cash) assets' returns.
-    # :ref:`Optimization-based policies` use this, as is explained
-    # in Chapter 4 and 5 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
-    #
-    # The user can either supply a :class:`pandas.DataFrame` with the covariance matrix
-    # (constant or varying in time) computed externally (for example
-    # with some machine learning technique) or let this class estimate the covariance from the data.
-    # The latter is the default behavior.
-    #
-    # This class implements three ways to compute the covariance matrix from the past returns. The
-    # computation is repeated at each point in time :math:`t` of a :class:`BackTest` using only
-    # the past returns available at that point: :math:`r_{t-1}, r_{t-2}, \ldots`.
-    #
-    # * *rolling covariance*, using :class:`pandas.DataFrame.rolling.cov`. This is done
-    #   if the user specifies the ``rolling`` argument.
-    # * *exponential moving window covariance*, using :class:`pandas.DataFrame.ewm.cov`. This is done
-    #   if the user specifies the ``halflife`` argument (``rolling`` takes precedence).
-    # * *full historical covariance*, using :class:`pandas.DataFrame.cov`. This is the default
-    #   behavior if no arguments are specified.
-    #
-    # If there are missing data in the historical returns the estimated covariance may not
-    # be positive semi-definite. We correct it by projecting on the positive semi-definite
-    # cone (*i.e.*, we set the negative eigenvalues of the resulting :math:`\Sigma_t` to zero).
-    #
-    # :param Sigma: :class:`pandas.DataFrame` of covariance matrices
-    #     supplied by the user. The DataFrame either represents a single (constant) covariance matrix
-    #     or one for each point in time. In the latter case the DataFrame must have a :class:`pandas.MultiIndex`
-    #     where the first level is a :class:`pandas.DatetimeIndex`. If ``None`` (the default)
-    #     the covariance matrix is computed from past returns.
-    # :type Sigma: pandas.DataFrame or None
-    # :param rolling: if it is not ``None`` the covariance matrix will be estimated
-    #     on a rolling window of size ``rolling`` of the past returns.
-    # :type rolling: int or None
-    # :param halflife: if it is not ``None`` the covariance matrix will be estimated
-    #     on an exponential moving window of the past returns with half-life ``halflife``.
-    #     If ``rolling`` is specified it takes precedence over ``halflife``. If both are ``None`` the full history
-    #     will be used for estimation.
-    # :type halflife: int or None
-    # :param kappa: the multiplier for the associated forecast error risk
-    #     (see pages 32-33 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_).
-    #     If ``float`` a passed it is treated as a constant, if ``pandas.Series`` with ``pandas.DateTime`` index
-    #     it varies in time, if ``None`` the forecast error risk term will not be compiled.
-    # :type kappa: float or pandas.Series or None
-    # :param kelly: correct the covariance matrix with the term :math:`\mu\mu^T`, as is explained
-    #     in page 28 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_,
-    #     to match the second term of the Taylor expansion of the portfolio log-return. Default
-    #     is ``False``, corresponding to classical mean-variance optimization. If ``True``, it
-    #     estimates :math:`\mu` with the same technique as :math:`\Sigma`, *i.e.*, with rolling window
-    #     average, exponential moving window average, or an average of the full history.
-    # :type kelly: bool
-    # """
 
     def __init__(self, Sigma=HistoricalFactorizedCovariance):
         
@@ -122,15 +77,12 @@ class FullCovariance(BaseRiskModel):
         self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
     def _values_in_time(self, t, past_returns, **kwargs):
-        """Update forecast error risk here, and take square root of Sigma."""
-
+        
         if self._alreadyfactorized:
             self.Sigma_sqrt.value = self.Sigma.current_value
         else:
-            Sigma = self.Sigma.current_value
-            eigval, eigvec = np.linalg.eigh(Sigma)
-            eigval = np.maximum(eigval, 0.)
-            self.Sigma_sqrt.value = eigvec @ np.diag(np.sqrt(eigval))
+            self.Sigma_sqrt.value = project_on_psd_cone_and_factorize(
+                self.Sigma.current_value)
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         self.cvxpy_expression = cp.sum_squares(
@@ -204,9 +156,11 @@ class DiagonalCovariance(BaseRiskModel):
 class FactorModelCovariance(BaseRiskModel):
     """Factor model covariance, either user-provided or fitted from the data.
 
-    It has the structure
-
-    :math:`F \Sigma_{F} F^T + \mathbf{diag}(d)`
+    It represents the objective term:
+    
+    .. math::
+    
+        {(w^+_t - w^\text{b}_t )}^T (F \Sigma_{F} F^T + \mathbf{diag}(d)) (w^+_t - w^\text{b}_t)
 
     where the factors exposure :math:`F` has as many rows as the number of assets and as many
     columns as the number of factors,
@@ -222,50 +176,68 @@ class FactorModelCovariance(BaseRiskModel):
     the number of factors to the constructor) with a standard PCA of the historical 
     covariance at each point in time of the backtest (only looking at past returns).
 
-    :param F: factors exposure matrix either constant or varying in time. If constant
+    :param F: Factors exposure matrix either constant or varying in time. If constant
         use a dataframe where the index are the factors and the columns are the asset names.
         If varying in time use a pandas multiindexed dataframe where the first index level
         is time and the second level are the factors. The columns
         should always be the asset names. If None the constructor will default to fit the model from
         past returns at each point of the backtest.
-    :type F: pd.DataFrame or None
-    :param Sigma_F: factors covariance matrix either constant or varying in time. If varying in time
+    :type F: pandas.DataFrame or None
+    :param Sigma_F: Factors covariance matrix either constant or varying in time. If varying in time
         use a multiindexed dataframe where the first index level is time, and the second are the
         factors (like the columns). If None it is assumed that :math:`Sigma_F` is the identity matrix: Leaving
         this to None will not trigger automatic fit of the model. You can also have a factors
         exposure matrix that is fixed in time and a factors covariance that instead changes in time,
         or the opposite.
-    :type Sigma_F: pd.DataFrame or None
-    :param d: idyosyncratic variances either constant or varying in time. If constant use a pandas series,
+    :type Sigma_F: pandas.DataFrame or None
+    :param d: Idyosyncratic variances either constant or varying in time. If constant use a pandas series,
         if varying in time use a pandas dataframe where the index is time and the columns are the asset
         names. You can have this varying in time and the exposures or the factors covariance fixed, or the
         opposite. If you leave this to None you will trigger automatic fit of the model. If you wish
         to have no idyosyncratic variances you can for example just pass 0.
-    :type d: pd.Series or pd.DataFrame or None
-    :param num_factors: number of factors (columns of F) that are obtained when fitting the model automatically
+    :type d: pandas.Series or pandas.DataFrame or None
+    :param num_factors: Number of factors (columns of F) that are obtained when 
+        fitting the model automatically (otherwise it is ignored).
     :type num_factors: int    
-    :param kelly: when fitting the model you can perform a PCA on the covariance defined in the standard way
-        with this equal to False, or use the the quadratic term of the Taylor approximation of the Kelly
-        gambling objective with this equal to True. The difference is very small and it's better both
-        computationally and in terms of portfolio performance to leave this to True.
-    :type kelly: bool
+    :param Sigma: Only relevant if F or d are None. Same as the parameter 
+        passed to :class:`FullCovariance` (by default,
+        historical covariance fitted at each point in time). We take its PCA for the low-rank
+        model, and the remaining factors are used to estimate the diagonal, as 
+        is explained at pages 59-60 of the book. If it is a class, we instantiate
+        it with default parameters.
+    :type Sigma: pandas.DataFrame or Estimator
+    :param F_and_d_Forecaster: Only relevant if F or d are None, and Sigma is None. Forecaster
+        that at each point in time produces estimate of F and d. By default we use a SVD-based
+        forecaster that is equivalent to :class:`HistoricalFactorizedCovariance` if there
+        are no missing values. If you pass a class, it will be instantiated with ``num_factors``.
+    :type F_and_d_Forecaster: Estimator
     """
 
-    def __init__(self, F=None, d=None, Sigma_F=None, num_factors=1, kelly=True):
+    def __init__(self, F=None, d=None, Sigma_F=None, num_factors=1, 
+            Sigma=HistoricalFactorizedCovariance, F_and_d_Forecaster=HistoricalLowRankCovarianceSVD):
         self.F = F if F is None else DataEstimator(F, compile_parameter=True)
         self.d = d if d is None else DataEstimator(d)
         self.Sigma_F = Sigma_F if Sigma_F is None else DataEstimator(Sigma_F, ignore_shape_check=True)
         if (self.F is None) or (self.d is None):
             self._fit = True
-            self.Sigma = HistoricalFactorizedCovariance(kelly=kelly)
+            if Sigma is None:
+                if isinstance(F_and_d_Forecaster, type):
+                    F_and_d_Forecaster = F_and_d_Forecaster(num_factors=num_factors)
+                self.F_and_d_Forecaster = F_and_d_Forecaster
+            else:
+                if isinstance(Sigma, type):
+                    Sigma = Sigma()
+                self._alreadyfactorized = hasattr(Sigma, 'FACTORIZED') \
+                    and Sigma.FACTORIZED
+                self.Sigma = DataEstimator(Sigma)
+            self.num_factors = num_factors
         else:
             self._fit = False
-        self.num_factors = num_factors
-
+        
     def _pre_evaluation(self, universe, backtest_times):
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
-        effective_num_factors = min(self.num_factors, len(universe)-1)
         if self._fit:
+            effective_num_factors = min(self.num_factors, len(universe)-1)
             self.F_parameter = cp.Parameter(
                 (effective_num_factors, len(universe)-1))
         else:
@@ -276,16 +248,23 @@ class FactorModelCovariance(BaseRiskModel):
                 self.F_parameter = cp.Parameter(self.F.parameter.shape)
 
     def _values_in_time(self, t, past_returns, **kwargs):
+        
         if self._fit:
-            Sigmasqrt = self.Sigma.current_value
-            # numpy eigendecomposition has largest eigenvalues last
-            self.F_parameter.value = Sigmasqrt[:, -self.num_factors:].T
-            d = np.sum(Sigmasqrt[:, :-self.num_factors]**2, axis=1)
+            if hasattr(self, 'F_and_d_Forecaster'):
+                self.F_parameter.value, d = self.F_and_d_Forecaster.current_value
+            else:
+                Sigmasqrt = self.Sigma.current_value if self._alreadyfactorized \
+                    else project_on_psd_cone_and_factorize(
+                        self.Sigma.current_value)
+                # numpy eigendecomposition has largest eigenvalues last
+                self.F_parameter.value = Sigmasqrt[:, -self.num_factors:].T
+                d = np.sum(Sigmasqrt[:, :-self.num_factors]**2, axis=1)
         else:
             d = self.d.current_value
             if not (self.Sigma_F is None):
                 self.F_parameter.value = (
-                    self.F.parameter.value.T @ np.linalg.cholesky(self.Sigma_F.current_value)).T
+                    self.F.parameter.value.T @ np.linalg.cholesky(
+                        self.Sigma_F.current_value)).T
 
         self.idyosync_sqrt_parameter.value = np.sqrt(d)
 

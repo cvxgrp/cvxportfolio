@@ -779,6 +779,35 @@ class TestSimulator(unittest.TestCase):
         
         sim.backtest(policy, start_time='2023-01-01')
         
+        
+    def test_svd_covariance_forecaster(self):
+        
+        sim = cvx.StockMarketSimulator(
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META', 'GOOG', 'GLD'],
+            trading_frequency='quarterly',
+            base_location=self.datadir)
+                    
+        objective = cvx.ReturnsForecast() - 5 * cvx.FactorModelCovariance(
+            num_factors=2, Sigma=None)
+        policy = cvx.SinglePeriodOptimization(
+            objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
+        
+        result_svd = sim.backtest(policy, start_time='2020-01-01', 
+            end_time='2023-09-01')
+        
+        objective = cvx.ReturnsForecast() - 5 * cvx.FactorModelCovariance(
+            num_factors=2)
+        policy = cvx.SinglePeriodOptimization(
+            objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
+        
+        result_eig = sim.backtest(policy, start_time='2020-01-01',
+            end_time='2023-09-01')
+            
+        self.assertTrue(result_svd.sharpe_ratio > result_eig.sharpe_ratio)
+        
+        print(result_svd)
+        print(result_eig)
+        
 
 
 if __name__ == '__main__':

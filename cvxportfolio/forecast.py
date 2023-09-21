@@ -22,6 +22,7 @@ import logging
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 
 from .estimator import PolicyEstimator
 
@@ -172,44 +173,71 @@ class HistoricalVariance(BaseForecast):
         self.last_time = t
         
         
-## brought back from old commit https://github.com/cvxgrp/cvxportfolio/commit/aa3d2150d12d85a6fb1befdf22cb7967fcc27f30
-## currently unused
-def build_low_rank_model(rets, num_factors=10, iters=10, normalize=True, shrink=True):
-    r"""Build a low rank risk model from past returns that include NaNs.
+    
+@dataclass(unsafe_hash=True)
+class HistoricalLowRankCovarianceSVD(BaseForecast):
+    
+    num_factors: int
+    svd_iters: int = 10
+    svd: str = 'numpy'
+    
+    # brought back from old commit 
+    # https://github.com/cvxgrp/cvxportfolio/commit/aa3d2150d12d85a6fb1befdf22cb7967fcc27f30
+    # matches original 2016 method from example notebooks, with new heuristic for NaNs
+    @staticmethod
+    def build_low_rank_model(rets, num_factors=10, iters=10, svd='numpy'):
+        r"""Build a low rank risk model from past returns that include NaNs.
 
-    This is an experimental procedure that may work well on past returns
-    matrices with few NaN values (say, below 20% of the total entries). 
-    If there are (many) NaNs, one should probably also use a rather 
-    large risk forecast error.
-    """
-    # rets = past_returns.iloc[:,:-1] # drop cash
-    nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
-    normalizer = np.sqrt((rets**2).mean()) 
-    if normalize:
-        normalized = rets/(normalizer + 1E-8)
-    else:
+        This is an experimental procedure that may work well on past returns
+        matrices with few NaN values (say, below 20% of the total entries). 
+        If there are (many) NaNs, one should probably also use a rather 
+        large risk forecast error.
+        """
+        # rets = past_returns.iloc[:,:-1] # drop cash
+        nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
+        normalizer = np.sqrt((rets**2).mean()) 
+        # if normalize:
+        #     normalized = rets/(normalizer + 1E-8)
+        # else:
         normalized = rets
-    if nan_fraction:
-        if nan_fraction > 0.1 and not shrink:
-            warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
-        nan_implicit_imputation = pd.DataFrame(0., columns=normalized.columns, index = normalized.index)
-        for i in range(iters):
-            u, s, v = np.linalg.svd(normalized.fillna(nan_implicit_imputation), full_matrices=False)
-            nan_implicit_imputation = pd.DataFrame(
-                (u[:, :num_factors] * (s[:num_factors] - s[num_factors] * shrink)) @ v[:num_factors], 
-                columns = normalized.columns, index = normalized.index) 
-    else:
-        u, s, v = np.linalg.svd(normalized, full_matrices=False)
-    F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
-    if normalize:
-        F = pd.DataFrame(F.T * (normalizer.values + 1E-8), columns=normalizer.index)
-    else:
+        if nan_fraction:
+            #if nan_fraction > 0.1 and not shrink:
+            #    warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
+            nan_implicit_imputation = pd.DataFrame(0., columns=normalized.columns, index = normalized.index)
+            for i in range(iters):
+                if svd == 'numpy':
+                    u, s, v = np.linalg.svd(normalized.fillna(nan_implicit_imputation), full_matrices=False)
+                else:
+                    raise Exception('Currently only numpy svd is implemented')
+                nan_implicit_imputation = pd.DataFrame(
+                    (u[:, :num_factors] * (s[:num_factors] #- s[num_factors] * shrink
+                        )) @ v[:num_factors], 
+                    columns = normalized.columns, index = normalized.index) 
+        else:
+            u, s, v = np.linalg.svd(normalized, full_matrices=False)
+        F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
+        #if normalize:
+        #    F = pd.DataFrame(F.T * (normalizer.values + 1E-8), columns=normalizer.index)
+        #else:
         F = pd.DataFrame(F.T, columns=normalizer.index)
-    idyosyncratic = normalizer**2 - (F**2).sum(0)
-    if not np.all(idyosyncratic >= 0.):
-        raise ForeCastError("Low rank risk estimation with iterative SVD did not work.")
-    return F, idyosyncratic
+        idyosyncratic = normalizer**2 - (F**2).sum(0)
+        if not np.all(idyosyncratic >= 0.):
+            raise Exception("Low rank risk estimation with iterative SVD did not work.")
+        return F.values, idyosyncratic.values
+    
+    @online_cache
+    def _values_in_time(self, past_returns, **kwargs):
 
+        return self.build_low_rank_model(past_returns.iloc[:, :-1], 
+            num_factors=self.num_factors, 
+            iters=self.svd_iters, svd=self.svd)
+    
+
+def project_on_psd_cone_and_factorize(Sigma):
+    """Factorize matrix and remove negative eigenvalues."""
+    eigval, eigvec = np.linalg.eigh(Sigma)
+    eigval = np.maximum(eigval, 0.)
+    return eigvec @ np.diag(np.sqrt(eigval))
 
 @dataclass(unsafe_hash=True)
 class HistoricalFactorizedCovariance(BaseForecast):
@@ -253,12 +281,12 @@ class HistoricalFactorizedCovariance(BaseForecast):
         tmp = nonnull.T @ past_returns.iloc[:, :-1].fillna(0.)
         return tmp  # * tmp.T
 
-    @staticmethod
-    def _factorize(Sigma):
-        """Factorize matrix and remove negative eigenvalues."""
-        eigval, eigvec = np.linalg.eigh(Sigma)
-        eigval = np.maximum(eigval, 0.)
-        return eigvec @ np.diag(np.sqrt(eigval))
+    # @staticmethod
+    # def _factorize(Sigma):
+    #     """Factorize matrix and remove negative eigenvalues."""
+    #     eigval, eigvec = np.linalg.eigh(Sigma)
+    #     eigval = np.maximum(eigval, 0.)
+    #     return eigvec @ np.diag(np.sqrt(eigval))
 
     def _initial_compute(self, t, past_returns):
         self.last_counts_matrix = self._get_count_matrix(past_returns).values
@@ -288,4 +316,4 @@ class HistoricalFactorizedCovariance(BaseForecast):
             tmp = self.joint_mean / self.last_counts_matrix
             Sigma -= tmp.T * tmp
 
-        return self._factorize(Sigma)
+        return project_on_psd_cone_and_factorize(Sigma)
