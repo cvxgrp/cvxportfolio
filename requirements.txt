@@ -19,3 +19,4 @@ isort
 diff-cover
 pytest
 pytest-cov
+multiprocess

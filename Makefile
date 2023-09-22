@@ -4,6 +4,7 @@ PROJECT       = cvxportfolio
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
 COVERAGE      = 97  # target coverage score
+DIFFCOVERAGE  = 99  # target coverage of new code
 LINT          = 6.6  # target lint score
 
 
@@ -22,7 +23,7 @@ test:
 	$(BINDIR)/coverage run -m unittest $(PROJECT)/tests/*.py
 	$(BINDIR)/coverage report --fail-under $(COVERAGE)
 	$(BINDIR)/coverage xml
-	$(BINDIR)/diff-cover --compare-branch origin/master coverage.xml
+	$(BINDIR)/diff-cover --fail-under $(DIFFCOVERAGE) --compare-branch origin/master coverage.xml
 
 lint:
 	$(BINDIR)/pylint --fail-under $(LINT) $(PROJECT)/*.py $(PROJECT)/tests/*.py
