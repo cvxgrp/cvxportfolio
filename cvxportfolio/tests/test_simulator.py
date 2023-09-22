@@ -14,23 +14,22 @@
 
 """Unit tests for the market simulator and its backtest methods."""
 
-import unittest
-from pathlib import Path
-import tempfile
-import shutil
 import multiprocessing
+import shutil
+import tempfile
 import time
+import unittest
+from copy import deepcopy
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.simulator import StockMarketSimulator, MarketSimulator, MarketData
-from cvxportfolio.estimator import DataEstimator
-from cvxportfolio.errors import *
-
-
-from copy import deepcopy
 import cvxportfolio as cvx
+from cvxportfolio.errors import *
+from cvxportfolio.estimator import DataEstimator
+from cvxportfolio.simulator import (MarketData, MarketSimulator,
+                                    StockMarketSimulator)
 
 
 class TestSimulator(unittest.TestCase):

@@ -14,8 +14,8 @@
 
 import hashlib
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 TRUNCATE_REPR_HASH = 10  # probability of conflict is 1e-16
 

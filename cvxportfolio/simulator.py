@@ -19,26 +19,26 @@ In financial jargon this is called *backtesting*.
 """
 
 import copy
-import logging
-import time
-from pathlib import Path
-import pickle
 import hashlib
-from functools import cached_property
-from collections import defaultdict, OrderedDict
-from itertools import starmap
+import logging
 import os
+import pickle
+import time
+from collections import OrderedDict, defaultdict
+from functools import cached_property
+from itertools import starmap
+from pathlib import Path
 
-from multiprocess import Pool, Lock
 import numpy as np
 import pandas as pd
+from multiprocess import Lock, Pool
 
-from .costs import BaseCost, StocksTransactionCost, StocksHoldingCost
-from .data import FredTimeSeries, YfinanceTimeSeries, BASE_LOCATION
-from .estimator import Estimator, DataEstimator
+from .costs import BaseCost, StocksHoldingCost, StocksTransactionCost
+from .data import BASE_LOCATION, FredTimeSeries, YfinanceTimeSeries
+from .errors import DataError
+from .estimator import DataEstimator, Estimator
 from .result import BacktestResult
 from .utils import *
-from .errors import DataError
 
 PPY = 252
 __all__ = ['StockMarketSimulator', 'MarketSimulator']
@@ -448,7 +448,7 @@ class MarketData:
 
         def get_valid_universe_and_its_expiration_for(time):
             try:
-                return self._limited_universes[brkt[brkt <= time][-1]],\
+                return self._limited_universes[brkt[brkt <= time][-1]], \
                     brkt[brkt > time][0] if len(
                         brkt[brkt > time]) else full_backtest_times[-1]
             except IndexError:
@@ -618,7 +618,7 @@ class MarketSimulator:
         for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
             # s = time.time()
             result.h.loc[t] = h
-            h, result.z.loc[t], result.u.loc[t], realized_costs,\
+            h, result.z.loc[t], result.u.loc[t], realized_costs, \
                 result.policy_times.loc[t] = self._simulate(
                     t=t, h=h, policy=policy, t_next=t_next)
             for cost in realized_costs:

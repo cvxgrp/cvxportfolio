@@ -19,12 +19,11 @@ Policies, costs, and constraints inherit
 from this.
 """
 
+import cvxpy as cp
 import numpy as np
 import pandas as pd
-import cvxpy as cp
 
-
-from .errors import MissingTimesError, DataError, NaNError, MissingAssetsError
+from .errors import DataError, MissingAssetsError, MissingTimesError, NaNError
 from .hyperparameters import HyperParameter
 from .utils import repr_numpy_pandas
 

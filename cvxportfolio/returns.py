@@ -20,11 +20,10 @@ import cvxpy as cp
 import numpy as np
 import pandas as pd
 
-
 from .costs import BaseCost, CombinedCosts
-from .risks import BaseRiskModel
 from .estimator import DataEstimator  # , ParameterEstimator
-from .forecast import HistoricalMeanReturn, HistoricalMeanError
+from .forecast import HistoricalMeanError, HistoricalMeanReturn
+from .risks import BaseRiskModel
 
 __all__ = [
     "ReturnsForecast",

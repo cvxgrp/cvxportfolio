@@ -13,22 +13,21 @@
 # limitations under the License.
 """This module contains trading policies that can be backtested."""
 
-import datetime as dt
 import copy
+import datetime as dt
 import logging
 import warnings
 
-import pandas as pd
-import numpy as np
 import cvxpy as cp
+import numpy as np
+import pandas as pd
 
-from .costs import BaseCost
-from .returns import BaseReturnsModel
-from .constraints import BaseConstraint
-from .estimator import PolicyEstimator, DataEstimator
-from .errors import *
-from .returns import ReturnsForecast, CashReturn
 from .benchmark import *
+from .constraints import BaseConstraint
+from .costs import BaseCost
+from .errors import *
+from .estimator import DataEstimator, PolicyEstimator
+from .returns import BaseReturnsModel, CashReturn, ReturnsForecast
 from .utils import *
 
 __all__ = [

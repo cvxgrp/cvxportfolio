@@ -18,11 +18,12 @@ The only parts that will remain are the FRED and YFinance interfaces, simplified
 and not meant to be accessed directly by users.
 """
 
-from pathlib import Path
-import yfinance as yf
-import pandas as pd
-import numpy as np
 import sqlite3
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import yfinance as yf
 
 from .estimator import DataEstimator
 

@@ -17,13 +17,13 @@
 import unittest
 from pathlib import Path
 
-
 import cvxpy as cp
 import numpy as np
 import pandas as pd
 
-
-from cvxportfolio.forecast import HistoricalMeanReturn, HistoricalMeanError, HistoricalVariance, HistoricalFactorizedCovariance
+from cvxportfolio.forecast import (HistoricalFactorizedCovariance,
+                                   HistoricalMeanError, HistoricalMeanReturn,
+                                   HistoricalVariance)
 
 
 class TestEstimators(unittest.TestCase):

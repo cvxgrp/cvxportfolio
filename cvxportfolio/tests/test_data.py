@@ -14,24 +14,17 @@
 
 """Unit tests for the data interfaces."""
 
-import unittest
 import shutil
 import tempfile
+import unittest
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.data import (
-    YfinanceBase,
-    LocalDataStore,
-    Yfinance,
-    FredBase,
-    FredRate,
-    # SqliteDataStore,
-    TimeSeries,
-    PickleStore,
-)
+from cvxportfolio.data import (FredBase, FredRate,  # SqliteDataStore,
+                               LocalDataStore, PickleStore, TimeSeries,
+                               Yfinance, YfinanceBase)
 
 
 class TestData(unittest.TestCase):

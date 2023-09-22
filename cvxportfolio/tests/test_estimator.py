@@ -14,13 +14,15 @@
 
 """Unit tests for the data and parameter estimator objects."""
 
-import numpy as np
-import pandas as pd
 import unittest
 
-from cvxportfolio.estimator import DataEstimator  # , ParameterEstimator
-from cvxportfolio.errors import MissingTimesError, DataError, NaNError, MissingAssetsError
+import numpy as np
+import pandas as pd
+
 import cvxportfolio as cvx
+from cvxportfolio.errors import (DataError, MissingAssetsError,
+                                 MissingTimesError, NaNError)
+from cvxportfolio.estimator import DataEstimator  # , ParameterEstimator
 
 
 class PlaceholderCallable:

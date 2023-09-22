@@ -15,21 +15,20 @@
 """Unit tests for the policy objects."""
 
 import unittest
-
 from pathlib import Path
 
 import cvxpy as cp
 import numpy as np
 import pandas as pd
 
+from cvxportfolio.constraints import *
+from cvxportfolio.costs import *
+from cvxportfolio.errors import *
+from cvxportfolio.forecast import HistoricalFactorizedCovariance
 from cvxportfolio.policies import *
 # from cvxportfolio.policies import SinglePeriodOptOLD, SinglePeriodOptNEW
 from cvxportfolio.returns import *
 from cvxportfolio.risks import *
-from cvxportfolio.costs import *
-from cvxportfolio.constraints import *
-from cvxportfolio.errors import *
-from cvxportfolio.forecast import HistoricalFactorizedCovariance
 
 
 class TestPolicies(unittest.TestCase):

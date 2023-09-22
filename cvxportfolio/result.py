@@ -13,14 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import collections
+import copy
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import copy
 
 from .estimator import Estimator
 from .utils import periods_per_year
-import matplotlib.pyplot as plt
 
 __all__ = ['BacktestResult']
 

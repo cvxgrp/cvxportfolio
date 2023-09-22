@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .estimator import DataEstimator
 import logging
 import warnings
-
-import scipy.linalg
 
 import cvxpy as cp
 import numpy as np
 import pandas as pd
+import scipy.linalg
 
 from .costs import BaseCost
-from .forecast import HistoricalVariance,\
-    HistoricalFactorizedCovariance, project_on_psd_cone_and_factorize,\
-    HistoricalLowRankCovarianceSVD
+from .estimator import DataEstimator
+from .forecast import (HistoricalFactorizedCovariance,
+                       HistoricalLowRankCovarianceSVD, HistoricalVariance,
+                       project_on_psd_cone_and_factorize)
 
 logger = logging.getLogger(__name__)
 

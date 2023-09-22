@@ -20,17 +20,19 @@ The default parameters are chosen to approximate real costs for the stock market
 as well as possible.
 """
 
-import cvxpy as cp
-import numpy as np
-import pandas as pd
 import copy
 import inspect
 
-from .estimator import CvxpyExpressionEstimator,  DataEstimator
-from .utils import periods_per_year
-from .hyperparameters import HyperParameter
-from .constraints import EqualityConstraint, InequalityConstraint, CostInequalityConstraint
+import cvxpy as cp
+import numpy as np
+import pandas as pd
+
+from .constraints import (CostInequalityConstraint, EqualityConstraint,
+                          InequalityConstraint)
 from .errors import *
+from .estimator import CvxpyExpressionEstimator, DataEstimator
+from .hyperparameters import HyperParameter
+from .utils import periods_per_year
 
 __all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
            "StocksTransactionCost", "StocksHoldingCost"]

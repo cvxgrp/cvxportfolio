@@ -47,17 +47,18 @@ coverage: test
 	open htmlcov/index.html
 
 fix:
-	# (mostly) whitespace fixes
+	# THESE THREE ARE ACCEPTABLE AS AUTOMATIC ONES
 	$(BINDIR)/autopep8 --select W291,W293,W391,E231,E225,E303 -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
 	$(BINDIR)/pydocstringformatter --write $(PROJECT)/*.py $(PROJECT)/tests/*.py
-
-hardfix:
-	# could be breaking fixes
-	$(BINDIR)/ruff --fix $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	$(BINDIR)/autopep8 --aggressive --aggressive --aggressive -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	$(BINDIR)/pydocstringformatter --linewrap-full-docstring --write $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	$(BINDIR)/autoflake $(PROJECT)/*.py $(PROJECT)/tests/*.py
 	$(BINDIR)/isort $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	# THIS ONE MAKES NON-SENSICAL CHANGES (BUT NOT BREAKING)
+	# $(BINDIR)/ruff --fix-only $(PROJECT)/*.py $(PROJECT)/tests/*.py	
+	# THIS ONE IS DUBIOUS (NOT AS BAD AS BLACK)
+	# $(BINDIR)/autopep8 --aggressive --aggressive --aggressive -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	# THIS ONE BREAKS DOCSTRINGS TO SATISFY LINE LEN
+	# $(BINDIR)/pydocstringformatter --linewrap-full-docstring --write $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	# THIS ONE DOES SAME AS RUFF, PLUS REMOVING PASS
+	# $(BINDIR)/autoflake --in-place $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
 release: cleanenv env test
 	$(BINDIR)/python bumpversion.py

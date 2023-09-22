@@ -19,7 +19,7 @@ for example, by risk terms of optimization-based policies.
 import numpy as np
 import pandas as pd
 
-from .estimator import PolicyEstimator, DataEstimator
+from .estimator import DataEstimator, PolicyEstimator
 
 __all__ = ['Benchmark', 'CashBenchmark', 'UniformBenchmark', 'MarketBenchmark']
 

@@ -18,8 +18,10 @@ of cost terms in Single and Multi Period Optimization policies
 and can be iterated (and optimized over) automatically.
 """
 
-import numpy as np
 import copy
+
+import numpy as np
+
 GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]
 GAMMA_COST_RANGE = [0., .1, .2, .5, 1., 2., 5., 10.]
 

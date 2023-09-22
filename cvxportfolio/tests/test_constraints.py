@@ -17,9 +17,10 @@
 import unittest
 from pathlib import Path
 
+import cvxpy as cp
 import numpy as np
 import pandas as pd
-import cvxpy as cp
+
 import cvxportfolio as cvx
 
 
