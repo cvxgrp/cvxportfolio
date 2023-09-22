@@ -127,9 +127,9 @@ class RiskForecastError(BaseRiskModel):
 class DiagonalCovariance(BaseRiskModel):
     """Diagonal covariance matrix, user-provided or fit from data.
 
-    :param sigma_squares: per-stock variances, indexed by time if DataFrame.
-        Default is to use historical variances, using
-        past returns at each point in time of a backtest.
+    :param sigma_squares: per-stock variances, indexed by time if
+        DataFrame. Default is to use historical variances, using past
+        returns at each point in time of a backtest.
     :type sigma_squares: pd.DataFrame or pd.Series or None
     """
 
@@ -279,14 +279,17 @@ class FactorModelCovariance(BaseRiskModel):
 
 
 class WorstCaseRisk(BaseRiskModel):
-    """Select the most restrictive risk model for each value of the allocation vector.
+    """Select the most restrictive risk model for each value of the allocation.
 
-    Given a list of risk models, penalize the portfolio allocation by the
-    one with highest risk value at the solution point. If uncertain about
-    which risk model to use this procedure can be an easy solution.
+    vector.
 
-    :param riskmodels: risk model instances on which to compute the worst-case
-        risk.
+    Given a list of risk models, penalize the portfolio allocation by
+    the one with highest risk value at the solution point. If uncertain
+    about which risk model to use this procedure can be an easy
+    solution.
+
+    :param riskmodels: risk model instances on which to compute the
+        worst-case risk.
     :type riskmodels: list
     """
 

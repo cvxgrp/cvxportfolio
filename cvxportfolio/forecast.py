@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains classes that provide forecasts such as historical means.
+"""This module contains classes that provide forecasts such as historical.
 
-and covariances and are used internally by cvxportfolio objects. In addition,
-forecast classes have the ability to cache results online so that if multiple
-classes need access to the estimated value (as is the case in MultiPeriodOptimization
-policies) the expensive evaluation is only done once.
+means.
+
+and covariances and are used internally by cvxportfolio objects. In
+addition, forecast classes have the ability to cache results online so
+that if multiple classes need access to the estimated value (as is the
+case in MultiPeriodOptimization policies) the expensive evaluation is
+only done once.
 """
 
 import logging
@@ -31,8 +34,8 @@ from .estimator import PolicyEstimator
 def online_cache(_values_in_time):
     """A simple online cache that decorates _values_in_time.
 
-    The instance it is used on needs to be hashable (we currently
-    use the hash of its __repr__ via dataclass).
+    The instance it is used on needs to be hashable (we currently use
+    the hash of its __repr__ via dataclass).
     """
 
     def wrapped(self, t, cache=None, **kwargs):
@@ -120,9 +123,10 @@ class HistoricalMeanReturn(BaseForecast):
 class HistoricalMeanError(BaseForecast):
     r"""Historical standard deviations of the mean of non-cash returns.
 
-    For a given time series of past returns :math:`r_{t-1}, r_{t-2}, \ldots, r_0` this is
-    :math:`\sqrt{\text{Var}[r]/t}`. When there are missing values we ignore them,
-    both to compute the variance and the count.
+    For a given time series of past returns :math:`r_{t-1}, r_{t-2},
+    \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
+    missing values we ignore them, both to compute the variance and the
+    count.
     """
 
     def __init__(self):
@@ -188,10 +192,10 @@ class HistoricalLowRankCovarianceSVD(BaseForecast):
     def build_low_rank_model(rets, num_factors=10, iters=10, svd='numpy'):
         r"""Build a low rank risk model from past returns that include NaNs.
 
-        This is an experimental procedure that may work well on past returns
-        matrices with few NaN values (say, below 20% of the total entries). 
-        If there are (many) NaNs, one should probably also use a rather 
-        large risk forecast error.
+        This is an experimental procedure that may work well on past
+        returns matrices with few NaN values (say, below 20% of the
+        total entries). If there are (many) NaNs, one should probably
+        also use a rather large risk forecast error.
         """
         # rets = past_returns.iloc[:,:-1] # drop cash
         nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
@@ -245,7 +249,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
 
     :param kelly: if ``True`` compute each :math:` \Sigma_{i,j} \simeq \mathbf{E}[r^{i} r^{j}]`, else
         :math:` \Sigma_{i,j} \simeq \mathbf{E}[r^{i} r^{j}] - \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]` matching
-        the behavior of ``pandas.DataFrame.cov(ddof=0)`` (with same logic to handle missing data). 
+        the behavior of ``pandas.DataFrame.cov(ddof=0)`` (with same logic to handle missing data).
         The second case corresponds to the classic definition of covariance, while the first is what is obtained
         by Taylor approximation of the Kelly gambling objective. (See page 28 of the book.)
     :type kelly: bool
@@ -275,8 +279,8 @@ class HistoricalFactorizedCovariance(BaseForecast):
 
     @staticmethod
     def _get_initial_joint_mean(past_returns):
-        r"""Compute precursor of :math:`\Sigma_{i,j} = \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`.
-        """
+        r"""Compute precursor of :math:`\Sigma_{i,j} =
+        \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
         nonnull = (~past_returns.iloc[:, :-1].isnull()) * 1.
         tmp = nonnull.T @ past_returns.iloc[:, :-1].fillna(0.)
         return tmp  # * tmp.T

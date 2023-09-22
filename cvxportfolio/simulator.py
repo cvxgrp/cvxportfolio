@@ -14,8 +14,8 @@
 """This module implements the MarketSimulator class, which strives to.
 
 simulate as accurately as possibly what would have been the realized
-performance of a trading policy if it had been run in the market in the past.
-In financial jargon this is called *backtesting*.
+performance of a trading policy if it had been run in the market in the
+past. In financial jargon this is called *backtesting*.
 """
 
 import copy
@@ -94,8 +94,8 @@ def _store_cache(cache, universe, trading_frequency, base_location):
 class MarketData:
     """Prepare, hold, and serve market data.
 
-    Not meant to be accessed by user. Most of its initialization
-    is documented in MarketSimulator.
+    Not meant to be accessed by user. Most of its initialization is
+    documented in MarketSimulator.
     """
 
     def __init__(self,
@@ -297,10 +297,11 @@ class MarketData:
         """Set numpy array contained in dataframe to read only.
 
         This is enough to prevent direct assignement to the resulting
-        dataframe. However it could still be accidentally corrupted by assigning
-        to columns or indices that are not present in the original.
-        We avoid that case as well by returning a wrapped dataframe (which doesn't
-        copy data on creation) in _serve_data_policy and _serve_data_simulator.
+        dataframe. However it could still be accidentally corrupted by
+        assigning to columns or indices that are not present in the
+        original. We avoid that case as well by returning a wrapped
+        dataframe (which doesn't copy data on creation) in
+        _serve_data_policy and _serve_data_simulator.
         """
 
         def ro(df):
@@ -358,8 +359,8 @@ class MarketData:
     def _remove_missing_recent(self):
         """Clean recent data.
 
-        Yfinance has some issues with most recent data;
-        we remove recent days if there are NaNs.
+        Yfinance has some issues with most recent data; we remove recent
+        days if there are NaNs.
         """
 
         if self.prices.iloc[-5:].isnull().any().any():
@@ -394,9 +395,9 @@ class MarketData:
     def _break_timestamps(self):
         """List of timestamps at which a backtest should be broken.
 
-        An asset enters into a backtest after having non-NaN returns
-        for self.min_history periods and exits after having NaN returns
-        for self.max_contiguous_missing. Defaults values are 252 and 10
+        An asset enters into a backtest after having non-NaN returns for
+        self.min_history periods and exits after having NaN returns for
+        self.max_contiguous_missing. Defaults values are 252 and 10
         respectively.
         """
         self.entry_dates = defaultdict(list)
@@ -419,8 +420,8 @@ class MarketData:
         """Valid universes for each section, minus cash.
 
         A backtest is broken into multiple ones that start at each key
-        of this, have the universe specified by this, and end
-        at the next startpoint.
+        of this, have the universe specified by this, and end at the
+        next startpoint.
         """
         result = OrderedDict()
         uni = []

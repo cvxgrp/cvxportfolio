@@ -13,9 +13,9 @@
 # limitations under the License.
 """This module defines hyperparameter objects.
 
-These are used currently as symbolic multipliers
-of cost terms in Single and Multi Period Optimization policies
-and can be iterated (and optimized over) automatically.
+These are used currently as symbolic multipliers of cost terms in Single
+and Multi Period Optimization policies and can be iterated (and
+optimized over) automatically.
 """
 
 import copy
@@ -105,8 +105,8 @@ class CombinedHyperParameter(HyperParameter):
 class RangeHyperParameter(HyperParameter):
     """Range Hyper Parameter.
 
-    This is not meant to be used directly, look at
-    its subclasses for ones that you can use.
+    This is not meant to be used directly, look at its subclasses for
+    ones that you can use.
     """
 
     def __init__(self, values_range, current_value):

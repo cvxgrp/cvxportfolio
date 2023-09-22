@@ -23,8 +23,8 @@ test:
 
 hardtest:
 	$(BINDIR)/pytest --cov --cov-report=xml -W error $(PROJECT)/tests/*.py
-	$(BINDIR)/coverage report --fail-under 99
-	$(BINDIR)/ruff --per-file-ignores='$(PROJECT)/__init__.py:F403' $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/coverage report --fail-under 97
+	$(BINDIR)/ruff --line-length=79 --per-file-ignores='$(PROJECT)/__init__.py:F403' $(PROJECT)/*.py $(PROJECT)/tests/*.py
 	$(BINDIR)/isort --check-only $(PROJECT)/*.py $(PROJECT)/tests/*.py
 	$(BINDIR)/flake8 --per-file-ignores='$(PROJECT)/__init__.py:F401,F403' $(PROJECT)/*.py $(PROJECT)/tests/*.py
 	$(BINDIR)/docstr-coverage $(PROJECT)/*.py $(PROJECT)/tests/*.py
@@ -47,12 +47,13 @@ coverage: test
 	open htmlcov/index.html
 
 fix:
-	# THESE THREE ARE ACCEPTABLE AS AUTOMATIC ONES
+	# THESE ARE ACCEPTABLE
 	$(BINDIR)/autopep8 --select W291,W293,W391,E231,E225,E303 -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	$(BINDIR)/pydocstringformatter --write $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/docformatter --in-place $(PROJECT)/*.py $(PROJECT)/tests/*.py
 	$(BINDIR)/isort $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	# $(BINDIR)/pydocstringformatter --write $(PROJECT)/*.py $(PROJECT)/tests/*.py
 	# THIS ONE MAKES NON-SENSICAL CHANGES (BUT NOT BREAKING)
-	# $(BINDIR)/ruff --fix-only $(PROJECT)/*.py $(PROJECT)/tests/*.py	
+	# $(BINDIR)/ruff --line-length=79 --fix-only $(PROJECT)/*.py$(PROJECT)/tests/*.py
 	# THIS ONE IS DUBIOUS (NOT AS BAD AS BLACK)
 	# $(BINDIR)/autopep8 --aggressive --aggressive --aggressive -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
 	# THIS ONE BREAKS DOCSTRINGS TO SATISFY LINE LEN

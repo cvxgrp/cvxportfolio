@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Here we define many realistic constraints that apply to.
+"""Here we define many realistic constraints that apply to.
 
 :ref:`portfolio optimization trading policies <optimization-policies-page>`.
 
@@ -160,9 +159,8 @@ class CostInequalityConstraint(InequalityConstraint):
 class BaseWeightConstraint(BaseConstraint):
     """Base class for constraints that operate on weights.
 
-    Here we can implement a method to pass benchmark weights
-    and make the constraint relative to it rather than to the null
-    portfolio.
+    Here we can implement a method to pass benchmark weights and make
+    the constraint relative to it rather than to the null portfolio.
     """
 
 
@@ -172,12 +170,12 @@ class MarketNeutral(BaseWeightConstraint, EqualityConstraint):
     See the equation at page 35 of
     `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
 
-    The benchmark portfolio weights are computed here,
-    and are proportional to the rolling averages of
-    the market volumes over the recent past
+    The benchmark portfolio weights are computed here, and are
+    proportional to the rolling averages of the market volumes over the
+    recent past
 
-    :param window: How many past observations of the volumes
-        are used to estimate the market benchmark.
+    :param window: How many past observations of the volumes are used to
+        estimate the market benchmark.
     :type window: int
     """
 
@@ -211,18 +209,18 @@ class TurnoverLimit(BaseTradeConstraint, InequalityConstraint):
 
     See the equation at page 37 of
     `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
-    
-    The turnover is defined as half the :math:`\ell_1`-norm of 
-    the trade weight vector, without cash. Here we ask that it is smaller 
+
+    The turnover is defined as half the :math:`\ell_1`-norm of
+    the trade weight vector, without cash. Here we ask that it is smaller
     than some constant:
-    
+
     .. math::
         \|{(z_t)}_{1:n}\|_1/2 \leq \delta.
-    
+
     :param delta: We require that the turnover over each trading period
         is smaller than this value. This is either constant, expressed
-        as :class:`float`, or changing in time, expressed as a 
-        :class:`pd.Series` with datetime index. 
+        as :class:`float`, or changing in time, expressed as a
+        :class:`pd.Series` with datetime index.
     :type delta: float or pd.Series
     """
 
@@ -241,11 +239,11 @@ class TurnoverLimit(BaseTradeConstraint, InequalityConstraint):
 class ParticipationRateLimit(BaseTradeConstraint, InequalityConstraint):
     """A limit on maximum trades size as a fraction of market volumes.
 
-    :param volumes: per-stock and per-day market volume estimates, or constant
-        in time
+    :param volumes: per-stock and per-day market volume estimates, or
+        constant in time
     :type volumes: pd.Series or pd.DataFrame
-    :param max_fraction_of_volumes: max fraction of market volumes that we're
-        allowed to trade
+    :param max_fraction_of_volumes: max fraction of market volumes that
+        we're allowed to trade
     :type max_fraction_of_volumes: float, pd.Series, pd.DataFrame
     """
 
@@ -264,7 +262,8 @@ class ParticipationRateLimit(BaseTradeConstraint, InequalityConstraint):
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
-        return cp.multiply(self.volumes.parameter, self.max_participation_rate.parameter)
+        return cp.multiply(self.volumes.parameter,
+                           self.max_participation_rate.parameter)
 
 
 class LongOnly(BaseWeightConstraint, InequalityConstraint):
@@ -325,13 +324,13 @@ class NoTrade(BaseTradeConstraint):
 
 class LeverageLimit(BaseWeightConstraint, InequalityConstraint):
     r"""Constraints on the leverage of the portfolio.
-    
+
     In the notation of the book, this is
-    
+
     .. math::
-        
+
         \|{(w_t + z_t)}_{1:n}\|_1 \leq L^\text{max},
-    
+
     where :math:`(w_t + z_t)` are the post-trade weights, and we
     exclude the cash account from the :math:`\ell_1` norm.
 
@@ -501,19 +500,19 @@ class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
 class FactorMaxLimit(BaseWeightConstraint, InequalityConstraint):
     r"""A max limit on portfolio-wide factor (e.g. beta) exposure.
-    
+
     :param factor_exposure: Series or DataFrame giving the factor exposure.
         If Series it is indexed by assets' names and represents factor
-        exposures constant in time. If DataFrame it is indexed by time 
-        and has the assets names as columns, and it represents factor 
+        exposures constant in time. If DataFrame it is indexed by time
+        and has the assets names as columns, and it represents factor
         exposures that change in time. In the latter case an observation
         must be present for every point in time of a backtest.
         If you want you can also pass multiple factor exposures at once:
         as a dataframe indexed by assets' names and whose columns are the
-        factors (if constant in time), or a dataframe with multiindex: 
-        first level is time, second level are assets' names (if changing 
+        factors (if constant in time), or a dataframe with multiindex:
+        first level is time, second level are assets' names (if changing
         in time). However this latter usecase is probably better served
-        by making multiple instances of this constraint, one for each 
+        by making multiple instances of this constraint, one for each
         factor.
     :type factor_exposure: pd.Series or pd.DataFrame
     :param limit: Factor limit, either constant or varying in time. Use
@@ -614,21 +613,20 @@ class FixedFactorLoading(BaseWeightConstraint, EqualityConstraint):
 
 class FactorNeutral(FixedFactorLoading):
     r"""Require neutrality with respect to certain risk factors.
-    
-    This is developed at page 35 of 
+
+    This is developed at page 35 of
     `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
     We require
-    
+
     .. math::
         {(F_t)}^T_i (w_t + z_t) = 0,
-    
+
     where :math:`{(F_t)}_i` is the exposure to the :math:`i`-th factor
     of a risk model at time :math:`t`.
-    
+
     :param factor_exposure: Either constant (if Series) or varying in time
         (if Dataframe with datetime index) factor exposure.
     :type factor_exposure: pd.Series or pd.DataFrame
-    
     """
 
     def __init__(self, factor_exposure):

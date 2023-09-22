@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for the data interfaces."""
 
 import shutil
@@ -217,7 +216,10 @@ class TestData(unittest.TestCase):
         self.assertTrue(all(data.dtypes == data1.dtypes))
 
     def base_test_multiindex(self, storeclass, *args, **kwargs):
-        """Test storing and retrieving of a Series or DataFrame with multi-index."""
+        """Test storing and retrieving of a Series or DataFrame with multi-.
+
+        index.
+        """
         store = storeclass(*args, **kwargs)
 
         # second level is object

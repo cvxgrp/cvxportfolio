@@ -11,17 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for some utils.py functions."""
 
 import unittest
 
-import cvxpy as cp
 import numpy as np
 import pandas as pd
 
-import cvxportfolio as cvx
-from cvxportfolio.utils import *
+from cvxportfolio.utils import repr_numpy_pandas
 
 
 class TestUtils(unittest.TestCase):

@@ -13,9 +13,9 @@
 # limitations under the License.
 """DEPRECATED.
 
-This module will be removed or heavily reformatted, most of it is unused.
-The only parts that will remain are the FRED and YFinance interfaces, simplified,
-and not meant to be accessed directly by users.
+This module will be removed or heavily reformatted, most of it is
+unused. The only parts that will remain are the FRED and YFinance
+interfaces, simplified, and not meant to be accessed directly by users.
 """
 
 import sqlite3
@@ -83,7 +83,10 @@ class BaseData:
         raise NotImplementedError
 
     def load(self, symbol):
-        """Load data from database using `self.preload` function to process it."""
+        """Load data from database using `self.preload` function to process.
+
+        it.
+        """
         return self.preload(self.load_raw(symbol))
 
     def store(self, symbol, data):
@@ -181,10 +184,9 @@ class YfinanceBase(BaseData):
     def preload(data):
         """Prepare data for use by Cvxportfolio.
 
-        We drop the 'Volume' column expressed in number of stocks
-        and replace it with 'ValueVolume' which is an estimate
-        of the (e.g., US dollar) value of the volume exchanged
-        on the day.
+        We drop the 'Volume' column expressed in number of stocks and
+        replace it with 'ValueVolume' which is an estimate of the (e.g.,
+        US dollar) value of the volume exchanged on the day.
         """
         data["ValueVolume"] = data["Volume"] * data["Open"]
         del data["Volume"]
@@ -429,8 +431,9 @@ class FredBase(BaseData):
         If already downloaded don't change data stored locally and only
         add new entries at the end.
 
-        Additionally, we allow for a `grace period`, if the data already downloaded
-        has a last entry not older than the grace period, we don't download new data.
+        Additionally, we allow for a `grace period`, if the data already
+        downloaded has a last entry not older than the grace period, we
+        don't download new data.
         """
         if current is None:
             return self._download(symbol)
@@ -458,7 +461,6 @@ class RateBase(BaseData):
 
 
 class Yfinance(YfinanceBase, LocalDataStore):
-
     """Yahoo Finance data interface using local data store.
 
     Args:

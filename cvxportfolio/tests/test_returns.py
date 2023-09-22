@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for the return forecast objects."""
 
 import unittest
@@ -108,7 +107,10 @@ class TestReturns(unittest.TestCase):
             self.w_plus_minus_w_bm.value[:-1]) @ delta))
 
     def test_full_returns_forecast_error(self):
-        """Test ReturnsForecastError object with as forecast the std of the mean estimator."""
+        """Test ReturnsForecastError object with as forecast the std of the.
+
+        mean estimator.
+        """
         error_risk = ReturnsForecastError()
         cvxpy_expression = self.boilerplate(error_risk)
         t = self.returns.index[123]

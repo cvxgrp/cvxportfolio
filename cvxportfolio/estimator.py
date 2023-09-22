@@ -11,12 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This module implements Estimator base classes.
 
-"""
-This module implements Estimator base classes.
-
-Policies, costs, and constraints inherit
-from this.
+Policies, costs, and constraints inherit from this.
 """
 
 import cvxpy as cp
@@ -32,25 +29,28 @@ class Estimator:
     """Estimator base class.
 
     Policies, costs, and constraints inherit from this. When overloading
-    methods defined here one should be careful on deciding whether to call
-    the `super()` corresponding method. It can make sense to call it before
-    some logic, after, or not calling it at all. Also, any subclass of this that uses
-    logic defined here should be careful to put estimator subclasses at the class
-    attribute level, so that the two methods defined here get called recursively
-    on them.
+    methods defined here one should be careful on deciding whether to
+    call the `super()` corresponding method. It can make sense to call
+    it before some logic, after, or not calling it at all. Also, any
+    subclass of this that uses logic defined here should be careful to
+    put estimator subclasses at the class attribute level, so that the
+    two methods defined here get called recursively on them.
     """
 
     def _recursive_values_in_time(self, **kwargs):
-        """Evaluates estimator at a point in time recursively on its sub-estimators.
+        """Evaluates estimator at a point in time recursively on its sub-.
+
+        estimators.
 
         This function is called by Simulator classes on Policy classes
-        returning the current trades list. Policy classes, if
-        they contain internal estimators, should declare them as attributes
-        and call this base function (via `super()`) before
-        they do their internal computation. CvxpyExpression estimators
-        should instead define this method to update their Cvxpy parameters.
+        returning the current trades list. Policy classes, if they
+        contain internal estimators, should declare them as attributes
+        and call this base function (via `super()`) before they do their
+        internal computation. CvxpyExpression estimators should instead
+        define this method to update their Cvxpy parameters.
 
-        Once we finalize the interface all parameters will be listed here.
+        Once we finalize the interface all parameters will be listed
+        here.
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "_recursive_values_in_time"):
@@ -91,7 +91,10 @@ class PolicyEstimator(Estimator):
     """Base class for (most) estimators that are part of policy objects."""
 
     def _collect_hyperparameters(self):
-        """This method finds all hyperparameters defined as part of a policy."""
+        """This method finds all hyperparameters defined as part of a.
+
+        policy.
+        """
         result = []
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "_collect_hyperparameters"):
@@ -103,7 +106,8 @@ class PolicyEstimator(Estimator):
 
         :param universe: names of assets to be traded
         :type universe: pandas.Index
-        :param backtest_times: times at which the estimator will be evaluated
+        :param backtest_times: times at which the estimator will be
+            evaluated
         :type backtest_time: pandas.DatetimeIndex
         """
         for _, subestimator in self.__dict__.items():
@@ -122,22 +126,24 @@ class CvxpyExpressionEstimator(PolicyEstimator):
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile term to cvxpy expression.
 
-        This is called by a Policy class on its terms before the start of the backtest
-        to compile its Cvxpy problem. If the Policy changes in time
-        this is called at every time step.
+        This is called by a Policy class on its terms before the start
+        of the backtest to compile its Cvxpy problem. If the Policy
+        changes in time this is called at every time step.
 
-        It can either return a scalar expression, in the case of objective terms,
-        or a list of cvxpy constraints, in the case of constraints.
+        It can either return a scalar expression, in the case of
+        objective terms, or a list of cvxpy constraints, in the case of
+        constraints.
 
         In MultiPeriodOptimization policies this is called separately
-        for costs and constraints at different look-ahead steps with
-        the corresponding w_plus and z.
+        for costs and constraints at different look-ahead steps with the
+        corresponding w_plus and z.
 
         :param w_plus: post-trade weights
         :type w_plus: cvxpy.Variable
         :param z: trade weights
         :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: post-trade weights minus benchmark weights
+        :param w_plus_minus_w_bm: post-trade weights minus benchmark
+            weights
         :type w_plus_minus_w_bm: cvxpy.Variable
         """
         raise NotImplementedError
@@ -225,17 +231,17 @@ class DataEstimator(PolicyEstimator):
 
         See github issue #106.
 
-        If data is a pandas Series we subselect its index. If we fail
-        we throw an error. If data is a pandas DataFrame (covariance, exposure matrix)
-        we try to subselect its index and columns. If we fail on either
-        we ignore the failure, but if we fail on both we throw an error.
-        If data is a numpy 1-d array we check that its length is the same as the
-        universe's.
-        If it is a 2-d array we check that at least one dimension is the
-        same as the universe's.
-        If the universe is None we skip all checks. (We may revisit this choice.) This only happens
-        if the DataEstimator instance is not part of a PolicyEstimator tree
-        (a usecase which we will probably drop).
+        If data is a pandas Series we subselect its index. If we fail we
+        throw an error. If data is a pandas DataFrame (covariance,
+        exposure matrix) we try to subselect its index and columns. If
+        we fail on either we ignore the failure, but if we fail on both
+        we throw an error. If data is a numpy 1-d array we check that
+        its length is the same as the universe's. If it is a 2-d array
+        we check that at least one dimension is the same as the
+        universe's. If the universe is None we skip all checks. (We may
+        revisit this choice.) This only happens if the DataEstimator
+        instance is not part of a PolicyEstimator tree (a usecase which
+        we will probably drop).
         """
 
         if (self.universe_maybe_noncash is None) or self.ignore_shape_check:

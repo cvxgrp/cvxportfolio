@@ -106,7 +106,9 @@ class RankAndLongShort(BaseTradingPolicy):
 
 
 class ProportionalTradeToTargets(BaseTradingPolicy):
-    """Given a DataFrame of target weights in time, trade in equal proportions to reach those.
+    """Given a DataFrame of target weights in time, trade in equal proportions.
+
+    to reach those.
 
     Initially, it loads the list of trading days and so at each day it knows
     how many are missing before the next target's day, and trades in equal proportions
@@ -246,7 +248,9 @@ class PeriodicRebalance(FixedWeights):
 
 
 class ProportionalRebalance(ProportionalTradeToTargets):
-    """Track a target weight exactly at given times, trading proportionally to it each period.
+    """Track a target weight exactly at given times, trading proportionally to.
+
+    it each period.
 
     This calls `ProportionalTradeToTargets`. If you want to change the target in time
     use that policy directly.
@@ -301,7 +305,7 @@ class MultiPeriodOptimization(BaseTradingPolicy):
     using classes such as ReturnsForecast and TcostModel, each
     multiplied by its multiplier. You also specify lists
     of constraints. There are two ways to do it. You either
-    define the same objective terms and costraints for each 
+    define the same objective terms and costraints for each
     step of the multi-period problem, or you define a different
     objective term and different list of constraints for each step.
     In addition we offer a `terminal_constraint` argument to
@@ -313,18 +317,18 @@ class MultiPeriodOptimization(BaseTradingPolicy):
     The future steps (planning horizon) are by default not returned.
 
     :param objective: these will be maximized;
-        if you pass a single expression of BaseCost it is understood as the 
+        if you pass a single expression of BaseCost it is understood as the
         same for all steps; if it's a list you must also pass a list of lists
         for `constraints`, each term represents the cost for each step of the optimization
-        (starting from the first, i.e., today) and the length of the list is 
-        used as planning_horizon (the value you pass there will be ignored) 
+        (starting from the first, i.e., today) and the length of the list is
+        used as planning_horizon (the value you pass there will be ignored)
     :type objective: algebra of BaseCost or list of
     :param constraints: these will be
         imposed on the optimization. Default []. Pass this as a list of
-        lists of the same length as `objective` to specify different 
+        lists of the same length as `objective` to specify different
         constraints at different time steps.
     :type constraints: list of BaseConstraints or list of those
-    :param planning_horizon:  how many steps in the future we 
+    :param planning_horizon:  how many steps in the future we
         plan for. Ignored if passing `objective` and `constraints` as lists.
         Default is None.
     :type planning_horizon: int or None

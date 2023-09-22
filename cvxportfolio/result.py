@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import collections
-import copy
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -90,10 +89,15 @@ class BacktestResult(Estimator):
 
     @property
     def sharpe_ratio(self):
-        return (np.sqrt(self.PPY)
-                * np.mean(self.excess_returns)
-                / np.std(self.excess_returns)
-                )
+        r"""Sharpe Ratio.
+
+        Defined as :math:`\overline{\R^\text{e}}/\sigma^\text{e}`, where
+        :math:`\overline{\R^\text{e}}` is the average excess portfolio
+        return and :math:`\sigma^\text{e}` its standard deviation.
+        Annualized.
+        """
+        return (np.sqrt(self.PPY) * np.mean(self.excess_returns)
+                / (np.std(self.excess_returns) + 1E-8))
 
     @property
     def returns(self):
@@ -121,8 +125,7 @@ class BacktestResult(Estimator):
     def _print_growth_rate(gr):
         """Transform growth rate into return and pretty-print it.
 
-        Either prints in basis points, percentage, or
-        multiplication.
+        Either prints in basis points, percentage, or multiplication.
         """
         ret = np.exp(gr)-1
         if np.abs(ret) < 0.005:
@@ -163,7 +166,8 @@ class BacktestResult(Estimator):
     @property
     def turnover(self):
         """Turnover ||u_t||_1/(2*v_t)."""
-        return np.abs(self.u.iloc[:, :-1]).sum(axis=1) / (2*self.v.loc[self.u.index])
+        return np.abs(self.u.iloc[:, :-1]).sum(axis=1) / (
+            2*self.v.loc[self.u.index])
 
     @property
     def trading_days(self):
@@ -196,8 +200,10 @@ class BacktestResult(Estimator):
         axes[1].grid(True, linestyle='--')
 
         # leverage / turnover
-        self.leverage.plot(ax=axes[2], linestyle='--', color='k', label='Leverage')
-        self.turnover.plot(ax=axes[2], linestyle='-', color='r', label='Turnover')
+        self.leverage.plot(ax=axes[2], linestyle='--',
+                           color='k', label='Leverage')
+        self.turnover.plot(ax=axes[2], linestyle='-',
+                           color='r', label='Turnover')
         axes[2].legend()
         axes[2].grid(True, linestyle='--')
 
@@ -207,23 +213,19 @@ class BacktestResult(Estimator):
     def __repr__(self):
 
         stats = collections.OrderedDict({
-
             "Universe size": self.h.shape[1],
             "Initial timestamp": self.h.index[0],
             "Final timestamp": self.h.index[-1],
             "Number of periods": self.u.shape[0],
-
             ' '*3: '',
             f"Initial value ({self.cash_key})": f"{self.v.iloc[0]:.3e}",
             f"Final value ({self.cash_key})": f"{self.v.iloc[-1]:.3e}",
             f"Profit ({self.cash_key})": f"{self.profit:.3e}",
-
             ' '*4: '',
             "Absolute return (annualized)": f"{100 * self.mean_return:.1f}%",
             "Absolute risk (annualized)": f"{100 * self.volatility:.1f}%",
             "Excess return (annualized)": f"{self.excess_returns.mean() * 100 * self.PPY:.1f}%",
             "Excess risk (annualized)": f"{self.excess_returns.std() * 100 * np.sqrt(self.PPY):.1f}%",
-
             ' '*5: '',
             "Avg. growth rate (absolute)": self._print_growth_rate(self.growth_rates.mean()),
             "Avg. growth rate (excess)": self._print_growth_rate(self.excess_growth_rates.mean()),
@@ -237,23 +239,16 @@ class BacktestResult(Estimator):
             stats[f'Max. {cost}'] = f"{(self.costs[cost]/self.v).max()*1E4:.0f}bp"
 
         stats.update(collections.OrderedDict({
-
             ' '*7: '',
             "Sharpe ratio": f"{self.sharpe_ratio:.2f}",
-
             ' '*8: '',
-
             "Avg. drawdown": f"{self.drawdown.mean() * 100:.1f}%",
             "Min. drawdown": f"{self.drawdown.min() * 100:.1f}%",
-
             "Avg. leverage": f"{self.leverage.mean() * 100:.1f}%",
             "Max. leverage": f"{self.leverage.max() * 100:.1f}%",
-
             "Avg. turnover": f"{self.turnover.mean() * 100:.1f}%",
             "Max. turnover": f"{self.turnover.max() * 100:.1f}%",
-
             ' '*9: '',
-
             "Avg. policy time": f"{self.policy_times.mean():.3f}s",
             "Avg. simulator time": f"{self.simulator_times.mean():.3f}s",
             "Total time": f"{self.simulator_times.sum() + self.policy_times.sum():.3f}s",

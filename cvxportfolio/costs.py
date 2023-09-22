@@ -11,17 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This module implements cost functions used by optimization-based policies.
 
-Currently these are two: :class:`StocksTransactionCost` and :class:`StocksHoldingCost`.
+Currently these are two: :class:`StocksTransactionCost` and
+:class:`StocksHoldingCost`.
 
-The default parameters are chosen to approximate real costs for the stock market
-as well as possible.
+The default parameters are chosen to approximate real costs for the stock
+market as well as possible.
 """
 
 import copy
-import inspect
 
 import cvxpy as cp
 import numpy as np
@@ -29,7 +28,7 @@ import pandas as pd
 
 from .constraints import (CostInequalityConstraint, EqualityConstraint,
                           InequalityConstraint)
-from .errors import *
+from .errors import ConvexityError, ConvexSpecificationError
 from .estimator import CvxpyExpressionEstimator, DataEstimator
 from .hyperparameters import HyperParameter
 from .utils import periods_per_year
@@ -60,7 +59,8 @@ class BaseCost(CvxpyExpressionEstimator):
         """Multiply by constant."""
         if not (np.isscalar(other) or isinstance(other, HyperParameter)):
             raise SyntaxError("You can only multiply cost by a scalar "
-                              + "or a HyperParameter instance. (Have you instantiated it?)")
+                              + "or a HyperParameter instance. "
+                              + "(Have you instantiated it?)")
         return CombinedCosts([self], [other])
 
     def __add__(self, other):
@@ -97,9 +97,9 @@ class BaseCost(CvxpyExpressionEstimator):
     def __le__(self, other):
         """Self <= other, return CostInequalityConstraint.
 
-        For now we check here the type of "other"
-        but it would be nicer to have CostInequalityConstraint's
-        internal DataEstimator throw NotImplemented instead.
+        For now we check here the type of "other" but it would be nicer
+        to have CostInequalityConstraint's internal DataEstimator throw
+        NotImplemented instead.
         """
         if isinstance(other, float)\
                 or isinstance(other, int)\
@@ -135,7 +135,8 @@ class CombinedCosts(BaseCost):
             return CombinedCosts(self.costs + other.costs,
                                  self.multipliers + other.multipliers)
         else:
-            return CombinedCosts(self.costs + [other], self.multipliers + [1.0])
+            return CombinedCosts(self.costs + [other],
+                                 self.multipliers + [1.0])
 
     def __mul__(self, other):
         """Multiply by constant."""
@@ -189,8 +190,8 @@ class CombinedCosts(BaseCost):
     def _copy_keeping_multipliers(self):
         """This method is used when creating MPO policies.
 
-        We want to deepcopy the constituent cost objects,
-        but not the multipliers (which can be symbolic HPs).
+        We want to deepcopy the constituent cost objects, but not the
+        multipliers (which can be symbolic HPs).
         """
         return CombinedCosts(
             costs = [el._copy_keeping_multipliers()
@@ -203,8 +204,8 @@ class CombinedCosts(BaseCost):
 class SoftConstraint(BaseCost):
     """Soft constraint cost.
 
-    :param constraint: cvxportfolio constraint instance whose
-        violation we penalize
+    :param constraint: cvxportfolio constraint instance whose violation
+        we penalize
     :type constraint: cvx.BaseConstraint
     """
 
@@ -214,11 +215,13 @@ class SoftConstraint(BaseCost):
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile cost to cvxpy expression."""
         try:
-            expr = (self.constraint._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
+            expr = (self.constraint._compile_constr_to_cvxpy(w_plus, z,
+                                                             w_plus_minus_w_bm)
                     - self.constraint._rhs())
         except AttributeError:
-            raise SyntaxError(f"{self.__class__.__name__} can only be used with"
-                              " EqualityConstraint or InequalityConstraint instances.")
+            raise SyntaxError(
+                f"{self.__class__.__name__} can only be used with"
+                " EqualityConstraint or InequalityConstraint instances.")
         if isinstance(self.constraint, EqualityConstraint):
             return cp.sum(cp.abs(expr))
         if isinstance(self.constraint, InequalityConstraint):
@@ -232,86 +235,92 @@ def _annual_percent_to_per_period(value, ppy):
 
 class HoldingCost(BaseCost):
     r"""Generic holding cost model, as described in page 11 of the book.
-    
+
     There are two ways to use this class. Either in the costs attribute
     of a :class:`MarketSimulator`, in which case the costs are evaluated
-    on the post-trade dollar positions :math:`h^+_t`. Or, 
-    as part of the objective function (or as a constraint!) 
-    of a :class:`SinglePeriodOptimization` 
+    on the post-trade dollar positions :math:`h^+_t`. Or,
+    as part of the objective function (or as a constraint!)
+    of a :class:`SinglePeriodOptimization`
     or :class:`MultiPeriodOptimization` trading policy, in which case they
     are evaluated on the post-trade weights :math:`w_t + z_t`. The mathematical
     form is the same (see the discussion at pages 11-12 of the book).
-    
+
     This particular implementation represents the following objective terms
     (expressed here in terms of the post-trade dollar positions):
-    
+
     .. math::
- 
+
         s^T_t {(h^+_t)}_- + l^T_t {(h^+_t)}_+ - d^T_t h^+_t
-    
-    where :math:`s_t` are the (short) borrowing fees, 
+
+    where :math:`s_t` are the (short) borrowing fees,
     :math:`l_t` are the fees on long positions,
     and :math:`d_t` are dividend rates (their sign is flipped because
     the costs are deducted from the cash account at each period). See
     below for their precise definition.
-    
+
     Example usage as simulator cost:
-    
+
     .. code-block:: python
-    
+
         borrow_fees = pd.Series([5, 10], index=['AAPL', 'ZM'])
-        simulator = cvx.MarketSimulator(['AAPL', 'ZM'], 
+        simulator = cvx.MarketSimulator(['AAPL', 'ZM'],
             costs=cvx.HoldingCost(short_fees=borrow_fees))
-    
+
     Example usage as trading policy cost:
-    
+
     .. code-block:: python
-        
+
         objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance() \
             - cvx.HoldingCost(short_fees=10)
-        constraints = [cvx.LeverageLimit(3)]    
+        constraints = [cvx.LeverageLimit(3)]
         policy = cvx.SinglePeriodOptimization(objective, constraints)
-    
+
     :param short_fees: Short borrowing fees expressed as annual percentage;
-        you can provide them as a float (constant for all times and all 
+        you can provide them as a float (constant for all times and all
         assets), a :class:`pd.Series` indexed by time (constant for all
         assets but varying in time) or by assets' names (constant in time
-        but varying across assets), or a :class:`pd.DataFrame` indexed by 
+        but varying across assets), or a :class:`pd.DataFrame` indexed by
         time and whose columns are the assets' names, if varying both
         in time and across assets. If you use a time-indexed pandas object
         be careful to include all times at which a backtest is evaluated
-        (otherwise you'll get a :class:`MissingValueError` exception). If `None`,
-        the term is ignored.
+        (otherwise you'll get a :class:`MissingValueError` exception). If
+        `None`, the term is ignored.
     :type short_fees: float, pd.Series, pd.DataFrame or None
     :param long_fees: Fees on long positions expressed as annual percentage;
         same convention as above applies.
     :type long_fees: float, pd.Series, pd.DataFrame or None
-    :param dividends: Dividend rates per period. Dividends are already included in the market
-        returns by the default data interface (based on Yahoo Finance "adjusted prices")
-        and thus this parameter should not be used in normal circumstances.
+    :param dividends: Dividend rates per period. Dividends are already
+        included in the market returns by the default data interface
+        (based on Yahoo Finance "adjusted prices") and thus this parameter
+        should not be used in normal circumstances.
     :type dividends: float, pd.Series, pd.DataFrame or None
     :param periods_per_year: How many trading periods are there in a year, for
         example 252 (for trading days in the US). This is
-        only relevant when using this class as part of a trading policy. If you leave
-        this to `None` the following happens.
-        The value of periods per year are estimated at each period by looking at 
-        the past market returns at that point in time: the number of past periods is divided by 
-        the timestamp of the most recent period minus the timestamp of the
-        first period (in years). That works well in most cases where there is enough history
-        (say, a few years) and saves the user from having to manually enter this.
-        If instead you use this object as a cost in a market simulator the parameter has no
-        effect. (The length of each trading period in the simulation is known and so the per-period
-        rates are evaluated exactly. For example, the rate over a weekend will be higher
-        than overnight.)
+        only relevant when using this class as part of a trading policy. If
+        you leave this to `None` the following happens.
+        The value of periods per year are estimated at each period by looking
+        at  the past market returns at that point in time: the number of past
+        periods is divided by the timestamp of the most recent period minus
+        the timestamp of the first period (in years). That works well in most
+        cases where there is enough history (say, a few years) and saves the
+        user from having to manually enter this.
+        If instead you use this object
+        as a cost in a market simulator the parameter has no effect. (The
+        length of each trading period in the simulation is known and so the
+        per-period rates are evaluated exactly. For example, the rate over a
+        weekend will be higher than overnight.)
     :type periods_per_year: float or None
     """
 
     def __init__(self, short_fees=None, long_fees=None, dividends=None,
                  periods_per_year=None):
 
-        self.short_fees = None if short_fees is None else DataEstimator(short_fees)
-        self.long_fees = None if long_fees is None else DataEstimator(long_fees)
-        self.dividends = None if dividends is None else DataEstimator(dividends)
+        self.short_fees = None if short_fees is None else DataEstimator(
+            short_fees)
+        self.long_fees = None if long_fees is None else DataEstimator(
+            long_fees)
+        self.dividends = None if dividends is None else DataEstimator(
+            dividends)
         self.periods_per_year = periods_per_year
 
     def _pre_evaluation(self, universe, backtest_times):
@@ -321,13 +330,15 @@ class HoldingCost(BaseCost):
         divide the value by periods_per_year.
         """
 
-        if not (self.short_fees is None):
-            self._short_fees_parameter = cp.Parameter(len(universe) - 1, nonneg=True)
+        if self.short_fees is not None:
+            self._short_fees_parameter = cp.Parameter(len(universe) - 1,
+                nonneg=True)
 
-        if not (self.long_fees is None):
-            self._long_fees_parameter = cp.Parameter(len(universe) - 1, nonneg=True)
+        if self.long_fees is not None:
+            self._long_fees_parameter = cp.Parameter(len(universe) - 1,
+                nonneg=True)
 
-        if not (self.dividends is None):
+        if self.dividends is not None:
             self._dividends_parameter = cp.Parameter(len(universe) - 1)
 
     def _values_in_time(self, t, past_returns, **kwargs):
@@ -342,20 +353,20 @@ class HoldingCost(BaseCost):
         if not ((self.short_fees is None)
                 and (self.long_fees is None)
                 and (self.dividends is None)):
-            ppy = periods_per_year(past_returns.index) if self.periods_per_year is None else\
-                self.periods_per_year
+            ppy = periods_per_year(past_returns.index) if\
+                self.periods_per_year is None else self.periods_per_year
 
-        if not (self.short_fees is None):
-            self._short_fees_parameter.value =\
-                np.ones(past_returns.shape[1]-1) *\
-                     _annual_percent_to_per_period(self.short_fees.current_value, ppy)
+        if self.short_fees is not None:
+            self._short_fees_parameter.value = np.ones(
+                past_returns.shape[1]-1) * _annual_percent_to_per_period(
+                    self.short_fees.current_value, ppy)
 
-        if not (self.long_fees is None):
-            self._long_fees_parameter.value =\
-                np.ones(past_returns.shape[1]-1) *\
-                     _annual_percent_to_per_period(self.long_fees.current_value, ppy)
+        if self.long_fees is not None:
+            self._long_fees_parameter.value = np.ones(
+                past_returns.shape[1]-1) * _annual_percent_to_per_period(
+                    self.long_fees.current_value, ppy)
 
-        if not (self.dividends is None):
+        if self.dividends is not None:
             self._dividends_parameter.value =\
                 np.ones(past_returns.shape[1]-1) * self.dividends.current_value
 
@@ -364,13 +375,13 @@ class HoldingCost(BaseCost):
 
         expression = 0.
 
-        if not (self.short_fees is None):
+        if self.short_fees is not None:
             expression += self._short_fees_parameter.T @ cp.neg(w_plus[:-1])
 
-        if not (self.long_fees is None):
+        if self.long_fees is not None:
             expression += self._long_fees_parameter.T @ cp.pos(w_plus[:-1])
 
-        if not (self.dividends is None):
+        if self.dividends is not None:
             # we have a minus sign because costs are deducted from PnL
             expression -= self._dividends_parameter.T @ w_plus[:-1]
 
@@ -379,32 +390,38 @@ class HoldingCost(BaseCost):
         return expression
 
     def _simulate(self, t, h_plus, current_and_past_returns, t_next, **kwargs):
-        """
-        TODO: make sure simulator cost sign convention is the same as optimization cost! OK.
+        """Simulate cost in a MarketSimulator.
 
+        TODO: make sure simulator cost sign convention is
+            the same as optimization cost! OK.
         TODO: make sure DataEstimator returns np.array of correct size! ~OK
-        TODO: make sure simulator cost estimators are recursively evaluated! ~OK
+        TODO: make sure simulator cost estimators are recursively evaluated!
+            ~OK
         """
 
         year_divided_by_period = pd.Timedelta('365.24d') / (t_next - t)
 
         cost = 0.
 
-        # TODO this is a temporary fix, we should plug this into a recursive tree
+        # TODO this is a temporary fix,
+        # we should plug this into a recursive tree
         for est in [self.short_fees, self.long_fees, self.dividends]:
-            if not (est is None):
-                est._recursive_pre_evaluation(universe=h_plus.index, backtest_times=[t])
+            if est is not None:
+                est._recursive_pre_evaluation(universe=h_plus.index,
+                                              backtest_times=[t])
                 est._recursive_values_in_time(t=t)
 
-        if not (self.short_fees is None):
+        if self.short_fees is not None:
             cost += np.sum(_annual_percent_to_per_period(
-                self.short_fees.current_value, year_divided_by_period) * (-np.minimum(h_plus[:-1], 0.)))
+                self.short_fees.current_value, year_divided_by_period) * (
+                    -np.minimum(h_plus[:-1], 0.)))
 
-        if not (self.long_fees is None):
+        if self.long_fees is not None:
             cost += np.sum(_annual_percent_to_per_period(
-                self.long_fees.current_value, year_divided_by_period) * np.maximum(h_plus[:-1], 0.))
+                self.long_fees.current_value,
+                year_divided_by_period) * np.maximum(h_plus[:-1], 0.))
 
-        if not (self.dividends is None):
+        if self.dividends is not None:
             # we have a minus sign because costs are deducted from PnL
             cost -= np.sum(self.dividends.current_value * h_plus[:-1])
 
@@ -412,7 +429,7 @@ class HoldingCost(BaseCost):
 
 
 class StocksHoldingCost(HoldingCost):
-    """A simplified version of :class:`HoldingCost` for the holding cost of stocks.
+    r"""Holding cost specialized to stocks.
 
     This implements the simple model describe at page 11 of the book, *i.e.*
     the cost (in terms of the post-trade dollar positions):
@@ -477,8 +494,8 @@ class TransactionCost(BaseCost):
                 np.ones(past_returns.shape[1]-1) if np.isscalar(_) else _
         if self.pershare_cost is not None:
             if current_prices is None:
-                raise SyntaxError(
-                    "If you don't provide prices you should set pershare_cost to None")
+                raise SyntaxError("If you don't provide prices you",
+                                  " should set pershare_cost to None")
             assert not np.any(current_prices.isnull())
             # assert not np.any(current_prices == 0.)
             tmp += self.pershare_cost.current_value / current_prices.values
@@ -501,9 +518,10 @@ class TransactionCost(BaseCost):
                 (past_returns.iloc[-windowsigma:, :-1]**2).mean()).values
             volume_est = past_volumes.iloc[-windowvolume:].mean().values + 1E-8
 
-            self.second_term_multiplier.value = self.b.current_value * sigma_est *\
-                (current_portfolio_value /
-                 volume_est) ** ((2 if self.exponent is None else self.exponent) - 1)
+            self.second_term_multiplier.value =\
+                self.b.current_value * sigma_est * (current_portfolio_value /
+                     volume_est) ** (
+                         (2 if self.exponent is None else self.exponent) - 1)
 
     def _simulate(self, t, u, current_and_past_returns,
                   current_and_past_volumes, current_prices, **kwargs):
@@ -522,7 +540,8 @@ class TransactionCost(BaseCost):
         if self.pershare_cost is not None:
             if current_prices is None:
                 raise SyntaxError(
-                    "If you don't provide prices you should set pershare_cost to None")
+                    "If you don't provide prices you should"
+                    " set pershare_cost to None")
             result += self.pershare_cost._recursive_values_in_time(t) * int(
                 sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
 
@@ -534,10 +553,12 @@ class TransactionCost(BaseCost):
             if current_and_past_volumes is None:
                 raise SyntaxError(
                     "If you don't provide volumes you should set b to None")
-            # we add 1 to the volumes to prevent 0 volumes error (trades are cancelled on 0 volumes)
+            # we add 1E-8 to the volumes to prevent 0 volumes error
+            # (trades are cancelled on 0 volumes)
             result += (np.abs(u.iloc[:-1])**exponent) @ (
                 self.b._recursive_values_in_time(t) *
-                sigma / ((current_and_past_volumes.iloc[-1] + 1) ** (exponent - 1)))
+                sigma / ((current_and_past_volumes.iloc[-1] + 1E-8) ** (
+                exponent - 1)))
 
         assert not np.isnan(result)
         assert not np.isinf(result)
@@ -561,37 +582,45 @@ class TransactionCost(BaseCost):
 class StocksTransactionCost(TransactionCost):
     """A model for transaction costs of stocks.
 
-    See pages 10-11 in `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+    See pages 10-11 in
+    `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
     We don't include the short-term alpha term `c` here because it
     can be expressed with a separate `ReturnsForecast` object.
 
-    :param a: linear cost, which multiplies the absolute value of each trade. This can model
-        (half) the bid-ask spread, or any fee linear in the size of a trade.
+    :param a: linear cost, which multiplies the absolute value of each trade.
+        This can model (half) the bid-ask spread, or any fee linear in the size
+        of a trade.
     :type a: float or pd.Series or pd.DataFrame
-    :param pershare_cost: per-share trade cost, amount of dollars paid for each share traded.
+    :param pershare_cost: per-share trade cost, amount of dollars paid for
+         each share traded.
     :type pershare_cost: float or pd.Series or pd.DataFrame
-    :param b: coefficient of the non-linear term of the transaction cost model, which multiplies
-        the estimated volatility for each stock (see the book).
+    :param b: coefficient of the non-linear term of the transaction cost model,
+        which multiplies the estimated volatility for each stock.
     :type b: float or pd.Series or pd.DataFrame
-    :param window_sigma_est: we use an historical rolling standard deviation to estimate
-        the average size of the return on a stock on each day, and this multiplies the
-        second term of the transaction cost model.  See the paper for an explanation of the model.
-        Here you specify the length of the rolling window to use. If None (the default) it uses
-        a length of 1 year (approximated with the data provided).
+    :param window_sigma_est: we use an historical rolling standard deviation to
+        estimate the average size of the return on a stock on each day, and
+        this multiplies the second term of the transaction cost model.  See the
+        paper for an explanation of the model. Here you specify the length of
+        the rolling window to use. If None (the default) it uses a length of 1
+        year (approximated with the data provided).
     :type window_sigma_est: int or None
-    :param window_volume_est: length of the window for the mean of past volumes used as estimate
-        of each period's volume. Has no effect on the simulator version of this which uses
-        the actual volume. If None (the default) it uses a length of 1 year (approximated
-        with the data provided).
+    :param window_volume_est: length of the window for the mean of past volumes
+        used as estimate of each period's volume. Has no effect on the
+        simulator version of this which uses the actual volume. If None (the
+        default) it uses a length of 1 year (approximated with the data
+        provided).
     :type window_volume_est: int
-    :param exponent: exponent of the non-linear term, defaults (if set to ``None``) to 1.5 for
-        the simulator version, and 2 for the optimization version (because it is more efficient
-        numerically and the difference is small, you can change it if you want).
+    :param exponent: exponent of the non-linear term, defaults (if set to
+        ``None``) to 1.5 for the simulator version, and 2 for the optimization
+        version (because it is more efficient numerically and the difference is
+        small, you can change it if you want).
     :type exponent: float or None
     """
 
     def __init__(self, a=0., pershare_cost=0.005, b=1.0, window_sigma_est=None,
                  window_volume_est=None, exponent=1.5):
 
-        super().__init__(a=a, pershare_cost=pershare_cost, b=b, window_sigma_est=window_sigma_est,
-                         window_volume_est=window_volume_est, exponent=exponent)
+        super().__init__(a=a, pershare_cost=pershare_cost, b=b,
+                         window_sigma_est=window_sigma_est,
+                         window_volume_est=window_volume_est,
+                         exponent=exponent)

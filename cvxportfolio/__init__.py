@@ -13,8 +13,8 @@
 # limitations under the License.
 """Cvxportfolio __init__ module.
 
-This module only republishes the api of a selection of cvxportfolio modules.
-The __all__ attribute of each is used.
+This module only republishes the api of a selection of cvxportfolio
+modules. The __all__ attribute of each is used.
 """
 
 __version__ = "0.4.10"

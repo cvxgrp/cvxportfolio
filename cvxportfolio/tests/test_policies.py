@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for the policy objects."""
 
 import unittest
@@ -447,7 +446,10 @@ class TestPolicies(unittest.TestCase):
                 current_prices=pd.Series(1., self.volumes.columns))
 
     def test_multi_period_optimization2(self):
-        """Test that MPO1 and MPO2 and MPO5 return same if no tcost, and diff if tcost."""
+        """Test that MPO1 and MPO2 and MPO5 return same if no tcost, and diff.
+
+        if tcost.
+        """
 
         results = []
         for planning_horizon in [1, 2, 5]:

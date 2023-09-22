@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for the constraints objects."""
 
 import unittest
@@ -45,7 +44,10 @@ class TestConstraints(unittest.TestCase):
         cls.N = cls.returns.shape[1]
 
     def build_constraint(self, constraint, t=None):
-        """Initialize constraint, build expression, and point it to given time."""
+        """Initialize constraint, build expression, and point it to given.
+
+        time.
+        """
         constraint._recursive_pre_evaluation(
             self.returns.columns, self.returns.index)
         cvxpy_expression = constraint._compile_to_cvxpy(
