@@ -47,7 +47,7 @@ class TestReturns(unittest.TestCase):
         return model._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
 
     def test_cash_returns(self):
-        "Test CashReturn object with last return as forecast."
+        """Test CashReturn object with last return as forecast."""
         cash_model = CashReturn()
         cvxpy_expression = self.boilerplate(cash_model)
         self.w_plus.value = np.random.randn(self.N)
@@ -58,7 +58,7 @@ class TestReturns(unittest.TestCase):
             self.w_plus[-1].value ))
 
     def test_cash_returns_provided(self):
-        "Test CashReturn object with provided cash returns."
+        """Test CashReturn object with provided cash returns."""
         cash_model = CashReturn(self.returns.iloc[:, -1])
         cvxpy_expression = self.boilerplate(cash_model)
         self.w_plus.value = np.random.randn(self.N)
@@ -69,7 +69,7 @@ class TestReturns(unittest.TestCase):
             self.w_plus[-1].value))
 
     def test_returns_forecast(self):
-        "Test ReturnsForecast object with provided assets' returns."
+        """Test ReturnsForecast object with provided assets' returns."""
         alpha_model = ReturnsForecast(self.returns.iloc[:, :-1])
         cvxpy_expression = self.boilerplate(alpha_model)
         alpha_model._recursive_values_in_time(
@@ -83,7 +83,7 @@ class TestReturns(unittest.TestCase):
         # + ((self.w_plus[-1].value + 2 * np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1])))
 
     def test_full_returns_forecast(self):
-        "Test ReturnsForecast object with historical mean forecasts."
+        """Test ReturnsForecast object with historical mean forecasts."""
         alpha_model = ReturnsForecast()
         cvxpy_expression = self.boilerplate(alpha_model)
         t = self.returns.index[123]
@@ -98,7 +98,7 @@ class TestReturns(unittest.TestCase):
                         self.w_plus.value[:-1] @ myforecast))
 
     def test_returns_forecast_error(self):
-        "Test ReturnsForecastError object with provided values."
+        """Test ReturnsForecastError object with provided values."""
         delta = self.returns.iloc[:, :-
                                   1].std(ddof=0) / np.sqrt(len(self.returns))
         # delta.iloc[-1] = 0
@@ -110,7 +110,7 @@ class TestReturns(unittest.TestCase):
             self.w_plus_minus_w_bm.value[:-1]) @ delta))
 
     def test_full_returns_forecast_error(self):
-        "Test ReturnsForecastError object with as forecast the std of the mean estimator."
+        """Test ReturnsForecastError object with as forecast the std of the mean estimator."""
         error_risk = ReturnsForecastError()
         cvxpy_expression = self.boilerplate(error_risk)
         t = self.returns.index[123]

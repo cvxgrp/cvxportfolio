@@ -135,78 +135,77 @@ class TestEstimators(unittest.TestCase):
         estimator = DataEstimator(data, use_last_available_time=True)
         with self.assertRaises(MissingTimesError):
             estimator._recursive_values_in_time("2021-01-05")
-            
+
     def test_series_notime_assetselect(self):
         """Test _universe_subselect."""
-        universe = ['a','b','c']
+        universe = ['a', 'b', 'c']
         t = pd.Timestamp('2000-01-01')
-        
+
         # data includes cash acct
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data, data_includes_cash=True)
         estimator._recursive_pre_evaluation(universe, backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
-        assert np.all(result==data.values)
-        
+        assert np.all(result == data.values)
+
         # data excludes cash acct
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data)
         estimator._recursive_pre_evaluation(universe, backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
-        assert np.all(result==data.values[:2])
-        
+        assert np.all(result == data.values[:2])
+
         # shuffled universe
         estimator = DataEstimator(data.iloc[::-1])
         estimator._recursive_pre_evaluation(universe, backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
-        assert np.all(result==data.values[:2])
-        
+        assert np.all(result == data.values[:2])
+
         # wrong universe
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data)
         estimator._recursive_pre_evaluation(['d', 'e', 'f'], backtest_times=[t])
         with self.assertRaises(MissingAssetsError):
             result = estimator._recursive_values_in_time(t)
-        
+
         # selection of universe
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data, data_includes_cash=True)
         estimator._recursive_pre_evaluation(['b'], backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
-        assert np.all(result==data.values[1])
-        
+        assert np.all(result == data.values[1])
+
     def test_ndarray_assetselect(self):
-        "Test errors if ndarray is not of right size."
-        data = np.zeros((2,3))
+        """Test errors if ndarray is not of right size."""
+        data = np.zeros((2, 3))
         t = pd.Timestamp('2000-01-01')
-        
+
         # with universe of size 2
         estimator = DataEstimator(data, data_includes_cash=True)
-        estimator._recursive_pre_evaluation(['a','b'], backtest_times=[t])
+        estimator._recursive_pre_evaluation(['a', 'b'], backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
-        assert np.all(result==data)
-        
+        assert np.all(result == data)
+
         # with universe of size 3
         estimator = DataEstimator(data, data_includes_cash=True)
-        estimator._recursive_pre_evaluation(['a','b','c'], backtest_times=[t])
+        estimator._recursive_pre_evaluation(['a', 'b', 'c'], backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
-        assert np.all(result==data)
-        
+        assert np.all(result == data)
+
         # error with universe of size 4
         estimator = DataEstimator(data, data_includes_cash=True)
-        estimator._recursive_pre_evaluation(['a','b','c', 'd'], backtest_times=[t])
+        estimator._recursive_pre_evaluation(['a', 'b', 'c', 'd'], backtest_times=[t])
         with self.assertRaises(MissingAssetsError):
             result = estimator._recursive_values_in_time(t)
 
         # all ok if skipping check
         estimator = DataEstimator(data, data_includes_cash=True, ignore_shape_check=True)
-        estimator._recursive_pre_evaluation(['a','b','c', 'd'], backtest_times=[t])
+        estimator._recursive_pre_evaluation(['a', 'b', 'c', 'd'], backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
-        assert np.all(result==data)
-        
+        assert np.all(result == data)
 
     def test_dataframe_multindex(self):
-        "We also check that _universe_subselect works fine"
+        """We also check that _universe_subselect works fine."""
         timeindex = pd.date_range("2022-01-01", "2022-01-30")
         second_level = ["hello", "ciao", "hola"]
         index = pd.MultiIndex.from_product([timeindex, second_level])
@@ -224,7 +223,7 @@ class TestEstimators(unittest.TestCase):
             "2022-01-05") == data.loc["2022-01-05"]))
         with self.assertRaises(MissingTimesError):
             estimator._recursive_values_in_time("2020-01-05")
-            
+
         # universe subselect
         t = "2022-01-01"
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
@@ -232,14 +231,14 @@ class TestEstimators(unittest.TestCase):
         estimator._recursive_pre_evaluation(universe=second_level, backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
         self.assertTrue(np.all(result == data.loc[t]))
-        
+
         # result has same second_level as columns
         data = pd.DataFrame(np.random.randn(len(index), len(second_level)), index=index, columns=second_level)
         estimator = DataEstimator(data, data_includes_cash=True)
         estimator._recursive_pre_evaluation(universe=second_level, backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
         self.assertTrue(np.all(result == data.loc[t]))
-        
+
         # universe are columns
         uni = ['a', 'b']
         data = pd.DataFrame(np.random.randn(len(index), 2), index=index, columns=uni)
@@ -247,15 +246,13 @@ class TestEstimators(unittest.TestCase):
         estimator._recursive_pre_evaluation(universe=uni, backtest_times=[t])
         result = estimator._recursive_values_in_time(t)
         self.assertTrue(np.all(result == data.loc[t]))
-        
+
         # wrong universe
         data = pd.DataFrame(np.random.randn(len(index), 2), index=index, columns=uni)
         estimator = DataEstimator(data, data_includes_cash=True)
         estimator._recursive_pre_evaluation(universe=uni + ['c'], backtest_times=[t])
         with self.assertRaises(MissingAssetsError):
             result = estimator._recursive_values_in_time(t)
-        
-        
 
         # if timeindex is not first level it is not picked up
         index = pd.MultiIndex.from_product([second_level, timeindex])
@@ -263,17 +260,13 @@ class TestEstimators(unittest.TestCase):
         estimator = DataEstimator(data)
         assert np.all(estimator._recursive_values_in_time(
             "2020-01-05") == data.values)
-            
-        
-            
-        
 
     def test_parameter_estimator(self):
         timeindex = pd.date_range("2022-01-01", "2022-01-30")
         second_level = ["hello", "ciao", "hola"]
         index = pd.MultiIndex.from_product([timeindex, second_level])
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
-        estimator = DataEstimator(data, compile_parameter=True, 
+        estimator = DataEstimator(data, compile_parameter=True,
             data_includes_cash=True)
         self.assertTrue(not hasattr(estimator, "parameter"))
         estimator._recursive_pre_evaluation(

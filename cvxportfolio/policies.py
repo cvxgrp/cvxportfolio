@@ -117,7 +117,6 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
     Args:
         targets (pd.DataFrame): time-indexed DataFrame of target weight vectors at
             given points in time (e.g., start of each month).
-
     """
 
     def __init__(self, targets):
@@ -163,7 +162,7 @@ class FixedTrades(BaseTradingPolicy):
 
     :param trades_weights: target trade weights :math:`z_t` to trade at each period.
         If constant in time use a pandas Series indexed by the assets'
-        names, including the cash account name (``cash_key`` option 
+        names, including the cash account name (``cash_key`` option
         to the simulator). If varying in time, use a pandas DataFrame
         with datetime index and as columns the assets names including cash.
         If a certain time in the backtest is not present in the data provided
@@ -192,13 +191,12 @@ class FixedWeights(BaseTradingPolicy):
 
     :param target_weights: target weights :math:`w_t^+` to trade to at each period.
         If constant in time use a pandas Series indexed by the assets'
-        names, including the cash account name (``cash_key`` option 
+        names, including the cash account name (``cash_key`` option
         to the simulator). If varying in time, use a pandas DataFrame
         with datetime index and as columns the assets names including cash.
         If a certain time in the backtest is not present in the data provided
         the policy defaults to not trading in that period.
-    :type target_weights: pd.Series or pd.DataFrame 
-            
+    :type target_weights: pd.Series or pd.DataFrame
     """
 
     def __init__(self, target_weights):
@@ -219,7 +217,7 @@ class Uniform(FixedWeights):
     """Uniform allocation on non-cash assets."""
 
     def __init__(self, leverage=1.):
-        self.leverage=leverage
+        self.leverage = leverage
 
     def _pre_evaluation(self, universe, backtest_times):
         target_weights = pd.Series(1., universe)
@@ -235,7 +233,6 @@ class PeriodicRebalance(FixedWeights):
 
     This calls `FixedWeights`. If you want to change the target in time
     use that policy directly.
-
 
     Args:
         target (pd.Series): portfolio weights to rebalance to.
@@ -283,7 +280,6 @@ class AdaptiveRebalance(BaseTradingPolicy):
         target is larger than this. Pass a Series if you want to vary it in
         time.
     :type tracking_error: pd.Series or pd.DataFrame
-
     """
 
     def __init__(self, target, tracking_error):
@@ -291,7 +287,7 @@ class AdaptiveRebalance(BaseTradingPolicy):
         self.tracking_error = DataEstimator(tracking_error)
 
     def _values_in_time(self, t, current_weights, **kwargs):
-        if np.linalg.norm(current_weights - self.target.current_value) > \
+        if np.linalg.norm(current_weights - self.target.current_value) >\
                 self.tracking_error.current_value:
             return self.target.current_value - current_weights
         else:
@@ -362,8 +358,8 @@ class MultiPeriodOptimization(BaseTradingPolicy):
                 raise SyntaxError(
                     'If `objective` and `constraints` are the same for all steps you must specify `planning_horizon`.')
             self._planning_horizon = planning_horizon
-            self.objective = [objective._copy_keeping_multipliers() 
-                if hasattr(objective, '_copy_keeping_multipliers') 
+            self.objective = [objective._copy_keeping_multipliers()
+                if hasattr(objective, '_copy_keeping_multipliers')
                     else copy.deepcopy(objective) for i in range(planning_horizon)
                         ] if planning_horizon > 1 else [objective]
             self.constraints = [copy.deepcopy(constraints) for i in range(

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module defines hyperparameter objects.
+
 These are used currently as symbolic multipliers
 of cost terms in Single and Multi Period Optimization policies
 and can be iterated (and optimized over) automatically.
@@ -91,7 +92,7 @@ class CombinedHyperParameter(HyperParameter):
             if hasattr(el, '_collect_hyperparameters'):
                 result += el._collect_hyperparameters()
         return result
-        
+
     def __repr__(self):
         result = ''
         for le, ri in zip(self.left, self.right):
@@ -111,45 +112,44 @@ class RangeHyperParameter(HyperParameter):
             raise SyntaxError('Initial value must be in the provided range')
         self.values_range = values_range
         self._index = self.values_range.index(current_value)
-    
+
     @property
     def current_value(self):
         return self.values_range[self._index]
-        
+
     def __repr__(self):
-        return self.__class__.__name__ \
+        return self.__class__.__name__\
             + f'(current_value={self.current_value})'
             #+ f'(values_range={self.values_range}'\
-            
+
     def _increment(self):
         if self._index == len(self.values_range) - 1:
             raise IndexError
         self._index += 1
-    
+
     def _decrement(self):
         if self._index == 0:
             raise IndexError
         self._index -= 1
-        
+
 
 class Gamma(RangeHyperParameter):
     """Generic multiplier."""
-    
-    
+
     def __init__(self, initial_value = 1., increment = 1.1):
         self._initial_value = initial_value
         self._spacing = increment
         self._index = 0
-    
+
     @property
     def current_value(self):
         return self._initial_value * (self._spacing ** self._index)
-        
+
     def _increment(self):
         # if self._index == len(self.values_range) - 1:
         #     raise IndexError
         self._index += 1
-    
+
     def _decrement(self):
         # if self._index == 0:
         #     raise IndexError

@@ -27,7 +27,7 @@ class MissingTimesError(DataError):
     """Cvxportfolio couldn't find data for a certain time."""
 
     pass
-    
+
 
 class NaNError(DataError):
     """Cvxportfolio tried to access data that includes np.nan."""

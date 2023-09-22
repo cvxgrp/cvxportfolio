@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module defines benchmark portfolio weights in time that are used,
+"""This module defines benchmark portfolio weights in time that are used,.
+
 for example, by risk terms of optimization-based policies.
 """
 
@@ -35,18 +36,16 @@ class Benchmark(BaseBenchmark, DataEstimator):
         time (pd.Series indexed by assets) or varying in time
         (pd.DataFrame indexed by time and whose columns are the assets).
     :type benchmark_weights: pd.Series or pd.DataFrame
-
     """
 
     def __init__(self, benchmark_weights):
-        DataEstimator.__init__(self, 
-            benchmark_weights, 
+        DataEstimator.__init__(self,
+            benchmark_weights,
             data_includes_cash=True)
 
 
 class CashBenchmark(BaseBenchmark):
-    """Default benchmark weights for cvxportfolio risk models.
-    """
+    """Default benchmark weights for cvxportfolio risk models."""
 
     def _pre_evaluation(self, universe, backtest_times):
         """Define current_value as a constant."""
@@ -55,8 +54,7 @@ class CashBenchmark(BaseBenchmark):
 
 
 class UniformBenchmark(BaseBenchmark):
-    """Benchmark weights uniform on non-cash assets.
-    """
+    """Benchmark weights uniform on non-cash assets."""
 
     def _pre_evaluation(self, universe, backtest_times):
         """Define current_value as a constant."""
@@ -66,8 +64,7 @@ class UniformBenchmark(BaseBenchmark):
 
 
 class MarketBenchmark(BaseBenchmark):
-    """Portfolio weighted by last year's total volumes.
-    """
+    """Portfolio weighted by last year's total volumes."""
 
     def _values_in_time(self, past_volumes, **kwargs):
         """Update current_value using past year's volumes."""

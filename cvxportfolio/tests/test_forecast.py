@@ -162,9 +162,9 @@ class TestEstimators(unittest.TestCase):
     def test_covariance_update_nokelly(self):
         """Test covariance forecast estimator.
 
-        NOTE: due to a bug in pandas we can't test against pandas.DataFrame.cov, 
+        NOTE: due to a bug in pandas we can't test against pandas.DataFrame.cov,
         see https://github.com/pandas-dev/pandas/issues/45814 . In fact with the
-        current bug in pandas 
+        current bug in pandas
         ``past_returns.iloc[:,:-1].cov(ddof=0)`` returns ``past_returns.iloc[:,:-1].cov(ddof=1)``
         whenever there are missing values.
         """

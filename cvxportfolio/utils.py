@@ -36,7 +36,7 @@ def resample_returns(returns, periods):
 
 
 def flatten_heterogeneous_list(li):
-    """[1, 2, 3, [4, 5]] -> [1, 2, 3, 4, 5]"""
+    """[1, 2, 3, [4, 5]] -> [1, 2, 3, 4, 5]."""
     return sum(([el] if not hasattr(el, '__iter__')
                 else el for el in li), [])
 
@@ -55,10 +55,10 @@ def repr_numpy_pandas(nppd):
     # if isinstance(nppd, np.matrix):
     #     return f'np.array(hash={hash_(nppd.A)})'
     if isinstance(nppd, pd.Series):
-        return f'pd.Series(hash_values={hash_(nppd.values)}, ' \
+        return f'pd.Series(hash_values={hash_(nppd.values)}, '\
             + f'hash_index={hash_(nppd.index.to_numpy())})'
     if isinstance(nppd, pd.DataFrame):
-        return f'pd.DataFrame(hash_values={hash_(nppd.values)}, ' \
-            + f'hash_index={hash_(nppd.index.to_numpy())}, ' \
+        return f'pd.DataFrame(hash_values={hash_(nppd.values)}, '\
+            + f'hash_index={hash_(nppd.index.to_numpy())}, '\
             + f'hash_columns={hash_(nppd.columns.to_numpy())})'
     raise NotImplementedError('The provided data type is not supported.')

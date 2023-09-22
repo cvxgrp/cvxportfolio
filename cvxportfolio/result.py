@@ -47,7 +47,7 @@ class BacktestResult(Estimator):
             index=backtest_times, dtype=float) for cost in costs}
         self.policy_times = pd.Series(index=backtest_times, dtype=float)
         self.simulator_times = pd.Series(index=backtest_times, dtype=float)
-        
+
     @property
     def cash_key(self):
         return self.h.columns[-1]
@@ -73,7 +73,7 @@ class BacktestResult(Estimator):
 
     @property
     def leverage(self):
-        """Portfolio leverage"""
+        """Portfolio leverage."""
         return np.abs(self.w.iloc[:, :-1]).sum(1)
 
     @property
@@ -95,7 +95,7 @@ class BacktestResult(Estimator):
 
     @property
     def returns(self):
-        """The returns R_t = (v_{t+1}-v_t)/v_t"""
+        """The returns R_t = (v_{t+1}-v_t)/v_t."""
         val = self.v
         return pd.Series(
             data=val.values[1:] / val.values[:-1] - 1, index=val.index[:-1]
@@ -107,12 +107,12 @@ class BacktestResult(Estimator):
 
     @property
     def growth_rates(self):
-        """The growth rate log(v_{t+1}/v_t)"""
+        """The growth rate log(v_{t+1}/v_t)."""
         return np.log(self.returns + 1)
 
     @property
     def excess_growth_rates(self):
-        """The growth rate log(v_{t+1}/v_t)"""
+        """The growth rate log(v_{t+1}/v_t)."""
         return np.log(self.excess_returns + 1)
 
     @staticmethod
@@ -160,7 +160,7 @@ class BacktestResult(Estimator):
 
     @property
     def turnover(self):
-        """Turnover ||u_t||_1/(2*v_t)"""
+        """Turnover ||u_t||_1/(2*v_t)."""
         return np.abs(self.u.iloc[:, :-1]).sum(axis=1) / (2*self.v.loc[self.u.index])
 
     @property
@@ -174,7 +174,7 @@ class BacktestResult(Estimator):
 
     def plot(self, show=True, how_many_weights=7):
         """Make plots."""
-        
+
          # US Letter size
         fig, axes = plt.subplots(3, figsize=(8.5, 11), layout='constrained')
         fig.suptitle('Back-test result')
@@ -192,65 +192,65 @@ class BacktestResult(Estimator):
         self.w[biggest_weights].plot(ax=axes[1])
         axes[1].set_ylabel(f'Largest {how_many_weights} weights')
         axes[1].grid(True, linestyle='--')
-        
+
         # leverage / turnover
         self.leverage.plot(ax=axes[2], linestyle='--', color='k', label='Leverage')
         self.turnover.plot(ax=axes[2], linestyle='-', color='r', label='Turnover')
         axes[2].legend()
         axes[2].grid(True, linestyle='--')
-        
+
         if show:
             fig.show()
-            
+
     def __repr__(self):
-        
+
         stats = collections.OrderedDict({
 
             "Universe size": self.h.shape[1],
             "Initial timestamp": self.h.index[0],
             "Final timestamp": self.h.index[-1],
             "Number of periods": self.u.shape[0],
-            
-            ' '*3:'',
+
+            ' '*3: '',
             f"Initial value ({self.cash_key})": f"{self.v.iloc[0]:.3e}",
             f"Final value ({self.cash_key})": f"{self.v.iloc[-1]:.3e}",
             f"Profit ({self.cash_key})": f"{self.profit:.3e}",
-            
-            ' '*4:'',
+
+            ' '*4: '',
             "Absolute return (annualized)": f"{100 * self.mean_return:.1f}%",
             "Absolute risk (annualized)": f"{100 * self.volatility:.1f}%",
             "Excess return (annualized)": f"{self.excess_returns.mean() * 100 * self.PPY:.1f}%",
             "Excess risk (annualized)": f"{self.excess_returns.std() * 100 * np.sqrt(self.PPY):.1f}%",
 
-            ' '*5:'',
+            ' '*5: '',
             "Avg. growth rate (absolute)": self._print_growth_rate(self.growth_rates.mean()),
             "Avg. growth rate (excess)": self._print_growth_rate(self.excess_growth_rates.mean()),
 
         })
-        
+
         if len(self.costs):
-            stats[' '*6]=''
+            stats[' '*6] = ''
         for cost in self.costs:
             stats[f'Avg. {cost}'] = f"{(self.costs[cost]/self.v).mean()*1E4:.0f}bp"
             stats[f'Max. {cost}'] = f"{(self.costs[cost]/self.v).max()*1E4:.0f}bp"
-        
+
         stats.update(collections.OrderedDict({
-            
-            ' '*7:'',
+
+            ' '*7: '',
             "Sharpe ratio": f"{self.sharpe_ratio:.2f}",
-            
-            ' '*8:'',
-            
+
+            ' '*8: '',
+
             "Avg. drawdown": f"{self.drawdown.mean() * 100:.1f}%",
             "Min. drawdown": f"{self.drawdown.min() * 100:.1f}%",
-            
+
             "Avg. leverage": f"{self.leverage.mean() * 100:.1f}%",
             "Max. leverage": f"{self.leverage.max() * 100:.1f}%",
-            
+
             "Avg. turnover": f"{self.turnover.mean() * 100:.1f}%",
             "Max. turnover": f"{self.turnover.max() * 100:.1f}%",
-            
-            ' '*9:'',
+
+            ' '*9: '',
 
             "Avg. policy time": f"{self.policy_times.mean():.3f}s",
             "Avg. simulator time": f"{self.simulator_times.mean():.3f}s",
@@ -260,5 +260,4 @@ class BacktestResult(Estimator):
         content = pd.Series(stats).to_string()
         lenline = len(content.split('\n')[0])
 
-        return '\n' + '#'*lenline + '\n' + content + '\n' + '#'*lenline + '\n' 
-        
+        return '\n' + '#'*lenline + '\n' + content + '\n' + '#'*lenline + '\n'

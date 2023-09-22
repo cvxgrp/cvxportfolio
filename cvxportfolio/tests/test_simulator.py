@@ -58,7 +58,7 @@ class TestSimulator(unittest.TestCase):
         shutil.rmtree(cls.datadir)
 
     def test_market_data__downsample(self):
-        "Test downsampling of market data."
+        """Test downsampling of market data."""
         md = MarketData(['AAPL', 'GOOG'], base_location=self.datadir)
 
         idx = md.returns.index
@@ -241,8 +241,6 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(
             simulator.market_data.returns.index[-1] == simulator.market_data.prices.index[-1])
 
-
-
     def test_holding_cost(self):
         """Test the simulator interface of cvx.HoldingCost."""
 
@@ -419,7 +417,7 @@ class TestSimulator(unittest.TestCase):
             )
 
             for i, t in enumerate(simulator.market_data.returns.index[
-                    (simulator.market_data.returns.index >= start_time) & 
+                    (simulator.market_data.returns.index >= start_time) &
                         (simulator.market_data.returns.index <= end_time)]):
                 t_next = simulator.market_data.returns.index[i+1]
                 oldcash = h.iloc[-1]
@@ -489,7 +487,7 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(np.all(result.h == result3.h))
 
     def test_multiple_backtest2(self):
-        """Test re-use of a worker process"""
+        """Test re-use of a worker process."""
         cpus = multiprocessing.cpu_count()
 
         sim = cvx.MarketSimulator(['AAPL', 'MSFT'], base_location=self.datadir)
@@ -628,7 +626,7 @@ class TestSimulator(unittest.TestCase):
         """Test some constraints that depend on time."""
 
         sim = cvx.StockMarketSimulator(
-            ['AAPL', 'MSFT', 'GE', 'META'], 
+            ['AAPL', 'MSFT', 'GE', 'META'],
             trading_frequency='monthly', base_location=self.datadir)
 
         # cvx.NoTrade
@@ -707,7 +705,7 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(allshorts[2] < allshorts[3])
 
     def test_cost_constraints(self):
-        "We check that cost constraints work as expected."
+        """We check that cost constraints work as expected."""
 
         sim = cvx.StockMarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
@@ -755,59 +753,57 @@ class TestSimulator(unittest.TestCase):
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
             trading_frequency='monthly',
             base_location=self.datadir)
-            
+
         self.assertTrue(GAMMA_RISK.current_value == 1.)
         self.assertTrue(GAMMA_TRADE.current_value == 1.)
 
         simulator.optimize_hyperparameters(policy, start_time='2023-01-01', end_time='2023-10-01')
-        
+
         self.assertTrue(GAMMA_RISK.current_value == 10.)
         self.assertTrue(GAMMA_TRADE.current_value == 1.)
-        
+
     def test_cancel_trades(self):
-        
+
         sim = cvx.StockMarketSimulator(
             ['AAPL', 'ZM'],
             trading_frequency='monthly',
             base_location=self.datadir)
-            
+
         sim.market_data.volumes['ZM'] = 0.
-        
+
         objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance()
         policy = cvx.SinglePeriodOptimization(
             objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
-        
+
         sim.backtest(policy, start_time='2023-01-01')
-        
-        
+
     def test_svd_covariance_forecaster(self):
-        
+
         sim = cvx.StockMarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META', 'GOOG', 'GLD'],
             trading_frequency='quarterly',
             base_location=self.datadir)
-                    
+
         objective = cvx.ReturnsForecast() - 5 * cvx.FactorModelCovariance(
             num_factors=2, Sigma=None)
         policy = cvx.SinglePeriodOptimization(
             objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
-        
-        result_svd = sim.backtest(policy, start_time='2020-01-01', 
+
+        result_svd = sim.backtest(policy, start_time='2020-01-01',
             end_time='2023-09-01')
-        
+
         objective = cvx.ReturnsForecast() - 5 * cvx.FactorModelCovariance(
             num_factors=2)
         policy = cvx.SinglePeriodOptimization(
             objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
-        
+
         result_eig = sim.backtest(policy, start_time='2020-01-01',
             end_time='2023-09-01')
-            
+
         self.assertTrue(result_svd.sharpe_ratio > result_eig.sharpe_ratio)
-        
+
         print(result_svd)
         print(result_eig)
-        
 
 
 if __name__ == '__main__':

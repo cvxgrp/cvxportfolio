@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains classes that define return models for
+"""This module contains classes that define return models for.
+
 portfolio optimization policies, and related objects.
 """
 
@@ -64,7 +65,7 @@ class CashReturn(BaseReturnsModel):
             cash_returns, compile_parameter=True)
 
     def _pre_evaluation(self, universe, backtest_times):
-        self.cash_return_parameter = cp.Parameter() if self.cash_returns is None \
+        self.cash_return_parameter = cp.Parameter() if self.cash_returns is None\
             else self.cash_returns.parameter
 
     def _values_in_time(self, t, past_returns, **kwargs):
@@ -141,7 +142,7 @@ class ReturnsForecast(BaseReturnsModel):
 
         if isinstance(r_hat, type):
             r_hat = r_hat()
-        
+
         # we don't use DataEstimator's parameter
         # because we apply the decay
         self.r_hat = DataEstimator(r_hat)
@@ -151,7 +152,7 @@ class ReturnsForecast(BaseReturnsModel):
         self.r_hat_parameter = cp.Parameter(len(universe)-1)
 
     def _values_in_time(self, mpo_step=0, **kwargs):
-        self.r_hat_parameter.value = self.r_hat.current_value * \
+        self.r_hat_parameter.value = self.r_hat.current_value *\
             self.decay**(mpo_step)
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -171,18 +172,18 @@ class ReturnsForecastError(BaseRiskModel):
 
     :param deltas_errors: constant per-symbol
         errors on the returns forecasts (if Series),
-        or varying in time (if DataFrame), 
+        or varying in time (if DataFrame),
         or fitted from the data as the standard deviation
-        of the historical mean estimator 
+        of the historical mean estimator
     :type deltas_errors: pd.DataFrame or pd.Series or None
     """
 
     def __init__(self, deltas=HistoricalMeanError):
-        
+
         if isinstance(deltas, type):
             deltas = deltas()
         self.deltas = DataEstimator(deltas)
-    
+
     def _pre_evaluation(self, universe, backtest_times):
         self.deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
 

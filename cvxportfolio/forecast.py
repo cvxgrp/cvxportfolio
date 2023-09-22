@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains classes that provide forecasts such as historical means
+"""This module contains classes that provide forecasts such as historical means.
+
 and covariances and are used internally by cvxportfolio objects. In addition,
 forecast classes have the ability to cache results online so that if multiple
 classes need access to the estimated value (as is the case in MultiPeriodOptimization
-policies) the expensive evaluation is only done once. 
+policies) the expensive evaluation is only done once.
 """
 
 import logging
@@ -171,17 +172,16 @@ class HistoricalVariance(BaseForecast):
         self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
         self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)**2
         self.last_time = t
-        
-        
-    
+
+
 @dataclass(unsafe_hash=True)
 class HistoricalLowRankCovarianceSVD(BaseForecast):
-    
+
     num_factors: int
     svd_iters: int = 10
     svd: str = 'numpy'
-    
-    # brought back from old commit 
+
+    # brought back from old commit
     # https://github.com/cvxgrp/cvxportfolio/commit/aa3d2150d12d85a6fb1befdf22cb7967fcc27f30
     # matches original 2016 method from example notebooks, with new heuristic for NaNs
     @staticmethod
@@ -195,7 +195,7 @@ class HistoricalLowRankCovarianceSVD(BaseForecast):
         """
         # rets = past_returns.iloc[:,:-1] # drop cash
         nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
-        normalizer = np.sqrt((rets**2).mean()) 
+        normalizer = np.sqrt((rets**2).mean())
         # if normalize:
         #     normalized = rets/(normalizer + 1E-8)
         # else:
@@ -211,8 +211,8 @@ class HistoricalLowRankCovarianceSVD(BaseForecast):
                     raise Exception('Currently only numpy svd is implemented')
                 nan_implicit_imputation = pd.DataFrame(
                     (u[:, :num_factors] * (s[:num_factors] #- s[num_factors] * shrink
-                        )) @ v[:num_factors], 
-                    columns = normalized.columns, index = normalized.index) 
+                        )) @ v[:num_factors],
+                    columns = normalized.columns, index = normalized.index)
         else:
             u, s, v = np.linalg.svd(normalized, full_matrices=False)
         F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
@@ -224,14 +224,14 @@ class HistoricalLowRankCovarianceSVD(BaseForecast):
         if not np.all(idyosyncratic >= 0.):
             raise Exception("Low rank risk estimation with iterative SVD did not work.")
         return F.values, idyosyncratic.values
-    
+
     @online_cache
     def _values_in_time(self, past_returns, **kwargs):
 
-        return self.build_low_rank_model(past_returns.iloc[:, :-1], 
-            num_factors=self.num_factors, 
+        return self.build_low_rank_model(past_returns.iloc[:, :-1],
+            num_factors=self.num_factors,
             iters=self.svd_iters, svd=self.svd)
-    
+
 
 def project_on_psd_cone_and_factorize(Sigma):
     """Factorize matrix and remove negative eigenvalues."""
@@ -252,7 +252,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
     """
 
     kelly: bool = True
-    
+
     # this is used by FullCovariance
     FACTORIZED = True
 

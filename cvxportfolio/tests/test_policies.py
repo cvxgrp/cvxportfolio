@@ -448,7 +448,7 @@ class TestPolicies(unittest.TestCase):
                 current_prices=pd.Series(1., self.volumes.columns))
 
     def test_multi_period_optimization2(self):
-        """Test that MPO1 and MPO2 and MPO5 return same if no tcost, and diff if tcost"""
+        """Test that MPO1 and MPO2 and MPO5 return same if no tcost, and diff if tcost."""
 
         results = []
         for planning_horizon in [1, 2, 5]:

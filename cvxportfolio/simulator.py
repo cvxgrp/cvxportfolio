@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module implements the MarketSimulator class, which strives to
+"""This module implements the MarketSimulator class, which strives to.
+
 simulate as accurately as possibly what would have been the realized
 performance of a trading policy if it had been run in the market in the past.
 In financial jargon this is called *backtesting*.
@@ -54,7 +55,7 @@ def _hash_universe(universe):
 
 def _load_cache(universe, trading_frequency, base_location):
     """Load cache from disk."""
-    folder = base_location / \
+    folder = base_location /\
         f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
     if 'LOCK' in globals():
         logging.debug(f'Acquiring cache lock from process {os.getpid()}')
@@ -75,7 +76,7 @@ def _load_cache(universe, trading_frequency, base_location):
 
 def _store_cache(cache, universe, trading_frequency, base_location):
     """Store cache to disk."""
-    folder = base_location / \
+    folder = base_location /\
         f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
     if 'LOCK' in globals():
         logging.debug(f'Acquiring cache lock from process {os.getpid()}')
@@ -91,10 +92,10 @@ def _store_cache(cache, universe, trading_frequency, base_location):
 
 
 class MarketData:
-    """Prepare, hold, and serve market data. 
+    """Prepare, hold, and serve market data.
 
     Not meant to be accessed by user. Most of its initialization
-    is documented in MarketSimulator.    
+    is documented in MarketSimulator.
     """
 
     def __init__(self,
@@ -130,9 +131,9 @@ class MarketData:
                 raise SyntaxError(
                     "If you don't specify a universe you should pass `returns`.")
             self.returns = pd.DataFrame(returns, copy=copy_dataframes)
-            self.volumes = volumes if volumes is None else \
+            self.volumes = volumes if volumes is None else\
                 pd.DataFrame(volumes, copy=copy_dataframes)
-            self.prices = prices if prices is None else \
+            self.prices = prices if prices is None else\
                 pd.DataFrame(prices, copy=copy_dataframes)
             if cash_key != returns.columns[-1]:
                 self._add_cash_column(cash_key)
@@ -158,7 +159,10 @@ class MarketData:
 
     @property
     def min_history(self):
-        """Min. history expressed in periods."""
+        """Min.
+
+        history expressed in periods.
+        """
         return int(np.round(self.PPY * (self.min_history_timedelta / pd.Timedelta('365.24d'))))
 
     @property
@@ -167,7 +171,7 @@ class MarketData:
 
     sampling_intervals = {'weekly': 'W-MON',
                           'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
-         
+
     # @staticmethod
     # def _is_first_interval_small(datetimeindex):
     #     """Check if post-resampling the first interval is small.
@@ -193,52 +197,52 @@ class MarketData:
             1+self.returns).resample(interval, closed='left', label='left'
                                      ).sum(min_count=1))-1
         self.returns.index = new_returns_index
-        
+
         # last row is always unknown
         self.returns.iloc[-1] = np.nan
-        
+
         # # we drop the first row if its interval is small
         # if self._is_first_interval_small(self.returns.index):
         #     self.returns = self.returns.iloc[1:]
-        
+
         # we nan-out the first non-nan element of every col
         for col in self.returns.columns[:-1]:
             self.returns[col].loc[
                     (~(self.returns[col].isnull())).idxmax()
                 ] = np.nan
-        
+
         if self.volumes is not None:
             new_volumes_index = pd.Series(self.volumes.index, self.volumes.index
                                           ).resample(interval, closed='left', label='left').first().values
             self.volumes = self.volumes.resample(
                 interval, closed='left', label='left').sum(min_count=1)
             self.volumes.index = new_volumes_index
-            
+
             # last row is always unknown
             self.volumes.iloc[-1] = np.nan
-            
+
             # # we drop the first row if its interval is small
             # if self._is_first_interval_small(self.volumes.index):
             #     self.volumes = self.volumes.iloc[1:]
-            
-            # we nan-out the first non-nan element of every col      
+
+            # we nan-out the first non-nan element of every col
             for col in self.volumes.columns:
                 self.volumes[col].loc[
                         (~(self.volumes[col].isnull())).idxmax()
                     ] = np.nan
-        
+
         if self.prices is not None:
             new_prices_index = pd.Series(self.prices.index, self.prices.index
                                          ).resample(interval, closed='left', label='left').first().values
             self.prices = self.prices.resample(
                 interval, closed='left', label='left').first()
             self.prices.index = new_prices_index
-            
+
             # # we drop the first row if its interval is small
             # if self._is_first_interval_small(self.prices.index):
             #     self.prices = self.prices.iloc[1:]
-            
-            # we nan-out the first non-nan element of every col      
+
+            # we nan-out the first non-nan element of every col
             for col in self.prices.columns:
                 self.prices[col].loc[
                         (~(self.prices[col].isnull())).idxmax()
@@ -246,7 +250,7 @@ class MarketData:
 
     @property
     def PPY(self):
-        "Periods per year, assumes returns are about equally spaced."
+        """Periods per year, assumes returns are about equally spaced."""
         return periods_per_year(self.returns.index)
 
     def _check_sizes(self):
@@ -292,7 +296,7 @@ class MarketData:
     def _set_read_only(self):
         """Set numpy array contained in dataframe to read only.
 
-        This is enough to prevent direct assignement to the resulting 
+        This is enough to prevent direct assignement to the resulting
         dataframe. However it could still be accidentally corrupted by assigning
         to columns or indices that are not present in the original.
         We avoid that case as well by returning a wrapped dataframe (which doesn't
@@ -354,7 +358,7 @@ class MarketData:
     def _remove_missing_recent(self):
         """Clean recent data.
 
-        Yfinance has some issues with most recent data; 
+        Yfinance has some issues with most recent data;
         we remove recent days if there are NaNs.
         """
 
@@ -392,7 +396,7 @@ class MarketData:
 
         An asset enters into a backtest after having non-NaN returns
         for self.min_history periods and exits after having NaN returns
-        for self.max_contiguous_missing. Defaults values are 252 and 10 
+        for self.max_contiguous_missing. Defaults values are 252 and 10
         respectively.
         """
         self.entry_dates = defaultdict(list)
@@ -416,7 +420,7 @@ class MarketData:
 
         A backtest is broken into multiple ones that start at each key
         of this, have the universe specified by this, and end
-        at the next startpoint.  
+        at the next startpoint.
         """
         result = OrderedDict()
         uni = []
@@ -444,7 +448,7 @@ class MarketData:
 
         def get_valid_universe_and_its_expiration_for(time):
             try:
-                return self._limited_universes[brkt[brkt <= time][-1]], \
+                return self._limited_universes[brkt[brkt <= time][-1]],\
                     brkt[brkt > time][0] if len(
                         brkt[brkt > time]) else full_backtest_times[-1]
             except IndexError:
@@ -513,8 +517,7 @@ class MarketSimulator:
 
     @staticmethod
     def _round_trade_vector(u, current_prices):
-        """Round dollar trade vector u.
-        """
+        """Round dollar trade vector u."""
         result = pd.Series(u, copy=True)
         result.iloc[:-1] = np.round(u[:-1] / current_prices) * current_prices
         result.iloc[-1] = -sum(result.iloc[:-1])
@@ -524,7 +527,7 @@ class MarketSimulator:
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
-        because we pass the policy directly to it, and the past returns 
+        because we pass the policy directly to it, and the past returns
         and past volumes are computed by it.
         """
 
@@ -532,7 +535,7 @@ class MarketSimulator:
         current_portfolio_value = sum(h)
         current_weights = h / current_portfolio_value
 
-        past_returns, past_volumes, current_prices = \
+        past_returns, past_volumes, current_prices =\
             self.market_data._serve_data_policy(t)
 
         # evaluate the policy
@@ -553,7 +556,7 @@ class MarketSimulator:
         u = z * current_portfolio_value
 
         # get data for simulator
-        current_and_past_returns, current_and_past_volumes, current_prices = \
+        current_and_past_returns, current_and_past_volumes, current_prices =\
             self.market_data._serve_data_simulator(t)
 
         # zero out trades on stock that weren't trading on that day
@@ -615,7 +618,7 @@ class MarketSimulator:
         for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
             # s = time.time()
             result.h.loc[t] = h
-            h, result.z.loc[t], result.u.loc[t], realized_costs, \
+            h, result.z.loc[t], result.u.loc[t], realized_costs,\
                 result.policy_times.loc[t] = self._simulate(
                     t=t, h=h, policy=policy, t_next=t_next)
             for cost in realized_costs:
@@ -626,7 +629,7 @@ class MarketSimulator:
 
         result.h.loc[pd.Timestamp(end_time)] = h
 
-        result.cash_returns = \
+        result.cash_returns =\
             self.market_data.returns.iloc[:, -1].loc[result.u.index]
 
         return result
@@ -681,7 +684,7 @@ class MarketSimulator:
         self.market_data = orig_md
 
         result = self._concatenate_backtest_results(results)
-        
+
         # temporary, will refactor these methods
         result.simulator_times.iloc[-2] += time.time() - self.simulator_timer
         return result
@@ -711,28 +714,27 @@ class MarketSimulator:
     @staticmethod
     def _worker(policy, simulator, start_time, end_time, h):
         return simulator._concatenated_backtests(policy, start_time, end_time, h)
-        
-        
-    def optimize_hyperparameters(self, policy, start_time=None, end_time=None, 
+
+    def optimize_hyperparameters(self, policy, start_time=None, end_time=None,
         initial_value=1E6, h=None, objective='sharpe_ratio', parallel=True):
         """Optimize hyperparameters of a policy to maximize backtest objective.
-        
+
         EXPERIMENTAL: this method is currently being developed.
         """
-        
+
         def modify_orig_policy(target_policy):
             hps = policy._collect_hyperparameters()
             thps = target_policy._collect_hyperparameters()
-            for h,t in zip(hps, thps):
+            for h, t in zip(hps, thps):
                 h._index = t._index
-            
+
         results = {}
 
-        current_result = self.backtest(policy, start_time=start_time, end_time=end_time, 
+        current_result = self.backtest(policy, start_time=start_time, end_time=end_time,
             initial_value=initial_value, h=h)
-            
+
         current_objective = getattr(current_result, objective)
-        
+
         results[str(policy)] = current_objective
 
         for i in range(100):
@@ -745,7 +747,7 @@ class MarketSimulator:
             print('Current result:')
             print(current_result)
             print()
-        
+
             test_policies = []
             for hp in policy._collect_hyperparameters():
                 try:
@@ -762,32 +764,29 @@ class MarketSimulator:
                     hp._increment()
                 except IndexError:
                     pass
-            
+
             if not len(test_policies):
                 break
-                        
-            results_partial = self.backtest_many(test_policies, 
-                start_time=start_time, end_time=end_time, initial_value=initial_value, 
+
+            results_partial = self.backtest_many(test_policies,
+                start_time=start_time, end_time=end_time, initial_value=initial_value,
                 h=h, parallel=parallel)
-                
+
             objectives_partial = [getattr(res, objective) for res in results_partial]
-            
+
             for pol, obje in zip(test_policies, objectives_partial):
                 results[str(pol)] = obje
-                
+
             # print(results)
-            
+
             if max(objectives_partial) <= current_objective:
                 break
-            
-            current_objective = max(objectives_partial)   
+
+            current_objective = max(objectives_partial)
             # policy = test_policies[np.argmax(objectives_partial)]
             modify_orig_policy(test_policies[np.argmax(objectives_partial)])
             current_result = results_partial[np.argmax(objectives_partial)]
-            
 
-        
-        
     def backtest(self, policy, start_time=None, end_time=None, initial_value=1E6, h=None):
         """Backtest trading policy.
 
@@ -798,15 +797,15 @@ class MarketSimulator:
         :type policy: cvx.BaseTradingPolicy
         :param start_time: start time of the backtest; if market it close, the first trading day
              after it is selected
-        :type start_time: str or datetime 
+        :type start_time: str or datetime
         :param end_time: end time of the backtest; if market it close, the last trading day
              before it is selected
         :type end_time: str or datetime or None
         :param initial_value: initial value in dollar of the portfolio, if not specifying
-            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified 
+            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified
             this is ignored
         :type initial_value: float
-        :param h: initial portfolio ``h`` expressed in dollar positions. If ``None`` 
+        :param h: initial portfolio ``h`` expressed in dollar positions. If ``None``
             an initial portfolio of ``initial_value`` in cash is used.
         :type h: pd.Series or None
 
@@ -828,20 +827,20 @@ class MarketSimulator:
         :param start_time: start time of the backtests; if market it close, the first trading day
              after it is selected. Currently it is not possible to specify different start times
             for different policies, so the same is used for all.
-        :type start_time: str or datetime 
+        :type start_time: str or datetime
         :param end_time: end time of the backtests; if market it close, the last trading day
              before it is selected. Currently it is not possible to specify different end times
             for different policies, so the same is used for all.
         :type end_time: str or datetime or None
         :param initial_value: initial value in dollar of the portfolio, if not specifying
-            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified 
+            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified
             this is ignored
-        :param h: initial portfolio `h` expressed in dollar positions, or list of those. If 
+        :param h: initial portfolio `h` expressed in dollar positions, or list of those. If
             passing a list it must have the same lenght as the policies. If this argument
-            is specified, ``initial_value`` is ignored, otherwise the same portfolio of 
+            is specified, ``initial_value`` is ignored, otherwise the same portfolio of
             ``initial_value`` all in cash is used as starting point for all backtests.
         :type h: list or pd.Series or None
-        :param parallel: whether to run in parallel. If runnning in parallel you **must be careful 
+        :param parallel: whether to run in parallel. If runnning in parallel you **must be careful
             at how you use this method**. If you use this in a script, you *should* define the MarketSimulator
             *in* the `if __name__ == '__main__:'` clause, and call this method there as well.
         :type parallel: bool
@@ -901,7 +900,7 @@ class StockMarketSimulator(MarketSimulator):
     :type universe: list or None
     :param returns: historical open-to-open returns. Default is None, it is ignored
         if universe is specified.
-    :type returns: pandas.DataFrame 
+    :type returns: pandas.DataFrame
     :param volumes: historical market volumes expressed in value (e.g., US dollars).
             Default is None, it is ignored if universe is specified.
     :type volumes: pandas.DataFrame
@@ -925,14 +924,14 @@ class StockMarketSimulator(MarketSimulator):
     :type cash_key: str or None
     :param base_location: base location for storage of data.
         Default is `Path.home() / "cvxportfolio_data"`. Unused if passing `returns` and `volumes`.
-    :type base_location: pathlib.Path or str: 
-    :param trading_frequency: optionally choose a different frequency for 
+    :type base_location: pathlib.Path or str:
+    :param trading_frequency: optionally choose a different frequency for
         trades than the one of the data used.
-        The default interface (Yahoo finance) provides daily trading data, 
-        and so that is the default frequency for trades. With this argument you can set instead 
+        The default interface (Yahoo finance) provides daily trading data,
+        and so that is the default frequency for trades. With this argument you can set instead
         the trading frequency to ``"weekly"``, which trades every Monday (or the first
-        non-holiday trading day of each week), ``"monthly"``, which trades every first of the month (ditto), 
-        ``"quarterly"``, and ``"annual"``. 
+        non-holiday trading day of each week), ``"monthly"``, which trades every first of the month (ditto),
+        ``"quarterly"``, and ``"annual"``.
     :type trading_frequency: str or None
     """
 

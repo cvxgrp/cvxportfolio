@@ -27,7 +27,7 @@ import sqlite3
 from .estimator import DataEstimator
 
 __all__ = ["YfinanceTimeSeries", "FredTimeSeries",
-           # "FredRateTimeSeries", 
+           # "FredRateTimeSeries",
            "BASE_LOCATION"]
 
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
@@ -305,7 +305,6 @@ class PickleStore(BaseDataStore):
 
     Args:
         base_location (pathlib.Path): filesystem directory where to store files.
-
     """
 
     # base_location = BASE_LOCATION
@@ -340,7 +339,6 @@ class LocalDataStore(BaseDataStore):
 
     Args:
         base_location (pathlib.Path): filesystem directory where to store files.
-
     """
 
     # base_location = Path.home() / "cvxportfolio"
@@ -413,7 +411,7 @@ class FredBase(BaseData):
     """Base class for FRED data access."""
 
     URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
-    
+
     ## TODO: implement FRED point-in-time
     ## example:
     ## https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=CES0500000003&vintage_date=2023-07-06
@@ -425,10 +423,10 @@ class FredBase(BaseData):
         return pd.read_csv(self.URL + f'?id={symbol}', index_col=0, parse_dates=[0])[symbol]
 
     def download(self, symbol="DFF", current=None, grace_period='5d'):
-        """Download or update pandas Series from FRED. 
+        """Download or update pandas Series from FRED.
 
         If already downloaded don't change data stored locally and only
-        add new entries at the end. 
+        add new entries at the end.
 
         Additionally, we allow for a `grace period`, if the data already downloaded
         has a last entry not older than the grace period, we don't download new data.
@@ -528,8 +526,6 @@ class TimeSeries(DataEstimator):
             `load_raw` methods. Default is 'sqlite'.
         use_last_available_time (bool): as in `cvxportfolio.DataEstimator`
         base_location (pathlib.Path or None): base location for the data storage.
-
-
     """
 
     def __init__(
