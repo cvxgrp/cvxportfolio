@@ -184,6 +184,20 @@ class CombinedCosts(BaseCost):
                 result += str(mult) + ' * '
             result += cost.__repr__()
         return result
+        
+
+    def _copy_keeping_multipliers(self):
+        """This method is used when creating MPO policies.
+        
+        We want to deepcopy the constituent cost objects, 
+        but not the multipliers (which can be symbolic HPs).
+        """
+        return CombinedCosts(
+            costs = [el._copy_keeping_multipliers() 
+                if hasattr(el, '_copy_keeping_multipliers') 
+                    else copy.deepcopy(el) 
+                        for el in self.costs],
+            multipliers = self.multipliers)
 
 
 class SoftConstraint(BaseCost):
@@ -466,7 +480,10 @@ class TransactionCost(BaseCost):
             if current_prices is None:
                 raise SyntaxError(
                     "If you don't provide prices you should set pershare_cost to None")
+            assert not np.any(current_prices.isnull())
+            # assert not np.any(current_prices == 0.)
             tmp += self.pershare_cost.current_value / current_prices.values
+            
 
         if self.a is not None or self.pershare_cost is not None:
             self.first_term_multiplier.value = tmp

@@ -107,7 +107,7 @@ class MarketData:
                  base_location=BASE_LOCATION,
                  min_history=pd.Timedelta('365.24d'),
                  # TODO change logic for this (it's now this to not drop quarterly data)
-                 max_contiguous_missing='365d',
+                 max_contiguous_missing='370d',
                  trading_frequency=None,
                  copy_dataframes=True,
                  **kwargs,
@@ -167,6 +167,18 @@ class MarketData:
 
     sampling_intervals = {'weekly': 'W-MON',
                           'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
+         
+    # @staticmethod
+    # def _is_first_interval_small(datetimeindex):
+    #     """Check if post-resampling the first interval is small.
+    #
+    #     We have no way of knowing exactly if the first interval
+    #     needs to be dropped. We drop it if its length is smaller
+    #     than the average of all others, minus 2 standard deviation.
+    #     """
+    #     first_interval = (datetimeindex[1] - datetimeindex[0])
+    #     all_others = (datetimeindex[2:] - datetimeindex[1:-1])
+    #     return first_interval < (all_others.mean() - 2 * all_others.std())
 
     def _downsample(self, interval):
         """_downsample market data."""
@@ -181,18 +193,56 @@ class MarketData:
             1+self.returns).resample(interval, closed='left', label='left'
                                      ).sum(min_count=1))-1
         self.returns.index = new_returns_index
+        
+        # last row is always unknown
+        self.returns.iloc[-1] = np.nan
+        
+        # # we drop the first row if its interval is small
+        # if self._is_first_interval_small(self.returns.index):
+        #     self.returns = self.returns.iloc[1:]
+        
+        # we nan-out the first non-nan element of every col
+        for col in self.returns.columns[:-1]:
+            self.returns[col].loc[
+                    (~(self.returns[col].isnull())).idxmax()
+                ] = np.nan
+        
         if self.volumes is not None:
             new_volumes_index = pd.Series(self.volumes.index, self.volumes.index
                                           ).resample(interval, closed='left', label='left').first().values
             self.volumes = self.volumes.resample(
                 interval, closed='left', label='left').sum(min_count=1)
             self.volumes.index = new_volumes_index
+            
+            # last row is always unknown
+            self.volumes.iloc[-1] = np.nan
+            
+            # # we drop the first row if its interval is small
+            # if self._is_first_interval_small(self.volumes.index):
+            #     self.volumes = self.volumes.iloc[1:]
+            
+            # we nan-out the first non-nan element of every col      
+            for col in self.volumes.columns:
+                self.volumes[col].loc[
+                        (~(self.volumes[col].isnull())).idxmax()
+                    ] = np.nan
+        
         if self.prices is not None:
             new_prices_index = pd.Series(self.prices.index, self.prices.index
                                          ).resample(interval, closed='left', label='left').first().values
             self.prices = self.prices.resample(
                 interval, closed='left', label='left').first()
             self.prices.index = new_prices_index
+            
+            # # we drop the first row if its interval is small
+            # if self._is_first_interval_small(self.prices.index):
+            #     self.prices = self.prices.iloc[1:]
+            
+            # we nan-out the first non-nan element of every col      
+            for col in self.prices.columns:
+                self.prices[col].loc[
+                        (~(self.prices[col].isnull())).idxmax()
+                    ] = np.nan
 
     @property
     def PPY(self):
@@ -545,6 +595,7 @@ class MarketSimulator:
 
         # multiply positions (including cash) by market returns
         current_returns = current_and_past_returns.iloc[-1]
+        assert not np.any(current_returns.isnull())
         h_next *= (1 + current_returns)
 
         return h_next, z, u, realized_costs, policy_time
@@ -663,7 +714,7 @@ class MarketSimulator:
         
         
     def optimize_hyperparameters(self, policy, start_time=None, end_time=None, 
-        initial_value=1E6, h=None, objective='sharpe_ratio'):
+        initial_value=1E6, h=None, objective='sharpe_ratio', parallel=True):
         """Optimize hyperparameters of a policy to maximize backtest objective.
         
         EXPERIMENTAL: this method is currently being developed.
@@ -677,10 +728,10 @@ class MarketSimulator:
             
         results = {}
 
-        result_init = self.backtest(policy, start_time=start_time, end_time=end_time, 
+        current_result = self.backtest(policy, start_time=start_time, end_time=end_time, 
             initial_value=initial_value, h=h)
-        
-        current_objective = getattr(result_init, objective)
+            
+        current_objective = getattr(current_result, objective)
         
         results[str(policy)] = current_objective
 
@@ -688,6 +739,11 @@ class MarketSimulator:
             print('iteration', i)
             print('Current optimal hyper-parameters:')
             print(policy)
+            print('Current objective:')
+            print(current_objective)
+            print()
+            print('Current result:')
+            print(current_result)
             print()
         
             test_policies = []
@@ -711,7 +767,8 @@ class MarketSimulator:
                 break
                         
             results_partial = self.backtest_many(test_policies, 
-                start_time=start_time, end_time=end_time, initial_value=initial_value, h=h)
+                start_time=start_time, end_time=end_time, initial_value=initial_value, 
+                h=h, parallel=parallel)
                 
             objectives_partial = [getattr(res, objective) for res in results_partial]
             
@@ -726,6 +783,7 @@ class MarketSimulator:
             current_objective = max(objectives_partial)   
             # policy = test_policies[np.argmax(objectives_partial)]
             modify_orig_policy(test_policies[np.argmax(objectives_partial)])
+            current_result = results_partial[np.argmax(objectives_partial)]
             
 
         

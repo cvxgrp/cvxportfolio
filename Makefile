@@ -8,7 +8,7 @@ ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
 endif
 
-.PHONY: env docs clean pytest test releasetest cleanenv opendocs
+.PHONY: env test hardtest clean docs opendocs coverage fix hardfix release 
 
 env:
 	$(PYTHON) -m venv $(ENVDIR)
@@ -17,20 +17,23 @@ env:
 
 test:
 	$(BINDIR)/coverage run -m unittest $(PROJECT)/tests/*.py
-		
-pytest:
-	$(BINDIR)/pytest $(PROJECT)/tests/*.py
-	
-releasetest: cleanenv env pytest  
+	$(BINDIR)/coverage report
+	$(BINDIR)/coverage xml
+	$(BINDIR)/diff-cover --compare-branch origin/master coverage.xml
 
-test8:
-	flake8 --per-file-ignores='$(PROJECT)/__init__.py:F401,F403' $(PROJECT)/*.py
+hardtest:
+	$(BINDIR)/pytest --cov --cov-report=xml -W error $(PROJECT)/tests/*.py
+	$(BINDIR)/coverage report --fail-under 99
+	$(BINDIR)/ruff --per-file-ignores='$(PROJECT)/__init__.py:F403' $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/isort --check-only $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/flake8 --per-file-ignores='$(PROJECT)/__init__.py:F401,F403' $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/docstr-coverage $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/pylint $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
 clean:
 	-rm -rf $(BUILDDIR)/* 
 	-rm -rf $(PROJECT).egg*
-
-cleanenv:
 	-rm -rf $(ENVDIR)/*
 
 docs:
@@ -43,11 +46,20 @@ coverage: test
 	$(BINDIR)/coverage html
 	open htmlcov/index.html
 
-pep8:
-	# use autopep8 to make innocuous fixes 
-	$(BINDIR)/autopep8 -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
+fix:
+	# (mostly) whitespace fixes
+	$(BINDIR)/autopep8 --select W291,W293,W391,E231,E225,E303 -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/pydocstringformatter --write $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
-release: releasetest
+hardfix:
+	# could be breaking fixes
+	$(BINDIR)/ruff --fix $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/autopep8 --aggressive --aggressive --aggressive -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/pydocstringformatter --linewrap-full-docstring --write $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/autoflake $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/isort $(PROJECT)/*.py $(PROJECT)/tests/*.py
+
+release: cleanenv env test
 	$(BINDIR)/python bumpversion.py
 	git push
 	$(BINDIR)/python -m build

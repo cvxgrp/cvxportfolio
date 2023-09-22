@@ -761,8 +761,8 @@ class TestSimulator(unittest.TestCase):
 
         simulator.optimize_hyperparameters(policy, start_time='2023-01-01', end_time='2023-10-01')
         
-        self.assertTrue(GAMMA_RISK.current_value == 5.)
-        self.assertTrue(GAMMA_TRADE.current_value == 0.)
+        self.assertTrue(GAMMA_RISK.current_value == 10.)
+        self.assertTrue(GAMMA_TRADE.current_value == 1.)
         
     def test_cancel_trades(self):
         

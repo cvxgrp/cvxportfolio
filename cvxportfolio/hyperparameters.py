@@ -23,7 +23,7 @@ GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]
 GAMMA_COST_RANGE = [0., .1, .2, .5, 1., 2., 5., 10.]
 
 
-__all__ = ['GammaRisk', 'GammaTrade', 'GammaHold']
+__all__ = ['GammaRisk', 'GammaTrade', 'GammaHold', 'Gamma']
 
 
 class HyperParameter:
@@ -130,7 +130,30 @@ class RangeHyperParameter(HyperParameter):
         if self._index == 0:
             raise IndexError
         self._index -= 1
+        
 
+class Gamma(RangeHyperParameter):
+    """Generic multiplier."""
+    
+    
+    def __init__(self, initial_value = 1., increment = 1.1):
+        self._initial_value = initial_value
+        self._spacing = increment
+        self._index = 0
+    
+    @property
+    def current_value(self):
+        return self._initial_value * (self._spacing ** self._index)
+        
+    def _increment(self):
+        # if self._index == len(self.values_range) - 1:
+        #     raise IndexError
+        self._index += 1
+    
+    def _decrement(self):
+        # if self._index == 0:
+        #     raise IndexError
+        self._index -= 1
 
 class GammaRisk(RangeHyperParameter):
     """Multiplier of a risk term."""

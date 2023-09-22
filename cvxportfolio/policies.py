@@ -218,13 +218,15 @@ class FixedWeights(BaseTradingPolicy):
 class Uniform(FixedWeights):
     """Uniform allocation on non-cash assets."""
 
-    def __init__(self):
-        pass
+    def __init__(self, leverage=1.):
+        self.leverage=leverage
 
     def _pre_evaluation(self, universe, backtest_times):
         target_weights = pd.Series(1., universe)
         target_weights.iloc[-1] = 0
         target_weights /= sum(target_weights)
+        target_weights *= self.leverage
+        target_weights.iloc[-1] = 1. - target_weights.sum()
         self.target_weights = DataEstimator(target_weights)
 
 
@@ -360,8 +362,10 @@ class MultiPeriodOptimization(BaseTradingPolicy):
                 raise SyntaxError(
                     'If `objective` and `constraints` are the same for all steps you must specify `planning_horizon`.')
             self._planning_horizon = planning_horizon
-            self.objective = [copy.deepcopy(objective) for i in range(
-                planning_horizon)] if planning_horizon > 1 else [objective]
+            self.objective = [objective._copy_keeping_multipliers() 
+                if hasattr(objective, '_copy_keeping_multipliers') 
+                    else copy.deepcopy(objective) for i in range(planning_horizon)
+                        ] if planning_horizon > 1 else [objective]
             self.constraints = [copy.deepcopy(constraints) for i in range(
                 planning_horizon)] if planning_horizon > 1 else [constraints]
 
