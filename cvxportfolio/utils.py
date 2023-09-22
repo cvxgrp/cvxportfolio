@@ -20,11 +20,11 @@ import pandas as pd
 TRUNCATE_REPR_HASH = 10  # probability of conflict is 1e-16
 
 
-__all__ = ['periods_per_year', 'resample_returns',
+__all__ = ['periods_per_year_from_datetime_index', 'resample_returns',
            'flatten_heterogeneous_list', 'repr_numpy_pandas']
 
 
-def periods_per_year(idx):
+def periods_per_year_from_datetime_index(idx):
     """Given a datetime pandas index return the periods per year."""
     return int(np.round(len(idx) / ((idx[-1] - idx[0]) /
                                     pd.Timedelta('365.24d'))))

@@ -38,7 +38,8 @@ from .data import BASE_LOCATION, FredTimeSeries, YfinanceTimeSeries
 from .errors import DataError
 from .estimator import DataEstimator, Estimator
 from .result import BacktestResult
-from .utils import *
+from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
+                    resample_returns)
 
 PPY = 252
 __all__ = ['StockMarketSimulator', 'MarketSimulator']
@@ -55,15 +56,17 @@ def _hash_universe(universe):
 
 def _load_cache(universe, trading_frequency, base_location):
     """Load cache from disk."""
-    folder = base_location /\
-        f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
+    folder = base_location / (
+        f'hash(universe)={_hash_universe(universe)},'
+        + f'trading_frequency={trading_frequency}')
     if 'LOCK' in globals():
         logging.debug(f'Acquiring cache lock from process {os.getpid()}')
         LOCK.acquire()
     try:
         with open(folder/'cache.pkl', 'rb') as f:
             logging.info(
-                f'Loading cache for universe = {universe} and trading_frequency = {trading_frequency}')
+                f'Loading cache for universe = {universe}'
+                f' and trading_frequency = {trading_frequency}')
             return pickle.load(f)
     except FileNotFoundError:
         logging.info(f'Cache not found!')
@@ -76,8 +79,9 @@ def _load_cache(universe, trading_frequency, base_location):
 
 def _store_cache(cache, universe, trading_frequency, base_location):
     """Store cache to disk."""
-    folder = base_location /\
-        f'hash(universe)={_hash_universe(universe)},trading_frequency={trading_frequency}'
+    folder = base_location / (
+        f'hash(universe)={_hash_universe(universe)},'
+        f'trading_frequency={trading_frequency}')
     if 'LOCK' in globals():
         logging.debug(f'Acquiring cache lock from process {os.getpid()}')
         LOCK.acquire()
@@ -251,7 +255,7 @@ class MarketData:
     @property
     def PPY(self):
         """Periods per year, assumes returns are about equally spaced."""
-        return periods_per_year(self.returns.index)
+        return periods_per_year_from_datetime_index(self.returns.index)
 
     def _check_sizes(self):
 

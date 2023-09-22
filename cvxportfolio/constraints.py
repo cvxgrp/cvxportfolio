@@ -304,22 +304,22 @@ class NoTrade(BaseTradeConstraint):
         self.periods = periods
 
     def _pre_evaluation(self, universe, backtest_times):
-        self.index = (universe.get_loc if hasattr(
+        self._index = (universe.get_loc if hasattr(
             universe, 'get_loc') else universe.index)(self.asset)
-        self.low = cp.Parameter()
-        self.high = cp.Parameter()
+        self._low = cp.Parameter()
+        self._high = cp.Parameter()
 
     def _values_in_time(self, t, **kwargs):
         if t in self.periods:
-            self.low.value = 0.
-            self.high.value = 0.
+            self._low.value = 0.
+            self._high.value = 0.
         else:
-            self.low.value = -100.
-            self.high.value = +100.
+            self._low.value = -100.
+            self._high.value = +100.
 
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        return [z[self.index] >= self.low,
-                z[self.index] <= self.high]
+        return [z[self._index] >= self._low,
+                z[self._index] <= self._high]
 
 
 class LeverageLimit(BaseWeightConstraint, InequalityConstraint):

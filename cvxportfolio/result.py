@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from .estimator import Estimator
-from .utils import periods_per_year
+from .utils import periods_per_year_from_datetime_index
 
 __all__ = ['BacktestResult']
 
@@ -55,7 +55,7 @@ class BacktestResult(Estimator):
 
     @property
     def PPY(self):
-        return periods_per_year(self.h.index)
+        return periods_per_year_from_datetime_index(self.h.index)
 
     @property
     def v(self):
@@ -222,21 +222,29 @@ class BacktestResult(Estimator):
             f"Final value ({self.cash_key})": f"{self.v.iloc[-1]:.3e}",
             f"Profit ({self.cash_key})": f"{self.profit:.3e}",
             ' '*4: '',
-            "Absolute return (annualized)": f"{100 * self.mean_return:.1f}%",
-            "Absolute risk (annualized)": f"{100 * self.volatility:.1f}%",
-            "Excess return (annualized)": f"{self.excess_returns.mean() * 100 * self.PPY:.1f}%",
-            "Excess risk (annualized)": f"{self.excess_returns.std() * 100 * np.sqrt(self.PPY):.1f}%",
+            "Absolute return (annualized)":
+                f"{100 * self.mean_return:.1f}%",
+            "Absolute risk (annualized)":
+                f"{100 * self.volatility:.1f}%",
+            "Excess return (annualized)":
+                f"{self.excess_returns.mean() * 100 * self.PPY:.1f}%",
+            "Excess risk (annualized)":
+                f"{self.excess_returns.std() * 100 * np.sqrt(self.PPY):.1f}%",
             ' '*5: '',
-            "Avg. growth rate (absolute)": self._print_growth_rate(self.growth_rates.mean()),
-            "Avg. growth rate (excess)": self._print_growth_rate(self.excess_growth_rates.mean()),
+            "Avg. growth rate (absolute)":
+                self._print_growth_rate(self.growth_rates.mean()),
+            "Avg. growth rate (excess)":
+                self._print_growth_rate(self.excess_growth_rates.mean()),
 
         })
 
         if len(self.costs):
             stats[' '*6] = ''
         for cost in self.costs:
-            stats[f'Avg. {cost}'] = f"{(self.costs[cost]/self.v).mean()*1E4:.0f}bp"
-            stats[f'Max. {cost}'] = f"{(self.costs[cost]/self.v).max()*1E4:.0f}bp"
+            stats[f'Avg. {cost}'] = \
+                f"{(self.costs[cost]/self.v).mean()*1E4:.0f}bp"
+            stats[f'Max. {cost}'] = \
+                f"{(self.costs[cost]/self.v).max()*1E4:.0f}bp"
 
         stats.update(collections.OrderedDict({
             ' '*7: '',
@@ -251,7 +259,8 @@ class BacktestResult(Estimator):
             ' '*9: '',
             "Avg. policy time": f"{self.policy_times.mean():.3f}s",
             "Avg. simulator time": f"{self.simulator_times.mean():.3f}s",
-            "Total time": f"{self.simulator_times.sum() + self.policy_times.sum():.3f}s",
+            "Total time":
+                f"{self.simulator_times.sum() + self.policy_times.sum():.3f}s",
             }))
 
         content = pd.Series(stats).to_string()

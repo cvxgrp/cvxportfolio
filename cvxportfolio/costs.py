@@ -31,7 +31,7 @@ from .constraints import (CostInequalityConstraint, EqualityConstraint,
 from .errors import ConvexityError, ConvexSpecificationError
 from .estimator import CvxpyExpressionEstimator, DataEstimator
 from .hyperparameters import HyperParameter
-from .utils import periods_per_year
+from .utils import periods_per_year_from_datetime_index
 
 __all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
            "StocksTransactionCost", "StocksHoldingCost"]
@@ -215,9 +215,8 @@ class SoftConstraint(BaseCost):
     def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile cost to cvxpy expression."""
         try:
-            expr = (self.constraint._compile_constr_to_cvxpy(w_plus, z,
-                                                             w_plus_minus_w_bm)
-                    - self.constraint._rhs())
+            expr = (self.constraint._compile_constr_to_cvxpy(
+                w_plus, z, w_plus_minus_w_bm) - self.constraint._rhs())
         except AttributeError:
             raise SyntaxError(
                 f"{self.__class__.__name__} can only be used with"
@@ -353,8 +352,9 @@ class HoldingCost(BaseCost):
         if not ((self.short_fees is None)
                 and (self.long_fees is None)
                 and (self.dividends is None)):
-            ppy = periods_per_year(past_returns.index) if\
-                self.periods_per_year is None else self.periods_per_year
+            ppy = periods_per_year_from_datetime_index(
+                past_returns.index) if self.periods_per_year is None else \
+                    self.periods_per_year
 
         if self.short_fees is not None:
             self._short_fees_parameter.value = np.ones(
@@ -507,7 +507,7 @@ class TransactionCost(BaseCost):
 
             if (self.window_sigma_est is None) or\
                     (self.window_volume_est is None):
-                ppy = periods_per_year(past_returns.index)
+                ppy = periods_per_year_from_datetime_index(past_returns.index)
             windowsigma = ppy if (
                 self.window_sigma_est is None) else self.window_sigma_est
             windowvolume = ppy if (
@@ -527,7 +527,7 @@ class TransactionCost(BaseCost):
                   current_and_past_volumes, current_prices, **kwargs):
 
         if self.window_sigma_est is None:
-            windowsigma = periods_per_year(current_and_past_returns.index)
+            windowsigma = periods_per_year_from_datetime_index(current_and_past_returns.index)
         else:
             windowsigma = self.window_sigma_est
 

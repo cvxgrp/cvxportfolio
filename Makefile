@@ -3,12 +3,15 @@ PYTHON        = python
 PROJECT       = cvxportfolio
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
+COVERAGE      = 97  # target coverage score
+LINT          = 6.6  # target lint score
+
 
 ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
 endif
 
-.PHONY: env test hardtest clean docs opendocs coverage fix hardfix release 
+.PHONY: env test lint clean docs opendocs coverage release fix
 
 env:
 	$(PYTHON) -m venv $(ENVDIR)
@@ -17,19 +20,22 @@ env:
 
 test:
 	$(BINDIR)/coverage run -m unittest $(PROJECT)/tests/*.py
-	$(BINDIR)/coverage report
+	$(BINDIR)/coverage report --fail-under $(COVERAGE)
 	$(BINDIR)/coverage xml
 	$(BINDIR)/diff-cover --compare-branch origin/master coverage.xml
 
-hardtest:
-	$(BINDIR)/pytest --cov --cov-report=xml -W error $(PROJECT)/tests/*.py
-	$(BINDIR)/coverage report --fail-under 97
-	$(BINDIR)/ruff --line-length=79 --per-file-ignores='$(PROJECT)/__init__.py:F403' $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	$(BINDIR)/isort --check-only $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	$(BINDIR)/flake8 --per-file-ignores='$(PROJECT)/__init__.py:F401,F403' $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	$(BINDIR)/docstr-coverage $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	$(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	$(BINDIR)/pylint $(PROJECT)/*.py $(PROJECT)/tests/*.py
+lint:
+	$(BINDIR)/pylint --fail-under $(LINT) $(PROJECT)/*.py $(PROJECT)/tests/*.py
+
+# hardtest:
+#	$(BINDIR)/pytest --cov --cov-report=xml -W error $(PROJECT)/tests/*.py
+#	$(BINDIR)/coverage report --fail-under 97
+#	$(BINDIR)/ruff --line-length=79 --per-file-ignores='$(PROJECT)/__init__.py:F403' $(PROJECT)/*.py $(PROJECT)/tests/*.py
+#	$(BINDIR)/isort --check-only $(PROJECT)/*.py $(PROJECT)/tests/*.py
+#	$(BINDIR)/flake8 --per-file-ignores='$(PROJECT)/__init__.py:F401,F403' $(PROJECT)/*.py $(PROJECT)/tests/*.py
+#	$(BINDIR)/docstr-coverage $(PROJECT)/*.py $(PROJECT)/tests/*.py
+#	$(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
+#	$(BINDIR)/pylint $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
 clean:
 	-rm -rf $(BUILDDIR)/* 
@@ -61,7 +67,7 @@ fix:
 	# THIS ONE DOES SAME AS RUFF, PLUS REMOVING PASS
 	# $(BINDIR)/autoflake --in-place $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
-release: cleanenv env test
+release: cleanenv env lint test
 	$(BINDIR)/python bumpversion.py
 	git push
 	$(BINDIR)/python -m build

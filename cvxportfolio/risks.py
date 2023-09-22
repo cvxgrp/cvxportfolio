@@ -13,12 +13,9 @@
 # limitations under the License.
 
 import logging
-import warnings
 
 import cvxpy as cp
 import numpy as np
-import pandas as pd
-import scipy.linalg
 
 from .costs import BaseCost
 from .estimator import DataEstimator
@@ -43,7 +40,7 @@ class BaseRiskModel(BaseCost):
 
 
 class FullCovariance(BaseRiskModel):
-    """Quadratic risk model with full covariance matrix.
+    r"""Quadratic risk model with full covariance matrix.
 
     It represents the objective term:
 
@@ -152,7 +149,7 @@ class DiagonalCovariance(BaseRiskModel):
 
 
 class FactorModelCovariance(BaseRiskModel):
-    """Factor model covariance, either user-provided or fitted from the data.
+    r"""Factor model covariance, either user-provided or fitted from the data.
 
     It represents the objective term:
 
@@ -162,7 +159,7 @@ class FactorModelCovariance(BaseRiskModel):
 
     where the factors exposure :math:`F` has as many rows as the number of assets and as many
     columns as the number of factors,
-    the factors covariance matrix :math:`Sigma_{F}` is positive semi-definite,
+    the factors covariance matrix :math:`\Sigma_{F}` is positive semi-definite,
     and the idyosyncratic variances vector :math:`d` is non-negative.
 
     The advantage of this risk model over the standard :class:`FullCovariance` is mostly

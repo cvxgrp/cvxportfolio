@@ -26,7 +26,6 @@ __all__ = ['Benchmark', 'CashBenchmark', 'UniformBenchmark', 'MarketBenchmark']
 
 class BaseBenchmark(PolicyEstimator):
     """Base class for cvxportfolio benchmark weights."""
-    pass
 
 
 class Benchmark(BaseBenchmark, DataEstimator):
