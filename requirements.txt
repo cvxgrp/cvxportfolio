@@ -6,7 +6,7 @@ numpy
 pandas
 cvxpy
 scipy
-yfinance
+requests
 matplotlib
 numpydoc
 myst_parser

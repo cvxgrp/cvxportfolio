@@ -46,22 +46,23 @@ class TestData(unittest.TestCase):
         ts._recursive_pre_evaluation()
         assert np.all(
             ts._recursive_values_in_time(
-                pd.Timestamp("2023-04-11"), "foo", bar=None)
-            == ts.data.loc["2023-04-11"]
+                pd.Timestamp("2023-04-11 13:30:00+00:00"), "foo", bar=None)
+            == ts.data.loc["2023-04-11 13:30:00+00:00"]
         )
 
     def test_yfinance_download(self):
         """Test YfinanceBase."""
 
-        data = YfinanceBase().download("AAPL", start="2023-04-01", end="2023-04-15")
+        data = YfinanceBase().download("AAPL", start="2023-04-01", 
+                                       end="2023-04-15")
         print(data)
-        print(data.loc["2023-04-10"]["Return"])
-        print(data.loc["2023-04-11", "Open"] /
-              data.loc["2023-04-10", "Open"] - 1)
+        print(data.loc["2023-04-10 13:30:00+00:00"]["Return"])
+        print(data.loc["2023-04-11 13:30:00+00:00", "Open"] /
+              data.loc["2023-04-10 13:30:00+00:00", "Open"] - 1)
         self.assertTrue(np.isclose(
-            data.loc["2023-04-10", "Return"],
-            data.loc["2023-04-11", "Open"] /
-            data.loc["2023-04-10", "Open"] - 1,
+            data.loc["2023-04-10 13:30:00+00:00", "Return"],
+            data.loc["2023-04-11 13:30:00+00:00", "Open"] /
+            data.loc["2023-04-10 13:30:00+00:00", "Open"] - 1,
         ))
         self.assertTrue(np.isnan(data.iloc[-1]["Close"]))
 
@@ -90,9 +91,9 @@ class TestData(unittest.TestCase):
         print(data)
 
         self.assertTrue(np.isclose(
-            data.loc["2023-04-05", "Return"],
-            data.loc["2023-04-06", "Open"] /
-            data.loc["2023-04-05", "Open"] - 1,
+            data.loc["2023-04-05 13:30:00+00:00", "Return"],
+            data.loc["2023-04-06 13:30:00+00:00", "Open"] /
+            data.loc["2023-04-05 13:30:00+00:00", "Open"] - 1,
         ))
 
         data1 = store.update_and_load("ZM")

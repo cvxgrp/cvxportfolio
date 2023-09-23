@@ -20,10 +20,11 @@ interfaces, simplified, and not meant to be accessed directly by users.
 
 import sqlite3
 from pathlib import Path
+import datetime
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
+import requests
 
 from .estimator import DataEstimator
 
@@ -151,8 +152,81 @@ class YfinanceBase(BaseData):
         data.loc[data.index[-1], ["High", "Low",
                                   "Close", "Return", "Volume"]] = np.nan
         return data
+    
+    @staticmethod
+    def _timestamp_convert(unix_seconds_ts):
+        """Convert a UNIX timestamp in seconds to pd.Timestamp."""
+        return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
+        
+    @staticmethod
+    def _now_timezoned():
+        return pd.Timestamp(
+            datetime.datetime.now(datetime.timezone.utc).astimezone())
+    
+    @staticmethod
+    def _get_data_yahoo(ticker, start='1900-01-01', end='2100-01-01'):
+        """Get 1 day OHLC from Yahoo finance. 
+    
+        Result is timestamped with the open time (time-zoned) of
+        the instrument.
+        """
 
-    def download(self, symbol, current=None, overlap=5, grace_period='5d', **kwargs):
+        BASE_URL = 'https://query2.finance.yahoo.com'
+    
+        HEADERS = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)'
+            ' AppleWebKit/537.36 (KHTML, like Gecko)'
+            ' Chrome/39.0.2171.95 Safari/537.36'}
+        
+        # print(HEADERS)
+        start = int(pd.Timestamp(start).timestamp())
+        end = int(pd.Timestamp(end).timestamp())
+    
+        res = requests.get(
+            url=f"{BASE_URL}/v8/finance/chart/{ticker}", 
+            params={'interval':'1d',
+                "period1": start, 
+                "period2": end}, 
+            headers=HEADERS)
+        
+        # print(res)
+        
+        if res.status_code == 404:
+            raise DataError(
+                f'Data for symbol {ticker} is not available.'
+                +'Json output:', str(res.json()))
+    
+        if res.status_code != 200:
+            raise DataError(f'Yahoo finance data download failed. Json:',
+                str(res.json()))
+        
+        data = res.json()['chart']['result'][0]
+
+        index = pd.DatetimeIndex([
+            YfinanceBase._timestamp_convert(el) 
+            for el in data['timestamp']])
+    
+        df_result = pd.DataFrame(data['indicators']['quote'][0], index=index)
+        df_result['adjclose'] = data['indicators']['adjclose'][0]['adjclose']
+        
+        # last timestamp is probably broken (not timed to market open)
+        # we set its time to same as the day before, but this is wrong
+        # on days of DST switch. It's fine though because that line will be
+        # overwritten next update
+        if df_result.index[-1].time() != df_result.index[-2].time():
+            tm1 = df_result.index[-2].time()
+            df_result.index[-1].replace(
+                hour=tm1.hour, minute=tm1.minute, second=tm1.second)
+
+        # remove later, for now we match yfinance column names and ordering
+        df_result = df_result[['open', 'high', 'low', 
+                              'close', 'adjclose', 'volume']]
+        df_result.columns = ['Open', 'High', 'Low', 
+                             'Close', 'Adj Close', 'Volume']
+        return df_result
+
+    def download(self, symbol, current=None, 
+                overlap=5, grace_period='5d', **kwargs):
         """Download single stock from Yahoo Finance.
 
         If data was already downloaded we only download
@@ -169,14 +243,17 @@ class YfinanceBase(BaseData):
         Returns:
             updated (pandas.DataFrame): updated DataFrame for the symbol
         """
+        if overlap < 2:
+            raise Exception(
+                'There could be issues with DST and Yahoo finance data.')
         if (current is None) or (len(current) < overlap):
-            updated = yf.download(symbol, progress=False, **kwargs)
+            updated = self._get_data_yahoo(symbol, **kwargs)
             return self.internal_process(updated)
         else:
-            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta(grace_period):
+            if (self._now_timezoned() - current.index[-1]
+                ) < pd.Timedelta(grace_period):
                 return current
-            new = yf.download(symbol, progress=False,
-                              start=current.index[-overlap], **kwargs)
+            new = self._get_data_yahoo(symbol, start=current.index[-overlap])
             new = self.internal_process(new)
             return pd.concat([current.iloc[:-overlap], new])
 
