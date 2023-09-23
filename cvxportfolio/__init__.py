@@ -28,3 +28,4 @@ from .result import *
 from .returns import *
 from .risks import *
 from .simulator import *
+from .data import *

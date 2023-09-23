@@ -32,6 +32,8 @@ import warnings
 import numpy as np
 import pandas as pd
 import requests
+# import yfinance as yf
+
 
 # from .estimator import DataEstimator
 
@@ -57,8 +59,8 @@ class SymbolData:
     data to serve to the user (so the data is stored in a different format
     than what the user sees.) We found that this separation can be useful.
     
-    This class interacts with module-level functions named ``_load_BACKEND``
-    and ``_store_BACKEND``, where ``BACKEND`` is the name of the storage
+    This class interacts with module-level functions named ``_loader_BACKEND``
+    and ``_storer_BACKEND``, where ``BACKEND`` is the name of the storage
     system used. We define ``pickle``, ``csv``, and ``sqlite`` backends. 
     These may have limitations. See their docstrings for more information.
     
@@ -114,12 +116,14 @@ class SymbolData:
     #      (it probably would not not with csv).
     # """
         
-    def __init__(self, symbol, storage_backend, base_storage_location):
+    def __init__(self, symbol, 
+                 storage_backend='pickle', 
+                 base_storage_location=BASE_LOCATION):
         self._symbol = symbol
         self._storage_backend = storage_backend
         self._base_storage_location = base_storage_location
         self._update()
-        self._data = self.load()
+        self._data = self._load()
     
     @property
     def storage_location(self):
@@ -150,7 +154,7 @@ class SymbolData:
     def _load_raw(self):
         """Load raw data from database."""
         # we could implement multiprocess safety here
-        loader = globals()['_load_' + self._storage_backend]
+        loader = globals()['_loader_' + self._storage_backend]
         try:
             return loader(self.symbol, self.storage_location)
         except FileNotFoundError:
@@ -164,7 +168,7 @@ class SymbolData:
     def _store(self, data):
         """Store data in database."""
         # we could implement multiprocess safety here
-        storer = globals()['_store_' + self._storage_backend]
+        storer = globals()['_storer_' + self._storage_backend]
         storer(self.symbol, data, self.storage_location)
 
     def _update(self):
@@ -206,6 +210,14 @@ class SymbolData:
 # Yahoo Finance.
 #
 
+def _timestamp_convert(unix_seconds_ts):
+    """Convert a UNIX timestamp in seconds to pd.Timestamp."""
+    return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
+
+def _now_timezoned():
+    return pd.Timestamp(
+        datetime.datetime.now(datetime.timezone.utc).astimezone())
+            
 class YahooFinanceSymbolData(SymbolData):
     """Yahoo Finance symbol data.
     
@@ -238,17 +250,7 @@ class YahooFinanceSymbolData(SymbolData):
         data.loc[data.index[-1], ["High", "Low",
                                   "Close", "Return", "Volume"]] = np.nan
         return data
-    
-    @staticmethod
-    def _timestamp_convert(unix_seconds_ts):
-        """Convert a UNIX timestamp in seconds to pd.Timestamp."""
-        return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
-        
-    @staticmethod
-    def _now_timezoned():
-        return pd.Timestamp(
-            datetime.datetime.now(datetime.timezone.utc).astimezone())
-    
+
     @staticmethod
     def _get_data_yahoo(ticker, start='1900-01-01', end='2100-01-01'):
         """Get 1 day OHLC from Yahoo finance. 
@@ -289,7 +291,7 @@ class YahooFinanceSymbolData(SymbolData):
         data = res.json()['chart']['result'][0]
 
         index = pd.DatetimeIndex([
-            YfinanceBase._timestamp_convert(el) 
+            _timestamp_convert(el) 
             for el in data['timestamp']])
     
         df_result = pd.DataFrame(data['indicators']['quote'][0], index=index)
@@ -313,7 +315,8 @@ class YahooFinanceSymbolData(SymbolData):
                              'Close', 'Adj Close', 'Volume']
         return df_result
 
-    def _download(self, symbol, current=None, 
+    @classmethod
+    def _download(cls, symbol, current=None, 
                 overlap=5, grace_period='5d', **kwargs):
         """Download single stock from Yahoo Finance.
 
@@ -335,14 +338,17 @@ class YahooFinanceSymbolData(SymbolData):
             raise Exception(
                 'There could be issues with DST and Yahoo finance data.')
         if (current is None) or (len(current) < overlap):
-            updated = self._get_data_yahoo(symbol, **kwargs)
-            return self._internal_process(updated)
+            updated = cls._get_data_yahoo(symbol, **kwargs)
+            # updated = yf.download(symbol, **kwargs)
+            return cls._internal_process(updated)
         else:
-            if (self._now_timezoned() - current.index[-1]
+            if (_now_timezoned() - current.index[-1]
+            # if (pd.Timestamp.now() - current.index[-1]
                 ) < pd.Timedelta(grace_period):
                 return current
-            new = self._get_data_yahoo(symbol, start=current.index[-overlap])
-            new = self._internal_process(new)
+            new = cls._get_data_yahoo(symbol, start=current.index[-overlap])
+            # new = yf.download(symbol,  start=current.index[-overlap])
+            new = cls._internal_process(new)
             return pd.concat([current.iloc[:-overlap], new])
 
     @staticmethod
@@ -372,17 +378,18 @@ class FredSymbolData(SymbolData):
 
     URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 
-    ## TODO: implement FRED point-in-time
-    ## example:
-    ## https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=CES0500000003&vintage_date=2023-07-06
-    ## hourly wages time series **as it appeared** on 2023-07-06 (try one day after, there's 1 new datapoint)
-    ## store using pd.Series() of diff'ed values only, in practice they only revise recent 1-2 monthly
-    ## obs.
+    # TODO: implement FRED point-in-time
+    # example:
+    # https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=CES0500000003&vintage_date=2023-07-06
+    # hourly wages time series **as it appeared** on 2023-07-06 
+    # store using pd.Series() of diff'ed values only.
 
-    def _download(self, symbol):
-        return pd.read_csv(self.URL + f'?id={symbol}', index_col=0, parse_dates=[0])[symbol]
+    def _internal_download(self, symbol):
+        return pd.read_csv(
+            self.URL + f'?id={symbol}', 
+            index_col=0, parse_dates=[0])[symbol]
 
-    def download(self, symbol="DFF", current=None, grace_period='5d'):
+    def _download(self, symbol="DFF", current=None, grace_period='5d'):
         """Download or update pandas Series from FRED.
 
         If already downloaded don't change data stored locally and only
@@ -393,12 +400,12 @@ class FredSymbolData(SymbolData):
         don't download new data.
         """
         if current is None:
-            return self._download(symbol)
+            return self._internal_download(symbol)
         else:
             if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta(grace_period):
                 return current
 
-            new = self._download(symbol)
+            new = self._internal_download(symbol)
             new = new.loc[new.index > current.index[-1]]
 
             if new.empty:
@@ -438,7 +445,7 @@ def _loader_sqlite(symbol, storage_location):
         tmp = pd.read_sql_query(
             f"SELECT * FROM {symbol}", connection,
             index_col="index", parse_dates=parse_dates, dtype=my_dtypes)
-
+            
         _close_sqlite(connection)
         multiindex = []
         for col in tmp.columns:

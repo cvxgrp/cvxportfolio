@@ -34,12 +34,14 @@ import pandas as pd
 from multiprocess import Lock, Pool
 
 from .costs import BaseCost, StocksHoldingCost, StocksTransactionCost
-from .data import BASE_LOCATION, FredTimeSeries, YfinanceTimeSeries
+from .data import (
+    BASE_LOCATION, FredSymbolData, YahooFinanceSymbolData)
 from .errors import DataError
 from .estimator import DataEstimator, Estimator
 from .result import BacktestResult
 from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
                     resample_returns)
+
 
 PPY = 252
 __all__ = ['StockMarketSimulator', 'MarketSimulator']
@@ -327,13 +329,12 @@ class MarketData:
             raise NotImplementedError(
                 'Currently the only data pipeline built is for USDOLLAR cash')
 
-        data = FredTimeSeries('DFF', base_location=self.base_location)
-        data._recursive_pre_evaluation()
+        data = FredSymbolData('DFF', base_storage_location=self.base_location)
         self.returns[cash_key] = resample_returns(
             data.data / 100, periods=self.PPY)
         self.returns[cash_key] = self.returns[cash_key].ffill()
 
-    DATASOURCES = {'YFinance': YfinanceTimeSeries, 'FRED': FredTimeSeries}
+    DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}
 
     def _get_market_data(self, universe, datasource):
         database_accesses = {}
@@ -344,8 +345,7 @@ class MarketData:
                 f'Getting data for {stock} with {self.DATASOURCES[datasource]}.')
             print('.')
             database_accesses[stock] = self.DATASOURCES[datasource](
-                stock, base_location=self.base_location)
-            database_accesses[stock]._recursive_pre_evaluation()
+                stock, base_storage_location=self.base_location)
 
         if datasource == 'YFinance':
             self.returns = pd.DataFrame(
