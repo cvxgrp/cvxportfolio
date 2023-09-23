@@ -21,9 +21,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.data import (FredBase, FredRate,  # SqliteDataStore,
-                               LocalDataStore, PickleStore, TimeSeries,
-                               Yfinance, YfinanceBase)
+from cvxportfolio.data import (
+    _loader_pickle, _storer_pickle, 
+    _loader_csv, _storer_csv,
+    _loader_sqlite, _storer_sqlite)
 
 
 class TestData(unittest.TestCase):
@@ -107,17 +108,17 @@ class TestData(unittest.TestCase):
         self.assertTrue(np.allclose(
             data1.loc[data.index[:-1]].Return, data.iloc[:-1].Return))
 
-    # def test_sqlite3_store_series(self):
-    #     """Test storing and retrieving of a Series with datetime index."""
-    #     self.base_test_series(SqliteDataStore, self.datadir)
+    def test_sqlite3_store_series(self):
+        """Test storing and retrieving of a Series with datetime index."""
+        self.base_test_series(_loader_sqlite, _storer_sqlite, self.datadir)
 
     def test_local_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        self.base_test_series(LocalDataStore, self.datadir)
+        self.base_test_series(_loader_csv, _storer_csv, self.datadir)
 
     def test_pickle_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        self.base_test_series(PickleStore, self.datadir)
+        self.base_test_series(_loader_pickle, _storer_pickle, self.datadir)
 
     # def test_sqlite3_store_dataframe(self):
     #     """Test storing and retrieving of a DataFrame with datetime index."""
@@ -143,42 +144,41 @@ class TestData(unittest.TestCase):
         """Test storing and retrieving of a DataFrame with datetime index."""
         self.base_test_multiindex(PickleStore, self.datadir)
 
-    def base_test_series(self, storeclass, *args, **kwargs):
+    def base_test_series(self, loader, storer, storage_location):
         """Test storing and retrieving of a Series with datetime index."""
-        store = storeclass(*args, **kwargs)
+
         for data in [
             pd.Series(
-                0.0,
-                pd.date_range(
-                    "2020-01-01",
-                    "2020-01-10"),
-                name="prova1"),
-            pd.Series(3, pd.date_range("2020-01-01",
-                      "2020-01-10"), name="prova2"),
+                0.0, pd.date_range("2020-01-01", "2020-01-10", tz='UTC'), name="prova1"),
             pd.Series(
-                "ciao", pd.date_range("2020-01-01", "2020-01-02", freq="H"), name="prova3"
-            ),
-            # test datetime conversion
-            pd.Series(
-                pd.date_range("2022-01-01", "2022-01-02", freq="H"),
-                pd.date_range("2020-01-01", "2020-01-02", freq="H"),
-                name="prova4",
-            ),
+                3, pd.date_range("2020-01-01","2020-01-10", tz='UTC'), name="prova2"),
+            pd.Series("ciao", 
+                pd.date_range("2020-01-01", "2020-01-02",  tz='UTC', freq="H"), 
+                name="prova3"),
             # test overwrite
-            pd.Series(
-                pd.date_range("2023-01-01", "2023-01-02", freq="H"),
-                pd.date_range("2020-01-01", "2020-01-02", freq="H"),
-                name="prova4",
-            ),
-        ]:
+            pd.Series("hello", 
+                pd.date_range("2020-01-01", "2020-01-02",  tz='UTC', freq="H"), 
+                name="prova3"),
+            # test datetime conversion
+            pd.Series(pd.date_range("2022-01-01", "2022-01-02",  tz='UTC', freq="H"),
+                      pd.date_range("2020-01-01", "2020-01-02",  tz='UTC', freq="H"),
+                      name="prova4"),
+            ]:
+
             print(data)
+            print(data.index)
+            print(data.index[0])
+            print(data.index[0].tzinfo)
             print(data.index.dtype)
             print(data.dtypes)
 
-            store.store(data.name, data)
+            storer(data.name, data, storage_location)
 
-            data1 = store.load(data.name)
+            data1 = loader(data.name, storage_location)
             print(data1)
+            print(data1.index)
+            print(data1.index[0])
+            print(data1.index[0].tzinfo)
             print(data1.index.dtype)
             print(data1.dtypes)
 
@@ -186,8 +186,12 @@ class TestData(unittest.TestCase):
             self.assertTrue(all(data == data1))
             self.assertTrue(all(data.index == data1.index))
             self.assertTrue(data.dtypes == data1.dtypes)
-
-        self.assertTrue(store.load("blahblah") is None)
+        
+        # test load not existent
+        try:
+            self.assertTrue(loader('blahblah', storage_location) is None)
+        except FileNotFoundError:
+            pass
 
     def base_test_dataframe(self, storeclass, *args, **kwargs):
         """Test storing and retrieving of a DataFrame with datetime index."""
