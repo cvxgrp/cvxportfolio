@@ -11,6 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This module defines :class:`BacktestResult`.
+
+This is the object that is returned by a market simulator's 
+``backtest`` method. it contains all relevant information from
+a backtest and implements the logic to compute various performance metrics,
+in addition to a ``plot`` method and a rich ``__repr__`` magic method
+(which is called when the user prints the object).
+"""
+
 
 from __future__ import print_function
 
@@ -255,12 +264,12 @@ class BacktestResult:
 
     @property
     def average_excess_return(self):
-        """The average excess return :math:`\overline{R^\text{e}}`."""
+        r"""The average excess return :math:`\overline{R^\text{e}}`."""
         return np.mean(self.excess_returns)
 
     @property
     def annualized_average_excess_return(self):
-        r"""The average excess return, annualized."""
+        """The average excess return, annualized."""
         return self.average_excess_return * self.periods_per_year
 
     @property
@@ -281,9 +290,9 @@ class BacktestResult:
 
         .. math::
 
-            \text{SR} = \overline{\R^\text{e}}/\sigma^\text{e}
+            \text{SR} = \overline{R^\text{e}}/\sigma^\text{e}
 
-        where :math:`\overline{\R^\text{e}}` is the average excess portfolio
+        where :math:`\overline{R^\text{e}}` is the average excess portfolio
         return and :math:`\sigma^\text{e}` its standard deviation. Both are
         annualized.
         """
@@ -293,20 +302,20 @@ class BacktestResult:
     @property
     def excess_growth_rates(self):
         r"""The growth rate of the portfolio, relative to cash.
-
+        
         This is defined as:
-
+        
         .. math::
 
             G^\text{e}_t = \log(1 + R^\text{e}_t)
 
-        where :math:`\R^\text{e}_t` are the excess portfolio returns.
+        where :math:`R^\text{e}_t` are the excess portfolio returns.
         """
         return np.log(self.excess_returns + 1)
 
     @property
     def average_excess_growth_rate(self):
-        """The average excess growth rate :math:`\overline{G^\text{e}}`."""
+        r"""The average excess growth rate :math:`\overline{G^\text{e}}`."""
         return np.mean(self.excess_growth_rates)
 
     @property
