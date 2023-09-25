@@ -1,8 +1,6 @@
 Backtests 
 =========
 
-WORK IN PROGRESS
-
 .. automodule:: cvxportfolio.result
 
 .. py:module:: cvxportfolio

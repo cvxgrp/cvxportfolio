@@ -16,7 +16,7 @@ pylint
 autopep8
 docformatter
 isort
-diff-cover
+diff_cover
 pytest
 pytest-cov
 multiprocess

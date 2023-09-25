@@ -25,7 +25,7 @@ __all__ = ['periods_per_year_from_datetime_index', 'resample_returns',
 
 
 def periods_per_year_from_datetime_index(idx):
-    """Given a datetime pandas index return the periods per year."""
+    """Average periods per year of a datetime index (rounded to int)."""
     return int(np.round(len(idx) / ((idx[-1] - idx[0]) /
                                     pd.Timedelta('365.24d'))))
 
