@@ -553,12 +553,16 @@ class TestSimulator(unittest.TestCase):
         [self.assertTrue(np.isclose(results_first[i].sharpe_ratio,
                          results_second[i].sharpe_ratio)) for i in range(len(results_first))]
 
-    def test_plot_result(self):
-        """Test plot method of result."""
+    def test_result(self):
+        """Test methods and properties of result."""
         sim = cvx.MarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], base_location=self.datadir)
-        sim.backtest(cvx.Uniform(), pd.Timestamp(
-            '2023-01-01')).plot(show=False)
+        result = sim.backtest(cvx.Uniform(), pd.Timestamp(
+            '2023-01-01'))
+        result.plot(show=False)
+        print(result)
+        for attribute in dir(result):
+            print(attribute, getattr(result, attribute))
 
     def test_spo_benchmark(self):
         """Test the effect of benchmark on SPO policies."""
