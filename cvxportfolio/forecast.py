@@ -122,22 +122,6 @@ class HistoricalMeanReturn(BaseForecast):
         self._last_time = t
 
 
-class HistoricalMeanError(BaseForecast):
-    r"""Historical standard deviations of the mean of non-cash returns.
-
-    For a given time series of past returns :math:`r_{t-1}, r_{t-2},
-    \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
-    missing values we ignore them, both to compute the variance and the
-    count.
-    """
-
-    def __init__(self):
-        self.varianceforecaster = HistoricalVariance(kelly=False)
-
-    def _values_in_time(self, t, past_returns, **kwargs):
-        return np.sqrt(self.varianceforecaster.current_value / self.varianceforecaster._last_counts.values)
-
-
 @dataclass(unsafe_hash=True)
 class HistoricalVariance(BaseForecast):
     r"""Historical variances of non-cash returns.
@@ -180,6 +164,24 @@ class HistoricalVariance(BaseForecast):
         self._last_time = t
 
 
+class HistoricalMeanError(HistoricalVariance):
+    r"""Historical standard deviations of the mean of non-cash returns.
+
+    For a given time series of past returns :math:`r_{t-1}, r_{t-2},
+    \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
+    missing values we ignore them, both to compute the variance and the
+    count.
+    """
+
+    def __init__(self):
+        super().__init__(kelly=False)
+
+    def _values_in_time(self, t, past_returns, **kwargs):
+        variance = super()._values_in_time(
+            t=t, past_returns=past_returns, **kwargs)
+        return np.sqrt(variance / self._last_counts.values)
+
+
 @dataclass(unsafe_hash=True)
 class HistoricalLowRankCovarianceSVD(PolicyEstimator):
     """Build factor model covariance using truncated SVD."""
@@ -212,7 +214,7 @@ class HistoricalLowRankCovarianceSVD(PolicyEstimator):
             #    warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
             nan_implicit_imputation = pd.DataFrame(0.,
                 columns=normalized.columns, index = normalized.index)
-            for i in range(iters):
+            for _ in range(iters):
                 if svd == 'numpy':
                     u, s, v = np.linalg.svd(
                         normalized.fillna(nan_implicit_imputation),
@@ -336,7 +338,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
             covariance -= tmp.T * tmp
         try:
             return project_on_psd_cone_and_factorize(covariance)
-        except np.linalg.LinAlgError:
+        except np.linalg.LinAlgError as exc:
             raise ForecastError(f'Covariance estimation at time {t} failed;'
                 + ' there are (probably) too many missing values in the'
-                + ' past returns.')
+                + ' past returns.') from exc
