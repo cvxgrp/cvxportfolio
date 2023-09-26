@@ -14,7 +14,6 @@ coverage
 sphinx-rtd-theme
 pylint
 autopep8
-docformatter
 isort
 diff_cover
 pytest

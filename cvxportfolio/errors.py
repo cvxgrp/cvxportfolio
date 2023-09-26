@@ -13,7 +13,7 @@
 # limitations under the License.
 
 __all__ = ['DataError', 'MissingTimesError',
-           'NaNError', 'MissingAssetsError', 'ForeCastError',
+           'NaNError', 'MissingAssetsError', 'ForecastError',
            'PortfolioOptimizationError', 'Bankruptcy',
            'ConvexSpecificationError', 'ConvexityError']
 
@@ -40,7 +40,7 @@ class MissingAssetsError(DataError):
     pass
 
 
-class ForeCastError(DataError):
+class ForecastError(DataError):
     """Forecast procedure failed."""
     pass
 

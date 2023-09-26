@@ -103,7 +103,7 @@ class MarketData:
     """
 
     def __init__(self,
-                 universe=[],
+                 universe=(),
                  returns=None,
                  volumes=None,
                  prices=None,
@@ -487,8 +487,8 @@ class MarketSimulator:
     to the stock market.
     """
 
-    def __init__(self, universe=[], returns=None, volumes=None,
-                 prices=None, costs=[], round_trades=False,
+    def __init__(self, universe=(), returns=None, volumes=None,
+                 prices=None, costs=(), round_trades=False,
                  min_history=pd.Timedelta('365d'),
                  datasource='YFinance',
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
@@ -940,9 +940,9 @@ class StockMarketSimulator(MarketSimulator):
     :type trading_frequency: str or None
     """
 
-    def __init__(self, universe=[],
+    def __init__(self, universe=(),
                  returns=None, volumes=None, prices=None,
-                 costs=[StocksTransactionCost, StocksHoldingCost],
+                 costs=(StocksTransactionCost, StocksHoldingCost),
                  round_trades=True, min_history=pd.Timedelta('365d'),
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
                  trading_frequency=None, **kwargs):
