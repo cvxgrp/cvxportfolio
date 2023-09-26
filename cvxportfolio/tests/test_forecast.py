@@ -43,8 +43,8 @@ class TestForecast(unittest.TestCase):
         cls.N = cls.returns.shape[1]
 
     # def boilerplate(self, model):
-    #     model._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-    #     return model._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+    #     model.initialize_estimator_recursive(universe=self.returns.columns, backtest_times=self.returns.index)
+    #     return model.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
 
     def test_mean_update(self):
         forecaster = HistoricalMeanReturn()  # lastforcash=True)
@@ -55,7 +55,7 @@ class TestForecast(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            mean = forecaster._recursive_values_in_time(
+            mean = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             # print(mean)
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
@@ -71,7 +71,7 @@ class TestForecast(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            var = forecaster._recursive_values_in_time(
+            var = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             print(var)
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
@@ -86,7 +86,7 @@ class TestForecast(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            val = forecaster._recursive_values_in_time(
+            val = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             print(val)
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
@@ -117,7 +117,7 @@ class TestForecast(unittest.TestCase):
         returns.iloc[:20, 3:10] = np.nan
         returns.iloc[10:15, 10:20] = np.nan
 
-        forecaster._recursive_values_in_time(
+        forecaster.values_in_time_recursive(
             t=pd.Timestamp('2022-01-01'), past_returns=returns)
 
         sum_matrix = forecaster._last_sum_matrix
@@ -160,7 +160,7 @@ class TestForecast(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            val = forecaster._recursive_values_in_time(
+            val = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             Sigma = val @ val.T
             self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
@@ -212,7 +212,7 @@ class TestForecast(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            val = forecaster._recursive_values_in_time(
+            val = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             Sigma = val @ val.T
 
@@ -244,10 +244,10 @@ class TestForecast(unittest.TestCase):
 
         def compare_with_eigh(returns):
 
-            F, d = forecaster._recursive_values_in_time(
+            F, d = forecaster.values_in_time_recursive(
                 t=t, past_returns=returns)
 
-            sigma_fact = forecaster2._recursive_values_in_time(
+            sigma_fact = forecaster2.values_in_time_recursive(
                 t=t, past_returns=returns)
 
             sigma_svd = F.T @ F + np.diag(d)
@@ -265,7 +265,7 @@ class TestForecast(unittest.TestCase):
                 svd='scipy')
 
             with self.assertRaises(SyntaxError):
-                val = forecaster3._recursive_values_in_time(
+                val = forecaster3.values_in_time_recursive(
                     t=t, past_returns=returns)
 
             return np.linalg.norm(sigma_eigh-sigma_svd)
@@ -297,24 +297,24 @@ class TestForecast(unittest.TestCase):
         print(returns.isnull().mean())
 
         with self.assertRaises(ForecastError):
-            sigma_fact = forecaster2._recursive_values_in_time(
+            sigma_fact = forecaster2.values_in_time_recursive(
                 t=t, past_returns=returns)
 
         # this one is even more robust!
-        F, d = forecaster._recursive_values_in_time(
+        F, d = forecaster.values_in_time_recursive(
             t=t, past_returns=returns)
 
         returns.iloc[56:, 0] = np.nan
         print(returns.isnull().mean())
 
-        F, d = forecaster._recursive_values_in_time(
+        F, d = forecaster.values_in_time_recursive(
             t=t, past_returns=returns)
 
         returns.iloc[:70, 1] = np.nan
         print(returns.isnull().mean())
 
         with self.assertRaises(ForecastError):
-            F, d = forecaster._recursive_values_in_time(
+            F, d = forecaster.values_in_time_recursive(
                 t=t, past_returns=returns)
 
 

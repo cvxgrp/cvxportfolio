@@ -485,7 +485,7 @@ class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
 
-    def _recursive_pre_evaluation(self, *args, **kwargs):
+    def initialize_estimator_recursive(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)
 
 
@@ -496,7 +496,7 @@ class FredTimeSeries(DataEstimator, FredBase, PickleStore):
         self.base_location = base_location
         self.use_last_available_time = use_last_available_time
 
-    def _recursive_pre_evaluation(self, *args, **kwargs):
+    def initialize_estimator_recursive(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)
 
 
@@ -507,7 +507,7 @@ class FredTimeSeries(DataEstimator, FredBase, PickleStore):
 #         self.base_location = base_location
 #         self.use_last_available_time = use_last_available_time
 #
-#     def _recursive_pre_evaluation(self, *args, **kwargs):
+#     def initialize_estimator_recursive(self, *args, **kwargs):
 #         self.data = self.update_and_load(self.symbol)
 
 
@@ -568,5 +568,5 @@ class TimeSeries(DataEstimator):
         self.use_last_available_time = use_last_available_time
         self.universe_maybe_noncash = None # fix, but we should retire this class
 
-    def _recursive_pre_evaluation(self, *args, **kwargs):
+    def initialize_estimator_recursive(self, *args, **kwargs):
         self.data = self.update_and_load(self.symbol)

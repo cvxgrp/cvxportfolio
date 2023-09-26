@@ -32,8 +32,8 @@ from .errors import ForecastError
 from .estimator import PolicyEstimator
 
 
-def online_cache(_values_in_time):
-    """A simple online cache that decorates _values_in_time.
+def online_cache(values_in_time):
+    """A simple online cache that decorates values_in_time.
 
     The instance it is used on needs to be hashable (we currently use
     the hash of its __repr__ via dataclass).
@@ -49,12 +49,12 @@ def online_cache(_values_in_time):
 
         if t in cache[self]:
             logging.debug(
-                '%s._values_in_time at time %s is retrieved from cache.',
+                '%s.values_in_time at time %s is retrieved from cache.',
                 self, t)
             result = cache[self][t]
         else:
-            result = _values_in_time(self, t=t, cache=cache, **kwargs)
-            logging.debug('%s._values_in_time at time %s is stored in cache.',
+            result = values_in_time(self, t=t, cache=cache, **kwargs)
+            logging.debug('%s.values_in_time at time %s is stored in cache.',
                 self, t)
             cache[self][t] = result
         return result
@@ -72,12 +72,12 @@ class BaseForecast(PolicyEstimator):
         if (self._last_time is None) or (
             self._last_time != past_returns.index[-1]):
             logging.debug(
-                '%s._values_in_time at time %s is computed from scratch.',
+                '%s.values_in_time at time %s is computed from scratch.',
                 self, t)
             self._initial_compute(t=t, past_returns=past_returns)
         else:
             logging.debug(
-              '%s._values_in_time at time %s is updated from previous value.',
+              '%s.values_in_time at time %s is updated from previous value.',
               self, t)
             self._online_update(t=t, past_returns=past_returns)
 
@@ -102,10 +102,10 @@ class HistoricalMeanReturn(BaseForecast):
         self._last_counts = None
         self._last_sum = None
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.__post_init__()
 
-    def _values_in_time(self, t, past_returns, cache=None, **kwargs):
+    def values_in_time(self, t, past_returns, cache=None, **kwargs):
         self._agnostic_update(t=t, past_returns=past_returns)
         return (self._last_sum / self._last_counts).values
 
@@ -142,10 +142,10 @@ class HistoricalVariance(BaseForecast):
         self._last_counts = None
         self._last_sum = None
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.__post_init__()
 
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
         self._agnostic_update(t=t, past_returns=past_returns)
         result = (self._last_sum / self._last_counts).values
         if not self.kelly:
@@ -176,8 +176,8 @@ class HistoricalMeanError(HistoricalVariance):
     def __init__(self):
         super().__init__(kelly=False)
 
-    def _values_in_time(self, t, past_returns, **kwargs):
-        variance = super()._values_in_time(
+    def values_in_time(self, t, past_returns, **kwargs):
+        variance = super().values_in_time(
             t=t, past_returns=past_returns, **kwargs)
         return np.sqrt(variance / self._last_counts.values)
 
@@ -247,7 +247,7 @@ class HistoricalLowRankCovarianceSVD(PolicyEstimator):
         return F.values, idyosyncratic.values
 
     @online_cache
-    def _values_in_time(self, past_returns, **kwargs):
+    def values_in_time(self, past_returns, **kwargs):
 
         return self.build_low_rank_model(past_returns.iloc[:, :-1],
             num_factors=self.num_factors,
@@ -287,7 +287,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
         self._last_sum_matrix = None
         self._joint_mean = None
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.__post_init__()
 
     @staticmethod
@@ -328,7 +328,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
             self._joint_mean += last_ret
 
     @online_cache
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
 
         self._agnostic_update(t=t, past_returns=past_returns)
         covariance = self._last_sum_matrix / self._last_counts_matrix

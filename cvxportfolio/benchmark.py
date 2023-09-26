@@ -46,7 +46,7 @@ class Benchmark(BaseBenchmark, DataEstimator):
 class CashBenchmark(BaseBenchmark):
     """Default benchmark weights for cvxportfolio risk models."""
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         """Define current_value as a constant."""
         self.current_value = np.zeros(len(universe))
         self.current_value[-1] = 1.
@@ -55,7 +55,7 @@ class CashBenchmark(BaseBenchmark):
 class UniformBenchmark(BaseBenchmark):
     """Benchmark weights uniform on non-cash assets."""
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         """Define current_value as a constant."""
         self.current_value = np.ones(len(universe))
         self.current_value[-1] = 0.
@@ -65,7 +65,7 @@ class UniformBenchmark(BaseBenchmark):
 class MarketBenchmark(BaseBenchmark):
     """Portfolio weighted by last year's total volumes."""
 
-    def _values_in_time(self, past_volumes, **kwargs):
+    def values_in_time(self, past_volumes, **kwargs):
         """Update current_value using past year's volumes."""
         sumvolumes = past_volumes.loc[past_volumes.index >= (
             past_volumes.index[-1] - pd.Timedelta('365d'))].mean()

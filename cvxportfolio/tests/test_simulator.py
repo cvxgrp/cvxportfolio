@@ -342,7 +342,7 @@ class TestSimulator(unittest.TestCase):
 
         # , pd.Timestamp('2022-04-11')]: # can't because sigma requires 1000 days
         for t in [pd.Timestamp('2023-04-13')]:
-            # super(simulator.__class__, simulator)._recursive_values_in_time(t=t)
+            # super(simulator.__class__, simulator).values_in_time_recursive(t=t)
 
             # round trade
 
@@ -375,7 +375,7 @@ class TestSimulator(unittest.TestCase):
             h0 = pd.Series(h, simulator.market_data.universe)
             h = pd.Series(h0, copy=True)
 
-            policy._recursive_pre_evaluation(
+            policy.initialize_estimator_recursive(
                 universe=simulator.market_data.universe,
                 backtest_times=simulator.market_data._get_backtest_times(
                     start_time, end_time, include_end=False)
@@ -408,7 +408,7 @@ class TestSimulator(unittest.TestCase):
             h[-1] = 10000 - sum(h[:-1])
             h0 = pd.Series(h, simulator.market_data.returns.columns)
             h = pd.Series(h0, copy=True)
-            policy._recursive_pre_evaluation(
+            policy.initialize_estimator_recursive(
                 universe=simulator.market_data.universe,
                 backtest_times=simulator.market_data._get_backtest_times(
                     start_time, end_time, include_end=False)

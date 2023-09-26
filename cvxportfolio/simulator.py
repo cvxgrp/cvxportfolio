@@ -328,7 +328,7 @@ class MarketData:
                 'Currently the only data pipeline built is for USDOLLAR cash')
 
         data = FredTimeSeries('DFF', base_location=self.base_location)
-        data._recursive_pre_evaluation()
+        data.initialize_estimator_recursive()
         self.returns[cash_key] = resample_returns(
             data.data / 100, periods=self.PPY)
         self.returns[cash_key] = self.returns[cash_key].ffill()
@@ -345,7 +345,7 @@ class MarketData:
             print('.')
             database_accesses[stock] = self.DATASOURCES[datasource](
                 stock, base_location=self.base_location)
-            database_accesses[stock]._recursive_pre_evaluation()
+            database_accesses[stock].initialize_estimator_recursive()
 
         if datasource == 'YFinance':
             self.returns = pd.DataFrame(
@@ -545,7 +545,7 @@ class MarketSimulator:
 
         # evaluate the policy
         s = time.time()
-        z = policy._recursive_values_in_time(
+        z = policy.values_in_time_recursive(
             t=t, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value,
             past_returns=past_returns, past_volumes=past_volumes,
@@ -614,8 +614,8 @@ class MarketSimulator:
         backtest_times = self.market_data._get_backtest_times(
             start_time, end_time, include_end=True)
 
-        if hasattr(policy, '_compile_to_cvxpy'):
-            policy._compile_to_cvxpy()
+        if hasattr(policy, 'compile_to_cvxpy'):
+            policy.compile_to_cvxpy()
 
         result = BacktestResult(universe, backtest_times, self.costs)
 
@@ -660,7 +660,7 @@ class MarketSimulator:
                 h = h[el['universe']]
 
             policy = copy.deepcopy(orig_policy)
-            policy._recursive_pre_evaluation(
+            policy.initialize_estimator_recursive(
                 universe=el['universe'],
                 backtest_times=self.market_data._get_backtest_times(
                     el['start_time'], el['end_time'], include_end=True)
@@ -728,8 +728,8 @@ class MarketSimulator:
         """
 
         def modify_orig_policy(target_policy):
-            hps = policy._collect_hyperparameters()
-            thps = target_policy._collect_hyperparameters()
+            hps = policy.collect_hyperparameters()
+            thps = target_policy.collect_hyperparameters()
             for h, t in zip(hps, thps):
                 h._index = t._index
 
@@ -754,7 +754,7 @@ class MarketSimulator:
             print()
 
             test_policies = []
-            for hp in policy._collect_hyperparameters():
+            for hp in policy.collect_hyperparameters():
                 try:
                     hp._increment()
                     if not (str(policy) in results):
