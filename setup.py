@@ -21,7 +21,7 @@ setup(
                       "numpy",
                       "scipy",
                       "matplotlib",
-                      "yfinance<=0.2.28", # bug https://github.com/ranaroussi/yfinance/issues/1694
+                      "requests",
                       "cvxpy",
                       "multiprocess"
                       ],

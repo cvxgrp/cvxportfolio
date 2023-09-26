@@ -78,11 +78,13 @@ class TestData(unittest.TestCase):
         print(store.data)
         data = store.data
         self.assertTrue(np.isclose(data["2023-04-10"], 4.83))
-        self.assertTrue(data.index[0] == pd.Timestamp("1954-07-01"))
+        self.assertTrue(data.index[0] == 
+            pd.Timestamp("1954-07-01 00:00:00+00:00"))
         
         # test update
-        olddata = data.iloc[:-123]
-        newdata = store._download("DFF", olddata)
+        olddata = pd.Series(data.iloc[:-123], copy=True)
+        olddata.index = olddata.index.tz_localize(None)
+        newdata = store._preload(store._download("DFF", olddata))
         self.assertTrue(np.all(store.data == newdata))
 
     def test_yahoo_finance(self):

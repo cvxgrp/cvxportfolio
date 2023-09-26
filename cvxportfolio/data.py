@@ -34,6 +34,8 @@ import pandas as pd
 import requests
 # import yfinance as yf
 
+from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
+                    resample_returns)
 
 # from .estimator import DataEstimator
 
@@ -219,10 +221,7 @@ def _now_timezoned():
         datetime.datetime.now(datetime.timezone.utc).astimezone())
             
 class YahooFinanceSymbolData(SymbolData):
-    """Yahoo Finance symbol data.
-    
-    
-    """
+    """Yahoo Finance symbol data."""
 
     @staticmethod
     def _internal_process(data):
@@ -414,8 +413,12 @@ class FredSymbolData(SymbolData):
             assert new.index[0] > current.index[-1]
             return pd.concat([current, new])
 
-
-#
+    def _preload(self, data):
+        """Add UTC timezone."""
+        data.index = data.index.tz_localize('UTC')
+        return data
+    
+#   
 # Sqlite storage backend.
 #
 
@@ -554,8 +557,323 @@ def _storer_csv(symbol, data, storage_location):
         storage_location / f"{symbol}___dtypes.csv")
     data.to_csv(storage_location / f"{symbol}.csv")
 
+#
+# Market Data
+#
 
+class MarketData:
+    """Prepare, hold, and serve market data."""
+    
+    def serve_data_policy(self, t):
+        """Give data to policy at time t."""
+        raise NotImplementedError
+    
+    def serve_data_simulator(self, t):
+        """Give data to simulator at time t."""
+        raise NotImplementedError
+        
+    def trading_calendar(self, start_time, end_time):
+        """The trading calendar between two times (inclusive)."""
+        raise NotImplementedError
+    
+    @property
+    def periods_per_year(self):
+        """Average trading periods per year."""
+        raise NotImplementedError
+    
+class InMemoryMarketData(MarketData):
+    """Market data that is stored in memory when initialized."""
+        
+    def serve_data_policy(self, t):
+        """Give data to policy at time t."""
+        tidx = self.returns.index.get_loc(t)
+        past_returns = pd.DataFrame(self.returns.iloc[:tidx])
+        if not self.volumes is None:
+            tidx = self.volumes.index.get_loc(t)
+            past_volumes = pd.DataFrame(self.volumes.iloc[:tidx])
+        else:
+            past_volumes = None
+        current_prices = pd.Series(
+            self.prices.loc[t]) if not self.prices is None else None
 
+        return past_returns, past_volumes, current_prices
+
+    def serve_data_simulator(self, t):
+        """Give data to simulator at time t."""
+        tidx = self.returns.index.get_loc(t)
+        current_and_past_returns = pd.DataFrame(self.returns.iloc[:tidx+1])
+        if not self.volumes is None:
+            tidx = self.volumes.index.get_loc(t)
+            current_and_past_volumes = pd.DataFrame(self.volumes.iloc[:tidx+1])
+        else:
+            current_and_past_volumes = None
+        current_prices = pd.Series(
+            self.prices.loc[t]) if not self.prices is None else None
+
+        return (current_and_past_returns, 
+                current_and_past_volumes, current_prices)
+
+    @property
+    def universe(self):
+        """Full trading universe including cash."""
+        return self.returns.columns
+        
+    @property
+    def periods_per_year(self):
+        """Average trading periods per year inferred from the data."""
+        return periods_per_year_from_datetime_index(self.returns.index)   
+        
+    @property
+    def min_history(self):
+        """Min history expressed in periods."""
+        return int(np.round(self.periods_per_year * (
+            self._min_history_timedelta / pd.Timedelta('365.24d'))))
+    
+    @staticmethod
+    def _resample_returns(returns, periods):
+        """Resample returns from number of periods to single period."""
+        return np.exp(np.log(1 + returns) / periods) - 1
+        
+    def _add_cash_column(self, cash_key):
+        """Add the cash column to an already formed returns dataframe.
+        
+        This assumes that the trading periods are about equally spaced.
+        If, say, you have trading periods with very different lengths you
+        should redefine this method **and** replace the :class:`CashReturn`
+        objective term.
+        """
+
+        if not cash_key == 'USDOLLAR':
+            raise NotImplementedError(
+                'Currently the only data pipeline built is for USDOLLAR cash')
+    
+        data = FredSymbolData('DFF', base_storage_location=self.base_location)
+        
+        cash_returns_per_period = self._resample_returns(
+            data.data/100, periods=self.periods_per_year)
+        
+        # we merge instead of assigning column because indexes might
+        # be misaligned (e.g., with tz-aware timestamps)
+        cash_returns_per_period.name = cash_key
+        original_returns_index = self.returns.index
+        tmp = self.returns.merge(cash_returns_per_period)
+        
+        raise Exception
+
+        self.returns[cash_key] = self.returns[cash_key].ffill()
+
+    def _make_internal_dataframes_read_only(self):
+        """Makes the internal dataframes read-only."""
+
+        self.returns = ro(self.returns)
+        if not self.prices is None:
+            self.prices = ro(self.prices)
+        if not self.volumes is None:
+            self.volumes = ro(self.volumes)
+            
+    def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
+        """Get trading calendar from market data."""
+        result = self.returns.index
+        result = result[result >= self._earliest_backtest_start]
+        if start_time:
+            result = result[result >= start_time]
+        if end_time:
+            result = result[(result <= end_time)]
+        if not include_end:
+            result = result[:-1]
+        return result
+
+    @staticmethod
+    def _set_read_only(df):
+        """Set numpy array contained in dataframe to read only.
+        
+        This is done on data store internally before it is served to
+        the policy or the simulator to ensure data consistency in case
+        some element of the pipeline accidentally corrupts the data.
+        
+        This is enough to prevent direct assignement to the resulting
+        dataframe. However it could still be accidentally corrupted by
+        assigning to columns or indices that are not present in the
+        original. We avoid that case as well by returning a wrapped
+        dataframe (which doesn't copy data on creation) in
+        serve_data_policy and serve_data_simulator.
+        """
+        data = df.values
+        data.flags.writeable = False
+        return pd.DataFrame(data, index=df.index, columns=df.columns)
+        
+    
+    @property
+    def _break_timestamps(self):
+        """List of timestamps at which a backtest should be broken.
+
+        An asset enters into a backtest after having non-NaN returns for
+        self.min_history periods and exits after having NaN returns for
+        self.max_contiguous_missing. Defaults values are 252 and 10
+        respectively.
+        """
+        self.entry_dates = defaultdict(list)
+        self.exit_dates = defaultdict(list)
+        for asset in self.returns.columns[:-1]:
+            single_asset_returns = self.returns[asset].dropna()
+            if len(single_asset_returns) > self.min_history:
+                self.entry_dates[single_asset_returns.index[self.min_history]].append(
+                    asset)
+                exit_date = single_asset_returns.index[-1]
+                if (self.returns.index[-1] - exit_date) >= pd.Timedelta(self.max_contiguous_missing):
+                    self.exit_dates[exit_date].append(asset)
+
+        _ = sorted(set(self.exit_dates) | set(self.entry_dates))
+        logging.debug(f'computing break timestamps {_}')
+        return _
+
+    @property
+    def _limited_universes(self):
+        """Valid universes for each section, minus cash.
+
+        A backtest is broken into multiple ones that start at each key
+        of this, have the universe specified by this, and end at the
+        next startpoint.
+        """
+        result = OrderedDict()
+        uni = []
+        for ts in self._break_timestamps:
+            uni += self.entry_dates[ts]
+            uni = [el for el in uni if not el in self.exit_dates[ts]]
+            result[ts] = tuple(sorted(uni))
+        return result
+
+    @property
+    def _earliest_backtest_start(self):
+        """Earliest date at which we can start a backtest."""
+        return self.returns.iloc[:, :-1].dropna(how='all').index[self.min_history]
+
+    def _get_limited_backtests(self, start_time, end_time):
+        """Get start/end times and universes of constituent backtests.
+
+        Each one has constant universe with assets' that meet the
+        ``min_history`` requirement and has not disappeared from the
+        dataset.
+        """
+
+        full_backtest_times = self._get_backtest_times(start_time, end_time)
+        brkt = np.array(self._break_timestamps)
+
+        def get_valid_universe_and_its_expiration_for(time):
+            try:
+                return self._limited_universes[brkt[brkt <= time][-1]], \
+                    brkt[brkt > time][0] if len(
+                        brkt[brkt > time]) else full_backtest_times[-1]
+            except IndexError:
+                raise DataError(
+                    'There are no assets that meet the required min_history.')
+
+        result = []
+        start = full_backtest_times[0]
+        while True:
+
+            universe, expiration = get_valid_universe_and_its_expiration_for(
+                start)
+            if expiration > full_backtest_times[-1]:
+                expiration = full_backtest_times[-1]
+            result.append({
+                'start_time': start,
+                'end_time': expiration,
+                'universe': list(universe) + [self.cash_key]})
+
+            if expiration == full_backtest_times[-1]:
+                return result
+
+            start = expiration
+    
+    sampling_intervals = {'weekly': 'W-MON',
+                          'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
+                          
+                          
+    def _downsample(self, interval):
+        """_downsample market data."""
+        if not interval in self.sampling_intervals:
+            raise SyntaxError(
+                'Unsopported trading interval for down-sampling.')
+        interval = self.sampling_intervals[interval]
+        new_returns_index = pd.Series(self.returns.index, self.returns.index
+                                      ).resample(interval, closed='left', label='left').first().values
+        # print(new_returns_index)
+        self.returns = np.exp(np.log(
+            1+self.returns).resample(interval, closed='left', label='left'
+                                     ).sum(min_count=1))-1
+        self.returns.index = new_returns_index
+
+        # last row is always unknown
+        self.returns.iloc[-1] = np.nan
+
+        # # we drop the first row if its interval is small
+        # if self._is_first_interval_small(self.returns.index):
+        #     self.returns = self.returns.iloc[1:]
+
+        # we nan-out the first non-nan element of every col
+        for col in self.returns.columns[:-1]:
+            self.returns[col].loc[
+                    (~(self.returns[col].isnull())).idxmax()
+                ] = np.nan
+
+        if self.volumes is not None:
+            new_volumes_index = pd.Series(self.volumes.index, self.volumes.index
+                                          ).resample(interval, closed='left', label='left').first().values
+            self.volumes = self.volumes.resample(
+                interval, closed='left', label='left').sum(min_count=1)
+            self.volumes.index = new_volumes_index
+
+            # last row is always unknown
+            self.volumes.iloc[-1] = np.nan
+
+            # # we drop the first row if its interval is small
+            # if self._is_first_interval_small(self.volumes.index):
+            #     self.volumes = self.volumes.iloc[1:]
+
+            # we nan-out the first non-nan element of every col
+            for col in self.volumes.columns:
+                self.volumes[col].loc[
+                        (~(self.volumes[col].isnull())).idxmax()
+                    ] = np.nan
+
+        if self.prices is not None:
+            new_prices_index = pd.Series(self.prices.index, self.prices.index
+                                         ).resample(interval, closed='left', label='left').first().values
+            self.prices = self.prices.resample(
+                interval, closed='left', label='left').first()
+            self.prices.index = new_prices_index
+
+            # # we drop the first row if its interval is small
+            # if self._is_first_interval_small(self.prices.index):
+            #     self.prices = self.prices.iloc[1:]
+
+            # we nan-out the first non-nan element of every col
+            for col in self.prices.columns:
+                self.prices[col].loc[
+                        (~(self.prices[col].isnull())).idxmax()
+                    ] = np.nan
+                    
+            
+
+class UserProvidedMarketData(InMemoryMarketData):
+    
+    def __init__(self, returns=None, volumes=None, prices=None):
+        pass
+    
+    def _check_sizes(self):
+
+        if (not self.volumes is None) and (
+                not (self.volumes.shape[1] == self.returns.shape[1] - 1)
+                or not all(self.volumes.columns == self.returns.columns[:-1])):
+            raise SyntaxError(
+                'Volumes should have same columns as returns, minus cash_key.')
+
+        if (not self.prices is None) and (
+                not (self.prices.shape[1] == self.returns.shape[1] - 1)
+                or not all(self.prices.columns == self.returns.columns[:-1])):
+            raise SyntaxError(
+                'Prices should have same columns as returns, minus cash_key.')
 
 
 # class RateBase(BaseData):

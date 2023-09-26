@@ -106,6 +106,14 @@ source env/bin/activate
 and from the environment you can run any of the scripts in the examples (the cvxportfolio package is installed in [editable mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html)). 
 Or, if you don't want to activate the environment, you can just run scripts directly using `env/bin/python` or `env\Scripts\python` on windows, like we do in the Makefile.
 
+Additionally, to match our CI/CD pipeline, you may set the following [git hooks](https://git-scm.com/docs/githooks)
+
+```
+echo "make lint" > .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+echo "make test" > .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
+```
 
 Examples from the book
 ----------------------

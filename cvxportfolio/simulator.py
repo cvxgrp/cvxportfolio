@@ -169,7 +169,8 @@ class MarketData:
 
         history expressed in periods.
         """
-        return int(np.round(self.PPY * (self.min_history_timedelta / pd.Timedelta('365.24d'))))
+        return int(np.round(self.PPY * (
+            self.min_history_timedelta / pd.Timedelta('365.24d'))))
 
     @property
     def universe(self):
@@ -324,15 +325,30 @@ class MarketData:
             self.volumes = ro(self.volumes)
 
     def _add_cash_column(self, cash_key):
+        """Add the cash column to an already formed returns dataframe.
+
+        This assumes that the trading periods are about equally spaced.
+        If, say, you have trading periods with very different lengths you
+        should redefine this method **and** replace the :class:`CashReturn`
+        objective term.
+        """
 
         if not cash_key == 'USDOLLAR':
             raise NotImplementedError(
                 'Currently the only data pipeline built is for USDOLLAR cash')
 
         data = FredSymbolData('DFF', base_storage_location=self.base_location)
-        self.returns[cash_key] = resample_returns(
-            data.data / 100, periods=self.PPY)
-        self.returns[cash_key] = self.returns[cash_key].ffill()
+
+        cash_returns_per_period = resample_returns(
+            data.data/100, periods=self.PPY)
+
+        # we merge instead of assigning column because indexes might
+        # be misaligned (e.g., with tz-aware timestamps)
+        cash_returns_per_period.name = self.cash_key
+        original_returns_index = self.returns.index
+        tmp = pd.concat([self.returns, cash_returns_per_period], axis=1)
+        tmp[cash_key] = tmp[cash_key].ffill()
+        self.returns = tmp.loc[original_returns_index]
 
     DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}
 
@@ -383,8 +399,12 @@ class MarketData:
         if self.volumes is not None:
             self.volumes.iloc[-1] = np.nan
 
-    def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
-        """Get trading calendar from market data."""
+    def _get_backtest_times(self, start_time=None, end_time=None, 
+            include_end=True):
+        """Get trading calendar from market data.
+            
+        If start_time and end_time are tz-naive, we set the to UTC.    
+        """
         result = self.returns.index
         result = result[result >= self._earliest_backtest_start]
         if start_time:
@@ -864,7 +884,20 @@ class MarketSimulator:
         if not (len(policies) == len(h)):
             raise SyntaxError(
                 'If passing lists of policies and initial portfolios they must have the same length.')
+        
+        # TODO: here put get_trading_calendar
+        if start_time is not None:
+            start_time = pd.Timestamp(start_time)
+            if start_time.tz is None:
+                start_time = start_time.tz_localize(
+                    self.market_data.returns.index.tz)
 
+        if end_time is not None:
+            end_time = pd.Timestamp(end_time)
+            if end_time.tz is None:
+                end_time = end_time.tz_localize(
+                    self.market_data.returns.index.tz)
+            
         backtest_times_inclusive = self.market_data._get_backtest_times(
             start_time, end_time, include_end=True)
         start_time = backtest_times_inclusive[0]
