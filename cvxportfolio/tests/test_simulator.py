@@ -40,13 +40,17 @@ class TestSimulator(unittest.TestCase):
         print('created', cls.datadir)
 
         cls.returns = pd.read_csv(
-            Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
+            Path(__file__).parent / 
+                "returns.csv", index_col=0, parse_dates=[0])
         cls.volumes = pd.read_csv(
-            Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
-        cls.prices = pd.DataFrame(np.random.uniform(10, 200, size=cls.volumes.shape),
-                                  index=cls.volumes.index, columns=cls.volumes.columns)
-        cls.market_data = MarketData(returns=cls.returns, volumes=cls.volumes, prices=cls.prices, cash_key='cash',
-                                     base_location=cls.datadir)
+            Path(__file__).parent / 
+                "volumes.csv", index_col=0, parse_dates=[0])
+        cls.prices = pd.DataFrame(
+            np.random.uniform(10, 200, size=cls.volumes.shape),
+            index=cls.volumes.index, columns=cls.volumes.columns)
+        cls.market_data = MarketData(
+            returns=cls.returns, volumes=cls.volumes, prices=cls.prices, 
+            cash_key='cash', base_location=cls.datadir)
         cls.universe = cls.returns.columns
 
     @classmethod
@@ -58,13 +62,17 @@ class TestSimulator(unittest.TestCase):
     def test_market_data__downsample(self):
         """Test downsampling of market data."""
         md = MarketData(['AAPL', 'GOOG'], base_location=self.datadir)
+        
+        # TODO: better to rewrite this test
+        self.strip_tz_and_hour(md)
 
         idx = md.returns.index
 
         # not doing annual because XXXX-01-01 is holiday
         freqs = ['weekly', 'monthly', 'quarterly']
         testdays = ['2023-05-01', '2023-05-01', '2022-04-01']
-        periods = [['2023-05-01', '2023-05-02', '2023-05-03', '2023-05-04', '2023-05-05'],
+        periods = [['2023-05-01', '2023-05-02', '2023-05-03', '2023-05-04', 
+                    '2023-05-05'],
                    idx[(idx >= '2023-05-01') & (idx < '2023-06-01')],
                    idx[(idx >= '2022-04-01') & (idx < '2022-07-01')]]
 
@@ -88,16 +96,19 @@ class TestSimulator(unittest.TestCase):
                 self.assertTrue((new_md.returns.index.day < 5).mean() > .95)
 
             self.assertTrue(
-                all(md.prices.loc[testdays[i]] == new_md.prices.loc[testdays[i]]))
+                all(md.prices.loc[testdays[i]] == 
+                    new_md.prices.loc[testdays[i]]))
             self.assertTrue(np.allclose(
-                md.volumes.loc[periods[i]].sum(), new_md.volumes.loc[testdays[i]]))
+                md.volumes.loc[periods[i]].sum(), 
+                new_md.volumes.loc[testdays[i]]))
             self.assertTrue(np.allclose(
-                (1 + md.returns.loc[periods[i]]).prod(), 1 + new_md.returns.loc[testdays[i]]))
+                (1 + md.returns.loc[periods[i]]).prod(), 
+                1 + new_md.returns.loc[testdays[i]]))
 
     def test_market_data_methods1(self):
         t = self.returns.index[10]
-        past_returns, past_volumes, current_prices = self.market_data._serve_data_policy(
-            t)
+        past_returns, past_volumes, current_prices = \
+            self.market_data._serve_data_policy(t)
         self.assertTrue(past_returns.index[-1] < t)
         self.assertTrue(past_volumes.index[-1] < t)
         self.assertTrue(past_volumes.index[-1] == past_returns.index[-1])
@@ -107,8 +118,8 @@ class TestSimulator(unittest.TestCase):
 
     def test_market_data_methods2(self):
         t = self.returns.index[10]
-        current_and_past_returns, current_and_past_volumes, current_prices = self.market_data._serve_data_simulator(
-            t)
+        current_and_past_returns, current_and_past_volumes, current_prices = \
+            self.market_data._serve_data_simulator(t)
         self.assertTrue(current_and_past_returns.index[-1] == t)
         self.assertTrue(current_and_past_volumes.index[-1] == t)
         print(current_prices.name)
@@ -118,16 +129,17 @@ class TestSimulator(unittest.TestCase):
     def test_break_timestamp(self):
         md = MarketData(['AAPL', 'ZM', 'TSLA'], min_history=pd.Timedelta(
             '365d'), base_location=self.datadir)
-        self.assertTrue(pd.Timestamp('2020-04-20') in md._break_timestamps)
+        self.assertTrue(pd.Timestamp('2020-04-20 13:30:00', tz='UTC'
+            ) in md._break_timestamps)
         # self.assertTrue(len(md.break_up_backtest('2000-01-01')) == 3)
         self.assertTrue(md._limited_universes[pd.Timestamp(
-            '2011-06-28')] == ('AAPL', 'TSLA'))
+            '2011-06-28 13:30:00', tz='UTC')] == ('AAPL', 'TSLA'))
 
     def test_market_data_object_safety(self):
         t = self.returns.index[10]
 
-        past_returns, past_volumes, current_prices = self.market_data._serve_data_policy(
-            t)
+        past_returns, past_volumes, current_prices = \
+            self.market_data._serve_data_policy(t)
 
         with self.assertRaises(ValueError):
             past_returns.iloc[-2, -2] = 2.
@@ -152,41 +164,56 @@ class TestSimulator(unittest.TestCase):
     def test_market_data_initializations(self):
 
         used_returns = self.returns.iloc[:, :-1]
-        t = self.returns.index[20]
+        used_returns.index = used_returns.index.tz_localize('UTC')
+        used_volumes = pd.DataFrame(self.volumes, copy=True)
+        t = used_returns.index[20]
+        used_volumes.index = used_volumes.index.tz_localize('UTC')
+        used_prices = pd.DataFrame(self.prices, copy=True)
+        used_prices.index = used_prices.index.tz_localize('UTC')
+        
 
-        with_download_fred = MarketData(returns=used_returns, volumes=self.volumes, prices=self.prices,
-                                        cash_key='USDOLLAR', base_location=self.datadir)
+        with_download_fred = MarketData(
+            returns=used_returns, volumes=used_volumes, prices=used_prices,
+            cash_key='USDOLLAR', base_location=self.datadir)
 
-        without_prices = MarketData(returns=used_returns, volumes=self.volumes, cash_key='USDOLLAR',
-                                    base_location=self.datadir)
-        past_returns, past_volumes, current_prices = without_prices._serve_data_policy(
-            t)
+        without_prices = MarketData(
+            returns=used_returns, volumes=used_prices, cash_key='USDOLLAR',
+            base_location=self.datadir)
+        past_returns, past_volumes, current_prices = \
+            without_prices._serve_data_policy(t)
         self.assertTrue(current_prices is None)
 
-        without_volumes = MarketData(
-            returns=used_returns, cash_key='USDOLLAR', base_location=self.datadir)
-        current_and_past_returns, current_and_past_volumes, current_prices = without_volumes._serve_data_simulator(
-            t)
+        without_volumes = MarketData(returns=used_returns, cash_key='USDOLLAR', 
+                                     base_location=self.datadir)
+        current_and_past_returns, current_and_past_volumes, current_prices = \
+            without_volumes._serve_data_simulator(t)
+            
         self.assertTrue(current_and_past_volumes is None)
 
         with self.assertRaises(SyntaxError):
-            MarketData(returns=self.returns, volumes=self.volumes, prices=self.prices.iloc[:, :-1], cash_key='cash',
+            MarketData(returns=self.returns, volumes=self.volumes, 
+                       prices=self.prices.iloc[:, :-1], cash_key='cash',
                        base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
-            MarketData(returns=self.returns, volumes=self.volumes.iloc[:, :-3], prices=self.prices, cash_key='cash',
+            MarketData(returns=self.returns, volumes=self.volumes.iloc[:, :-3], 
+                       prices=self.prices, cash_key='cash',
                        base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
             used_prices = pd.DataFrame(
-                self.prices, index=self.prices.index, columns=self.prices.columns[::-1])
-            MarketData(returns=self.returns, volumes=self.volumes, prices=used_prices, cash_key='cash',
+                self.prices, index=self.prices.index, 
+                columns=self.prices.columns[::-1])
+            MarketData(returns=self.returns, volumes=self.volumes, 
+                       prices=used_prices, cash_key='cash',
                        base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
             used_volumes = pd.DataFrame(
-                self.volumes, index=self.volumes.index, columns=self.volumes.columns[::-1])
-            MarketData(returns=self.returns, volumes=used_volumes, prices=self.prices, cash_key='cash',
+                self.volumes, index=self.volumes.index, 
+                columns=self.volumes.columns[::-1])
+            MarketData(returns=self.returns, volumes=used_volumes, 
+                       prices=self.prices, cash_key='cash',
                        base_location=self.datadir)
 
     def test_market_data_full(self):
@@ -215,15 +242,20 @@ class TestSimulator(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             simulator = MarketSimulator(returns=pd.DataFrame(
-                [[0.]], columns=['USDOLLAR'], index=[pd.Timestamp.today()]), volumes=pd.DataFrame([[0.]]))
+                [[0.]], columns=['USDOLLAR'], index=[pd.Timestamp.today()]), 
+                    volumes=pd.DataFrame([[0.]]))
 
         # not raises
-        simulator = MarketSimulator(returns=pd.DataFrame([[0., 0.]], columns=['A', 'USDOLLAR']), volumes=pd.DataFrame(
-            [[0.]], columns=['A']), per_share_fixed_cost=0., round_trades=False)
+        simulator = MarketSimulator(returns=pd.DataFrame([[0., 0.]], 
+            columns=['A', 'USDOLLAR']), volumes=pd.DataFrame(
+            [[0.]], columns=['A']), per_share_fixed_cost=0., 
+            round_trades=False)
 
         with self.assertRaises(SyntaxError):
             simulator = MarketSimulator(returns=pd.DataFrame(
-                [[0., 0.]], index=[pd.Timestamp.today()], columns=['X', 'USDOLLAR']), volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
+                [[0., 0.]], index=[pd.Timestamp.today()], 
+                columns=['X', 'USDOLLAR']), 
+                volumes=pd.DataFrame([[0.]]), per_share_fixed_cost=0.)
 
     def test_prepare_data(self):
         simulator = MarketSimulator(['ZM', 'META'], base_location=self.datadir)
@@ -235,17 +267,19 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(np.isnan(simulator.market_data.volumes.iloc[-1, 1]))
         self.assertTrue(not np.isnan(simulator.market_data.prices.iloc[-1, 0]))
         self.assertTrue(
-            simulator.market_data.returns.index[-1] == simulator.market_data.volumes.index[-1])
+            simulator.market_data.returns.index[-1] 
+            == simulator.market_data.volumes.index[-1])
         self.assertTrue(
-            simulator.market_data.returns.index[-1] == simulator.market_data.prices.index[-1])
+            simulator.market_data.returns.index[-1] 
+            == simulator.market_data.prices.index[-1])
 
     def test_holding_cost(self):
         """Test the simulator interface of cvx.HoldingCost."""
 
         t = self.returns.index[-20]
 
-        current_and_past_returns, current_and_past_volumes, current_prices = self.market_data._serve_data_simulator(
-            t)
+        current_and_past_returns, current_and_past_volumes, current_prices = \
+            self.market_data._serve_data_simulator(t)
 
         cash_return = self.returns.loc[t, 'cash']
 
@@ -261,9 +295,12 @@ class TestSimulator(unittest.TestCase):
             hcost = cvx.HoldingCost(short_fees=5, dividends=dividends)
 
             sim_hcost = hcost._simulate(
-                t=t, h_plus=h_plus, current_and_past_returns=current_and_past_returns, t_next=t + pd.Timedelta('1d'))
+                t=t, h_plus=h_plus, 
+                current_and_past_returns=current_and_past_returns, 
+                t_next=t + pd.Timedelta('1d'))
 
-            hcost = -(np.exp(np.log(1.05)/365.24)-1) * sum(-np.minimum(h_plus, 0.)[:-1])
+            hcost = -(np.exp(np.log(1.05)/365.24)-1) * sum(
+                -np.minimum(h_plus, 0.)[:-1])
             hcost += dividends @ h_plus[:-1]
             print(hcost, -sim_hcost)
             self.assertTrue(np.isclose(hcost, -sim_hcost))
@@ -272,8 +309,8 @@ class TestSimulator(unittest.TestCase):
 
         t = self.returns.index[-20]
 
-        current_and_past_returns, current_and_past_volumes, current_prices = self.market_data._serve_data_simulator(
-            t)
+        current_and_past_returns, current_and_past_volumes, current_prices = \
+            self.market_data._serve_data_simulator(t)
 
         u = pd.Series(np.ones(len(current_prices)+1), self.universe)
 
@@ -304,8 +341,8 @@ class TestSimulator(unittest.TestCase):
 
         t = self.returns.index[-5]
 
-        current_and_past_returns, current_and_past_volumes, current_prices = self.market_data._serve_data_simulator(
-            t)
+        current_and_past_returns, current_and_past_volumes, current_prices = \
+            self.market_data._serve_data_simulator(t)
         print(current_prices)
 
         n = len(current_prices)
@@ -320,17 +357,19 @@ class TestSimulator(unittest.TestCase):
 
             tcost = cvx.StocksTransactionCost(a=spreads/2)
 
-            sim_cost = tcost._simulate(t, u=u, current_prices=current_prices,
-                                       current_and_past_volumes=current_and_past_volumes,
-                                       current_and_past_returns=current_and_past_returns)
+            sim_cost = tcost._simulate(
+                t, u=u, current_prices=current_prices,
+                current_and_past_volumes=current_and_past_volumes,
+                current_and_past_returns=current_and_past_returns)
 
             shares = sum(np.abs(u[:-1] / current_prices))
             tcost = -0.005 * shares
             # print(tcost, sim_cost)
             tcost -= np.abs(u.iloc[:-1]) @ spreads / 2
             # print(self.returns.loc[self.returns.index <= t].iloc[-252:, :-1].std())
-            tcost -= sum((np.abs(u.iloc[:-1])**1.5) * self.returns.loc[self.returns.index <=
-                         t].iloc[-252:, :-1].std(ddof=0) / np.sqrt(self.volumes.loc[t]))
+            tcost -= sum((np.abs(u.iloc[:-1])**1.5
+                ) * self.returns.loc[self.returns.index <=
+                t].iloc[-252:, :-1].std(ddof=0) / np.sqrt(self.volumes.loc[t]))
             # sim_tcost = simulator.transaction_costs(u)
             #
             print(tcost, sim_cost)
@@ -339,10 +378,12 @@ class TestSimulator(unittest.TestCase):
     def test_methods(self):
         simulator = MarketSimulator(
             ['ZM', 'META', 'AAPL'], base_location=self.datadir)
+            
+        self.strip_tz_and_hour(simulator.market_data)
 
         # , pd.Timestamp('2022-04-11')]: # can't because sigma requires 1000 days
         for t in [pd.Timestamp('2023-04-13')]:
-            # super(simulator.__class__, simulator)._recursive_values_in_time(t=t)
+            # super(simulator.__class__, simulator).values_in_time_recursive(t=t)
 
             # round trade
 
@@ -354,14 +395,29 @@ class TestSimulator(unittest.TestCase):
                 rounded = simulator._round_trade_vector(
                     u, simulator.market_data.prices.loc[t])
                 self.assertTrue(sum(rounded) == 0)
-                self.assertTrue(np.linalg.norm(rounded[:-1] - u[:-1]) <
-                                np.linalg.norm(simulator.market_data.prices.loc[t]/2))
+                self.assertTrue(
+                    np.linalg.norm(rounded[:-1] - u[:-1]) 
+                    < np.linalg.norm(simulator.market_data.prices.loc[t]/2))
 
                 print(u)
+
+
+    @staticmethod
+    def strip_tz_and_hour(market_data):
+        market_data.returns.index = \
+            market_data.returns.index.tz_localize(None).floor("D")
+        market_data.volumes.index = \
+            market_data.volumes.index.tz_localize(None).floor("D")
+        market_data.prices.index = \
+            market_data.prices.index.tz_localize(None).floor("D")
+
 
     def test_simulate_policy(self):
         simulator = StockMarketSimulator(
             ['META', 'AAPL'], base_location=self.datadir)
+            
+        # to fix this test
+        self.strip_tz_and_hour(simulator.market_data)
 
         start_time = '2023-03-10'
         end_time = '2023-04-20'
@@ -375,32 +431,38 @@ class TestSimulator(unittest.TestCase):
             h0 = pd.Series(h, simulator.market_data.universe)
             h = pd.Series(h0, copy=True)
 
-            policy._recursive_pre_evaluation(
+            policy.initialize_estimator_recursive(
                 universe=simulator.market_data.universe,
                 backtest_times=simulator.market_data._get_backtest_times(
                     start_time, end_time, include_end=False)
             )
 
             for (i, t) in enumerate(simulator.market_data.returns.index[
-                    (simulator.market_data.returns.index >= start_time) & (simulator.market_data.returns.index <= end_time)]):
+                    (simulator.market_data.returns.index >= start_time) & (
+                    simulator.market_data.returns.index <= end_time)]):
                 t_next = simulator.market_data.returns.index[i+1]
                 oldcash = h.iloc[-1]
                 h, z, u, costs, timer = simulator._simulate(
                     t=t, h=h, policy=policy, t_next=t_next)
-                tcost, hcost = costs['StocksTransactionCost'], costs['StocksHoldingCost']
+                tcost, hcost = costs['StocksTransactionCost'
+                    ], costs['StocksHoldingCost']
                 assert tcost == 0.
                 # if np.all(h0[:2] > 0):
                 #    assert hcost == 0.
                 assert np.isclose(
-                    (oldcash - hcost) * (1+simulator.market_data.returns.loc[t, 'USDOLLAR']), h.iloc[-1])
+                    (oldcash - hcost) * (1+simulator.market_data.returns.loc[
+                        t, 'USDOLLAR']), h.iloc[-1])
 
             simh = h0[:-1] * simulator.market_data.prices.loc[pd.Timestamp(
-                end_time) + pd.Timedelta('1d')] / simulator.market_data.prices.loc[start_time]
+                end_time) + pd.Timedelta('1d')
+                ] / simulator.market_data.prices.loc[start_time]
             self.assertTrue(np.allclose(simh, h[:-1]))
 
         # proportional_trade
         policy = cvx.ProportionalTradeToTargets(
-            targets=pd.DataFrame({pd.Timestamp(end_time) + pd.Timedelta('1d'):  pd.Series([0, 0, 1], simulator.market_data.returns.columns)}).T)
+            targets=pd.DataFrame({pd.Timestamp(end_time) 
+                + pd.Timedelta('1d'):  pd.Series([0, 0, 1], 
+                simulator.market_data.returns.columns)}).T)
 
         for i in range(10):
             np.random.seed(i)
@@ -408,7 +470,7 @@ class TestSimulator(unittest.TestCase):
             h[-1] = 10000 - sum(h[:-1])
             h0 = pd.Series(h, simulator.market_data.returns.columns)
             h = pd.Series(h0, copy=True)
-            policy._recursive_pre_evaluation(
+            policy.initialize_estimator_recursive(
                 universe=simulator.market_data.universe,
                 backtest_times=simulator.market_data._get_backtest_times(
                     start_time, end_time, include_end=False)
@@ -421,12 +483,14 @@ class TestSimulator(unittest.TestCase):
                 oldcash = h.iloc[-1]
                 h, z, u, costs, timer = simulator._simulate(
                     t=t, h=h, policy=policy, t_next=t_next)
-                tcost, hcost = costs['StocksTransactionCost'], costs['StocksHoldingCost']
+                tcost, hcost = costs['StocksTransactionCost'
+                    ], costs['StocksHoldingCost']
                 print(h)
                 # print(tcost, stock_hcost, cash_hcost)
 
             self.assertTrue(
-                np.all(np.abs(h[:-1]) < simulator.market_data.prices.loc[end_time]))
+                np.all(np.abs(h[:-1]) 
+                    < simulator.market_data.prices.loc[end_time]))
 
     def test_backtest(self):
         pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
@@ -456,7 +520,8 @@ class TestSimulator(unittest.TestCase):
         self.assertTrue(result.w['AAPL'].isnull().sum() < 2)
         self.assertTrue(len(ridx) == len(set(ridx)))
         self.assertTrue(len(ridx) == len(sim.market_data.returns.loc[
-            (sim.market_data.returns.index >= ridx[0]) & (sim.market_data.returns.index <= ridx[-1])]))
+            (sim.market_data.returns.index >= ridx[0]) & (
+            sim.market_data.returns.index <= ridx[-1])]))
         print(result)
 
     def test_multiple_backtest(self):
@@ -489,7 +554,8 @@ class TestSimulator(unittest.TestCase):
         cpus = multiprocessing.cpu_count()
 
         sim = cvx.MarketSimulator(['AAPL', 'MSFT'], base_location=self.datadir)
-        pols = [cvx.SinglePeriodOptimization(cvx.ReturnsForecast() - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)])
+        pols = [cvx.SinglePeriodOptimization(cvx.ReturnsForecast() 
+            - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)])
                 for i in range(cpus*2)]
         results = sim.backtest_many(pols, pd.Timestamp(
             '2023-01-01'), pd.Timestamp('2023-01-15'), parallel=True)
@@ -504,9 +570,11 @@ class TestSimulator(unittest.TestCase):
             cvx.SinglePeriodOptimization(cvx.ReturnsForecast(
             ) - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)]),
             cvx.SinglePeriodOptimization(cvx.ReturnsForecast(
-            ) - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)], benchmark=cvx.UniformBenchmark),
+            ) - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)], 
+                benchmark=cvx.UniformBenchmark),
             cvx.SinglePeriodOptimization(cvx.ReturnsForecast(
-            ) - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)], benchmark=cvx.MarketBenchmark),
+            ) - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)],
+                benchmark=cvx.MarketBenchmark),
         ]
         results = sim.backtest_many(pols, pd.Timestamp(
             '2023-01-01'), pd.Timestamp('2023-01-15'), parallel=True)
@@ -514,9 +582,11 @@ class TestSimulator(unittest.TestCase):
         print(np.linalg.norm(results[1].w.sum()[:2] - .5))
         print(np.linalg.norm(results[2].w.sum()[:2] - .5))
         self.assertTrue(np.linalg.norm(results[1].w.sum()[
-                        :2] - .5) < np.linalg.norm(results[0].w.sum()[:2] - .5))
+                        :2] - .5) < np.linalg.norm(
+                        results[0].w.sum()[:2] - .5))
         self.assertTrue(np.linalg.norm(results[1].w.sum()[
-                        :2] - .5) < np.linalg.norm(results[2].w.sum()[:2] - .5))
+                        :2] - .5) < np.linalg.norm(
+                        results[2].w.sum()[:2] - .5))
 
     def test_multiple_backtest4(self):
         """Test _downsample and offline cache."""

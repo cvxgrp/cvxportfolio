@@ -42,15 +42,6 @@ class TestData(unittest.TestCase):
         print('removing', cls.datadir)
         shutil.rmtree(cls.datadir)
 
-    # def test_time_series(self):
-    #     ts = TimeSeries("ZM", base_location=self.datadir)
-    #     assert not hasattr(ts, "data")
-    #     ts._recursive_pre_evaluation()
-    #     assert np.all(
-    #         ts._recursive_values_in_time(
-    #             pd.Timestamp("2023-04-11 13:30:00+00:00"), "foo", bar=None)
-    #         == ts.data.loc["2023-04-11 13:30:00+00:00"]
-    #     )
 
     def test_yfinance_download(self):
         """Test YfinanceBase."""

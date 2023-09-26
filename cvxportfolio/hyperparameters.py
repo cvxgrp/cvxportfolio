@@ -69,7 +69,7 @@ class HyperParameter:
     def __neg__(self):
         return self * (-1)
 
-    def _collect_hyperparameters(self):
+    def collect_hyperparameters(self):
         return [self]
 
 
@@ -87,12 +87,12 @@ class CombinedHyperParameter(HyperParameter):
             * (ri.current_value if hasattr(ri, 'current_value') else ri)
             for le, ri in zip(self.left, self.right)])
 
-    def _collect_hyperparameters(self):
+    def collect_hyperparameters(self):
         """Collect (not combined) hyperparameters."""
         result = []
         for el in self.left + self.right:
-            if hasattr(el, '_collect_hyperparameters'):
-                result += el._collect_hyperparameters()
+            if hasattr(el, 'collect_hyperparameters'):
+                result += el.collect_hyperparameters()
         return result
 
     def __repr__(self):

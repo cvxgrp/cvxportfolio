@@ -69,10 +69,10 @@ class FullCovariance(BaseRiskModel):
 
         self.Sigma = DataEstimator(Sigma)
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
 
         if self._alreadyfactorized:
             self.Sigma_sqrt.value = self.Sigma.current_value
@@ -80,7 +80,7 @@ class FullCovariance(BaseRiskModel):
             self.Sigma_sqrt.value = project_on_psd_cone_and_factorize(
                 self.Sigma.current_value)
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         self.cvxpy_expression = cp.sum_squares(
             self.Sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
         return self.cvxpy_expression
@@ -105,18 +105,18 @@ class RiskForecastError(BaseRiskModel):
 
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.sigmas_parameter = cp.Parameter(
             len(universe)-1, nonneg=True)  # +self.kelly))
 
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
         """Update forecast error risk here, and take square root of Sigma."""
 
         sigma_squares = self.sigma_squares.current_value
 
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
         return cp.square(cp.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
 
@@ -136,14 +136,14 @@ class DiagonalCovariance(BaseRiskModel):
             sigma_squares = sigma_squares()
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.sigmas_parameter = cp.Parameter(len(universe)-1)  # +self.kelly))
 
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
         sigma_squares = self.sigma_squares.current_value
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         return cp.sum_squares(cp.multiply(w_plus_minus_w_bm[:-1],
             self.sigmas_parameter))
 
@@ -229,7 +229,7 @@ class FactorModelCovariance(BaseRiskModel):
         else:
             self._fit = False
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         if self._fit:
             effective_num_factors = min(self.num_factors, len(universe)-1)
@@ -242,7 +242,7 @@ class FactorModelCovariance(BaseRiskModel):
                 # we could refactor the code here so we don't create duplicate parameters
                 self.F_parameter = cp.Parameter(self.F.parameter.shape)
 
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
 
         if self._fit:
             if hasattr(self, 'F_and_d_Forecaster'):
@@ -263,7 +263,7 @@ class FactorModelCovariance(BaseRiskModel):
 
         self.idyosync_sqrt_parameter.value = np.sqrt(d)
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         self.expression = cp.sum_squares(cp.multiply(
             self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
         assert self.expression.is_dcp(dpp=True)
@@ -293,17 +293,17 @@ class WorstCaseRisk(BaseRiskModel):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
 
-    def _recursive_pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator_recursive(self, universe, backtest_times):
         """Initialize objects."""
         for risk in self.riskmodels:
-            risk._recursive_pre_evaluation(universe, backtest_times)
+            risk.initialize_estimator_recursive(universe, backtest_times)
 
-    def _recursive_values_in_time(self, **kwargs):
+    def values_in_time_recursive(self, **kwargs):
         """Update parameters."""
         for risk in self.riskmodels:
-            risk._recursive_values_in_time(**kwargs)
+            risk.values_in_time_recursive(**kwargs)
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        risks = [risk._compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        risks = [risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
                  for risk in self.riskmodels]
         return cp.max(cp.hstack(risks))

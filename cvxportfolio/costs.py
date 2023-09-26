@@ -67,7 +67,7 @@ class BaseCost(CvxpyExpressionEstimator):
         """Add cost expression to another cost expression.
 
         Idea is to create a new CombinedCost class that
-        implements `_compile_to_cvxpy` and _recursive_values_in_time
+        implements `compile_to_cvxpy` and values_in_time_recursive
         by summing over costs.
         """
         if isinstance(other, CombinedCosts):
@@ -143,21 +143,21 @@ class CombinedCosts(BaseCost):
         return CombinedCosts(self.costs,
                              [el * other for el in self.multipliers])
 
-    def _recursive_pre_evaluation(self, *args, **kwargs):
+    def initialize_estimator_recursive(self, *args, **kwargs):
         """Iterate over constituent costs."""
-        [el._recursive_pre_evaluation(*args, **kwargs) for el in self.costs]
+        [el.initialize_estimator_recursive(*args, **kwargs) for el in self.costs]
 
-    def _recursive_values_in_time(self, **kwargs):
+    def values_in_time_recursive(self, **kwargs):
         """Iterate over constituent costs."""
-        [el._recursive_values_in_time(**kwargs) for el in self.costs]
+        [el.values_in_time_recursive(**kwargs) for el in self.costs]
 
-    def _compile_to_cvxpy(self, w_plus, z, portfolio_value):
+    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
         """Iterate over constituent costs."""
         self.expression = 0
         for multiplier, cost in zip(self.multipliers, self.costs):
             add = (multiplier.current_value
                 if hasattr(multiplier, 'current_value') else multiplier) *\
-                    cost._compile_to_cvxpy(w_plus, z, portfolio_value)
+                    cost.compile_to_cvxpy(w_plus, z, portfolio_value)
             if not add.is_dcp():
                 raise ConvexSpecificationError(cost * multiplier)
             if not add.is_concave():
@@ -165,10 +165,10 @@ class CombinedCosts(BaseCost):
             self.expression += add
         return self.expression
 
-    def _collect_hyperparameters(self):
-        return sum([el._collect_hyperparameters() for el in self.costs], []) +\
-            sum([el._collect_hyperparameters() for el in self.multipliers if
-                hasattr(el, '_collect_hyperparameters')], [])
+    def collect_hyperparameters(self):
+        return sum([el.collect_hyperparameters() for el in self.costs], []) +\
+            sum([el.collect_hyperparameters() for el in self.multipliers if
+                hasattr(el, 'collect_hyperparameters')], [])
 
     def __repr__(self):
         """Pretty-print."""
@@ -212,7 +212,7 @@ class SoftConstraint(BaseCost):
     def __init__(self, constraint):
         self.constraint = constraint
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile cost to cvxpy expression."""
         try:
             expr = (self.constraint._compile_constr_to_cvxpy(
@@ -322,7 +322,7 @@ class HoldingCost(BaseCost):
             dividends)
         self.periods_per_year = periods_per_year
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         """Initialize cvxpy parameters.
 
         We don't use the parameter from DataEstimator because we need to
@@ -340,7 +340,7 @@ class HoldingCost(BaseCost):
         if self.dividends is not None:
             self._dividends_parameter = cp.Parameter(len(universe) - 1)
 
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
         """Update cvxpy parameters.
 
         We compute the estimate of periods per year from past returns
@@ -370,7 +370,7 @@ class HoldingCost(BaseCost):
             self._dividends_parameter.value =\
                 np.ones(past_returns.shape[1]-1) * self.dividends.current_value
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile cost to cvxpy expression."""
 
         expression = 0.
@@ -407,9 +407,9 @@ class HoldingCost(BaseCost):
         # we should plug this into a recursive tree
         for est in [self.short_fees, self.long_fees, self.dividends]:
             if est is not None:
-                est._recursive_pre_evaluation(universe=h_plus.index,
+                est.initialize_estimator_recursive(universe=h_plus.index,
                                               backtest_times=[t])
-                est._recursive_values_in_time(t=t)
+                est.values_in_time_recursive(t=t)
 
         if self.short_fees is not None:
             cost += np.sum(_annual_percent_to_per_period(
@@ -475,7 +475,7 @@ class TransactionCost(BaseCost):
         self.window_volume_est = window_volume_est
         self.exponent = exponent
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         if self.a is not None or self.pershare_cost is not None:
             self.first_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
@@ -483,7 +483,7 @@ class TransactionCost(BaseCost):
             self.second_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
 
-    def _values_in_time(self, t,  current_portfolio_value, past_returns,
+    def values_in_time(self, t,  current_portfolio_value, past_returns,
                         past_volumes, current_prices, **kwargs):
 
         tmp = 0.
@@ -542,11 +542,11 @@ class TransactionCost(BaseCost):
                 raise SyntaxError(
                     "If you don't provide prices you should"
                     " set pershare_cost to None")
-            result += self.pershare_cost._recursive_values_in_time(t) * int(
+            result += self.pershare_cost.values_in_time_recursive(t) * int(
                 sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
 
         if self.a is not None:
-            result += sum(self.a._recursive_values_in_time(t)
+            result += sum(self.a.values_in_time_recursive(t)
                           * np.abs(u.iloc[:-1]))
 
         if self.b is not None:
@@ -556,7 +556,7 @@ class TransactionCost(BaseCost):
             # we add 1E-8 to the volumes to prevent 0 volumes error
             # (trades are cancelled on 0 volumes)
             result += (np.abs(u.iloc[:-1])**exponent) @ (
-                self.b._recursive_values_in_time(t) *
+                self.b.values_in_time_recursive(t) *
                 sigma / ((current_and_past_volumes.iloc[-1] + 1E-8) ** (
                 exponent - 1)))
 
@@ -565,7 +565,7 @@ class TransactionCost(BaseCost):
 
         return result
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
 
         expression = 0
         if self.a is not None or self.pershare_cost is not None:

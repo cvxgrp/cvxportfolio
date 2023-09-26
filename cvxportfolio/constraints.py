@@ -92,7 +92,7 @@ class EqualityConstraint(BaseConstraint):
     design of :class:`SoftConstraint` costs.
     """
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile constraint to cvxpy."""
         return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) ==\
             self._rhs()
@@ -118,7 +118,7 @@ class InequalityConstraint(BaseConstraint):
     design of :class:`SoftConstraint` costs.
     """
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile constraint to cvxpy."""
         return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) <=\
             self._rhs()
@@ -147,7 +147,7 @@ class CostInequalityConstraint(InequalityConstraint):
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile constraint to cvxpy."""
-        return self.cost._compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
+        return self.cost.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
 
     def _rhs(self):
         return self.value.parameter
@@ -183,10 +183,10 @@ class MarketNeutral(BaseWeightConstraint, EqualityConstraint):
         self.covarianceforecaster = HistoricalFactorizedCovariance()
         self.window = window
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.market_vector = cp.Parameter(len(universe)-1)
 
-    def _values_in_time(self, t, past_volumes, past_returns, **kwargs):
+    def values_in_time(self, t, past_volumes, past_returns, **kwargs):
         tmp = past_volumes.iloc[-self.window:].mean()
         tmp /= sum(tmp)
 
@@ -253,7 +253,7 @@ class ParticipationRateLimit(BaseTradeConstraint, InequalityConstraint):
             max_fraction_of_volumes, compile_parameter=True)
         self.portfolio_value = cp.Parameter(nonneg=True)
 
-    def _values_in_time(self, current_portfolio_value, **kwargs):
+    def values_in_time(self, current_portfolio_value, **kwargs):
         self.portfolio_value.value = current_portfolio_value
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -303,13 +303,13 @@ class NoTrade(BaseTradeConstraint):
         self.asset = asset
         self.periods = periods
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self._index = (universe.get_loc if hasattr(
             universe, 'get_loc') else universe.index)(self.asset)
         self._low = cp.Parameter()
         self._high = cp.Parameter()
 
-    def _values_in_time(self, t, **kwargs):
+    def values_in_time(self, t, **kwargs):
         if t in self.periods:
             self._low.value = 0.
             self._high.value = 0.
@@ -317,7 +317,7 @@ class NoTrade(BaseTradeConstraint):
             self._low.value = -100.
             self._high.value = +100.
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         return [z[self._index] >= self._low,
                 z[self._index] <= self._high]
 
@@ -373,7 +373,7 @@ class MinCashBalance(BaseWeightConstraint, InequalityConstraint):
         self.c_min = DataEstimator(c_min)
         self.rhs = cp.Parameter()
 
-    def _values_in_time(self, current_portfolio_value, **kwargs):
+    def values_in_time(self, current_portfolio_value, **kwargs):
         self.rhs.value = self.c_min.current_value/current_portfolio_value
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -458,11 +458,11 @@ class MinMaxWeightsAtTimes(BaseWeightConstraint):
         self.base_limit = limit
         self.times = times
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.backtest_times = backtest_times
         self.limit = cp.Parameter()
 
-    def _values_in_time(self, t, mpo_step, **kwargs):
+    def values_in_time(self, t, mpo_step, **kwargs):
         tidx = self.backtest_times.get_loc(t)
         nowtidx = tidx + mpo_step
         if (nowtidx < len(self.backtest_times)) and\
@@ -474,7 +474,7 @@ class MinMaxWeightsAtTimes(BaseWeightConstraint):
 
 class MinWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
-    sign = -1.  # used in _values_in_time of parent class
+    sign = -1.  # used in values_in_time of parent class
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile left hand side of the constraint expression."""
@@ -487,7 +487,7 @@ class MinWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
 class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
-    sign = 1.  # used in _values_in_time of parent class
+    sign = 1.  # used in values_in_time of parent class
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile left hand side of the constraint expression."""

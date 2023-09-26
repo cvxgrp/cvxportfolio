@@ -20,19 +20,22 @@ import cvxpy as cp
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.forecast import (HistoricalFactorizedCovariance,
+from cvxportfolio.forecast import (ForecastError,
+                                   HistoricalFactorizedCovariance,
+                                   HistoricalLowRankCovarianceSVD,
                                    HistoricalMeanError, HistoricalMeanReturn,
                                    HistoricalVariance)
 
 
-class TestEstimators(unittest.TestCase):
+class TestForecast(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Load the data and initialize cvxpy vars."""
         # cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
         cls.returns = pd.read_csv(
-            Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
+            Path(__file__).parent / "returns.csv", index_col=0,
+            parse_dates=[0])
         # cls.volumes = pd.read_csv(Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
         cls.w_plus = cp.Variable(cls.returns.shape[1])
         cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
@@ -40,8 +43,8 @@ class TestEstimators(unittest.TestCase):
         cls.N = cls.returns.shape[1]
 
     # def boilerplate(self, model):
-    #     model._recursive_pre_evaluation(universe=self.returns.columns, backtest_times=self.returns.index)
-    #     return model._compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+    #     model.initialize_estimator_recursive(universe=self.returns.columns, backtest_times=self.returns.index)
+    #     return model.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
 
     def test_mean_update(self):
         forecaster = HistoricalMeanReturn()  # lastforcash=True)
@@ -52,7 +55,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            mean = forecaster._recursive_values_in_time(
+            mean = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             # print(mean)
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
@@ -68,7 +71,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            var = forecaster._recursive_values_in_time(
+            var = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             print(var)
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
@@ -83,7 +86,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            val = forecaster._recursive_values_in_time(
+            val = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             print(val)
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
@@ -98,12 +101,15 @@ class TestEstimators(unittest.TestCase):
 
         count_matrix = forecaster._get_count_matrix(returns)
 
-        for indexes in [(1, 2), (4, 5), (1, 5), (7, 18), (7, 24), (1, 15), (13, 22)]:
+        for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
+                (7, 24), (1, 15), (13, 22)]:
             print(count_matrix.iloc[indexes[0], indexes[1]])
             print(len((returns.iloc[:, indexes[0]] *
                   returns.iloc[:, indexes[1]]).dropna()))
-            self.assertTrue(np.isclose(count_matrix.iloc[indexes[0], indexes[1]],
-                                       len((returns.iloc[:, indexes[0]] * returns.iloc[:, indexes[1]]).dropna())))
+            self.assertTrue(
+                np.isclose(count_matrix.iloc[indexes[0], indexes[1]],
+                    len((returns.iloc[:, indexes[0]]
+                         * returns.iloc[:, indexes[1]]).dropna())))
 
     def test_sum_matrix(self):
         forecaster = HistoricalFactorizedCovariance()  # kelly=True)
@@ -111,12 +117,13 @@ class TestEstimators(unittest.TestCase):
         returns.iloc[:20, 3:10] = np.nan
         returns.iloc[10:15, 10:20] = np.nan
 
-        forecaster._recursive_values_in_time(
+        forecaster.values_in_time_recursive(
             t=pd.Timestamp('2022-01-01'), past_returns=returns)
 
-        sum_matrix = forecaster.last_sum_matrix
+        sum_matrix = forecaster._last_sum_matrix
 
-        for indexes in [(1, 2), (4, 5), (1, 5), (7, 18), (7, 24), (1, 15), (13, 22)]:
+        for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
+                (7, 24), (1, 15), (13, 22)]:
             print()
             print(sum_matrix[indexes[0], indexes[1]])
             print((returns.iloc[:, indexes[0]] *
@@ -153,7 +160,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            val = forecaster._recursive_values_in_time(
+            val = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             Sigma = val @ val.T
             self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
@@ -161,10 +168,12 @@ class TestEstimators(unittest.TestCase):
     def test_covariance_update_nokelly(self):
         """Test covariance forecast estimator.
 
-        NOTE: due to a bug in pandas we can't test against pandas.DataFrame.cov,
-        see https://github.com/pandas-dev/pandas/issues/45814 . In fact with the
-        current bug in pandas
-        ``past_returns.iloc[:,:-1].cov(ddof=0)`` returns ``past_returns.iloc[:,:-1].cov(ddof=1)``
+        NOTE: due to a bug in pandas we can't test against 
+        pandas.DataFrame.cov,
+        see https://github.com/pandas-dev/pandas/issues/45814 . 
+        In fact with the current bug in pandas
+        ``past_returns.iloc[:,:-1].cov(ddof=0)`` returns 
+        ``past_returns.iloc[:,:-1].cov(ddof=1)``
         whenever there are missing values.
         """
 
@@ -183,7 +192,9 @@ class TestEstimators(unittest.TestCase):
             j_nanmasker[rets.iloc[:, j].isnull()] = np.nan
             j_nanmasker[~(rets.iloc[:, j].isnull())] = 1.
             print(i_nanmasker, j_nanmasker)
-            return np.nanmean(rets.iloc[:, i] * rets.iloc[:, j]) - np.nanmean(rets.iloc[:, i] * j_nanmasker) * np.nanmean(rets.iloc[:, j] * i_nanmasker)
+            return np.nanmean(rets.iloc[:, i] * rets.iloc[:, j]
+                ) - np.nanmean(rets.iloc[:, i] * j_nanmasker
+                    ) * np.nanmean(rets.iloc[:, j] * i_nanmasker)
 
         def compute_Sigma(rets):
             res = np.zeros((3, 3))
@@ -201,7 +212,7 @@ class TestEstimators(unittest.TestCase):
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            val = forecaster._recursive_values_in_time(
+            val = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             Sigma = val @ val.T
 
@@ -210,6 +221,101 @@ class TestEstimators(unittest.TestCase):
             # self.assertTrue(np.allclose(Sigma, pandasSigma))
             self.assertTrue(np.allclose(
                 np.diag(Sigma), past_returns.iloc[:, :-1].var(ddof=0)))
+
+    def test_SVD_forecaster(self):
+        """Test the SVD forecaster. 
+        
+        In particular, we compare it with the other covariance forecaster.
+        
+        We check that their forecasts are the same if there are no
+        missing values in the past returns, and they diverge more
+        as more missing values are introduced. Additionally, we check
+        that it breaks when there are too many (more than 90%!) missing values.
+        """
+
+        returns = pd.DataFrame(self.returns.iloc[:, :4], copy=True)
+        t = returns.index[10]
+
+        num_factors = 1
+
+        forecaster = HistoricalLowRankCovarianceSVD(
+            num_factors=num_factors)
+        forecaster2 = HistoricalFactorizedCovariance(kelly=True)
+
+        def compare_with_eigh(returns):
+
+            F, d = forecaster.values_in_time_recursive(
+                t=t, past_returns=returns)
+
+            sigma_fact = forecaster2.values_in_time_recursive(
+                t=t, past_returns=returns)
+
+            sigma_svd = F.T @ F + np.diag(d)
+            sigma_eigh = (
+                sigma_fact[:, -num_factors:] @ sigma_fact[:, -num_factors:].T
+                + np.diag((sigma_fact[:, :-num_factors]**2).sum(1)))
+            print(sigma_svd)
+            print(sigma_eigh)
+            print(np.linalg.norm(sigma_svd),
+                  np.linalg.norm(sigma_eigh),
+                  np.linalg.norm(sigma_eigh-sigma_svd)
+                  )
+
+            forecaster3 = HistoricalLowRankCovarianceSVD(num_factors=1,
+                svd='scipy')
+
+            with self.assertRaises(SyntaxError):
+                val = forecaster3.values_in_time_recursive(
+                    t=t, past_returns=returns)
+
+            return np.linalg.norm(sigma_eigh-sigma_svd)
+
+        self.assertTrue(np.isclose(compare_with_eigh(returns), 0.))
+
+        returns.iloc[:20, 1] = np.nan
+
+        diff1 = compare_with_eigh(returns)
+        self.assertTrue(0 < diff1)
+
+        returns.iloc[10:30, 0] = np.nan
+
+        diff2 = compare_with_eigh(returns)
+        self.assertTrue(diff1 < diff2)
+
+        returns.iloc[25:40, 2] = np.nan
+        diff3 = compare_with_eigh(returns)
+        self.assertTrue(diff2 < diff3)
+
+        print(returns.isnull().mean())
+        returns.iloc[4:-3, -2] = np.nan
+        print(returns.isnull().mean())
+        diff4 = compare_with_eigh(returns)
+        self.assertTrue(diff3 < diff4)
+
+        returns.iloc[:50, 0] = np.nan
+        returns.iloc[50:, 1] = np.nan
+        print(returns.isnull().mean())
+
+        with self.assertRaises(ForecastError):
+            sigma_fact = forecaster2.values_in_time_recursive(
+                t=t, past_returns=returns)
+
+        # this one is even more robust!
+        F, d = forecaster.values_in_time_recursive(
+            t=t, past_returns=returns)
+
+        returns.iloc[56:, 0] = np.nan
+        print(returns.isnull().mean())
+
+        F, d = forecaster.values_in_time_recursive(
+            t=t, past_returns=returns)
+
+        returns.iloc[:70, 1] = np.nan
+        print(returns.isnull().mean())
+
+        with self.assertRaises(ForecastError):
+            F, d = forecaster.values_in_time_recursive(
+                t=t, past_returns=returns)
 
 
 if __name__ == '__main__':

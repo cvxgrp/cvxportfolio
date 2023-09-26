@@ -28,11 +28,12 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from .errors import ForecastError
 from .estimator import PolicyEstimator
 
 
-def online_cache(_values_in_time):
-    """A simple online cache that decorates _values_in_time.
+def online_cache(values_in_time):
+    """A simple online cache that decorates values_in_time.
 
     The instance it is used on needs to be hashable (we currently use
     the hash of its __repr__ via dataclass).
@@ -43,17 +44,18 @@ def online_cache(_values_in_time):
         if cache is None:  # temporary to not change tests
             cache = {}
 
-        if not (self in cache):
+        if not self in cache:
             cache[self] = {}
 
         if t in cache[self]:
             logging.debug(
-                f'{self}._values_in_time at time {t} is retrieved from cache.')
+                '%s.values_in_time at time %s is retrieved from cache.',
+                self, t)
             result = cache[self][t]
         else:
-            result = _values_in_time(self, t=t, cache=cache, **kwargs)
-            logging.debug(
-                f'{self}._values_in_time at time {t} is stored in cache.')
+            result = values_in_time(self, t=t, cache=cache, **kwargs)
+            logging.debug('%s.values_in_time at time %s is stored in cache.',
+                self, t)
             cache[self][t] = result
         return result
 
@@ -63,20 +65,20 @@ def online_cache(_values_in_time):
 class BaseForecast(PolicyEstimator):
     """Base class for forecasters."""
 
-    # def _recursive_pre_evaluation(self, universe, backtest_times):
-    #     self.universe = universe
-    #     self.backtest_times = backtest_times
-    #
+    _last_time = None
 
     def _agnostic_update(self, t, past_returns):
         """Choose whether to make forecast from scratch or update last one."""
-        if (self.last_time is None) or (self.last_time != past_returns.index[-1]):
+        if (self._last_time is None) or (
+            self._last_time != past_returns.index[-1]):
             logging.debug(
-                f'{self}._values_in_time at time {t} is computed from scratch.')
+                '%s.values_in_time at time %s is computed from scratch.',
+                self, t)
             self._initial_compute(t=t, past_returns=past_returns)
         else:
             logging.debug(
-                f'{self}._values_in_time at time {t} is updated from previous value.')
+              '%s.values_in_time at time %s is updated from previous value.',
+              self, t)
             self._online_update(t=t, past_returns=past_returns)
 
     def _initial_compute(self, t, past_returns):
@@ -96,44 +98,28 @@ class HistoricalMeanReturn(BaseForecast):
     """
 
     def __post_init__(self):
-        self.last_time = None
-        self.last_counts = None
-        self.last_sum = None
+        self._last_time = None
+        self._last_counts = None
+        self._last_sum = None
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.__post_init__()
 
-    def _values_in_time(self, t, past_returns, cache=None, **kwargs):
+    def values_in_time(self, t, past_returns, cache=None, **kwargs):
         self._agnostic_update(t=t, past_returns=past_returns)
-        return (self.last_sum / self.last_counts).values
+        return (self._last_sum / self._last_counts).values
 
     def _initial_compute(self, t, past_returns):
         """Make forecast from scratch."""
-        self.last_counts = past_returns.iloc[:, :-1].count()
-        self.last_sum = past_returns.iloc[:, :-1].sum()
-        self.last_time = t
+        self._last_counts = past_returns.iloc[:, :-1].count()
+        self._last_sum = past_returns.iloc[:, :-1].sum()
+        self._last_time = t
 
     def _online_update(self, t, past_returns):
         """Update forecast from period before."""
-        self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
-        self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)
-        self.last_time = t
-
-
-class HistoricalMeanError(BaseForecast):
-    r"""Historical standard deviations of the mean of non-cash returns.
-
-    For a given time series of past returns :math:`r_{t-1}, r_{t-2},
-    \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
-    missing values we ignore them, both to compute the variance and the
-    count.
-    """
-
-    def __init__(self):
-        self.varianceforecaster = HistoricalVariance(kelly=False)
-
-    def _values_in_time(self, t, past_returns, **kwargs):
-        return np.sqrt(self.varianceforecaster.current_value / self.varianceforecaster.last_counts.values)
+        self._last_counts += ~(past_returns.iloc[-1, :-1].isnull())
+        self._last_sum += past_returns.iloc[-1, :-1].fillna(0.)
+        self._last_time = t
 
 
 @dataclass(unsafe_hash=True)
@@ -152,34 +138,53 @@ class HistoricalVariance(BaseForecast):
     def __post_init__(self):
         if not self.kelly:
             self.meanforecaster = HistoricalMeanReturn()
-        self.last_time = None
-        self.last_counts = None
-        self.last_sum = None
+        self._last_time = None
+        self._last_counts = None
+        self._last_sum = None
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.__post_init__()
 
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
         self._agnostic_update(t=t, past_returns=past_returns)
-        result = (self.last_sum / self.last_counts).values
+        result = (self._last_sum / self._last_counts).values
         if not self.kelly:
             result -= self.meanforecaster.current_value**2
         return result
 
     def _initial_compute(self, t, past_returns):
-        self.last_counts = past_returns.iloc[:, :-1].count()
-        self.last_sum = (past_returns.iloc[:, :-1]**2).sum()
-        self.last_time = t
+        self._last_counts = past_returns.iloc[:, :-1].count()
+        self._last_sum = (past_returns.iloc[:, :-1]**2).sum()
+        self._last_time = t
 
     # , last_estimation, last_counts, last_time):
     def _online_update(self, t, past_returns):
-        self.last_counts += ~(past_returns.iloc[-1, :-1].isnull())
-        self.last_sum += past_returns.iloc[-1, :-1].fillna(0.)**2
-        self.last_time = t
+        self._last_counts += ~(past_returns.iloc[-1, :-1].isnull())
+        self._last_sum += past_returns.iloc[-1, :-1].fillna(0.)**2
+        self._last_time = t
+
+
+class HistoricalMeanError(HistoricalVariance):
+    r"""Historical standard deviations of the mean of non-cash returns.
+
+    For a given time series of past returns :math:`r_{t-1}, r_{t-2},
+    \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
+    missing values we ignore them, both to compute the variance and the
+    count.
+    """
+
+    def __init__(self):
+        super().__init__(kelly=False)
+
+    def values_in_time(self, t, past_returns, **kwargs):
+        variance = super().values_in_time(
+            t=t, past_returns=past_returns, **kwargs)
+        return np.sqrt(variance / self._last_counts.values)
 
 
 @dataclass(unsafe_hash=True)
-class HistoricalLowRankCovarianceSVD(BaseForecast):
+class HistoricalLowRankCovarianceSVD(PolicyEstimator):
+    """Build factor model covariance using truncated SVD."""
 
     num_factors: int
     svd_iters: int = 10
@@ -207,18 +212,26 @@ class HistoricalLowRankCovarianceSVD(BaseForecast):
         if nan_fraction:
             #if nan_fraction > 0.1 and not shrink:
             #    warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
-            nan_implicit_imputation = pd.DataFrame(0., columns=normalized.columns, index = normalized.index)
-            for i in range(iters):
+            nan_implicit_imputation = pd.DataFrame(0.,
+                columns=normalized.columns, index = normalized.index)
+            for _ in range(iters):
                 if svd == 'numpy':
-                    u, s, v = np.linalg.svd(normalized.fillna(nan_implicit_imputation), full_matrices=False)
+                    u, s, v = np.linalg.svd(
+                        normalized.fillna(nan_implicit_imputation),
+                        full_matrices=False)
                 else:
-                    raise Exception('Currently only numpy svd is implemented')
+                    raise SyntaxError(
+                        'Currently only numpy svd is implemented')
                 nan_implicit_imputation = pd.DataFrame(
                     (u[:, :num_factors] * (s[:num_factors] #- s[num_factors] * shrink
                         )) @ v[:num_factors],
                     columns = normalized.columns, index = normalized.index)
         else:
-            u, s, v = np.linalg.svd(normalized, full_matrices=False)
+            if svd == 'numpy':
+                u, s, v = np.linalg.svd(normalized, full_matrices=False)
+            else:
+                raise SyntaxError(
+                    'Currently only numpy svd is implemented')
         F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
         #if normalize:
         #    F = pd.DataFrame(F.T * (normalizer.values + 1E-8), columns=normalizer.index)
@@ -226,20 +239,24 @@ class HistoricalLowRankCovarianceSVD(BaseForecast):
         F = pd.DataFrame(F.T, columns=normalizer.index)
         idyosyncratic = normalizer**2 - (F**2).sum(0)
         if not np.all(idyosyncratic >= 0.):
-            raise Exception("Low rank risk estimation with iterative SVD did not work.")
+            raise ForecastError(
+                "Low rank risk estimation with iterative SVD did not work."
+                + " You probably have too many missing values in the past"
+                + " returns. You may try with HistoricalFactorizedCovariance,"
+                + " or change your universe.")
         return F.values, idyosyncratic.values
 
     @online_cache
-    def _values_in_time(self, past_returns, **kwargs):
+    def values_in_time(self, past_returns, **kwargs):
 
         return self.build_low_rank_model(past_returns.iloc[:, :-1],
             num_factors=self.num_factors,
             iters=self.svd_iters, svd=self.svd)
 
 
-def project_on_psd_cone_and_factorize(Sigma):
+def project_on_psd_cone_and_factorize(covariance):
     """Factorize matrix and remove negative eigenvalues."""
-    eigval, eigvec = np.linalg.eigh(Sigma)
+    eigval, eigvec = np.linalg.eigh(covariance)
     eigval = np.maximum(eigval, 0.)
     return eigvec @ np.diag(np.sqrt(eigval))
 
@@ -247,11 +264,15 @@ def project_on_psd_cone_and_factorize(Sigma):
 class HistoricalFactorizedCovariance(BaseForecast):
     r"""Historical covariance matrix, sqrt factorized.
 
-    :param kelly: if ``True`` compute each :math:` \Sigma_{i,j} \simeq \mathbf{E}[r^{i} r^{j}]`, else
-        :math:` \Sigma_{i,j} \simeq \mathbf{E}[r^{i} r^{j}] - \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]` matching
-        the behavior of ``pandas.DataFrame.cov(ddof=0)`` (with same logic to handle missing data).
-        The second case corresponds to the classic definition of covariance, while the first is what is obtained
-        by Taylor approximation of the Kelly gambling objective. (See page 28 of the book.)
+    :param kelly: if ``True`` compute each 
+        :math:`\Sigma_{i,j} = \overline{r^{i} r^{j}}`, else
+        :math:`\overline{r^{i} r^{j}} - \overline{r^{i}}\overline{r^{j}}`.
+        The second case corresponds to the classic definition of covariance, 
+        while the first is what is obtained by Taylor approximation of 
+        the Kelly gambling objective. (See page 28 of the book.)
+        In the second case, the estimated covariance is the same
+        as what is returned by ``pandas.DataFrame.cov(ddof=0)``, *i.e.*,
+        we use the same logic to handle missing data.
     :type kelly: bool
     """
 
@@ -261,9 +282,12 @@ class HistoricalFactorizedCovariance(BaseForecast):
     FACTORIZED = True
 
     def __post_init__(self):
-        self.last_time = None
+        self._last_time = None
+        self._last_counts_matrix = None
+        self._last_sum_matrix = None
+        self._joint_mean = None
 
-    def _pre_evaluation(self, universe, backtest_times):
+    def initialize_estimator(self, universe, backtest_times):
         self.__post_init__()
 
     @staticmethod
@@ -285,39 +309,36 @@ class HistoricalFactorizedCovariance(BaseForecast):
         tmp = nonnull.T @ past_returns.iloc[:, :-1].fillna(0.)
         return tmp  # * tmp.T
 
-    # @staticmethod
-    # def _factorize(Sigma):
-    #     """Factorize matrix and remove negative eigenvalues."""
-    #     eigval, eigvec = np.linalg.eigh(Sigma)
-    #     eigval = np.maximum(eigval, 0.)
-    #     return eigvec @ np.diag(np.sqrt(eigval))
-
     def _initial_compute(self, t, past_returns):
-        self.last_counts_matrix = self._get_count_matrix(past_returns).values
+        self._last_counts_matrix = self._get_count_matrix(past_returns).values
         filled = past_returns.iloc[:, :-1].fillna(0.).values
-        self.last_sum_matrix = filled.T @ filled
+        self._last_sum_matrix = filled.T @ filled
         if not self.kelly:
-            self.joint_mean = self._get_initial_joint_mean(past_returns)
+            self._joint_mean = self._get_initial_joint_mean(past_returns)
 
-        self.last_time = t
+        self._last_time = t
 
     def _online_update(self, t, past_returns):
         nonnull = ~(past_returns.iloc[-1, :-1].isnull())
-        self.last_counts_matrix += np.outer(nonnull, nonnull)
+        self._last_counts_matrix += np.outer(nonnull, nonnull)
         last_ret = past_returns.iloc[-1, :-1].fillna(0.)
-        self.last_sum_matrix += np.outer(last_ret, last_ret)
-        self.last_time = t
+        self._last_sum_matrix += np.outer(last_ret, last_ret)
+        self._last_time = t
         if not self.kelly:
-            self.joint_mean += last_ret
+            self._joint_mean += last_ret
 
     @online_cache
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
 
         self._agnostic_update(t=t, past_returns=past_returns)
-        Sigma = self.last_sum_matrix / self.last_counts_matrix
+        covariance = self._last_sum_matrix / self._last_counts_matrix
 
         if not self.kelly:
-            tmp = self.joint_mean / self.last_counts_matrix
-            Sigma -= tmp.T * tmp
-
-        return project_on_psd_cone_and_factorize(Sigma)
+            tmp = self._joint_mean / self._last_counts_matrix
+            covariance -= tmp.T * tmp
+        try:
+            return project_on_psd_cone_and_factorize(covariance)
+        except np.linalg.LinAlgError as exc:
+            raise ForecastError(f'Covariance estimation at time {t} failed;'
+                + ' there are (probably) too many missing values in the'
+                + ' past returns.') from exc

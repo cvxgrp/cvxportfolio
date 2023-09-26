@@ -49,7 +49,7 @@ class TestPolicies(unittest.TestCase):
         hold = Hold()
         w = pd.Series(0.5, ["AAPL", "CASH"])
         self.assertTrue(np.all(
-            hold._recursive_values_in_time(current_weights=w).values == np.zeros(2)))
+            hold.values_in_time_recursive(current_weights=w).values == np.zeros(2)))
 
     def test_rank_and_long_short(self):
         hold = Hold()
@@ -64,7 +64,7 @@ class TestPolicies(unittest.TestCase):
             num_short=num_short,
             target_leverage=target_leverage,
         )
-        z = rls._recursive_values_in_time(t=None, current_weights=w)
+        z = rls.values_in_time_recursive(t=None, current_weights=w)
         print(z)
         wplus = w + z
         self.assertTrue(wplus["CASH"] == 1)
@@ -86,21 +86,21 @@ class TestPolicies(unittest.TestCase):
             num_short=num_short,
             target_leverage=target_leverage,
         )
-        z1 = rls._recursive_values_in_time(t=index[0], current_weights=w)
+        z1 = rls.values_in_time_recursive(t=index[0], current_weights=w)
         print(z1)
         wplus = w + z1
         self.assertTrue(wplus["CASH"] == 1)
         self.assertTrue(wplus["TSLA"] == 0)
         self.assertTrue(wplus["AAPL"] == -wplus["GOOGL"])
         self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
-        z2 = rls._recursive_values_in_time(t=index[1], current_weights=w)
+        z2 = rls.values_in_time_recursive(t=index[1], current_weights=w)
         print(z2)
         wplus = w + z2
         self.assertTrue(wplus["CASH"] == 1)
         self.assertTrue(wplus["TSLA"] == 0)
         self.assertTrue(wplus["AAPL"] == -wplus["GOOGL"])
         self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
-        z3 = rls._recursive_values_in_time(t=index[2], current_weights=w)
+        z3 = rls.values_in_time_recursive(t=index[2], current_weights=w)
         wplus = w + z3
         self.assertTrue(wplus["CASH"] == 1)
         self.assertTrue(wplus["AAPL"] == 0)
@@ -120,7 +120,7 @@ class TestPolicies(unittest.TestCase):
                                 }).T
         policy = ProportionalTradeToTargets(targets)
 
-        policy._recursive_pre_evaluation(
+        policy.initialize_estimator_recursive(
             universe=self.returns.columns, backtest_times=self.returns.index)
         start_portfolio = pd.Series(
             np.random.randn(
@@ -131,7 +131,7 @@ class TestPolicies(unittest.TestCase):
             print(t)
             print(start_portfolio)
 
-            trade = policy._recursive_values_in_time(
+            trade = policy.values_in_time_recursive(
                 t=t, current_weights=start_portfolio)
             start_portfolio += trade
 
@@ -147,7 +147,7 @@ class TestPolicies(unittest.TestCase):
             self.returns.columns)
         policy = SellAll()
         t = pd.Timestamp('2022-01-01')
-        trade = policy._recursive_values_in_time(
+        trade = policy.values_in_time_recursive(
             t=t, current_weights=start_portfolio)
         allcash = np.zeros(len(start_portfolio))
         allcash[-1] = 1
@@ -164,12 +164,12 @@ class TestPolicies(unittest.TestCase):
 
         policy = FixedTrades(fixed_trades)
         t = self.returns.index[123]
-        trade = policy._recursive_values_in_time(t=t, current_weights=pd.Series(
+        trade = policy.values_in_time_recursive(t=t, current_weights=pd.Series(
             0., self.returns.columns))
         self.assertTrue(np.all(trade == fixed_trades.loc[t]))
 
         t = pd.Timestamp('1900-01-01')
-        trade = policy._recursive_values_in_time(t=t, current_weights=trade)
+        trade = policy.values_in_time_recursive(t=t, current_weights=trade)
         self.assertTrue(np.all(trade == 0.))
 
     def test_fixed_weights(self):
@@ -182,18 +182,18 @@ class TestPolicies(unittest.TestCase):
 
         policy = FixedWeights(fixed_weights)
         t = self.returns.index[123]
-        trade = policy._recursive_values_in_time(t=t, current_weights=pd.Series(
+        trade = policy.values_in_time_recursive(t=t, current_weights=pd.Series(
             0., self.returns.columns))
         self.assertTrue(np.all(trade == fixed_weights.loc[t]))
 
         t = self.returns.index[111]
-        trade = policy._recursive_values_in_time(
+        trade = policy.values_in_time_recursive(
             t=t, current_weights=fixed_weights.iloc[110])
         self.assertTrue(np.allclose(
             trade + fixed_weights.iloc[110], fixed_weights.loc[t]))
 
         t = pd.Timestamp('1900-01-01')
-        trade = policy._recursive_values_in_time(t=t, current_weights=trade)
+        trade = policy.values_in_time_recursive(t=t, current_weights=trade)
         self.assertTrue(np.all(trade == 0.))
 
     def test_periodic_rebalance(self):
@@ -208,21 +208,21 @@ class TestPolicies(unittest.TestCase):
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
 
-        trade = policy._recursive_values_in_time(
+        trade = policy.values_in_time_recursive(
             t=rebalancing_times[0], current_weights=init)
         self.assertTrue(np.allclose(trade + init, target))
 
-        trade = policy._recursive_values_in_time(t=rebalancing_times[0] + pd.Timedelta('1d'),
+        trade = policy.values_in_time_recursive(t=rebalancing_times[0] + pd.Timedelta('1d'),
                                                  current_weights=init)
         self.assertTrue(np.allclose(trade, 0))
 
     def test_uniform(self):
         pol = Uniform()
-        pol._recursive_pre_evaluation(self.returns.columns, self.returns.index)
+        pol.initialize_estimator_recursive(self.returns.columns, self.returns.index)
 
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
-        trade = pol._recursive_values_in_time(
+        trade = pol.values_in_time_recursive(
             t=self.returns.index[123], current_weights=init)
         self.assertTrue(np.allclose((trade + init)[:-1],
                                     np.ones(self.returns.shape[1]-1)/(self.returns.shape[1]-1)))
@@ -236,16 +236,16 @@ class TestPolicies(unittest.TestCase):
 
         policy = ProportionalRebalance(
             target, target_matching_times=target_matching_times)
-        policy._recursive_pre_evaluation(
+        policy.initialize_estimator_recursive(
             universe=self.returns.columns, backtest_times=self.returns.index)
 
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
 
-        trade = policy._recursive_values_in_time(
+        trade = policy.values_in_time_recursive(
             t=self.returns.index[1], current_weights=init)
         init += trade
-        trade2 = policy._recursive_values_in_time(
+        trade2 = policy.values_in_time_recursive(
             t=self.returns.index[2], current_weights=init)
         self.assertTrue(np.allclose(trade, trade2))
         self.assertTrue(np.allclose(trade + trade2 + init, target))
@@ -265,13 +265,13 @@ class TestPolicies(unittest.TestCase):
 
         for tracking_error in [0.01, .02, .05, .1]:
             policy = AdaptiveRebalance(target, tracking_error=tracking_error)
-            trade = policy._recursive_values_in_time(
+            trade = policy.values_in_time_recursive(
                 t=self.returns.index[1], current_weights=init)
             self.assertTrue(np.allclose(init + trade, target.iloc[0]))
 
         for tracking_error in [.2, .5]:
             policy = AdaptiveRebalance(target, tracking_error=tracking_error)
-            trade = policy._recursive_values_in_time(
+            trade = policy.values_in_time_recursive(
                 t=self.returns.index[1], current_weights=init)
             self.assertTrue(np.allclose(trade, 0.))
 
@@ -291,14 +291,14 @@ class TestPolicies(unittest.TestCase):
             # verbose=True,
             solver='ECOS')
 
-        policy._recursive_pre_evaluation(
+        policy.initialize_estimator_recursive(
             universe=self.returns.columns, backtest_times=self.returns.index)
-        policy._compile_to_cvxpy()
+        policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
 
-        result = policy._recursive_values_in_time(
+        result = policy.values_in_time_recursive(
             t=self.returns.index[121],
             current_weights=pd.Series(
                 curw,
@@ -348,14 +348,14 @@ class TestPolicies(unittest.TestCase):
             # verbose=True,
             solver='ECOS')
 
-        policy._recursive_pre_evaluation(
+        policy.initialize_estimator_recursive(
             universe=self.returns.columns, backtest_times=self.returns.index)
-        policy._compile_to_cvxpy()
+        policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
 
-        result = policy._recursive_values_in_time(
+        result = policy.values_in_time_recursive(
             t=self.returns.index[134],
             current_weights=pd.Series(
                 curw,
@@ -371,7 +371,7 @@ class TestPolicies(unittest.TestCase):
 
         curw += result
 
-        result2 = policy._recursive_values_in_time(
+        result2 = policy.values_in_time_recursive(
             t=self.returns.index[134],
             current_weights=pd.Series(
                 curw,
@@ -396,15 +396,15 @@ class TestPolicies(unittest.TestCase):
             # verbose=True,
             solver='ECOS')
 
-        policy._recursive_pre_evaluation(
+        policy.initialize_estimator_recursive(
             universe=self.returns.columns, backtest_times=self.returns.index)
-        policy._compile_to_cvxpy()
+        policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
 
         with self.assertRaises(PortfolioOptimizationError):
-            result = policy._recursive_values_in_time(
+            result = policy.values_in_time_recursive(
                 t=self.returns.index[134],
                 current_weights=pd.Series(
                     curw,
@@ -427,15 +427,15 @@ class TestPolicies(unittest.TestCase):
             # verbose=True,
             solver='ECOS')
 
-        policy._recursive_pre_evaluation(
+        policy.initialize_estimator_recursive(
             universe=self.returns.columns, backtest_times=self.returns.index)
-        policy._compile_to_cvxpy()
+        policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
 
         with self.assertRaises(PortfolioOptimizationError):
-            result = policy._recursive_values_in_time(
+            result = policy.values_in_time_recursive(
                 t=self.returns.index[134],
                 current_weights=pd.Series(
                     curw,
@@ -464,14 +464,14 @@ class TestPolicies(unittest.TestCase):
                 planning_horizon=planning_horizon,
                 solver='ECOS')
 
-            policy._recursive_pre_evaluation(
+            policy.initialize_estimator_recursive(
                 universe=self.returns.columns, backtest_times=self.returns.index)
-            policy._compile_to_cvxpy()
+            policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
 
-            results.append(policy._recursive_values_in_time(
+            results.append(policy.values_in_time_recursive(
                 t=self.returns.index[67],
                 current_weights=pd.Series(
                     curw,
@@ -500,14 +500,14 @@ class TestPolicies(unittest.TestCase):
                 planning_horizon=planning_horizon,
                 solver='ECOS')
 
-            policy._recursive_pre_evaluation(
+            policy.initialize_estimator_recursive(
                 universe=self.returns.columns, backtest_times=self.returns.index)
-            policy._compile_to_cvxpy()
+            policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
 
-            results.append(policy._recursive_values_in_time(
+            results.append(policy.values_in_time_recursive(
                 t=self.returns.index[67],
                 current_weights=pd.Series(
                     curw,
@@ -555,14 +555,14 @@ class TestPolicies(unittest.TestCase):
                 planning_horizon=planning_horizon,
                 solver='ECOS')
 
-            policy._recursive_pre_evaluation(
+            policy.initialize_estimator_recursive(
                 universe=self.returns.columns, backtest_times=self.returns.index)
-            policy._compile_to_cvxpy()
+            policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
 
-            diff_to_benchmarks.append(policy._recursive_values_in_time(
+            diff_to_benchmarks.append(policy.values_in_time_recursive(
                 t=self.returns.index[67],
                 current_weights=pd.Series(
                     curw,

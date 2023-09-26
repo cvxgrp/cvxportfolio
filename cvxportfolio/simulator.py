@@ -105,7 +105,7 @@ class MarketData:
     """
 
     def __init__(self,
-                 universe=[],
+                 universe=(),
                  returns=None,
                  volumes=None,
                  prices=None,
@@ -338,7 +338,6 @@ class MarketData:
                 'Currently the only data pipeline built is for USDOLLAR cash')
 
         data = FredSymbolData('DFF', base_storage_location=self.base_location)
-
         cash_returns_per_period = resample_returns(
             data.data/100, periods=self.PPY)
 
@@ -507,8 +506,8 @@ class MarketSimulator:
     to the stock market.
     """
 
-    def __init__(self, universe=[], returns=None, volumes=None,
-                 prices=None, costs=[], round_trades=False,
+    def __init__(self, universe=(), returns=None, volumes=None,
+                 prices=None, costs=(), round_trades=False,
                  min_history=pd.Timedelta('365d'),
                  datasource='YFinance',
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
@@ -565,7 +564,7 @@ class MarketSimulator:
 
         # evaluate the policy
         s = time.time()
-        z = policy._recursive_values_in_time(
+        z = policy.values_in_time_recursive(
             t=t, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value,
             past_returns=past_returns, past_volumes=past_volumes,
@@ -634,8 +633,8 @@ class MarketSimulator:
         backtest_times = self.market_data._get_backtest_times(
             start_time, end_time, include_end=True)
 
-        if hasattr(policy, '_compile_to_cvxpy'):
-            policy._compile_to_cvxpy()
+        if hasattr(policy, 'compile_to_cvxpy'):
+            policy.compile_to_cvxpy()
 
         result = BacktestResult(universe, backtest_times, self.costs)
 
@@ -680,7 +679,7 @@ class MarketSimulator:
                 h = h[el['universe']]
 
             policy = copy.deepcopy(orig_policy)
-            policy._recursive_pre_evaluation(
+            policy.initialize_estimator_recursive(
                 universe=el['universe'],
                 backtest_times=self.market_data._get_backtest_times(
                     el['start_time'], el['end_time'], include_end=True)
@@ -748,8 +747,8 @@ class MarketSimulator:
         """
 
         def modify_orig_policy(target_policy):
-            hps = policy._collect_hyperparameters()
-            thps = target_policy._collect_hyperparameters()
+            hps = policy.collect_hyperparameters()
+            thps = target_policy.collect_hyperparameters()
             for h, t in zip(hps, thps):
                 h._index = t._index
 
@@ -774,7 +773,7 @@ class MarketSimulator:
             print()
 
             test_policies = []
-            for hp in policy._collect_hyperparameters():
+            for hp in policy.collect_hyperparameters():
                 try:
                     hp._increment()
                     if not (str(policy) in results):
@@ -973,9 +972,9 @@ class StockMarketSimulator(MarketSimulator):
     :type trading_frequency: str or None
     """
 
-    def __init__(self, universe=[],
+    def __init__(self, universe=(),
                  returns=None, volumes=None, prices=None,
-                 costs=[StocksTransactionCost, StocksHoldingCost],
+                 costs=(StocksTransactionCost, StocksHoldingCost),
                  round_trades=True, min_history=pd.Timedelta('365d'),
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
                  trading_frequency=None, **kwargs):

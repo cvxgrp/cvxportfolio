@@ -910,7 +910,7 @@ class UserProvidedMarketData(InMemoryMarketData):
 #         self.base_location = base_location
 #         self.use_last_available_time = use_last_available_time
 #
-#     def _recursive_pre_evaluation(self, *args, **kwargs):
+#     def initialize_estimator_recursive(self, *args, **kwargs):
 #         self.data = self.update_and_load(self.symbol)
 #
 #

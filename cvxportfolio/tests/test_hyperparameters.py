@@ -72,7 +72,7 @@ class TestHyperparameters(unittest.TestCase):
 
         pol = cvx.SinglePeriodOptimization(GammaRisk() * cvx.FullCovariance())
 
-        res = pol._collect_hyperparameters()
+        res = pol.collect_hyperparameters()
         print(res)
         self.assertTrue(len(res) == 1)
 
@@ -80,7 +80,7 @@ class TestHyperparameters(unittest.TestCase):
             - GammaRisk() * cvx.FullCovariance()
             - GammaTrade() * cvx.TransactionCost())
 
-        res = pol._collect_hyperparameters()
+        res = pol.collect_hyperparameters()
         print(res)
         self.assertTrue(len(res) == 2)
 
@@ -88,7 +88,7 @@ class TestHyperparameters(unittest.TestCase):
             -(GammaRisk() + .5 * GammaRisk()) * cvx.FullCovariance()
             - GammaTrade() * cvx.TransactionCost())
 
-        res = pol._collect_hyperparameters()
+        res = pol.collect_hyperparameters()
         print(res)
         self.assertTrue(len(res) == 3)
 

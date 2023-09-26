@@ -48,11 +48,11 @@ class TestConstraints(unittest.TestCase):
 
         time.
         """
-        constraint._recursive_pre_evaluation(
+        constraint.initialize_estimator_recursive(
             self.returns.columns, self.returns.index)
-        cvxpy_expression = constraint._compile_to_cvxpy(
+        cvxpy_expression = constraint.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        constraint._recursive_values_in_time(t=pd.Timestamp(
+        constraint.values_in_time_recursive(t=pd.Timestamp(
             "2020-01-01") if t is None else t, current_portfolio_value=1000)
         return cvxpy_expression
 
@@ -86,10 +86,10 @@ class TestConstraints(unittest.TestCase):
         cons = self.build_constraint(model)
         self.w_plus.value = np.zeros(self.N)
         self.w_plus.value[-1] = 1
-        model._recursive_values_in_time(t=pd.Timestamp(
+        model.values_in_time_recursive(t=pd.Timestamp(
             "2020-01-01"), current_portfolio_value=10001)
         self.assertTrue(cons.value())
-        model._recursive_values_in_time(t=pd.Timestamp(
+        model.values_in_time_recursive(t=pd.Timestamp(
             "2020-01-01"), current_portfolio_value=9999)
         self.assertFalse(cons.value())
 
@@ -133,7 +133,7 @@ class TestConstraints(unittest.TestCase):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        model._recursive_values_in_time(t=self.returns.index[2])
+        model.values_in_time_recursive(t=self.returns.index[2])
         self.assertFalse(cons.value())
 
     def test_max_weights(self):
@@ -167,7 +167,7 @@ class TestConstraints(unittest.TestCase):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        model._recursive_values_in_time(t=self.returns.index[2])
+        model.values_in_time_recursive(t=self.returns.index[2])
         self.assertFalse(cons.value())
 
     def test_min_weights(self):
@@ -198,7 +198,7 @@ class TestConstraints(unittest.TestCase):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        model._recursive_values_in_time(t=self.returns.index[2])
+        model.values_in_time_recursive(t=self.returns.index[2])
         self.assertFalse(cons.value())
 
     def test_factor_max_limit(self):
@@ -284,11 +284,11 @@ class TestConstraints(unittest.TestCase):
         value = 1e6
         model = cvx.ParticipationRateLimit(
             self.volumes, max_fraction_of_volumes=0.1)
-        model._recursive_pre_evaluation(
+        model.initialize_estimator_recursive(
             self.returns.columns, self.returns.index)
-        cons = model._compile_to_cvxpy(
+        cons = model.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        model._recursive_values_in_time(t=t, current_portfolio_value=value)
+        model.values_in_time_recursive(t=t, current_portfolio_value=value)
         print(model.portfolio_value.value)
         # cons = model.weight_expr(t, None, z, value)[0]
         tmp = np.zeros(self.N)

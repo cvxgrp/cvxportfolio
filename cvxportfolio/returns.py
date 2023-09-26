@@ -17,8 +17,6 @@ portfolio optimization policies, and related objects.
 """
 
 import cvxpy as cp
-import numpy as np
-import pandas as pd
 
 from .costs import BaseCost, CombinedCosts
 from .estimator import DataEstimator  # , ParameterEstimator
@@ -62,19 +60,20 @@ class CashReturn(BaseReturnsModel):
     def __init__(self, cash_returns=None):
         self.cash_returns = None if cash_returns is None else DataEstimator(
             cash_returns, compile_parameter=True)
+        self._cash_return_parameter = None
 
-    def _pre_evaluation(self, universe, backtest_times):
-        self.cash_return_parameter = cp.Parameter() if self.cash_returns is None\
-            else self.cash_returns.parameter
+    def initialize_estimator(self, **kwargs):
+        self._cash_return_parameter = (cp.Parameter()
+            if self.cash_returns is None else self.cash_returns.parameter)
 
-    def _values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, past_returns, **kwargs):
         """Update cash return parameter as last cash return."""
         if self.cash_returns is None:
-            self.cash_return_parameter.value = past_returns.iloc[-1, -1]
+            self._cash_return_parameter.value = past_returns.iloc[-1, -1]
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Apply cash return to cash position."""
-        return w_plus[-1] * self.cash_return_parameter
+        return w_plus[-1] * self._cash_return_parameter
 
 
 class ReturnsForecast(BaseReturnsModel):
@@ -147,17 +146,18 @@ class ReturnsForecast(BaseReturnsModel):
         # because we apply the decay
         self.r_hat = DataEstimator(r_hat)
         self.decay = decay
+        self._r_hat_parameter = None
 
-    def _pre_evaluation(self, universe, backtest_times):
-        self.r_hat_parameter = cp.Parameter(len(universe)-1)
+    def initialize_estimator(self, universe, **kwargs):
+        self._r_hat_parameter = cp.Parameter(len(universe)-1)
 
-    def _values_in_time(self, mpo_step=0, **kwargs):
-        self.r_hat_parameter.value = self.r_hat.current_value *\
+    def values_in_time(self, mpo_step=0, **kwargs):
+        self._r_hat_parameter.value = self.r_hat.current_value *\
             self.decay**(mpo_step)
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self,  w_plus, z, w_plus_minus_w_bm):
         """Cvxpy expression acts on non-cash assets."""
-        return w_plus[:-1].T @ self.r_hat_parameter
+        return w_plus[:-1].T @ self._r_hat_parameter
 
 
 class ReturnsForecastError(BaseRiskModel):
@@ -182,13 +182,14 @@ class ReturnsForecastError(BaseRiskModel):
         if isinstance(deltas, type):
             deltas = deltas()
         self.deltas = DataEstimator(deltas)
+        self._deltas_parameter = None
 
-    def _pre_evaluation(self, universe, backtest_times):
-        self.deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
+    def initialize_estimator(self, universe, **kwargs):
+        self._deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
 
-    def _values_in_time(self, t, past_returns, **kwargs):
-        self.deltas_parameter.value = self.deltas.current_value
+    def values_in_time(self, **kwargs):
+        self._deltas_parameter.value = self.deltas.current_value
 
-    def _compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile to cvxpy expression."""
-        return cp.abs(w_plus_minus_w_bm[:-1]).T @ self.deltas_parameter
+        return cp.abs(w_plus_minus_w_bm[:-1]).T @ self._deltas_parameter

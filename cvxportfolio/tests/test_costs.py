@@ -55,41 +55,41 @@ class TestCosts(unittest.TestCase):
             self.returns.iloc[:, :-1].T @ self.returns.iloc[:, :-1] / len(self.returns))
         cost3 = cost1 + cost2
 
-        cost3._recursive_pre_evaluation(
+        cost3.initialize_estimator_recursive(
             universe=self.returns.columns, backtest_times=self.returns.index)
-        expr3 = cost3._compile_to_cvxpy(
+        expr3 = cost3.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        expr1 = cost1._compile_to_cvxpy(
+        expr1 = cost1.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        expr2 = cost2._compile_to_cvxpy(
+        expr2 = cost2.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        cost3._recursive_values_in_time(
+        cost3.values_in_time_recursive(
             t=t, past_returns=self.returns.loc[self.returns.index < t])
         self.assertTrue(expr3.value == expr1.value + expr2.value)
 
         cost4 = cost1 * 2
-        expr4 = cost4._compile_to_cvxpy(
+        expr4 = cost4.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue(expr4.value == expr1.value * 2)
 
         cost3 = cost1 + 3 * cost2
-        expr3 = cost3._compile_to_cvxpy(
+        expr3 = cost3.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue(expr3.value == expr1.value + 3 * expr2.value)
 
         cost3 = 3 * cost1 + 2 * cost2
-        expr3 = cost3._compile_to_cvxpy(
+        expr3 = cost3.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue(expr3.value == 3 * expr1.value + 2 * expr2.value)
 
         cost3 = .1 * cost1 + 2 * (cost2 + cost1)
-        expr3 = cost3._compile_to_cvxpy(
+        expr3 = cost3.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue(np.isclose(expr3.value, .1 * expr1.value +
                         2 * (expr2.value + expr1.value)))
 
         cost3 = cost1 + 5 * (cost2 + cost1)
-        expr3 = cost3._compile_to_cvxpy(
+        expr3 = cost3.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         self.assertTrue(np.isclose(expr3.value, expr1.value +
                         5 * (expr2.value + expr1.value)))
@@ -102,11 +102,11 @@ class TestCosts(unittest.TestCase):
         hcost = HoldingCost(short_fees=5, dividends=dividends)
 
         t = 100  # this is picked so that periods_per_year evaluates to 252
-        hcost._recursive_pre_evaluation(
+        hcost.initialize_estimator_recursive(
             universe=self.returns.columns, backtest_times=self.returns.index)
-        expression = hcost._compile_to_cvxpy(
+        expression = hcost.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        hcost._recursive_values_in_time(
+        hcost.values_in_time_recursive(
             t=self.returns.index[t], past_returns=self.returns.iloc[:t])
         cash_ret = self.returns.iloc[t-1].iloc[-1]
 
@@ -142,14 +142,14 @@ class TestCosts(unittest.TestCase):
 
         t = self.returns.index[12]
 
-        tcost._recursive_pre_evaluation(
+        tcost.initialize_estimator_recursive(
             universe=self.returns.columns, backtest_times=self.returns.index)
-        expression = tcost._compile_to_cvxpy(
+        expression = tcost.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
 
         # only spread
 
-        tcost._recursive_values_in_time(t=self.returns.index[12],
+        tcost.values_in_time_recursive(t=self.returns.index[12],
                                         current_portfolio_value=value,
                                         past_returns=self.returns.iloc[:12],
                                         past_volumes=self.volumes.iloc[:12],
@@ -168,7 +168,7 @@ class TestCosts(unittest.TestCase):
         prices = pd.Series(np.random.uniform(
             1, 100, size=self.returns.shape[1]-1), self.returns.columns[:-1])
 
-        tcost._recursive_values_in_time(t=self.returns.index[23],
+        tcost.values_in_time_recursive(t=self.returns.index[23],
                                         current_portfolio_value=value,
                                         past_returns=self.returns.iloc[:23],
                                         past_volumes=self.volumes.iloc[:23],
@@ -185,7 +185,7 @@ class TestCosts(unittest.TestCase):
 
         # spread and nonlin cost
 
-        tcost._recursive_values_in_time(t=self.returns.index[34],
+        tcost.values_in_time_recursive(t=self.returns.index[34],
                                         current_portfolio_value=value,
                                         past_returns=self.returns.iloc[:34],
                                         past_volumes=self.volumes.iloc[:34],
