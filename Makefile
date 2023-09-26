@@ -5,7 +5,8 @@ ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
 COVERAGE      = 97  # target coverage score
 DIFFCOVERAGE  = 99  # target coverage of new code
-LINT          = 6.6  # target lint score
+LINT          = 7  # target lint score
+PYLINT_OPTS   = --good-names t,u,v,w,h --ignored-argument-names kwargs
 
 
 ifeq ($(OS), Windows_NT)
@@ -20,13 +21,13 @@ env:
 	$(BINDIR)/python -m pip install -r requirements.txt
 
 test:
-	$(BINDIR)/coverage run -m unittest $(PROJECT)/tests/*.py
+	$(BINDIR)/coverage run -m unittest discover $(PROJECT)
 	$(BINDIR)/coverage report --fail-under $(COVERAGE)
 	$(BINDIR)/coverage xml
 	$(BINDIR)/diff-cover --fail-under $(DIFFCOVERAGE) --compare-branch origin/master coverage.xml
 
 lint:
-	$(BINDIR)/pylint --fail-under $(LINT) $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	$(BINDIR)/pylint $(PYLINT_OPTS) --fail-under $(LINT) $(PROJECT)
 
 # hardtest:
 #	$(BINDIR)/pytest --cov --cov-report=xml -W error $(PROJECT)/tests/*.py
@@ -45,7 +46,7 @@ clean:
 
 docs:
 	$(BINDIR)/sphinx-build -E docs $(BUILDDIR)
-	
+
 opendocs: docs
 	open build/index.html
 
