@@ -58,16 +58,6 @@ class BacktestResult:
         self.policy_times = pd.Series(index=backtest_times, dtype=float)
         self.simulator_times = pd.Series(index=backtest_times, dtype=float)
 
-    def __init__(self, universe, backtest_times, costs):
-        """Initialization of backtest result."""
-        self.h = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
-        self.u = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
-        self.z = pd.DataFrame(index=backtest_times, columns=universe, dtype=float)
-        self.costs = {cost.__class__.__name__: pd.Series(
-            index=backtest_times, dtype=float) for cost in costs}
-        self.policy_times = pd.Series(index=backtest_times, dtype=float)
-        self.simulator_times = pd.Series(index=backtest_times, dtype=float)
-
         self._current_universe = pd.Index(universe)
 
     def _change_universe(self, new_universe):
