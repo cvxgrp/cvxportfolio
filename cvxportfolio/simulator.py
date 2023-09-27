@@ -417,88 +417,88 @@ class MarketData:
             result = result[:-1]
         return result
 
-    @property
-    def _break_timestamps(self):
-        """List of timestamps at which a backtest should be broken.
+    # @property
+    # def _break_timestamps(self):
+    #     """List of timestamps at which a backtest should be broken.
+    #
+    #     An asset enters into a backtest after having non-NaN returns for
+    #     self.min_history periods and exits after having NaN returns for
+    #     self.max_contiguous_missing. Defaults values are 252 and 10
+    #     respectively.
+    #     """
+    #     self.entry_dates = defaultdict(list)
+    #     self.exit_dates = defaultdict(list)
+    #     for asset in self.returns.columns[:-1]:
+    #         single_asset_returns = self.returns[asset].dropna()
+    #         if len(single_asset_returns) > self.min_history:
+    #             self.entry_dates[single_asset_returns.index[self.min_history]].append(
+    #                 asset)
+    #             exit_date = single_asset_returns.index[-1]
+    #             if (self.returns.index[-1] - exit_date) >= pd.Timedelta(self.max_contiguous_missing):
+    #                 self.exit_dates[exit_date].append(asset)
+    #
+    #     _ = sorted(set(self.exit_dates) | set(self.entry_dates))
+    #     logging.debug(f'computing break timestamps {_}')
+    #     return _
 
-        An asset enters into a backtest after having non-NaN returns for
-        self.min_history periods and exits after having NaN returns for
-        self.max_contiguous_missing. Defaults values are 252 and 10
-        respectively.
-        """
-        self.entry_dates = defaultdict(list)
-        self.exit_dates = defaultdict(list)
-        for asset in self.returns.columns[:-1]:
-            single_asset_returns = self.returns[asset].dropna()
-            if len(single_asset_returns) > self.min_history:
-                self.entry_dates[single_asset_returns.index[self.min_history]].append(
-                    asset)
-                exit_date = single_asset_returns.index[-1]
-                if (self.returns.index[-1] - exit_date) >= pd.Timedelta(self.max_contiguous_missing):
-                    self.exit_dates[exit_date].append(asset)
-
-        _ = sorted(set(self.exit_dates) | set(self.entry_dates))
-        logging.debug(f'computing break timestamps {_}')
-        return _
-
-    @property
-    def _limited_universes(self):
-        """Valid universes for each section, minus cash.
-
-        A backtest is broken into multiple ones that start at each key
-        of this, have the universe specified by this, and end at the
-        next startpoint.
-        """
-        result = OrderedDict()
-        uni = []
-        for ts in self._break_timestamps:
-            uni += self.entry_dates[ts]
-            uni = [el for el in uni if not el in self.exit_dates[ts]]
-            result[ts] = tuple(sorted(uni))
-        return result
+    # @property
+    # def _limited_universes(self):
+    #     """Valid universes for each section, minus cash.
+    #
+    #     A backtest is broken into multiple ones that start at each key
+    #     of this, have the universe specified by this, and end at the
+    #     next startpoint.
+    #     """
+    #     result = OrderedDict()
+    #     uni = []
+    #     for ts in self._break_timestamps:
+    #         uni += self.entry_dates[ts]
+    #         uni = [el for el in uni if not el in self.exit_dates[ts]]
+    #         result[ts] = tuple(sorted(uni))
+    #     return result
 
     @property
     def _earliest_backtest_start(self):
         """Earliest date at which we can start a backtest."""
         return self.returns.iloc[:, :-1].dropna(how='all').index[self.min_history]
 
-    def _get_limited_backtests(self, start_time, end_time):
-        """Get start/end times and universes of constituent backtests.
-
-        Each one has constant universe with assets' that meet the
-        ``min_history`` requirement and has not disappeared from the
-        dataset.
-        """
-
-        full_backtest_times = self._get_backtest_times(start_time, end_time)
-        brkt = np.array(self._break_timestamps)
-
-        def get_valid_universe_and_its_expiration_for(time):
-            try:
-                return self._limited_universes[brkt[brkt <= time][-1]], \
-                    brkt[brkt > time][0] if len(
-                        brkt[brkt > time]) else full_backtest_times[-1]
-            except IndexError:
-                raise DataError(
-                    'There are no assets that meet the required min_history.')
-
-        result = []
-        start = full_backtest_times[0]
-        while True:
-
-            universe, expiration = get_valid_universe_and_its_expiration_for(
-                start)
-            if expiration > full_backtest_times[-1]:
-                expiration = full_backtest_times[-1]
-            result.append({
-                'start_time': start,
-                'end_time': expiration,
-                'universe': list(universe) + [self.cash_key]})
-
-            if expiration == full_backtest_times[-1]:
-                return result
-
-            start = expiration
+    # def _get_limited_backtests(self, start_time, end_time):
+    #     """Get start/end times and universes of constituent backtests.
+    #
+    #     Each one has constant universe with assets' that meet the
+    #     ``min_history`` requirement and has not disappeared from the
+    #     dataset.
+    #     """
+    #
+    #     full_backtest_times = self._get_backtest_times(start_time, end_time)
+    #     brkt = np.array(self._break_timestamps)
+    #
+    #     def get_valid_universe_and_its_expiration_for(time):
+    #         try:
+    #             return self._limited_universes[brkt[brkt <= time][-1]], \
+    #                 brkt[brkt > time][0] if len(
+    #                     brkt[brkt > time]) else full_backtest_times[-1]
+    #         except IndexError:
+    #             raise DataError(
+    #                 'There are no assets that meet the required min_history.')
+    #
+    #     result = []
+    #     start = full_backtest_times[0]
+    #     while True:
+    #
+    #         universe, expiration = get_valid_universe_and_its_expiration_for(
+    #             start)
+    #         if expiration > full_backtest_times[-1]:
+    #             expiration = full_backtest_times[-1]
+    #         result.append({
+    #             'start_time': start,
+    #             'end_time': expiration,
+    #             'universe': list(universe) + [self.cash_key]})
+    #
+    #         if expiration == full_backtest_times[-1]:
+    #             return result
+    #
+    #         start = expiration
 
 
 class MarketSimulator:
@@ -630,152 +630,6 @@ class MarketSimulator:
 
         return h_next, z, u, realized_costs, policy_time
 
-    def _single_backtest(self, policy, start_time, end_time, h, universe=None):
-        if universe is None:
-            universe = self.market_data.universe
-        backtest_times = self.market_data._get_backtest_times(
-            start_time, end_time, include_end=True)
-
-        if hasattr(policy, 'compile_to_cvxpy'):
-            policy.compile_to_cvxpy()
-
-        result = BacktestResult(universe, backtest_times, self.costs)
-
-        # this is the main loop of a backtest
-        for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
-            # s = time.time()
-            result.h.loc[t] = h
-            h, result.z.loc[t], result.u.loc[t], realized_costs, \
-                result.policy_times.loc[t] = self._simulate(
-                    t=t, h=h, policy=policy, t_next=t_next)
-            for cost in realized_costs:
-                result.costs[cost].loc[t] = realized_costs[cost]
-            result.simulator_times.loc[t] = time.time(
-            ) - self.simulator_timer - result.policy_times.loc[t]
-            self.simulator_timer = time.time()
-
-        result.h.loc[pd.Timestamp(end_time)] = h
-
-        result.cash_returns =\
-            self.market_data.returns.iloc[:, -1].loc[result.u.index]
-
-        return result
-
-    def _concatenated_backtests(self, policy, start_time, end_time, h):
-        self.simulator_timer = time.time()
-        constituent_backtests_params = self.market_data._get_limited_backtests(
-            start_time, end_time)
-        results = []
-        orig_md = self.market_data
-        orig_policy = policy
-        for el in constituent_backtests_params:
-            logging.info(f"current universe: {el['universe']}")
-            logging.info(f"interval: {el['start_time']}, {el['end_time']}")
-            self.market_data = orig_md._reduce_universe(el['universe'])
-
-            # TODO improve
-            if len(el['universe']) > len(h):
-                tmp = pd.Series(0., el['universe'])
-                tmp.loc[h.index] = h
-                h = tmp
-            else:
-                h = h[el['universe']]
-
-            policy = copy.deepcopy(orig_policy)
-            policy.initialize_estimator_recursive(
-                universe=el['universe'],
-                backtest_times=self.market_data._get_backtest_times(
-                    el['start_time'], el['end_time'], include_end=True)
-            )
-
-            # if policy uses a cache load it from disk
-            if hasattr(policy, 'cache') and self.enable_caching:
-                logging.info('Trying to load cache from disk...')
-                policy.cache = _load_cache(
-                    universe=el['universe'],
-                    trading_frequency=self.trading_frequency,
-                    base_location=self.base_location)
-
-            results.append(self._single_backtest(
-                policy, el['start_time'], el['end_time'], h, el['universe']))
-
-            h = results[-1].h.iloc[-1]
-
-            # if policy used a cache write it to disk
-            if hasattr(policy, 'cache') and self.enable_caching:
-                logging.info('Storing cache from policy to disk...')
-                _store_cache(cache=policy.cache, universe=el['universe'],
-                             trading_frequency=self.trading_frequency,
-                             base_location=self.base_location)
-
-        self.market_data = orig_md
-
-        result = self._concatenate_backtest_results(results)
-
-        # temporary, will refactor these methods
-        result.simulator_times.iloc[-2] += time.time() - self.simulator_timer
-        return result
-
-    def _concatenated_backtests(self, policy, start_time, end_time, h):
-        """Run a backtest with changing universe."""
-
-        backtest_times = self.market_data._get_backtest_times(start_time, end_time, include_end=True)
-        universe = self.market_data._universe_at_time(backtest_times[0])
-
-        used_policy = self._get_initialized_policy(policy, universe=universe, backtest_times=backtest_times)
-
-        result = BacktestResult(universe=universe, backtest_times=backtest_times, costs=self.costs)
-
-        for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
-
-            current_universe = self.market_data._universe_at_time(t)
-
-            if not current_universe.equals(h.index):
-
-                self._finalize_policy(used_policy, h.index)
-
-                h = self._adjust_h_new_universe(h, current_universe)
-                used_policy = self._get_initialized_policy(policy, universe=current_universe, backtest_times=backtest_times[backtest_times >= t])
-
-            s = time.time()
-            h_next, z, u, realized_costs, policy_time = self._simulate(t=t, h=h, policy=used_policy, t_next=t_next, mask=current_universe)
-
-            simulator_time = time.time() - s - policy_time
-
-            result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs, policy_time=policy_time, simulator_time=simulator_time)
-
-            h = h_next
-
-        self._finalize_policy(used_policy, h.index)
-
-        result.cash_returns = self.market_data.returns.iloc[:, -1].loc[result.u.index]
-
-        result.h.loc[pd.Timestamp(backtest_times[-1])] = h
-
-        return result
-
-    def _concatenate_backtest_results(self, results):
-
-        res = BacktestResult.__new__(BacktestResult)
-        res.costs = {}
-
-        res.h = pd.concat([el.h.iloc[:-1] if i < len(results) -
-                          1 else el.h for i, el in enumerate(results)])
-        for attr in ['cash_returns', 'u', 'z', 'simulator_times', 'policy_times']:
-            res.__setattr__(attr, pd.concat(
-                [el.__getattribute__(attr) for el in results]))
-
-        # pandas concat can misalign the columns ordering
-        ck = self.market_data.cash_key
-        sortcol = sorted([el for el in res.u.columns if not el == ck]) + [ck]
-        res.u = res.u[sortcol]
-        res.z = res.z[sortcol]
-        res.h = res.h[sortcol]
-        for k in results[0].costs:
-            res.costs[k] = pd.concat([el.costs[k] for el in results])
-
-        return res
-
     def _get_initialized_policy(self, orig_policy, universe, backtest_times):
 
         policy = copy.deepcopy(orig_policy)
@@ -802,6 +656,102 @@ class MarketSimulator:
             _store_cache(cache=policy.cache, universe=universe,
                           trading_frequency=self.trading_frequency,
                           base_location=self.base_location)
+
+    def _concatenated_backtests(self, policy, start_time, end_time, h):
+        """Run a backtest with changing universe."""
+
+        timer = time.time()
+
+        backtest_times = self.market_data._get_backtest_times(start_time, end_time, include_end=True)
+        universe = self.market_data._universe_at_time(backtest_times[0])
+
+        used_policy = self._get_initialized_policy(policy, universe=universe, backtest_times=backtest_times)
+
+        result = BacktestResult(universe=universe, backtest_times=backtest_times, costs=self.costs)
+
+        for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
+
+            current_universe = self.market_data._universe_at_time(t)
+
+            if not current_universe.equals(h.index):
+
+                self._finalize_policy(used_policy, h.index)
+
+                h = self._adjust_h_new_universe(h, current_universe)
+                used_policy = self._get_initialized_policy(policy, universe=current_universe, backtest_times=backtest_times[backtest_times >= t])
+
+            h_next, z, u, realized_costs, policy_time = self._simulate(t=t, h=h, policy=used_policy, t_next=t_next, mask=current_universe)
+
+            simulator_time = time.time() - timer - policy_time
+
+            timer = time.time()
+
+            result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs, policy_time=policy_time, simulator_time=simulator_time)
+
+            h = h_next
+
+        self._finalize_policy(used_policy, h.index)
+
+        result.cash_returns = self.market_data.returns.iloc[:, -1].loc[result.u.index]
+
+        result.h.loc[pd.Timestamp(backtest_times[-1])] = h
+
+        result.simulator_times.loc[pd.Timestamp(backtest_times[-2])] += time.time() - timer
+
+        return result
+
+    # def _single_backtest(self, policy, start_time, end_time, h, universe=None):
+    #     if universe is None:
+    #         universe = self.market_data.universe
+    #     backtest_times = self.market_data._get_backtest_times(
+    #         start_time, end_time, include_end=True)
+    #
+    #     if hasattr(policy, 'compile_to_cvxpy'):
+    #         policy.compile_to_cvxpy()
+    #
+    #     result = BacktestResult(universe, backtest_times, self.costs)
+    #
+    #     # this is the main loop of a backtest
+    #     for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
+    #         # s = time.time()
+    #         result.h.loc[t] = h
+    #         h, result.z.loc[t], result.u.loc[t], realized_costs, \
+    #             result.policy_times.loc[t] = self._simulate(
+    #                 t=t, h=h, policy=policy, t_next=t_next)
+    #         for cost in realized_costs:
+    #             result.costs[cost].loc[t] = realized_costs[cost]
+    #         result.simulator_times.loc[t] = time.time(
+    #         ) - self.simulator_timer - result.policy_times.loc[t]
+    #         self.simulator_timer = time.time()
+    #
+    #     result.h.loc[pd.Timestamp(end_time)] = h
+    #
+    #     result.cash_returns =\
+    #         self.market_data.returns.iloc[:, -1].loc[result.u.index]
+    #
+    #     return result
+
+    # def _concatenate_backtest_results(self, results):
+    #
+    #     res = BacktestResult.__new__(BacktestResult)
+    #     res.costs = {}
+    #
+    #     res.h = pd.concat([el.h.iloc[:-1] if i < len(results) -
+    #                       1 else el.h for i, el in enumerate(results)])
+    #     for attr in ['cash_returns', 'u', 'z', 'simulator_times', 'policy_times']:
+    #         res.__setattr__(attr, pd.concat(
+    #             [el.__getattribute__(attr) for el in results]))
+    #
+    #     # pandas concat can misalign the columns ordering
+    #     ck = self.market_data.cash_key
+    #     sortcol = sorted([el for el in res.u.columns if not el == ck]) + [ck]
+    #     res.u = res.u[sortcol]
+    #     res.z = res.z[sortcol]
+    #     res.h = res.h[sortcol]
+    #     for k in results[0].costs:
+    #         res.costs[k] = pd.concat([el.costs[k] for el in results])
+    #
+    #     return res
 
     def _adjust_h_new_universe(self, h: pd.Series, new_universe: pd.Index) -> pd.Series:
         """Adjust holdings vector for change in universe.

@@ -115,13 +115,13 @@ class TestSimulator(unittest.TestCase):
         print(t)
         self.assertTrue(current_prices.name == t)
 
-    def test_break_timestamp(self):
-        md = MarketData(['AAPL', 'ZM', 'TSLA'], min_history=pd.Timedelta(
-            '365d'), base_location=self.datadir)
-        self.assertTrue(pd.Timestamp('2020-04-20') in md._break_timestamps)
-        # self.assertTrue(len(md.break_up_backtest('2000-01-01')) == 3)
-        self.assertTrue(md._limited_universes[pd.Timestamp(
-            '2011-06-28')] == ('AAPL', 'TSLA'))
+    # def test_break_timestamp(self):
+    #     md = MarketData(['AAPL', 'ZM', 'TSLA'], min_history=pd.Timedelta(
+    #         '365d'), base_location=self.datadir)
+    #     self.assertTrue(pd.Timestamp('2020-04-20') in md._break_timestamps)
+    #     # self.assertTrue(len(md.break_up_backtest('2000-01-01')) == 3)
+    #     self.assertTrue(md._limited_universes[pd.Timestamp(
+    #         '2011-06-28')] == ('AAPL', 'TSLA'))
 
     def test_market_data_object_safety(self):
         t = self.returns.index[10]

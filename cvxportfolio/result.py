@@ -80,7 +80,7 @@ class BacktestResult:
                 joined = new_universe
 
             # otherwise we lose the ordering :(
-            else:
+            else: #TODO: write testcase for this
                 joined = pd.Index(
                     sorted(set(self._current_universe[:-1]
                         ).union(new_universe[:-1])))
@@ -92,7 +92,6 @@ class BacktestResult:
             self.z = self.z.reindex(columns = joined)
 
         assert new_universe.isin(self.h.columns).all()
-
         self._current_universe = new_universe
 
     def _log_trading(self, t: pd.Timestamp,
