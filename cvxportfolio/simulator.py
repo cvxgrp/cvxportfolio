@@ -269,31 +269,47 @@ class MarketData:
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
 
-    def _serve_data_policy(self, t):
+    def _serve_data_policy(self, t, mask=None):
         """Give data to policy at time t."""
         tidx = self.returns.index.get_loc(t)
         past_returns = pd.DataFrame(self.returns.iloc[:tidx])
+        if not (mask is None):
+            past_returns = past_returns[mask]
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
             past_volumes = pd.DataFrame(self.volumes.iloc[:tidx])
+            if not (mask is None):
+                past_volumes = past_volumes[mask[:-1]]
         else:
             past_volumes = None
-        current_prices = pd.Series(
-            self.prices.loc[t]) if not self.prices is None else None
+        if not self.prices is None:
+            current_prices = pd.Series(self.prices.loc[t])
+            if not (mask is None):
+                current_prices = current_prices[mask[:-1]]
+        else:
+            current_prices = None
 
         return past_returns, past_volumes, current_prices
 
-    def _serve_data_simulator(self, t):
+    def _serve_data_simulator(self, t, mask=None):
         """Give data to simulator at time t."""
         tidx = self.returns.index.get_loc(t)
         current_and_past_returns = pd.DataFrame(self.returns.iloc[:tidx+1])
+        if not (mask is None):
+            current_and_past_returns = current_and_past_returns[mask]
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
             current_and_past_volumes = pd.DataFrame(self.volumes.iloc[:tidx+1])
+            if not (mask is None):
+                current_and_past_volumes = current_and_past_volumes[mask[:-1]]
         else:
             current_and_past_volumes = None
-        current_prices = pd.Series(
-            self.prices.loc[t]) if not self.prices is None else None
+        if not (self.prices is None):
+            current_prices = pd.Series(self.prices.loc[t])
+            if not (mask is None):
+                current_prices = current_prices[mask[:-1]]
+        else:
+            current_prices = None
 
         return current_and_past_returns, current_and_past_volumes, current_prices
 
@@ -382,6 +398,12 @@ class MarketData:
         self.returns.iloc[-1] = np.nan
         if self.volumes is not None:
             self.volumes.iloc[-1] = np.nan
+            
+    def _universe_at_time(self, t):
+        """Return the valid universe at time t."""
+        past_returns = self.returns.loc[self.returns.index < t]
+        return self.universe[(past_returns.count() >= self.min_history) &
+            (~self.returns.loc[t].isnull())]
 
     def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
         """Get trading calendar from market data."""
@@ -528,7 +550,7 @@ class MarketSimulator:
         result.iloc[-1] = -sum(result.iloc[:-1])
         return result
 
-    def _simulate(self, t, t_next, h, policy, **kwargs):
+    def _simulate(self, t, t_next, h, policy, mask=None, **kwargs):
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
@@ -541,7 +563,7 @@ class MarketSimulator:
         current_weights = h / current_portfolio_value
 
         past_returns, past_volumes, current_prices =\
-            self.market_data._serve_data_policy(t)
+            self.market_data._serve_data_policy(t, mask=mask)
 
         # evaluate the policy
         s = time.time()
@@ -562,7 +584,7 @@ class MarketSimulator:
 
         # get data for simulator
         current_and_past_returns, current_and_past_volumes, current_prices =\
-            self.market_data._serve_data_simulator(t)
+            self.market_data._serve_data_simulator(t, mask=mask)
 
         # zero out trades on stock that weren't trading on that day
         if not (current_and_past_volumes is None):
@@ -693,6 +715,45 @@ class MarketSimulator:
         # temporary, will refactor these methods
         result.simulator_times.iloc[-2] += time.time() - self.simulator_timer
         return result
+        
+    def _concatenated_backtests(self, policy, start_time, end_time, h):
+        """Run a backtest with changing universe."""
+        
+        backtest_times = self.market_data._get_backtest_times(start_time, end_time, include_end=True)
+        universe = self.market_data._universe_at_time(backtest_times[0])
+
+        used_policy = self._get_initialized_policy(policy, universe=universe, backtest_times=backtest_times)
+            
+        result = BacktestResult(universe=universe, backtest_times=backtest_times, costs=self.costs)
+            
+        
+        for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
+            
+            current_universe = self.market_data._universe_at_time(t)
+            
+            if not current_universe.equals(h.index):
+                
+                self._finalize_policy(used_policy, h.index)
+                
+                h = self._adjust_h_new_universe(h, current_universe)
+                used_policy = self._get_initialized_policy(policy, universe=current_universe, backtest_times=backtest_times[backtest_times>=t])
+                
+            s = time.time()
+            h_next, z, u, realized_costs, policy_time = self._simulate(t=t, h=h, policy=used_policy, t_next=t_next, mask=current_universe)
+            
+            simulator_time = time.time() - s - policy_time
+        
+            result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs, policy_time=policy_time, simulator_time=simulator_time)
+
+            h = h_next
+            
+        self._finalize_policy(used_policy, h.index)
+        
+        result.cash_returns = self.market_data.returns.iloc[:, -1].loc[result.u.index]
+            
+        result.h.loc[pd.Timestamp(backtest_times[-1])] = h
+
+        return result
 
     def _concatenate_backtest_results(self, results):
 
@@ -715,6 +776,77 @@ class MarketSimulator:
             res.costs[k] = pd.concat([el.costs[k] for el in results])
 
         return res
+        
+
+        
+    def _get_initialized_policy(self, orig_policy, universe, backtest_times):
+        
+        policy = copy.deepcopy(orig_policy)
+        
+        policy.initialize_estimator_recursive(
+            universe=universe, backtest_times=backtest_times)
+
+        # if policy uses a cache load it from disk
+        if hasattr(policy, 'cache') and self.enable_caching:
+            logging.info('Trying to load cache from disk...')
+            policy.cache = _load_cache(
+                universe=universe,
+                trading_frequency=self.trading_frequency,
+                base_location=self.base_location)
+                
+        if hasattr(policy, 'compile_to_cvxpy'):
+            policy.compile_to_cvxpy()
+        
+        return policy
+    
+    def _finalize_policy(self, policy, universe):
+        if hasattr(policy, 'cache') and self.enable_caching:
+            logging.info('Storing cache from policy to disk...')
+            _store_cache(cache=policy.cache, universe=universe,
+                          trading_frequency=self.trading_frequency,
+                          base_location=self.base_location)
+
+
+    def _adjust_h_new_universe(self, h: pd.Series, new_universe: pd.Index) -> pd.Series:
+        """Adjust holdings vector for change in universe.
+        
+        :param h: (Pre-trade) holdings vector in value units (e.g., USDOLLAR).
+            Its index is the trading universe in the period before the present one.
+        :type h: pd.Series
+        :param new_universe: New trading universe for the current trading period.
+        :type new_universe: pd.Index
+        
+        :returns: new pre-trade holdings vector with index is ``new_universe``
+        :rtype: pd.Series
+        
+        For any new asset that is present in ``new_universe`` but not in ``h.index``
+        we set the corrensponding value of ``h`` to 0. Any removed asset that is present in 
+        ``h.index`` instead is removed from h and its value is added to the cash account.
+        
+        Note that we ignore the transaction cost involved in liquidating the position. 
+        You can redefine this method in a derived class to change this behavior.
+        """
+        
+        # check that cash key didn't change
+        assert new_universe[-1] == h.index[-1]
+        
+        intersection = pd.Index(set(new_universe).intersection(h.index))
+        new_h = pd.Series(0., new_universe)
+        new_h[intersection] = h[intersection]
+        
+        new_assets = pd.Index(set(new_universe).difference(h.index))
+        if len(new_assets):
+            logging.info(f'Adjusting h vector by adding assets {new_assets}')
+            
+        remove_assets = pd.Index(set(h.index).difference(new_universe))
+        if len(remove_assets):
+            total_liquidation = h[remove_assets].sum()
+            logging.info(f"Adjusting h vector by removing assets {remove_assets}."
+                " Their current market value of {total_liquidation} is added"
+                " to the cash account.")
+            new_h.iloc[-1] += total_liquidation
+        
+        return new_h   
 
     @staticmethod
     def _worker(policy, simulator, start_time, end_time, h):
