@@ -32,7 +32,8 @@ class PlaceholderCallable:
         return self.value
 
 
-class TestEstimators(unittest.TestCase):
+class TestEstimator(unittest.TestCase):
+    """Test base Estimator objects."""
 
     def test_callable(self):
         estimator = DataEstimator(PlaceholderCallable(1.0))

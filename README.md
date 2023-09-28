@@ -26,10 +26,10 @@ You can see how this works on our [Installation and Hello World](https://youtu.b
 
 Testing locally
 ------------
-We ship our unit test suite with the pip package. After installing you can test in you local environment by
+We ship our unit test suite with the pip package. After installing you can test in you local environment by running
 
 ```
-python -m unittest discover cvxportfolio
+python -m cvxportfolio.tests
 ```
 
 

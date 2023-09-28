@@ -72,7 +72,7 @@ in your local environment with:
 
 .. code-block:: console
 
-	python -m unittest discover cvxportfolio
+	python -m cvxportfolio.tests
 
 We test against recent python versions (3.9, 3.10, 3.11) and recent versions of the main
 dependencies (from pandas 1.4, cvxpy 1.1, ..., up to the current versions) on all major 

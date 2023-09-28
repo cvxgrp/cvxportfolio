@@ -16,12 +16,8 @@
 The two main abstractions are :class:`SymbolData` and :class:`MarketData`.
 Neither are exposed outside this module. Their derived classes instead are.
 
-If you want to implement the interface to another data source you should
-derive from either of those two classes.
-
-This module will be removed or heavily reformatted, most of it is
-unused. The only parts that will remain are the FRED and YFinance
-interfaces, simplified, and not meant to be accessed directly by users.
+If you want to interface cvxportfolio with financial data source other
+than the ones we provide, you should derive from either of those two classes.
 """
 
 import datetime
@@ -36,11 +32,6 @@ import requests
 
 from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
                     resample_returns)
-
-# import yfinance as yf
-
-
-# from .estimator import DataEstimator
 
 __all__ = ["YahooFinanceSymbolData", "FredSymbolData"]
 
@@ -216,10 +207,11 @@ class SymbolData:
 #
 
 def _timestamp_convert(unix_seconds_ts):
-    """Convert a UNIX timestamp in seconds to pd.Timestamp."""
+    """Convert a UNIX timestamp in seconds to a pandas.Timestamp."""
     return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
 
 def _now_timezoned():
+    """Return current timestamp with local timezone."""
     return pd.Timestamp(
         datetime.datetime.now(datetime.timezone.utc).astimezone())
 
@@ -603,7 +595,7 @@ class BaseMarketData:
         """
         raise NotImplementedError
 
-class InMemoryMarketData(BaseMarketData):
+class MarketDataInMemory(BaseMarketData):
     """Market data that is stored in memory when initialized."""
 
     def _serve_data_policy(self, t, mask=None):
@@ -696,15 +688,6 @@ class InMemoryMarketData(BaseMarketData):
         tmp[cash_key] = tmp[cash_key].ffill()
         self.returns = tmp.loc[original_returns_index]
 
-    def _make_internal_dataframes_read_only(self):
-        """Makes the internal dataframes read-only."""
-
-        self.returns = ro(self.returns)
-        if not self.prices is None:
-            self.prices = ro(self.prices)
-        if not self.volumes is None:
-            self.volumes = ro(self.volumes)
-
     def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
         """Get trading calendar from market data."""
         result = self.returns.index
@@ -724,7 +707,7 @@ class InMemoryMarketData(BaseMarketData):
             (~self.returns.loc[t].isnull())]
 
     @staticmethod
-    def _set_read_only(df):
+    def _df_set_read_only(df):
         """Set numpy array contained in dataframe to read only.
         
         This is done on data store internally before it is served to
@@ -741,6 +724,17 @@ class InMemoryMarketData(BaseMarketData):
         data = df.values
         data.flags.writeable = False
         return pd.DataFrame(data, index=df.index, columns=df.columns)
+
+    def _set_read_only(self):
+        """Set internal dataframes to read-only."""
+
+        self.returns = self._df_set_read_only(self.returns)
+
+        if not self.prices is None:
+            self.prices = self._df_set_read_only(self.prices)
+
+        if not self.volumes is None:
+            self.volumes = self._df_set_read_only(self.volumes)
 
     @property
     def _limited_universes(self):
@@ -847,7 +841,7 @@ class InMemoryMarketData(BaseMarketData):
                         (~(self.prices[col].isnull())).idxmax()
                     ] = np.nan
 
-class UserProvidedMarketData(InMemoryMarketData):
+class MarketDataUserProvided(MarketDataInMemory):
 
     def __init__(self, returns=None, volumes=None, prices=None):
         pass
@@ -866,7 +860,7 @@ class UserProvidedMarketData(InMemoryMarketData):
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
 
-class MarketData(InMemoryMarketData):
+class MarketData(MarketDataInMemory):
     """Prepare, hold, and serve market data.
 
     Not meant to be accessed by user. Most of its initialization is
@@ -919,19 +913,6 @@ class MarketData(InMemoryMarketData):
         self._set_read_only()
         self._check_sizes()
 
-    # def _reduce_universe(self, reduced_universe):
-    #     assert reduced_universe[-1] == self.cash_key
-    #     logging.debug(
-    #         f'Preparing MarketData with reduced_universe {reduced_universe}')
-    #     return MarketData(
-    #         returns=self.returns[reduced_universe],
-    #         volumes=self.volumes[reduced_universe[:-1]
-    #                              ] if not (self.volumes is None) else None,
-    #         prices=self.prices[reduced_universe[:-1]
-    #                            ] if not (self.prices is None) else None,
-    #         cash_key=self.cash_key,
-    #         copy_dataframes=False)
-
     @property
     def min_history(self):
         """Min.
@@ -961,30 +942,6 @@ class MarketData(InMemoryMarketData):
                                           or not all(self.prices.columns == self.returns.columns[:-1])):
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
-
-    def _set_read_only(self):
-        """Set numpy array contained in dataframe to read only.
-
-        This is enough to prevent direct assignement to the resulting
-        dataframe. However it could still be accidentally corrupted by
-        assigning to columns or indices that are not present in the
-        original. We avoid that case as well by returning a wrapped
-        dataframe (which doesn't copy data on creation) in
-        _serve_data_policy and _serve_data_simulator.
-        """
-
-        def ro(df):
-            data = df.values
-            data.flags.writeable = False
-            return pd.DataFrame(data, index=df.index, columns=df.columns)
-
-        self.returns = ro(self.returns)
-
-        if not self.prices is None:
-            self.prices = ro(self.prices)
-
-        if not self.volumes is None:
-            self.volumes = ro(self.volumes)
 
     DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}
 

@@ -11,15 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains classes that provide forecasts such as historical.
+"""This module contains classes that make forecasts.
 
-means.
+It implements the models described in Chapter 7 of the book (Examples).
 
-and covariances and are used internally by cvxportfolio objects. In
-addition, forecast classes have the ability to cache results online so
-that if multiple classes need access to the estimated value (as is the
+For example, historical means of market returns, and covariances, are
+forecasted here. These are used internally by cvxportfolio objects. In
+addition, some of the classes defined here have the ability to cache the 
+result of their computation online so that if multiple copies of the same 
+forecaster need access to the estimated value (as is the
 case in MultiPeriodOptimization policies) the expensive evaluation is
-only done once.
+only done once. The same cache is stored on disk when a back-test ends,
+so next time the user runs a back-test with the same universe and market
+data, the forecasted values will be retrieved automatically.
 """
 
 import logging

@@ -22,7 +22,7 @@ env:
 	$(BINDIR)/python -m pip install -r requirements.txt
 
 test:
-	$(BINDIR)/coverage run -m unittest discover $(PROJECT)
+	$(BINDIR)/coverage run -m $(PROJECT).tests
 	$(BINDIR)/coverage report --fail-under $(COVERAGE)
 	$(BINDIR)/coverage xml
 	$(BINDIR)/diff-cover --fail-under $(DIFFCOVERAGE) --compare-branch origin/master coverage.xml

@@ -11,4 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""We make the tests a sub-package so we can ship them."""
+"""Run all tests with ``python -m cvxportfolio.tests``."""
+
+import unittest
+
+from .test_constraints import TestConstraints
+from .test_costs import TestCosts
+from .test_data import TestData
+from .test_estimator import TestEstimator
+from .test_forecast import TestForecast
+from .test_hyperparameters import TestHyperparameters
+from .test_policies import TestPolicies
+from .test_returns import TestReturns
+from .test_risks import TestRisks
+from .test_simulator import TestSimulator
+from .test_utils import TestUtils
+
+if __name__ == '__main__':
+    unittest.main()
