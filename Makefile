@@ -22,7 +22,7 @@ env:
 	$(BINDIR)/python -m pip install -r requirements.txt
 
 test:
-	$(BINDIR)/coverage run -m $(PROJECT).tests
+	$(BINDIR)/coverage run -Werror -m $(PROJECT).tests
 	$(BINDIR)/coverage report --fail-under $(COVERAGE)
 	$(BINDIR)/coverage xml
 	$(BINDIR)/diff-cover --fail-under $(DIFFCOVERAGE) --compare-branch origin/master coverage.xml
@@ -30,8 +30,7 @@ test:
 lint:
 	$(BINDIR)/pylint $(PYLINT_OPTS) --fail-under $(LINT) $(PROJECT)
 
-# hardtest:
-#	$(BINDIR)/pytest -W error $(PROJECT)/tests/*.py # warnings -> errors
+# hardtest: test
 #	$(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
 clean:
@@ -50,20 +49,9 @@ coverage: test
 	open htmlcov/index.html
 
 fix:
-	# THESE ARE ACCEPTABLE
+	# selected among many popular python code auto-fixers
 	$(BINDIR)/autopep8 --select W291,W293,W391,E231,E225,E303 -i $(PROJECT)/*.py $(TESTS)/*.py
 	$(BINDIR)/isort $(PROJECT)/*.py $(TESTS)/*.py
-	# this one sometimes fails (?)
-	# $(BINDIR)/docformatter --in-place $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	# $(BINDIR)/pydocstringformatter --write $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	# THIS ONE MAKES NON-SENSICAL CHANGES (BUT NOT BREAKING)
-	# $(BINDIR)/ruff --line-length=79 --fix-only $(PROJECT)/*.py$(PROJECT)/tests/*.py
-	# THIS ONE IS DUBIOUS (NOT AS BAD AS BLACK)
-	# $(BINDIR)/autopep8 --aggressive --aggressive --aggressive -i $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	# THIS ONE BREAKS DOCSTRINGS TO SATISFY LINE LEN
-	# $(BINDIR)/pydocstringformatter --linewrap-full-docstring --write $(PROJECT)/*.py $(PROJECT)/tests/*.py
-	# THIS ONE DOES SAME AS RUFF, PLUS REMOVING PASS
-	# $(BINDIR)/autoflake --in-place $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
 release: cleanenv env lint test
 	$(BINDIR)/python bumpversion.py

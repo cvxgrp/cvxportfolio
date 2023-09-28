@@ -13,9 +13,7 @@ myst_parser
 coverage
 sphinx-rtd-theme
 pylint
-autopep8
 isort
+autopep8
 diff_cover
-pytest
-pytest-cov
 multiprocess
