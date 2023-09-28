@@ -16,17 +16,16 @@
 import shutil
 import tempfile
 import unittest
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.data import (FredSymbolData, YahooFinanceSymbolData,
+from cvxportfolio.data import (DownloadedMarketData, FredSymbolData,
+                               UserProvidedMarketData, YahooFinanceSymbolData,
                                _loader_csv, _loader_pickle, _loader_sqlite,
-                               _storer_csv, _storer_pickle, _storer_sqlite,
-                               UserProvidedMarketData,
-                               DownloadedMarketData)
+                               _storer_csv, _storer_pickle, _storer_sqlite)
 
 
 class TestData(unittest.TestCase):
@@ -281,7 +280,7 @@ class TestData(unittest.TestCase):
 
 
 class TestMarketData(unittest.TestCase):
-    
+
     @classmethod
     def setUpClass(cls):
         """Initialize data directory."""
@@ -301,13 +300,13 @@ class TestMarketData(unittest.TestCase):
             returns=cls.returns, volumes=cls.volumes, prices=cls.prices,
             cash_key='cash', base_location=cls.datadir)
         cls.universe = cls.returns.columns
-        
+
     @classmethod
     def tearDownClass(cls):
         """Remove data directory."""
         print('removing', cls.datadir)
         shutil.rmtree(cls.datadir)
-        
+
     @staticmethod
     def strip_tz_and_hour(market_data):
         market_data.returns.index = \
@@ -362,7 +361,7 @@ class TestMarketData(unittest.TestCase):
             self.assertTrue(np.allclose(
                 (1 + md.returns.loc[periods[i]]).prod(),
                 1 + new_md.returns.loc[testdays[i]]))
-                
+
     def test_market_data_methods1(self):
         t = self.returns.index[10]
         past_returns, past_volumes, current_prices = \
@@ -383,7 +382,7 @@ class TestMarketData(unittest.TestCase):
         print(current_prices.name)
         print(t)
         self.assertTrue(current_prices.name == t)
-        
+
     def test_market_data_object_safety(self):
         t = self.returns.index[10]
 
@@ -475,8 +474,7 @@ class TestMarketData(unittest.TestCase):
         past_returns, past_volumes, current_prices = md._serve_data_policy(t)
         self.assertFalse(past_volumes is None)
         self.assertFalse(current_prices is None)
-    
-    
+
 
 if __name__ == '__main__':
     unittest.main()

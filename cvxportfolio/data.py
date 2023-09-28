@@ -597,16 +597,15 @@ class BaseMarketData:
 
 class MarketDataInMemory(BaseMarketData):
     """Market data that is stored in memory when initialized."""
-    
+
     def __init__(self, trading_frequency):
-        
+
         if trading_frequency:
             self._downsample(trading_frequency)
         self.trading_frequency = trading_frequency
 
         self._set_read_only()
         self._check_sizes()
-        
 
     def _serve_data_policy(self, t, mask=None):
         """Give data to policy at time t."""
@@ -651,8 +650,6 @@ class MarketDataInMemory(BaseMarketData):
             current_prices = None
 
         return current_and_past_returns, current_and_past_volumes, current_prices
-
-
 
     @staticmethod
     def _resample_returns(returns, periods):
@@ -836,12 +833,12 @@ class MarketDataInMemory(BaseMarketData):
                 self.prices[col].loc[
                         (~(self.prices[col].isnull())).idxmax()
                     ] = np.nan
-                    
+
     @property
     def PPY(self):
         """Periods per year, assumes returns are about equally spaced."""
         return periods_per_year_from_datetime_index(self.returns.index)
-        
+
     def _check_sizes(self):
         """Check sizes of user-provided dataframes."""
 
@@ -856,7 +853,7 @@ class MarketDataInMemory(BaseMarketData):
                 or not all(self.prices.columns == self.returns.columns[:-1])):
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
-                
+
     @property
     def universe(self):
         """Full trading universe including cash."""
@@ -880,36 +877,31 @@ class MarketDataInMemory(BaseMarketData):
 
 class UserProvidedMarketData(MarketDataInMemory):
 
-    def __init__(self, returns, volumes=None, prices=None, 
+    def __init__(self, returns, volumes=None, prices=None,
                  copy_dataframes=True, trading_frequency=None,
                  base_location=BASE_LOCATION,
                  min_history=pd.Timedelta('365.24d'),
-                 # TODO change logic for this (it's now this to not drop quarterly data)
-                 max_contiguous_missing='370d',
                  cash_key='USDOLLAR'):
-                 
+
         if returns is None:
             raise SyntaxError(
                 "If you don't specify a universe you should pass `returns`.")
-                 
+
         self.base_location = Path(base_location)
         self._min_history_timedelta = min_history
-        self.max_contiguous_missing = max_contiguous_missing
         self.cash_key = cash_key
-        
+
         self.returns = pd.DataFrame(returns, copy=copy_dataframes)
         self.volumes = volumes if volumes is None else\
             pd.DataFrame(volumes, copy=copy_dataframes)
         self.prices = prices if prices is None else\
             pd.DataFrame(prices, copy=copy_dataframes)
-            
+
         if cash_key != returns.columns[-1]:
             self._add_cash_column(cash_key)
-        
+
         super().__init__(trading_frequency=trading_frequency)
 
-
-                
 
 class DownloadedMarketData(MarketDataInMemory):
     """Prepare, hold, and serve market data.
@@ -925,7 +917,6 @@ class DownloadedMarketData(MarketDataInMemory):
                  base_location=BASE_LOCATION,
                  min_history=pd.Timedelta('365.24d'),
                  # TODO change logic for this (it's now this to not drop quarterly data)
-                 max_contiguous_missing='370d',
                  trading_frequency=None):
 
         # drop duplicates and ensure ordering
@@ -933,7 +924,6 @@ class DownloadedMarketData(MarketDataInMemory):
 
         self.base_location = Path(base_location)
         self._min_history_timedelta = min_history
-        self.max_contiguous_missing = max_contiguous_missing
         self.cash_key = cash_key
 
         # if len(universe):
@@ -957,7 +947,6 @@ class DownloadedMarketData(MarketDataInMemory):
 
         self._set_read_only()
         self._check_sizes()
-
 
     DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}
 

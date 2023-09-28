@@ -27,12 +27,11 @@ import pandas as pd
 import cvxportfolio as cvx
 from cvxportfolio.errors import *
 from cvxportfolio.estimator import DataEstimator
-from cvxportfolio.simulator import (
-    DownloadedMarketData, MarketSimulator,
-    StockMarketSimulator, UserProvidedMarketData)
+from cvxportfolio.simulator import (DownloadedMarketData, MarketSimulator,
+                                    StockMarketSimulator,
+                                    UserProvidedMarketData)
 
 
-    
 class TestSimulator(unittest.TestCase):
 
     @classmethod

@@ -34,8 +34,8 @@ import pandas as pd
 from multiprocess import Lock, Pool
 
 from .costs import BaseCost, StocksHoldingCost, StocksTransactionCost
-from .data import (BASE_LOCATION, FredSymbolData, DownloadedMarketData,
-                   YahooFinanceSymbolData, UserProvidedMarketData)
+from .data import (BASE_LOCATION, DownloadedMarketData, FredSymbolData,
+                   UserProvidedMarketData, YahooFinanceSymbolData)
 from .errors import DataError
 from .estimator import DataEstimator, Estimator
 from .result import BacktestResult
@@ -105,34 +105,37 @@ class MarketSimulator:
     """
 
     def __init__(self, universe=(), returns=None, volumes=None,
-                 prices=None, costs=(), round_trades=False,
+                 prices=None, market_data=None, costs=(), round_trades=False,
                  min_history=pd.Timedelta('365d'),
                  datasource='YFinance',
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
-                 trading_frequency=None, 
+                 trading_frequency=None,
                  copy_dataframes=True):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
 
         self.enable_caching = len(universe) > 0
-        
-        if not len(universe):
-            self.market_data = UserProvidedMarketData(
-                returns=returns,
-                volumes=volumes, prices=prices,
-                cash_key=cash_key, 
-                base_location=base_location,
-                trading_frequency=trading_frequency,
-                min_history=min_history,
-                copy_dataframes=copy_dataframes)
+
+        if not market_data is None:
+            self.market_data = market_data
         else:
-            self.market_data = DownloadedMarketData(
-                universe=universe, 
-                cash_key=cash_key, 
-                base_location=base_location,
-                trading_frequency=trading_frequency,
-                min_history=min_history,
-                datasource=datasource)
+            if not len(universe):
+                self.market_data = UserProvidedMarketData(
+                    returns=returns,
+                    volumes=volumes, prices=prices,
+                    cash_key=cash_key,
+                    base_location=base_location,
+                    trading_frequency=trading_frequency,
+                    min_history=min_history,
+                    copy_dataframes=copy_dataframes)
+            else:
+                self.market_data = DownloadedMarketData(
+                    universe=universe,
+                    cash_key=cash_key,
+                    base_location=base_location,
+                    trading_frequency=trading_frequency,
+                    min_history=min_history,
+                    datasource=datasource)
 
         self.trading_frequency = trading_frequency
 
