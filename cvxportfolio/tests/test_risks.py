@@ -240,6 +240,7 @@ class TestRisks(unittest.TestCase):
                                    ((F @ self.w_plus_minus_w_bm.value)**2).sum()))
 
     def test_worst_case_risk(self):
+        """Test the worst-case risk object."""
 
         risk_model0 = FullCovariance()
         risk_model1 = DiagonalCovariance()

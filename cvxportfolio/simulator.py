@@ -34,8 +34,8 @@ import pandas as pd
 from multiprocess import Lock, Pool
 
 from .costs import BaseCost, StocksHoldingCost, StocksTransactionCost
-from .data import (BASE_LOCATION, FredSymbolData, MarketData,
-                   YahooFinanceSymbolData)
+from .data import (BASE_LOCATION, FredSymbolData, DownloadedMarketData,
+                   YahooFinanceSymbolData, UserProvidedMarketData)
 from .errors import DataError
 from .estimator import DataEstimator, Estimator
 from .result import BacktestResult
@@ -109,20 +109,30 @@ class MarketSimulator:
                  min_history=pd.Timedelta('365d'),
                  datasource='YFinance',
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
-                 trading_frequency=None, **kwargs):
+                 trading_frequency=None, 
+                 copy_dataframes=True):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
 
         self.enable_caching = len(universe) > 0
-
-        self.market_data = MarketData(
-            universe=universe, returns=returns,
-            volumes=volumes, prices=prices,
-            cash_key=cash_key, base_location=base_location,
-            trading_frequency=trading_frequency,
-            min_history=min_history,
-            datasource=datasource,
-            **kwargs)
+        
+        if not len(universe):
+            self.market_data = UserProvidedMarketData(
+                returns=returns,
+                volumes=volumes, prices=prices,
+                cash_key=cash_key, 
+                base_location=base_location,
+                trading_frequency=trading_frequency,
+                min_history=min_history,
+                copy_dataframes=copy_dataframes)
+        else:
+            self.market_data = DownloadedMarketData(
+                universe=universe, 
+                cash_key=cash_key, 
+                base_location=base_location,
+                trading_frequency=trading_frequency,
+                min_history=min_history,
+                datasource=datasource)
 
         self.trading_frequency = trading_frequency
 

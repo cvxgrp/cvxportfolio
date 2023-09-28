@@ -597,6 +597,16 @@ class BaseMarketData:
 
 class MarketDataInMemory(BaseMarketData):
     """Market data that is stored in memory when initialized."""
+    
+    def __init__(self, trading_frequency):
+        
+        if trading_frequency:
+            self._downsample(trading_frequency)
+        self.trading_frequency = trading_frequency
+
+        self._set_read_only()
+        self._check_sizes()
+        
 
     def _serve_data_policy(self, t, mask=None):
         """Give data to policy at time t."""
@@ -642,21 +652,7 @@ class MarketDataInMemory(BaseMarketData):
 
         return current_and_past_returns, current_and_past_volumes, current_prices
 
-    @property
-    def universe(self):
-        """Full trading universe including cash."""
-        return self.returns.columns
 
-    @property
-    def periods_per_year(self):
-        """Average trading periods per year inferred from the data."""
-        return periods_per_year_from_datetime_index(self.returns.index)
-
-    @property
-    def min_history(self):
-        """Min history expressed in periods."""
-        return int(np.round(self.periods_per_year * (
-            self._min_history_timedelta / pd.Timedelta('365.24d'))))
 
     @staticmethod
     def _resample_returns(returns, periods):
@@ -736,21 +732,21 @@ class MarketDataInMemory(BaseMarketData):
         if not self.volumes is None:
             self.volumes = self._df_set_read_only(self.volumes)
 
-    @property
-    def _limited_universes(self):
-        """Valid universes for each section, minus cash.
-
-        A backtest is broken into multiple ones that start at each key
-        of this, have the universe specified by this, and end at the
-        next startpoint.
-        """
-        result = OrderedDict()
-        uni = []
-        for ts in self._break_timestamps:
-            uni += self.entry_dates[ts]
-            uni = [el for el in uni if not el in self.exit_dates[ts]]
-            result[ts] = tuple(sorted(uni))
-        return result
+    # @property
+    # def _limited_universes(self):
+    #     """Valid universes for each section, minus cash.
+    #
+    #     A backtest is broken into multiple ones that start at each key
+    #     of this, have the universe specified by this, and end at the
+    #     next startpoint.
+    #     """
+    #     result = OrderedDict()
+    #     uni = []
+    #     for ts in self._break_timestamps:
+    #         uni += self.entry_dates[ts]
+    #         uni = [el for el in uni if not el in self.exit_dates[ts]]
+    #         result[ts] = tuple(sorted(uni))
+    #     return result
 
     @property
     def _earliest_backtest_start(self):
@@ -840,13 +836,14 @@ class MarketDataInMemory(BaseMarketData):
                 self.prices[col].loc[
                         (~(self.prices[col].isnull())).idxmax()
                     ] = np.nan
-
-class MarketDataUserProvided(MarketDataInMemory):
-
-    def __init__(self, returns=None, volumes=None, prices=None):
-        pass
-
+                    
+    @property
+    def PPY(self):
+        """Periods per year, assumes returns are about equally spaced."""
+        return periods_per_year_from_datetime_index(self.returns.index)
+        
     def _check_sizes(self):
+        """Check sizes of user-provided dataframes."""
 
         if (not self.volumes is None) and (
                 not (self.volumes.shape[1] == self.returns.shape[1] - 1)
@@ -859,8 +856,62 @@ class MarketDataUserProvided(MarketDataInMemory):
                 or not all(self.prices.columns == self.returns.columns[:-1])):
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
+                
+    @property
+    def universe(self):
+        """Full trading universe including cash."""
+        return self.returns.columns
 
-class MarketData(MarketDataInMemory):
+    @property
+    def periods_per_year(self):
+        """Average trading periods per year inferred from the data."""
+        return periods_per_year_from_datetime_index(self.returns.index)
+
+    @property
+    def min_history(self):
+        """Min history expressed in periods."""
+        return int(np.round(self.periods_per_year * (
+            self._min_history_timedelta / pd.Timedelta('365.24d'))))
+
+    @property
+    def PPY(self):
+        """Periods per year, assumes returns are about equally spaced."""
+        return periods_per_year_from_datetime_index(self.returns.index)
+
+class UserProvidedMarketData(MarketDataInMemory):
+
+    def __init__(self, returns, volumes=None, prices=None, 
+                 copy_dataframes=True, trading_frequency=None,
+                 base_location=BASE_LOCATION,
+                 min_history=pd.Timedelta('365.24d'),
+                 # TODO change logic for this (it's now this to not drop quarterly data)
+                 max_contiguous_missing='370d',
+                 cash_key='USDOLLAR'):
+                 
+        if returns is None:
+            raise SyntaxError(
+                "If you don't specify a universe you should pass `returns`.")
+                 
+        self.base_location = Path(base_location)
+        self._min_history_timedelta = min_history
+        self.max_contiguous_missing = max_contiguous_missing
+        self.cash_key = cash_key
+        
+        self.returns = pd.DataFrame(returns, copy=copy_dataframes)
+        self.volumes = volumes if volumes is None else\
+            pd.DataFrame(volumes, copy=copy_dataframes)
+        self.prices = prices if prices is None else\
+            pd.DataFrame(prices, copy=copy_dataframes)
+            
+        if cash_key != returns.columns[-1]:
+            self._add_cash_column(cash_key)
+        
+        super().__init__(trading_frequency=trading_frequency)
+
+
+                
+
+class DownloadedMarketData(MarketDataInMemory):
     """Prepare, hold, and serve market data.
 
     Not meant to be accessed by user. Most of its initialization is
@@ -869,43 +920,37 @@ class MarketData(MarketDataInMemory):
 
     def __init__(self,
                  universe=(),
-                 returns=None,
-                 volumes=None,
-                 prices=None,
                  datasource='YFinance',
                  cash_key='USDOLLAR',
                  base_location=BASE_LOCATION,
                  min_history=pd.Timedelta('365.24d'),
                  # TODO change logic for this (it's now this to not drop quarterly data)
                  max_contiguous_missing='370d',
-                 trading_frequency=None,
-                 copy_dataframes=True,
-                 **kwargs,
-                 ):
+                 trading_frequency=None):
 
         # drop duplicates and ensure ordering
         universe = sorted(set(universe))
 
         self.base_location = Path(base_location)
-        self.min_history_timedelta = min_history
+        self._min_history_timedelta = min_history
         self.max_contiguous_missing = max_contiguous_missing
         self.cash_key = cash_key
 
-        if len(universe):
-            self._get_market_data(universe, datasource)
-            self._add_cash_column(self.cash_key)
-            self._remove_missing_recent()
-        else:
-            if returns is None:
-                raise SyntaxError(
-                    "If you don't specify a universe you should pass `returns`.")
-            self.returns = pd.DataFrame(returns, copy=copy_dataframes)
-            self.volumes = volumes if volumes is None else\
-                pd.DataFrame(volumes, copy=copy_dataframes)
-            self.prices = prices if prices is None else\
-                pd.DataFrame(prices, copy=copy_dataframes)
-            if cash_key != returns.columns[-1]:
-                self._add_cash_column(cash_key)
+        # if len(universe):
+        self._get_market_data(universe, datasource)
+        self._add_cash_column(self.cash_key)
+        self._remove_missing_recent()
+        # else:
+        #     if returns is None:
+        #         raise SyntaxError(
+        #             "If you don't specify a universe you should pass `returns`.")
+        #     self.returns = pd.DataFrame(returns, copy=copy_dataframes)
+        #     self.volumes = volumes if volumes is None else\
+        #         pd.DataFrame(volumes, copy=copy_dataframes)
+        #     self.prices = prices if prices is None else\
+        #         pd.DataFrame(prices, copy=copy_dataframes)
+        #     if cash_key != returns.columns[-1]:
+        #         self._add_cash_column(cash_key)
 
         if trading_frequency:
             self._downsample(trading_frequency)
@@ -913,35 +958,6 @@ class MarketData(MarketDataInMemory):
         self._set_read_only()
         self._check_sizes()
 
-    @property
-    def min_history(self):
-        """Min.
-
-        history expressed in periods.
-        """
-        return int(np.round(self.PPY * (
-            self.min_history_timedelta / pd.Timedelta('365.24d'))))
-
-    @property
-    def universe(self):
-        return self.returns.columns
-
-    @property
-    def PPY(self):
-        """Periods per year, assumes returns are about equally spaced."""
-        return periods_per_year_from_datetime_index(self.returns.index)
-
-    def _check_sizes(self):
-
-        if (not self.volumes is None) and (not (self.volumes.shape[1] == self.returns.shape[1] - 1)
-                                           or not all(self.volumes.columns == self.returns.columns[:-1])):
-            raise SyntaxError(
-                'Volumes should have same columns as returns, minus cash_key.')
-
-        if (not self.prices is None) and (not (self.prices.shape[1] == self.returns.shape[1] - 1)
-                                          or not all(self.prices.columns == self.returns.columns[:-1])):
-            raise SyntaxError(
-                'Prices should have same columns as returns, minus cash_key.')
 
     DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}
 

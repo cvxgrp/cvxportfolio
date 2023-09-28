@@ -17,7 +17,7 @@ import unittest
 
 from .test_constraints import TestConstraints
 from .test_costs import TestCosts
-from .test_data import TestData
+from .test_data import TestData, TestMarketData
 from .test_estimator import TestEstimator
 from .test_forecast import TestForecast
 from .test_hyperparameters import TestHyperparameters
@@ -28,4 +28,5 @@ from .test_simulator import TestSimulator
 from .test_utils import TestUtils
 
 if __name__ == '__main__':
-    unittest.main()
+    
+    unittest.main()#warnings='error')

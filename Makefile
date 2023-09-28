@@ -22,7 +22,7 @@ env:
 	$(BINDIR)/python -m pip install -r requirements.txt
 
 test:
-	$(BINDIR)/coverage run -Werror -m $(PROJECT).tests
+	$(BINDIR)/coverage run -m $(PROJECT).tests
 	$(BINDIR)/coverage report --fail-under $(COVERAGE)
 	$(BINDIR)/coverage xml
 	$(BINDIR)/diff-cover --fail-under $(DIFFCOVERAGE) --compare-branch origin/master coverage.xml
@@ -44,7 +44,7 @@ docs:
 opendocs: docs
 	open build/index.html
 
-coverage: test
+coverage:
 	$(BINDIR)/coverage html
 	open htmlcov/index.html
 

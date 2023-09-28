@@ -17,13 +17,16 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
 
 from cvxportfolio.data import (FredSymbolData, YahooFinanceSymbolData,
                                _loader_csv, _loader_pickle, _loader_sqlite,
-                               _storer_csv, _storer_pickle, _storer_sqlite)
+                               _storer_csv, _storer_pickle, _storer_sqlite,
+                               UserProvidedMarketData,
+                               DownloadedMarketData)
 
 
 class TestData(unittest.TestCase):
@@ -276,6 +279,204 @@ class TestData(unittest.TestCase):
         self.assertTrue(all(data.index.dtypes == data1.index.dtypes))
         self.assertTrue(all(data.dtypes == data1.dtypes))
 
+
+class TestMarketData(unittest.TestCase):
+    
+    @classmethod
+    def setUpClass(cls):
+        """Initialize data directory."""
+        cls.datadir = Path(tempfile.mkdtemp())
+        print('created', cls.datadir)
+
+        cls.returns = pd.read_csv(
+            Path(__file__).parent /
+                "returns.csv", index_col=0, parse_dates=[0])
+        cls.volumes = pd.read_csv(
+            Path(__file__).parent /
+                "volumes.csv", index_col=0, parse_dates=[0])
+        cls.prices = pd.DataFrame(
+            np.random.uniform(10, 200, size=cls.volumes.shape),
+            index=cls.volumes.index, columns=cls.volumes.columns)
+        cls.market_data = UserProvidedMarketData(
+            returns=cls.returns, volumes=cls.volumes, prices=cls.prices,
+            cash_key='cash', base_location=cls.datadir)
+        cls.universe = cls.returns.columns
+        
+    @classmethod
+    def tearDownClass(cls):
+        """Remove data directory."""
+        print('removing', cls.datadir)
+        shutil.rmtree(cls.datadir)
+        
+    @staticmethod
+    def strip_tz_and_hour(market_data):
+        market_data.returns.index = \
+            market_data.returns.index.tz_localize(None).floor("D")
+        market_data.volumes.index = \
+            market_data.volumes.index.tz_localize(None).floor("D")
+        market_data.prices.index = \
+            market_data.prices.index.tz_localize(None).floor("D")
+
+    def test_market_data__downsample(self):
+        """Test downsampling of market data."""
+        md = DownloadedMarketData(['AAPL', 'GOOG'], base_location=self.datadir)
+
+        # TODO: better to rewrite this test
+        self.strip_tz_and_hour(md)
+
+        idx = md.returns.index
+
+        # not doing annual because XXXX-01-01 is holiday
+        freqs = ['weekly', 'monthly', 'quarterly']
+        testdays = ['2023-05-01', '2023-05-01', '2022-04-01']
+        periods = [['2023-05-01', '2023-05-02', '2023-05-03', '2023-05-04',
+                    '2023-05-05'],
+                   idx[(idx >= '2023-05-01') & (idx < '2023-06-01')],
+                   idx[(idx >= '2022-04-01') & (idx < '2022-07-01')]]
+
+        for i in range(len(freqs)):
+
+            new_md = deepcopy(md)
+
+            new_md._downsample(freqs[i])
+            print(new_md.returns)
+            self.assertTrue(np.isnan(new_md.returns.GOOG.iloc[0]))
+            self.assertTrue(np.isnan(new_md.volumes.GOOG.iloc[0]))
+            self.assertTrue(np.isnan(new_md.prices.GOOG.iloc[0]))
+
+            if freqs[i] == 'weekly':
+                print((new_md.returns.index.weekday < 2).mean())
+                self.assertTrue(
+                    (new_md.returns.index.weekday < 2).mean() > .95)
+
+            if freqs[i] == 'monthly':
+                print((new_md.returns.index.day < 5).mean())
+                self.assertTrue((new_md.returns.index.day < 5).mean() > .95)
+
+            self.assertTrue(
+                all(md.prices.loc[testdays[i]] ==
+                    new_md.prices.loc[testdays[i]]))
+            self.assertTrue(np.allclose(
+                md.volumes.loc[periods[i]].sum(),
+                new_md.volumes.loc[testdays[i]]))
+            self.assertTrue(np.allclose(
+                (1 + md.returns.loc[periods[i]]).prod(),
+                1 + new_md.returns.loc[testdays[i]]))
+                
+    def test_market_data_methods1(self):
+        t = self.returns.index[10]
+        past_returns, past_volumes, current_prices = \
+            self.market_data._serve_data_policy(t)
+        self.assertTrue(past_returns.index[-1] < t)
+        self.assertTrue(past_volumes.index[-1] < t)
+        self.assertTrue(past_volumes.index[-1] == past_returns.index[-1])
+        print(current_prices.name)
+        print(t)
+        self.assertTrue(current_prices.name == t)
+
+    def test_market_data_methods2(self):
+        t = self.returns.index[10]
+        current_and_past_returns, current_and_past_volumes, current_prices = \
+            self.market_data._serve_data_simulator(t)
+        self.assertTrue(current_and_past_returns.index[-1] == t)
+        self.assertTrue(current_and_past_volumes.index[-1] == t)
+        print(current_prices.name)
+        print(t)
+        self.assertTrue(current_prices.name == t)
+        
+    def test_market_data_object_safety(self):
+        t = self.returns.index[10]
+
+        past_returns, past_volumes, current_prices = \
+            self.market_data._serve_data_policy(t)
+
+        with self.assertRaises(ValueError):
+            past_returns.iloc[-2, -2] = 2.
+
+        with self.assertRaises(ValueError):
+            past_volumes.iloc[-1, -1] = 2.
+
+        obj2 = deepcopy(self.market_data)
+        obj2._set_read_only()
+
+        past_returns, past_volumes, current_prices = obj2._serve_data_policy(t)
+
+        with self.assertRaises(ValueError):
+            current_prices.iloc[-1] = 2.
+
+        current_prices.loc['BABA'] = 3.
+
+        past_returns, past_volumes, current_prices = obj2._serve_data_policy(t)
+
+        self.assertFalse('BABA' in current_prices.index)
+
+    def test_user_provided_market_data(self):
+        """Test user-provided market data."""
+
+        used_returns = self.returns.iloc[:, :-1]
+        used_returns.index = used_returns.index.tz_localize('UTC')
+        used_volumes = pd.DataFrame(self.volumes, copy=True)
+        t = used_returns.index[20]
+        used_volumes.index = used_volumes.index.tz_localize('UTC')
+        used_prices = pd.DataFrame(self.prices, copy=True)
+        used_prices.index = used_prices.index.tz_localize('UTC')
+
+        with_download_fred = UserProvidedMarketData(
+            returns=used_returns, volumes=used_volumes, prices=used_prices,
+            cash_key='USDOLLAR', base_location=self.datadir)
+
+        without_prices = UserProvidedMarketData(
+            returns=used_returns, volumes=used_prices, cash_key='USDOLLAR',
+            base_location=self.datadir)
+        past_returns, past_volumes, current_prices = \
+            without_prices._serve_data_policy(t)
+        self.assertTrue(current_prices is None)
+
+        without_volumes = UserProvidedMarketData(returns=used_returns, cash_key='USDOLLAR',
+                                     base_location=self.datadir)
+        current_and_past_returns, current_and_past_volumes, current_prices = \
+            without_volumes._serve_data_simulator(t)
+
+        self.assertTrue(current_and_past_volumes is None)
+
+        with self.assertRaises(SyntaxError):
+            UserProvidedMarketData(returns=self.returns, volumes=self.volumes,
+                       prices=self.prices.iloc[:, :-1], cash_key='cash',
+                       base_location=self.datadir)
+
+        with self.assertRaises(SyntaxError):
+            UserProvidedMarketData(returns=self.returns, volumes=self.volumes.iloc[:, :-3],
+                       prices=self.prices, cash_key='cash',
+                       base_location=self.datadir)
+
+        with self.assertRaises(SyntaxError):
+            used_prices = pd.DataFrame(
+                self.prices, index=self.prices.index,
+                columns=self.prices.columns[::-1])
+            UserProvidedMarketData(returns=self.returns, volumes=self.volumes,
+                       prices=used_prices, cash_key='cash',
+                       base_location=self.datadir)
+
+        with self.assertRaises(SyntaxError):
+            used_volumes = pd.DataFrame(
+                self.volumes, index=self.volumes.index,
+                columns=self.volumes.columns[::-1])
+            UserProvidedMarketData(returns=self.returns, volumes=used_volumes,
+                       prices=self.prices, cash_key='cash',
+                       base_location=self.datadir)
+
+    def test_market_data_full(self):
+
+        md = DownloadedMarketData(['AAPL', 'ZM'], base_location=self.datadir)
+        assert np.all(md.universe == ['AAPL', 'ZM', 'USDOLLAR'])
+
+        t = md.returns.index[-40]
+
+        past_returns, past_volumes, current_prices = md._serve_data_policy(t)
+        self.assertFalse(past_volumes is None)
+        self.assertFalse(current_prices is None)
+    
+    
 
 if __name__ == '__main__':
     unittest.main()
