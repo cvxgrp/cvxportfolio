@@ -366,8 +366,8 @@ class MultiPeriodOptimization(PolicyEstimator):
     """
 
     def __init__(
-        self, objective, constraints=[], include_cash_return=True, 
-        planning_horizon=None, terminal_constraint=None, 
+        self, objective, constraints=[], include_cash_return=True,
+        planning_horizon=None, terminal_constraint=None,
         benchmark=CashBenchmark, **kwargs):
         if hasattr(objective, '__iter__'):
             if not (hasattr(constraints, '__iter__') and len(constraints
@@ -404,7 +404,7 @@ class MultiPeriodOptimization(PolicyEstimator):
         """Compile all cvxpy expressions and the problem."""
         self.cvxpy_objective = [
             el.compile_to_cvxpy(
-                self.w_plus_at_lags[i], self.z_at_lags[i], 
+                self.w_plus_at_lags[i], self.z_at_lags[i],
                 self.w_plus_minus_w_bm_at_lags[i])
             for i, el in enumerate(self.objective)]
         for el, term in zip(self.objective, self.cvxpy_objective):
@@ -416,7 +416,7 @@ class MultiPeriodOptimization(PolicyEstimator):
 
         def compile_and_check_constraint(constr, i):
             result = constr.compile_to_cvxpy(
-                self.w_plus_at_lags[i], self.z_at_lags[i], 
+                self.w_plus_at_lags[i], self.z_at_lags[i],
                 self.w_plus_minus_w_bm_at_lags[i])
             for el in (result if hasattr(result, '__iter__') else [result]):
                 if not el.is_dcp():
@@ -476,16 +476,15 @@ class MultiPeriodOptimization(PolicyEstimator):
         # simulator will overwrite this with cached loaded from disk
         self.cache = {}
 
-
     def values_in_time_recursive(
-        self, t, current_weights, 
-        current_portfolio_value, past_returns, past_volumes, 
+        self, t, current_weights,
+        current_portfolio_value, past_returns, past_volumes,
         current_prices, **kwargs):
         """Update all cvxpy parameters and solve."""
 
         if not current_portfolio_value > 0:
             raise Bankruptcy(
-                "The backtest of %s at time %s has resulted in bankruptcy.", 
+                "The backtest of %s at time %s has resulted in bankruptcy.",
                 self.__class__.__name__, t)
         assert np.isclose(sum(current_weights), 1)
 
@@ -494,7 +493,7 @@ class MultiPeriodOptimization(PolicyEstimator):
                 t=t, current_weights=current_weights,
                 current_portfolio_value=current_portfolio_value,
                 past_returns=past_returns, past_volumes=past_volumes,
-                current_prices=current_prices, mpo_step=i, cache=self.cache, 
+                current_prices=current_prices, mpo_step=i, cache=self.cache,
                 **kwargs)
 
         for i, constr_at_lag in enumerate(self.constraints):
@@ -503,14 +502,14 @@ class MultiPeriodOptimization(PolicyEstimator):
                     t=t, current_weights=current_weights,
                     current_portfolio_value=current_portfolio_value,
                     past_returns=past_returns, past_volumes=past_volumes,
-                    current_prices=current_prices, mpo_step=i, 
+                    current_prices=current_prices, mpo_step=i,
                     cache=self.cache, **kwargs)
 
         self.benchmark.values_in_time_recursive(
             t=t, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value,
             past_returns=past_returns, past_volumes=past_volumes,
-            current_prices=current_prices, mpo_step=i, cache=self.cache, 
+            current_prices=current_prices, mpo_step=i, cache=self.cache,
             **kwargs)
 
         self.w_bm.value = self.benchmark.current_value
@@ -526,19 +525,19 @@ class MultiPeriodOptimization(PolicyEstimator):
                 "Numerical solver for policy %s at time %s failed;"
                 + " try changing it, relaxing some constraints,"
                 + " or dropping some costs.", self.__class__.__name__, t)
-                
+
         if self.problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(
-                f"Policy %s at time %s  resulted in an unbounded problem.", 
+                f"Policy %s at time %s  resulted in an unbounded problem.",
                     self.__class__.__name__, t)
-                    
+
         if self.problem.status in ["infeasible", 'infeasible_inaccurate']:
             raise PortfolioOptimizationError(
-                f"Policy %s at time %s resulted in an infeasible problem.", 
+                f"Policy %s at time %s resulted in an infeasible problem.",
                     self.__class__.__name__, t)
 
         return current_weights + pd.Series(
-            self.z_at_lags[0].value, current_weights.index) 
+            self.z_at_lags[0].value, current_weights.index)
 
     def collect_hyperparameters(self):
         result = []
@@ -579,11 +578,11 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
         so you can choose your own solver and pass parameters to it.
     """
 
-    def __init__(self, objective, constraints=[], 
+    def __init__(self, objective, constraints=[],
                 include_cash_return=True, benchmark=CashBenchmark, **kwargs):
         super().__init__(
-            [objective], [constraints], 
-            include_cash_return=include_cash_return, 
+            [objective], [constraints],
+            include_cash_return=include_cash_return,
             benchmark=benchmark, **kwargs)
 
     # def __repr__(self):

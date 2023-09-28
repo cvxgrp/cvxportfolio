@@ -22,10 +22,10 @@ __version__ = "0.4.10"
 from .benchmark import *
 from .constraints import *
 from .costs import *
+from .data import *
 from .hyperparameters import *
 from .policies import *
 from .result import *
 from .returns import *
 from .risks import *
 from .simulator import *
-from .data import *

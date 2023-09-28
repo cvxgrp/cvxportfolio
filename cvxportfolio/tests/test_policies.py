@@ -49,7 +49,7 @@ class TestPolicies(unittest.TestCase):
         hold = Hold()
         w = pd.Series(0.5, ["AAPL", "CASH"])
         self.assertTrue(np.all(
-            hold.values_in_time_recursive(current_weights=w).values 
+            hold.values_in_time_recursive(current_weights=w).values
             == w.values))
 
     def test_rank_and_long_short(self):
@@ -131,7 +131,7 @@ class TestPolicies(unittest.TestCase):
             wplus = policy.values_in_time_recursive(
                 t=t, current_weights=start_portfolio)
             trade = wplus - start_portfolio.values
-            start_portfolio = pd.Series(wplus,copy=True)
+            start_portfolio = pd.Series(wplus, copy=True)
 
             if t in targets.index:
                 self.assertTrue(np.all(start_portfolio == targets.loc[t]))
@@ -223,7 +223,7 @@ class TestPolicies(unittest.TestCase):
         wplus = pol.values_in_time_recursive(
             t=self.returns.index[123], current_weights=init)
         self.assertTrue(np.allclose(
-            wplus[:-1], 
+            wplus[:-1],
             np.ones(self.returns.shape[1]-1)/(self.returns.shape[1]-1)))
 
     def test_proportional_rebalance(self):
@@ -467,7 +467,7 @@ class TestPolicies(unittest.TestCase):
                 solver='ECOS')
 
             policy.initialize_estimator_recursive(
-                universe=self.returns.columns, 
+                universe=self.returns.columns,
                 backtest_times=self.returns.index)
             policy.compile_to_cvxpy()
 
@@ -483,7 +483,7 @@ class TestPolicies(unittest.TestCase):
                 past_returns=self.returns.iloc[:67],
                 past_volumes=self.volumes.iloc[:67],
                 current_prices=pd.Series(1., self.volumes.columns).values)
-                -curw)
+                - curw)
 
         self.assertTrue(np.allclose(results[0], results[1], atol=1e-4))
         self.assertTrue(np.allclose(results[1], results[2], atol=1e-4))
@@ -505,7 +505,7 @@ class TestPolicies(unittest.TestCase):
                 solver='ECOS')
 
             policy.initialize_estimator_recursive(
-                universe=self.returns.columns, 
+                universe=self.returns.columns,
                 backtest_times=self.returns.index)
             policy.compile_to_cvxpy()
 
@@ -561,7 +561,7 @@ class TestPolicies(unittest.TestCase):
                 solver='ECOS')
 
             policy.initialize_estimator_recursive(
-                universe=self.returns.columns, 
+                universe=self.returns.columns,
                 backtest_times=self.returns.index)
             policy.compile_to_cvxpy()
 

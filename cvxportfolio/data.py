@@ -1,4 +1,4 @@
-# Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+# Copyright 2023 Enzo Busseti
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,18 +24,21 @@ unused. The only parts that will remain are the FRED and YFinance
 interfaces, simplified, and not meant to be accessed directly by users.
 """
 
-import sqlite3
-from pathlib import Path
 import datetime
+import logging
+import sqlite3
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import requests
-# import yfinance as yf
 
 from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
                     resample_returns)
+
+# import yfinance as yf
+
 
 # from .estimator import DataEstimator
 
@@ -117,16 +120,16 @@ class SymbolData:
     #       you will have to check that it works with the backend you use
     #      (it probably would not not with csv).
     # """
-        
-    def __init__(self, symbol, 
-                 storage_backend='pickle', 
+
+    def __init__(self, symbol,
+                 storage_backend='pickle',
                  base_storage_location=BASE_LOCATION):
         self._symbol = symbol
         self._storage_backend = storage_backend
         self._base_storage_location = base_storage_location
         self._update()
         self._data = self._load()
-    
+
     @property
     def storage_location(self):
         """Storage location. Directory is created if not existent.
@@ -136,7 +139,7 @@ class SymbolData:
         loc = self._base_storage_location / f"{self.__class__.__name__}"
         loc.mkdir(parents=True, exist_ok=True)
         return loc
-    
+
     @property
     def symbol(self):
         """The symbol whose data this instance contains.
@@ -144,7 +147,7 @@ class SymbolData:
         :rtype: str
         """
         return self._symbol
-        
+
     @property
     def data(self):
         """Time series data, updated to the most recent observation.
@@ -178,7 +181,7 @@ class SymbolData:
         current = self._load_raw()
         updated = self._download(self.symbol, current)
         self._store(updated)
-    
+
     def _download(self, symbol, current):
         """Download data from external source given already downloaded data.
         
@@ -219,7 +222,7 @@ def _timestamp_convert(unix_seconds_ts):
 def _now_timezoned():
     return pd.Timestamp(
         datetime.datetime.now(datetime.timezone.utc).astimezone())
-            
+
 class YahooFinanceSymbolData(SymbolData):
     """Yahoo Finance symbol data."""
 
@@ -259,43 +262,43 @@ class YahooFinanceSymbolData(SymbolData):
         """
 
         BASE_URL = 'https://query2.finance.yahoo.com'
-    
+
         HEADERS = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)'
             ' AppleWebKit/537.36 (KHTML, like Gecko)'
             ' Chrome/39.0.2171.95 Safari/537.36'}
-        
+
         # print(HEADERS)
         start = int(pd.Timestamp(start).timestamp())
         end = int(pd.Timestamp(end).timestamp())
-    
+
         res = requests.get(
-            url=f"{BASE_URL}/v8/finance/chart/{ticker}", 
-            params={'interval':'1d',
-                "period1": start, 
-                "period2": end}, 
+            url=f"{BASE_URL}/v8/finance/chart/{ticker}",
+            params={'interval': '1d',
+                "period1": start,
+                "period2": end},
             headers=HEADERS)
-        
+
         # print(res)
-        
+
         if res.status_code == 404:
             raise DataError(
                 f'Data for symbol {ticker} is not available.'
-                +'Json output:', str(res.json()))
-    
+                + 'Json output:', str(res.json()))
+
         if res.status_code != 200:
             raise DataError(f'Yahoo finance data download failed. Json:',
                 str(res.json()))
-        
+
         data = res.json()['chart']['result'][0]
 
         index = pd.DatetimeIndex([
-            _timestamp_convert(el) 
+            _timestamp_convert(el)
             for el in data['timestamp']])
-    
+
         df_result = pd.DataFrame(data['indicators']['quote'][0], index=index)
         df_result['adjclose'] = data['indicators']['adjclose'][0]['adjclose']
-        
+
         # last timestamp is probably broken (not timed to market open)
         # we set its time to same as the day before, but this is wrong
         # on days of DST switch. It's fine though because that line will be
@@ -308,14 +311,14 @@ class YahooFinanceSymbolData(SymbolData):
                 list(df_result.index[:-1]) + [newlast])
 
         # remove later, for now we match yfinance column names and ordering
-        df_result = df_result[['open', 'high', 'low', 
+        df_result = df_result[['open', 'high', 'low',
                               'close', 'adjclose', 'volume']]
-        df_result.columns = ['Open', 'High', 'Low', 
+        df_result.columns = ['Open', 'High', 'Low',
                              'Close', 'Adj Close', 'Volume']
         return df_result
 
     @classmethod
-    def _download(cls, symbol, current=None, 
+    def _download(cls, symbol, current=None,
                 overlap=5, grace_period='5d', **kwargs):
         """Download single stock from Yahoo Finance.
 
@@ -380,12 +383,12 @@ class FredSymbolData(SymbolData):
     # TODO: implement FRED point-in-time
     # example:
     # https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=CES0500000003&vintage_date=2023-07-06
-    # hourly wages time series **as it appeared** on 2023-07-06 
+    # hourly wages time series **as it appeared** on 2023-07-06
     # store using pd.Series() of diff'ed values only.
 
     def _internal_download(self, symbol):
         return pd.read_csv(
-            self.URL + f'?id={symbol}', 
+            self.URL + f'?id={symbol}',
             index_col=0, parse_dates=[0])[symbol]
 
     def _download(self, symbol="DFF", current=None, grace_period='5d'):
@@ -401,7 +404,8 @@ class FredSymbolData(SymbolData):
         if current is None:
             return self._internal_download(symbol)
         else:
-            if (pd.Timestamp.today() - current.index[-1]) < pd.Timedelta(grace_period):
+            if (pd.Timestamp.today() - current.index[-1]
+                ) < pd.Timedelta(grace_period):
                 return current
 
             new = self._internal_download(symbol)
@@ -417,8 +421,8 @@ class FredSymbolData(SymbolData):
         """Add UTC timezone."""
         data.index = data.index.tz_localize('UTC')
         return data
-    
-#   
+
+#
 # Sqlite storage backend.
 #
 
@@ -427,7 +431,7 @@ def _open_sqlite(storage_location):
 
 def _close_sqlite(connection):
     connection.close()
-    
+
 def _loader_sqlite(symbol, storage_location):
     """Load data in sqlite format.
     
@@ -441,14 +445,14 @@ def _loader_sqlite(symbol, storage_location):
             f"SELECT * FROM {symbol}___dtypes",
             connection, index_col="index",
             dtype={"index": "str", "0": "str"})
-        
-        parse_dates='index'
+
+        parse_dates = 'index'
         my_dtypes = dict(dtypes["0"])
 
         tmp = pd.read_sql_query(
             f"SELECT * FROM {symbol}", connection,
             index_col="index", parse_dates=parse_dates, dtype=my_dtypes)
-            
+
         _close_sqlite(connection)
         multiindex = []
         for col in tmp.columns:
@@ -462,7 +466,7 @@ def _loader_sqlite(symbol, storage_location):
         return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
     except pd.errors.DatabaseError:
         return None
-            
+
 def _storer_sqlite(symbol, data, storage_location):
     """Store data in sqlite format.
 
@@ -492,7 +496,7 @@ def _storer_sqlite(symbol, data, storage_location):
         data = data.reset_index().set_index("index")
     else:
         data.index.name = "index"
-    
+
     if data.index[0].tzinfo is None:
         warnings.warn('Index has not timezone, setting to UTC')
         data.index = data.index.tz_localize('UTC')
@@ -561,79 +565,112 @@ def _storer_csv(symbol, data, storage_location):
 # Market Data
 #
 
-class MarketData:
+class BaseMarketData:
     """Prepare, hold, and serve market data."""
-    
+
     def serve_data_policy(self, t):
-        """Give data to policy at time t."""
-        raise NotImplementedError
-    
-    def serve_data_simulator(self, t):
-        """Give data to simulator at time t."""
-        raise NotImplementedError
+        """Give data to policy at time t.
         
-    def trading_calendar(self, start_time, end_time):
-        """The trading calendar between two times (inclusive)."""
+        :param t: Trading time.
+        :type t: pandas.Timestamp
+        
+        :rtype: tuple of pandas.DataFrames and pandas.Series
+        """
         raise NotImplementedError
-    
+
+    def serve_data_simulator(self, t):
+        """Give data to simulator at time t.
+        
+        :param t: Trading time.
+        :type t: pandas.Timestamp
+        
+        :rtype: tuple of pandas.DataFrames and pandas.Series
+        """
+        raise NotImplementedError
+
+    def trading_calendar(self, start_time, end_time):
+        """The trading calendar between two times (inclusive).
+        
+        :rtype: pandas.DatetimeIndex
+        """
+        raise NotImplementedError
+
     @property
     def periods_per_year(self):
-        """Average trading periods per year."""
-        raise NotImplementedError
-    
-class InMemoryMarketData(MarketData):
-    """Market data that is stored in memory when initialized."""
+        """Average trading periods per year.
         
-    def serve_data_policy(self, t):
+        :rtype: int
+        """
+        raise NotImplementedError
+
+class InMemoryMarketData(BaseMarketData):
+    """Market data that is stored in memory when initialized."""
+
+    def _serve_data_policy(self, t, mask=None):
         """Give data to policy at time t."""
         tidx = self.returns.index.get_loc(t)
         past_returns = pd.DataFrame(self.returns.iloc[:tidx])
+        if not (mask is None):
+            past_returns = past_returns[mask]
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
             past_volumes = pd.DataFrame(self.volumes.iloc[:tidx])
+            if not (mask is None):
+                past_volumes = past_volumes[mask[:-1]]
         else:
             past_volumes = None
-        current_prices = pd.Series(
-            self.prices.loc[t]) if not self.prices is None else None
+        if not self.prices is None:
+            current_prices = pd.Series(self.prices.loc[t])
+            if not (mask is None):
+                current_prices = current_prices[mask[:-1]]
+        else:
+            current_prices = None
 
         return past_returns, past_volumes, current_prices
 
-    def serve_data_simulator(self, t):
+    def _serve_data_simulator(self, t, mask=None):
         """Give data to simulator at time t."""
         tidx = self.returns.index.get_loc(t)
         current_and_past_returns = pd.DataFrame(self.returns.iloc[:tidx+1])
+        if not (mask is None):
+            current_and_past_returns = current_and_past_returns[mask]
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
             current_and_past_volumes = pd.DataFrame(self.volumes.iloc[:tidx+1])
+            if not (mask is None):
+                current_and_past_volumes = current_and_past_volumes[mask[:-1]]
         else:
             current_and_past_volumes = None
-        current_prices = pd.Series(
-            self.prices.loc[t]) if not self.prices is None else None
+        if not (self.prices is None):
+            current_prices = pd.Series(self.prices.loc[t])
+            if not (mask is None):
+                current_prices = current_prices[mask[:-1]]
+        else:
+            current_prices = None
 
-        return (current_and_past_returns, 
-                current_and_past_volumes, current_prices)
-
+        return current_and_past_returns, current_and_past_volumes, current_prices
+        
     @property
     def universe(self):
         """Full trading universe including cash."""
         return self.returns.columns
-        
+
     @property
     def periods_per_year(self):
         """Average trading periods per year inferred from the data."""
-        return periods_per_year_from_datetime_index(self.returns.index)   
-        
+        return periods_per_year_from_datetime_index(self.returns.index)
+
     @property
     def min_history(self):
         """Min history expressed in periods."""
         return int(np.round(self.periods_per_year * (
             self._min_history_timedelta / pd.Timedelta('365.24d'))))
-    
+
     @staticmethod
     def _resample_returns(returns, periods):
         """Resample returns from number of periods to single period."""
         return np.exp(np.log(1 + returns) / periods) - 1
-        
+
     def _add_cash_column(self, cash_key):
         """Add the cash column to an already formed returns dataframe.
         
@@ -646,18 +683,18 @@ class InMemoryMarketData(MarketData):
         if not cash_key == 'USDOLLAR':
             raise NotImplementedError(
                 'Currently the only data pipeline built is for USDOLLAR cash')
-    
+
         data = FredSymbolData('DFF', base_storage_location=self.base_location)
-        
+
         cash_returns_per_period = self._resample_returns(
             data.data/100, periods=self.periods_per_year)
-        
+
         # we merge instead of assigning column because indexes might
         # be misaligned (e.g., with tz-aware timestamps)
         cash_returns_per_period.name = cash_key
         original_returns_index = self.returns.index
         tmp = self.returns.merge(cash_returns_per_period)
-        
+
         raise Exception
 
         self.returns[cash_key] = self.returns[cash_key].ffill()
@@ -670,7 +707,7 @@ class InMemoryMarketData(MarketData):
             self.prices = ro(self.prices)
         if not self.volumes is None:
             self.volumes = ro(self.volumes)
-            
+
     def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
         """Get trading calendar from market data."""
         result = self.returns.index
@@ -701,31 +738,30 @@ class InMemoryMarketData(MarketData):
         data = df.values
         data.flags.writeable = False
         return pd.DataFrame(data, index=df.index, columns=df.columns)
-        
-    
-    @property
-    def _break_timestamps(self):
-        """List of timestamps at which a backtest should be broken.
 
-        An asset enters into a backtest after having non-NaN returns for
-        self.min_history periods and exits after having NaN returns for
-        self.max_contiguous_missing. Defaults values are 252 and 10
-        respectively.
-        """
-        self.entry_dates = defaultdict(list)
-        self.exit_dates = defaultdict(list)
-        for asset in self.returns.columns[:-1]:
-            single_asset_returns = self.returns[asset].dropna()
-            if len(single_asset_returns) > self.min_history:
-                self.entry_dates[single_asset_returns.index[self.min_history]].append(
-                    asset)
-                exit_date = single_asset_returns.index[-1]
-                if (self.returns.index[-1] - exit_date) >= pd.Timedelta(self.max_contiguous_missing):
-                    self.exit_dates[exit_date].append(asset)
-
-        _ = sorted(set(self.exit_dates) | set(self.entry_dates))
-        logging.debug(f'computing break timestamps {_}')
-        return _
+    # @property
+    # def _break_timestamps(self):
+    #     """List of timestamps at which a backtest should be broken.
+    #
+    #     An asset enters into a backtest after having non-NaN returns for
+    #     self.min_history periods and exits after having NaN returns for
+    #     self.max_contiguous_missing. Defaults values are 252 and 10
+    #     respectively.
+    #     """
+    #     self.entry_dates = defaultdict(list)
+    #     self.exit_dates = defaultdict(list)
+    #     for asset in self.returns.columns[:-1]:
+    #         single_asset_returns = self.returns[asset].dropna()
+    #         if len(single_asset_returns) > self.min_history:
+    #             self.entry_dates[single_asset_returns.index[self.min_history]].append(
+    #                 asset)
+    #             exit_date = single_asset_returns.index[-1]
+    #             if (self.returns.index[-1] - exit_date) >= pd.Timedelta(self.max_contiguous_missing):
+    #                 self.exit_dates[exit_date].append(asset)
+    #
+    #     _ = sorted(set(self.exit_dates) | set(self.entry_dates))
+    #     logging.debug(f'computing break timestamps {_}')
+    #     return _
 
     @property
     def _limited_universes(self):
@@ -785,11 +821,22 @@ class InMemoryMarketData(MarketData):
                 return result
 
             start = expiration
-    
+
     sampling_intervals = {'weekly': 'W-MON',
                           'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
-                          
-                          
+
+    # @staticmethod
+    # def _is_first_interval_small(datetimeindex):
+    #     """Check if post-resampling the first interval is small.
+    #
+    #     We have no way of knowing exactly if the first interval
+    #     needs to be dropped. We drop it if its length is smaller
+    #     than the average of all others, minus 2 standard deviation.
+    #     """
+    #     first_interval = (datetimeindex[1] - datetimeindex[0])
+    #     all_others = (datetimeindex[2:] - datetimeindex[1:-1])
+    #     return first_interval < (all_others.mean() - 2 * all_others.std())
+
     def _downsample(self, interval):
         """_downsample market data."""
         if not interval in self.sampling_intervals:
@@ -797,7 +844,8 @@ class InMemoryMarketData(MarketData):
                 'Unsopported trading interval for down-sampling.')
         interval = self.sampling_intervals[interval]
         new_returns_index = pd.Series(self.returns.index, self.returns.index
-                                      ).resample(interval, closed='left', label='left').first().values
+                                      ).resample(interval, closed='left', 
+                                                 label='left').first().values
         # print(new_returns_index)
         self.returns = np.exp(np.log(
             1+self.returns).resample(interval, closed='left', label='left'
@@ -818,8 +866,10 @@ class InMemoryMarketData(MarketData):
                 ] = np.nan
 
         if self.volumes is not None:
-            new_volumes_index = pd.Series(self.volumes.index, self.volumes.index
-                                          ).resample(interval, closed='left', label='left').first().values
+            new_volumes_index = pd.Series(
+                self.volumes.index, self.volumes.index
+                    ).resample(interval, closed='left', 
+                               label='left').first().values
             self.volumes = self.volumes.resample(
                 interval, closed='left', label='left').sum(min_count=1)
             self.volumes.index = new_volumes_index
@@ -838,8 +888,10 @@ class InMemoryMarketData(MarketData):
                     ] = np.nan
 
         if self.prices is not None:
-            new_prices_index = pd.Series(self.prices.index, self.prices.index
-                                         ).resample(interval, closed='left', label='left').first().values
+            new_prices_index = pd.Series(
+                self.prices.index, self.prices.index
+                ).resample(
+                    interval, closed='left', label='left').first().values
             self.prices = self.prices.resample(
                 interval, closed='left', label='left').first()
             self.prices.index = new_prices_index
@@ -853,14 +905,12 @@ class InMemoryMarketData(MarketData):
                 self.prices[col].loc[
                         (~(self.prices[col].isnull())).idxmax()
                     ] = np.nan
-                    
-            
 
 class UserProvidedMarketData(InMemoryMarketData):
-    
+
     def __init__(self, returns=None, volumes=None, prices=None):
         pass
-    
+
     def _check_sizes(self):
 
         if (not self.volumes is None) and (
@@ -875,123 +925,225 @@ class UserProvidedMarketData(InMemoryMarketData):
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
 
+class MarketData(InMemoryMarketData):
+    """Prepare, hold, and serve market data.
 
-# class RateBase(BaseData):
-#     """Manipulate rate data from percent annualized to daily."""
-#
-#     trading_days = 252
-#
-#     def preload(self, data):
-#         return np.exp(np.log(1 + data / 100) / self.trading_days) - 1
-#
-#
-# class Yfinance(YfinanceBase, LocalDataStore):
-#     """Yahoo Finance data interface using local data store.
-#
-#     Args:
-#         base_location (pathlib.Path): filesystem directory where to store files.
-#     """
-#
-#     def update_and_load(self, symbol):
-#         """Update data for symbol and load it."""
-#         return super().update_and_load(symbol)
-#
-#
-# class FredRate(FredBase, RateBase, PickleStore):
-#     """Load and store FRED rates like DFF."""
-#
-#     pass
-#
-#
-# class YfinanceTimeSeries(DataEstimator, YfinanceBase, PickleStore):
-#
-#     def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
-#         self.symbol = symbol
-#         self.base_location = base_location
-#         self.use_last_available_time = use_last_available_time
-#
-#     def initialize_estimator_recursive(self, *args, **kwargs):
-#         self.data = self.update_and_load(self.symbol)
-#
-#
-# class FredTimeSeries(DataEstimator, FredBase, PickleStore):
-#
-#     def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
-#         self.symbol = symbol
-#         self.base_location = base_location
-#         self.use_last_available_time = use_last_available_time
-#
-#     def _recursive_pre_evaluation(self, *args, **kwargs):
-#         self.data = self.update_and_load(self.symbol)
-#
-#
-# # class FredRateTimeSeries(DataEstimator, FredBase, RateBase, PickleStore):
-# #
-# #     def __init__(self, symbol, use_last_available_time=False, base_location=BASE_LOCATION):
-# #         self.symbol = symbol
-# #         self.base_location = base_location
-# #         self.use_last_available_time = use_last_available_time
-# #
-# #     def _recursive_pre_evaluation(self, *args, **kwargs):
-# #         self.data = self.update_and_load(self.symbol)
-#
-#
-# class TimeSeries(DataEstimator):
-#     """Class for time series data managed by Cvxportfolio.
-#
-#     Args:
-#         symbol (str): name of the time series, such as 'AAPL',
-#             '^VIX', or 'DFF'.
-#         source (str or BaseData): data source to use. Currently we
-#             support 'yahoo', equivalent to `cvxportfolio.YfinanceBase`,
-#             and 'fred', equivalent to `cvxportfolio.FredBase`. If you
-#             implement your own you should define the `download` and
-#             optionally `preload` methods. Default is 'yahoo'.
-#         storage (str or BaseData): storage backend to use. Currently we
-#             support 'sqlite', equivalent to `cvxportfolio.SqliteDataStore`,
-#             and 'csv', equivalent to `cvxportfolio.LocalDataStore`. If you
-#             implement your own you should define the `store` and
-#             `load_raw` methods. Default is 'sqlite'.
-#         use_last_available_time (bool): as in `cvxportfolio.DataEstimator`
-#         base_location (pathlib.Path or None): base location for the data storage.
-#     """
-#
-#     def __init__(
-#         self,
-#         symbol,
-#         source="yahoo",
-#         storage="pickle",
-#         use_last_available_time=False,
-#         base_location=None,
-#     ):
-#         self.symbol = symbol
-#         if isinstance(source, str) and source == "yahoo":
-#             source = YfinanceBase
-#         if isinstance(source, str) and source == "fred":
-#             source = FredRate
-#
-#         # from
-#         # https://stackoverflow.com/questions/11042424/adding-base-class-to-existing-object-in-python
-#         cls = self.__class__
-#         self.__class__ = cls.__class__(
-#             cls.__name__ + "With" + source.__name__, (cls, source), {}
-#         )
-#
-#         # if isinstance(storage, str) and storage == "sqlite":
-#         #     storage = SqliteDataStore
-#         if isinstance(storage, str) and storage == "csv":
-#             storage = LocalDataStore
-#         if isinstance(storage, str) and storage == "pickle":
-#             storage = PickleStore
-#
-#         cls = self.__class__
-#         self.__class__ = cls.__class__(
-#             cls.__name__ + "With" + storage.__name__, (cls, storage), {}
-#         )
-#
-#         self.base_location = base_location
-#         self.use_last_available_time = use_last_available_time
-#         self.universe_maybe_noncash = None # fix, but we should retire this class
-#
-#     def _recursive_pre_evaluation(self, *args, **kwargs):
-#         self.data = self.update_and_load(self.symbol)
+    Not meant to be accessed by user. Most of its initialization is
+    documented in MarketSimulator.
+    """
+
+    def __init__(self,
+                 universe=(),
+                 returns=None,
+                 volumes=None,
+                 prices=None,
+                 datasource='YFinance',
+                 cash_key='USDOLLAR',
+                 base_location=BASE_LOCATION,
+                 min_history=pd.Timedelta('365.24d'),
+                 # TODO change logic for this (it's now this to not drop quarterly data)
+                 max_contiguous_missing='370d',
+                 trading_frequency=None,
+                 copy_dataframes=True,
+                 **kwargs,
+                 ):
+
+        # drop duplicates and ensure ordering
+        universe = sorted(set(universe))
+
+        self.base_location = Path(base_location)
+        self.min_history_timedelta = min_history
+        self.max_contiguous_missing = max_contiguous_missing
+        self.cash_key = cash_key
+
+        if len(universe):
+            self._get_market_data(universe, datasource)
+            self._add_cash_column(self.cash_key)
+            self._remove_missing_recent()
+        else:
+            if returns is None:
+                raise SyntaxError(
+                    "If you don't specify a universe you should pass `returns`.")
+            self.returns = pd.DataFrame(returns, copy=copy_dataframes)
+            self.volumes = volumes if volumes is None else\
+                pd.DataFrame(volumes, copy=copy_dataframes)
+            self.prices = prices if prices is None else\
+                pd.DataFrame(prices, copy=copy_dataframes)
+            if cash_key != returns.columns[-1]:
+                self._add_cash_column(cash_key)
+
+        if trading_frequency:
+            self._downsample(trading_frequency)
+
+        self._set_read_only()
+        self._check_sizes()
+
+    def _reduce_universe(self, reduced_universe):
+        assert reduced_universe[-1] == self.cash_key
+        logging.debug(
+            f'Preparing MarketData with reduced_universe {reduced_universe}')
+        return MarketData(
+            returns=self.returns[reduced_universe],
+            volumes=self.volumes[reduced_universe[:-1]
+                                 ] if not (self.volumes is None) else None,
+            prices=self.prices[reduced_universe[:-1]
+                               ] if not (self.prices is None) else None,
+            cash_key=self.cash_key,
+            copy_dataframes=False)
+
+    @property
+    def min_history(self):
+        """Min.
+
+        history expressed in periods.
+        """
+        return int(np.round(self.PPY * (
+            self.min_history_timedelta / pd.Timedelta('365.24d'))))
+
+    @property
+    def universe(self):
+        return self.returns.columns
+
+
+
+    @property
+    def PPY(self):
+        """Periods per year, assumes returns are about equally spaced."""
+        return periods_per_year_from_datetime_index(self.returns.index)
+
+    def _check_sizes(self):
+
+        if (not self.volumes is None) and (not (self.volumes.shape[1] == self.returns.shape[1] - 1)
+                                           or not all(self.volumes.columns == self.returns.columns[:-1])):
+            raise SyntaxError(
+                'Volumes should have same columns as returns, minus cash_key.')
+
+        if (not self.prices is None) and (not (self.prices.shape[1] == self.returns.shape[1] - 1)
+                                          or not all(self.prices.columns == self.returns.columns[:-1])):
+            raise SyntaxError(
+                'Prices should have same columns as returns, minus cash_key.')
+
+
+
+    def _set_read_only(self):
+        """Set numpy array contained in dataframe to read only.
+
+        This is enough to prevent direct assignement to the resulting
+        dataframe. However it could still be accidentally corrupted by
+        assigning to columns or indices that are not present in the
+        original. We avoid that case as well by returning a wrapped
+        dataframe (which doesn't copy data on creation) in
+        _serve_data_policy and _serve_data_simulator.
+        """
+
+        def ro(df):
+            data = df.values
+            data.flags.writeable = False
+            return pd.DataFrame(data, index=df.index, columns=df.columns)
+
+        self.returns = ro(self.returns)
+
+        if not self.prices is None:
+            self.prices = ro(self.prices)
+
+        if not self.volumes is None:
+            self.volumes = ro(self.volumes)
+
+    def _add_cash_column(self, cash_key):
+        """Add the cash column to an already formed returns dataframe.
+
+        This assumes that the trading periods are about equally spaced.
+        If, say, you have trading periods with very different lengths you
+        should redefine this method **and** replace the :class:`CashReturn`
+        objective term.
+        """
+
+        if not cash_key == 'USDOLLAR':
+            raise NotImplementedError(
+                'Currently the only data pipeline built is for USDOLLAR cash')
+
+        data = FredSymbolData('DFF', base_storage_location=self.base_location)
+        cash_returns_per_period = resample_returns(
+            data.data/100, periods=self.PPY)
+
+        # we merge instead of assigning column because indexes might
+        # be misaligned (e.g., with tz-aware timestamps)
+        cash_returns_per_period.name = self.cash_key
+        original_returns_index = self.returns.index
+        tmp = pd.concat([self.returns, cash_returns_per_period], axis=1)
+        tmp[cash_key] = tmp[cash_key].ffill()
+        self.returns = tmp.loc[original_returns_index]
+
+    DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}
+
+    def _get_market_data(self, universe, datasource):
+        database_accesses = {}
+        print('Updating data')
+
+        for stock in universe:
+            logging.debug(
+                f'Getting data for {stock} with {self.DATASOURCES[datasource]}.')
+            print('.')
+            database_accesses[stock] = self.DATASOURCES[datasource](
+                stock, base_storage_location=self.base_location)
+
+        if datasource == 'YFinance':
+            self.returns = pd.DataFrame(
+                {stock: database_accesses[stock].data['Return'] for stock in universe})
+            self.volumes = pd.DataFrame(
+                {stock: database_accesses[stock].data['ValueVolume'] for stock in universe})
+            self.prices = pd.DataFrame(
+                {stock: database_accesses[stock].data['Open'] for stock in universe})
+        else:  # only FRED for indexes
+            self.prices = pd.DataFrame(
+                {stock: database_accesses[stock].data for stock in universe})  # open prices
+            self.returns = 1 - self.prices / self.prices.shift(-1)
+            self.volumes = None
+
+    def _remove_missing_recent(self):
+        """Clean recent data.
+
+        Yfinance has some issues with most recent data; we remove recent
+        days if there are NaNs.
+        """
+
+        if self.prices.iloc[-5:].isnull().any().any():
+            logging.debug(
+                'Removing some recent lines because there are missing values.')
+            drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
+            logging.debug(f'Dropping at index {drop_at}')
+            self.returns = self.returns.loc[self.returns.index < drop_at]
+            if self.prices is not None:
+                self.prices = self.prices.loc[self.prices.index < drop_at]
+            if self.volumes is not None:
+                self.volumes = self.volumes.loc[self.volumes.index < drop_at]
+
+        # for consistency we must also nan-out the last row of returns and volumes
+        self.returns.iloc[-1] = np.nan
+        if self.volumes is not None:
+            self.volumes.iloc[-1] = np.nan
+
+    def _universe_at_time(self, t):
+        """Return the valid universe at time t."""
+        past_returns = self.returns.loc[self.returns.index < t]
+        return self.universe[(past_returns.count() >= self.min_history) &
+            (~self.returns.loc[t].isnull())]
+
+    def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
+        """Get trading calendar from market data."""
+        result = self.returns.index
+        result = result[result >= self._earliest_backtest_start]
+        if start_time:
+            result = result[result >= start_time]
+        if end_time:
+            result = result[(result <= end_time)]
+        if not include_end:
+            result = result[:-1]
+        return result
+
+
+    @property
+    def _earliest_backtest_start(self):
+        """Earliest date at which we can start a backtest."""
+        return self.returns.iloc[:, :-1].dropna(how='all').index[self.min_history]
+
