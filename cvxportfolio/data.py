@@ -479,9 +479,9 @@ def _storer_sqlite(symbol, data, storage_location):
     """
     connection = _open_sqlite(storage_location)
     exists = pd.read_sql_query(
-        f"SELECT name FROM sqlite_master WHERE type='table' AND name='{symbol}'",
-        connection,
-    )
+      f"SELECT name FROM sqlite_master WHERE type='table' AND name='{symbol}'",
+      connection)
+
     if len(exists):
         res = connection.cursor().execute(f"DROP TABLE '{symbol}'")
         res = connection.cursor().execute(
@@ -649,7 +649,7 @@ class InMemoryMarketData(BaseMarketData):
             current_prices = None
 
         return current_and_past_returns, current_and_past_volumes, current_prices
-        
+
     @property
     def universe(self):
         """Full trading universe including cash."""
@@ -673,7 +673,7 @@ class InMemoryMarketData(BaseMarketData):
 
     def _add_cash_column(self, cash_key):
         """Add the cash column to an already formed returns dataframe.
-        
+
         This assumes that the trading periods are about equally spaced.
         If, say, you have trading periods with very different lengths you
         should redefine this method **and** replace the :class:`CashReturn`
@@ -685,19 +685,16 @@ class InMemoryMarketData(BaseMarketData):
                 'Currently the only data pipeline built is for USDOLLAR cash')
 
         data = FredSymbolData('DFF', base_storage_location=self.base_location)
-
-        cash_returns_per_period = self._resample_returns(
-            data.data/100, periods=self.periods_per_year)
+        cash_returns_per_period = resample_returns(
+            data.data/100, periods=self.PPY)
 
         # we merge instead of assigning column because indexes might
         # be misaligned (e.g., with tz-aware timestamps)
-        cash_returns_per_period.name = cash_key
+        cash_returns_per_period.name = self.cash_key
         original_returns_index = self.returns.index
-        tmp = self.returns.merge(cash_returns_per_period)
-
-        raise Exception
-
-        self.returns[cash_key] = self.returns[cash_key].ffill()
+        tmp = pd.concat([self.returns, cash_returns_per_period], axis=1)
+        tmp[cash_key] = tmp[cash_key].ffill()
+        self.returns = tmp.loc[original_returns_index]
 
     def _make_internal_dataframes_read_only(self):
         """Makes the internal dataframes read-only."""
@@ -720,6 +717,12 @@ class InMemoryMarketData(BaseMarketData):
             result = result[:-1]
         return result
 
+    def _universe_at_time(self, t):
+        """Return the valid universe at time t."""
+        past_returns = self.returns.loc[self.returns.index < t]
+        return self.universe[(past_returns.count() >= self.min_history) &
+            (~self.returns.loc[t].isnull())]
+
     @staticmethod
     def _set_read_only(df):
         """Set numpy array contained in dataframe to read only.
@@ -738,30 +741,6 @@ class InMemoryMarketData(BaseMarketData):
         data = df.values
         data.flags.writeable = False
         return pd.DataFrame(data, index=df.index, columns=df.columns)
-
-    # @property
-    # def _break_timestamps(self):
-    #     """List of timestamps at which a backtest should be broken.
-    #
-    #     An asset enters into a backtest after having non-NaN returns for
-    #     self.min_history periods and exits after having NaN returns for
-    #     self.max_contiguous_missing. Defaults values are 252 and 10
-    #     respectively.
-    #     """
-    #     self.entry_dates = defaultdict(list)
-    #     self.exit_dates = defaultdict(list)
-    #     for asset in self.returns.columns[:-1]:
-    #         single_asset_returns = self.returns[asset].dropna()
-    #         if len(single_asset_returns) > self.min_history:
-    #             self.entry_dates[single_asset_returns.index[self.min_history]].append(
-    #                 asset)
-    #             exit_date = single_asset_returns.index[-1]
-    #             if (self.returns.index[-1] - exit_date) >= pd.Timedelta(self.max_contiguous_missing):
-    #                 self.exit_dates[exit_date].append(asset)
-    #
-    #     _ = sorted(set(self.exit_dates) | set(self.entry_dates))
-    #     logging.debug(f'computing break timestamps {_}')
-    #     return _
 
     @property
     def _limited_universes(self):
@@ -783,44 +762,6 @@ class InMemoryMarketData(BaseMarketData):
     def _earliest_backtest_start(self):
         """Earliest date at which we can start a backtest."""
         return self.returns.iloc[:, :-1].dropna(how='all').index[self.min_history]
-
-    def _get_limited_backtests(self, start_time, end_time):
-        """Get start/end times and universes of constituent backtests.
-
-        Each one has constant universe with assets' that meet the
-        ``min_history`` requirement and has not disappeared from the
-        dataset.
-        """
-
-        full_backtest_times = self._get_backtest_times(start_time, end_time)
-        brkt = np.array(self._break_timestamps)
-
-        def get_valid_universe_and_its_expiration_for(time):
-            try:
-                return self._limited_universes[brkt[brkt <= time][-1]], \
-                    brkt[brkt > time][0] if len(
-                        brkt[brkt > time]) else full_backtest_times[-1]
-            except IndexError:
-                raise DataError(
-                    'There are no assets that meet the required min_history.')
-
-        result = []
-        start = full_backtest_times[0]
-        while True:
-
-            universe, expiration = get_valid_universe_and_its_expiration_for(
-                start)
-            if expiration > full_backtest_times[-1]:
-                expiration = full_backtest_times[-1]
-            result.append({
-                'start_time': start,
-                'end_time': expiration,
-                'universe': list(universe) + [self.cash_key]})
-
-            if expiration == full_backtest_times[-1]:
-                return result
-
-            start = expiration
 
     sampling_intervals = {'weekly': 'W-MON',
                           'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
@@ -844,7 +785,7 @@ class InMemoryMarketData(BaseMarketData):
                 'Unsopported trading interval for down-sampling.')
         interval = self.sampling_intervals[interval]
         new_returns_index = pd.Series(self.returns.index, self.returns.index
-                                      ).resample(interval, closed='left', 
+                                      ).resample(interval, closed='left',
                                                  label='left').first().values
         # print(new_returns_index)
         self.returns = np.exp(np.log(
@@ -868,7 +809,7 @@ class InMemoryMarketData(BaseMarketData):
         if self.volumes is not None:
             new_volumes_index = pd.Series(
                 self.volumes.index, self.volumes.index
-                    ).resample(interval, closed='left', 
+                    ).resample(interval, closed='left',
                                label='left').first().values
             self.volumes = self.volumes.resample(
                 interval, closed='left', label='left').sum(min_count=1)
@@ -978,18 +919,18 @@ class MarketData(InMemoryMarketData):
         self._set_read_only()
         self._check_sizes()
 
-    def _reduce_universe(self, reduced_universe):
-        assert reduced_universe[-1] == self.cash_key
-        logging.debug(
-            f'Preparing MarketData with reduced_universe {reduced_universe}')
-        return MarketData(
-            returns=self.returns[reduced_universe],
-            volumes=self.volumes[reduced_universe[:-1]
-                                 ] if not (self.volumes is None) else None,
-            prices=self.prices[reduced_universe[:-1]
-                               ] if not (self.prices is None) else None,
-            cash_key=self.cash_key,
-            copy_dataframes=False)
+    # def _reduce_universe(self, reduced_universe):
+    #     assert reduced_universe[-1] == self.cash_key
+    #     logging.debug(
+    #         f'Preparing MarketData with reduced_universe {reduced_universe}')
+    #     return MarketData(
+    #         returns=self.returns[reduced_universe],
+    #         volumes=self.volumes[reduced_universe[:-1]
+    #                              ] if not (self.volumes is None) else None,
+    #         prices=self.prices[reduced_universe[:-1]
+    #                            ] if not (self.prices is None) else None,
+    #         cash_key=self.cash_key,
+    #         copy_dataframes=False)
 
     @property
     def min_history(self):
@@ -1003,8 +944,6 @@ class MarketData(InMemoryMarketData):
     @property
     def universe(self):
         return self.returns.columns
-
-
 
     @property
     def PPY(self):
@@ -1022,8 +961,6 @@ class MarketData(InMemoryMarketData):
                                           or not all(self.prices.columns == self.returns.columns[:-1])):
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
-
-
 
     def _set_read_only(self):
         """Set numpy array contained in dataframe to read only.
@@ -1048,31 +985,6 @@ class MarketData(InMemoryMarketData):
 
         if not self.volumes is None:
             self.volumes = ro(self.volumes)
-
-    def _add_cash_column(self, cash_key):
-        """Add the cash column to an already formed returns dataframe.
-
-        This assumes that the trading periods are about equally spaced.
-        If, say, you have trading periods with very different lengths you
-        should redefine this method **and** replace the :class:`CashReturn`
-        objective term.
-        """
-
-        if not cash_key == 'USDOLLAR':
-            raise NotImplementedError(
-                'Currently the only data pipeline built is for USDOLLAR cash')
-
-        data = FredSymbolData('DFF', base_storage_location=self.base_location)
-        cash_returns_per_period = resample_returns(
-            data.data/100, periods=self.PPY)
-
-        # we merge instead of assigning column because indexes might
-        # be misaligned (e.g., with tz-aware timestamps)
-        cash_returns_per_period.name = self.cash_key
-        original_returns_index = self.returns.index
-        tmp = pd.concat([self.returns, cash_returns_per_period], axis=1)
-        tmp[cash_key] = tmp[cash_key].ffill()
-        self.returns = tmp.loc[original_returns_index]
 
     DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}
 
@@ -1122,28 +1034,3 @@ class MarketData(InMemoryMarketData):
         self.returns.iloc[-1] = np.nan
         if self.volumes is not None:
             self.volumes.iloc[-1] = np.nan
-
-    def _universe_at_time(self, t):
-        """Return the valid universe at time t."""
-        past_returns = self.returns.loc[self.returns.index < t]
-        return self.universe[(past_returns.count() >= self.min_history) &
-            (~self.returns.loc[t].isnull())]
-
-    def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
-        """Get trading calendar from market data."""
-        result = self.returns.index
-        result = result[result >= self._earliest_backtest_start]
-        if start_time:
-            result = result[result >= start_time]
-        if end_time:
-            result = result[(result <= end_time)]
-        if not include_end:
-            result = result[:-1]
-        return result
-
-
-    @property
-    def _earliest_backtest_start(self):
-        """Earliest date at which we can start a backtest."""
-        return self.returns.iloc[:, :-1].dropna(how='all').index[self.min_history]
-
