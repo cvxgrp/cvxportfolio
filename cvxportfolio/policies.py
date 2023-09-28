@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains trading policies that can be backtested."""
+"""This module contains trading policies that can be back-tested."""
 
 import copy
 import datetime as dt
@@ -46,34 +46,34 @@ __all__ = [
 ]
 
 
-class BaseTradingPolicy(PolicyEstimator):
-    """Base class for a trading policy."""
-
-
-class Hold(BaseTradingPolicy):
+class Hold(PolicyEstimator):
     """Hold initial portfolio, don't trade."""
 
     def values_in_time(self, current_weights, **kwargs):
-        """Update sub-estimators and produce current estimate."""
-        return pd.Series(0., index=current_weights.index)
+        """Return current_weights."""
+        return current_weights
 
 
-class RankAndLongShort(BaseTradingPolicy):
+class RankAndLongShort(PolicyEstimator):
     """Rank assets by signal; long highest and short lowest.
 
-    Args:
-        signal (pd.DataFrame): time-indexed DataFrame of signal for all symbols
+    :param signal: time-indexed DataFrame of signal for all symbols
             excluding cash. At each point in time the num_long assets with
-            highest signal will have equal positive weight, and the num_short assets with
-            lower signal will have equal negative weight. If two or more assets have the same
-            signal value and they are on the boundary of either the top or bottom set,
-            alphanumerical ranking will prevail.
-        num_long (int or pd.Series): number of assets to long, default 1; if specified as Series
-            it must be indexed by time.
-        num_short (int or pd.Series): number of assets to short, default 1; if specified as Series
-            it must be indexed by time.
-        target_leverage (float or pd.Series): leverage of the resulting portfolio, default 1;
+            highest signal will have equal positive weight, and the num_short 
+            assets with lower signal will have equal negative weight. 
+            If two or more assets have the same signal value and they are on 
+            the boundary of either the top or bottom set, alphanumerical 
+            ranking will prevail.
+    :type signal: pd.DataFrame
+    :param num_long: number of assets to long, default 1; if specified as 
+        Series it must be indexed by time.
+    :type num_long: int or pd.Series
+    :param num_short: Number of assets to short, default 1; 
             if specified as Series it must be indexed by time.
+    :type num_short: int or pd.Series)
+    :param target_leverage: leverage of the resulting portfolio, default 1; 
+        if specified as Series it must be indexed by time.
+    :type target_leverage: float or pd.Series
     """
 
     def __init__(self, signal, num_long=1, num_short=1, target_leverage=1.):
@@ -102,22 +102,21 @@ class RankAndLongShort(BaseTradingPolicy):
         # cash is always 1.
         target_weights[current_weights.index[-1]] = 1.
 
-        return target_weights - current_weights
+        return target_weights
 
 
-class ProportionalTradeToTargets(BaseTradingPolicy):
-    """Given a DataFrame of target weights in time, trade in equal proportions.
-
-    to reach those.
+class ProportionalTradeToTargets(PolicyEstimator):
+    """Trade in equal proportion to match target weights in time.
 
     Initially, it loads the list of trading days and so at each day it knows
-    how many are missing before the next target's day, and trades in equal proportions
+    how many are missing before the next target's day, 
+    and trades in equal proportions
     to reach those targets. If there are no targets remaining it defaults to
     not trading.
 
-    Args:
-        targets (pd.DataFrame): time-indexed DataFrame of target weight vectors at
-            given points in time (e.g., start of each month).
+    :param targets:  time-indexed DataFrame of target weight vectors at
+        given points in time (e.g., start of each month).
+    :type targets: pandas.DataFrame
     """
 
     def __init__(self, targets):
@@ -132,17 +131,21 @@ class ProportionalTradeToTargets(BaseTradingPolicy):
         next_targets = self.targets.loc[self.targets.index >= t]
         if not np.allclose(next_targets.sum(1), 1.):
             raise ValueError(
-                f"The target weights provided to {self.__class__.__name__} at time {t} do not sum to 1.")
+                "The target weights provided to %s at time %s"
+                + " do not sum to 1.", self.__class__.__name__, t)
         if not len(next_targets):
-            return pd.Series(0., index=current_weights.index)
+            return current_weights
         next_target = next_targets.iloc[0]
         next_target_day = next_targets.index[0]
         trading_days_to_target = len(self.trading_days[(
             self.trading_days >= t) & (self.trading_days < next_target_day)])
-        return (next_target - current_weights) / (trading_days_to_target + 1)
+        if trading_days_to_target == 0:
+            return current_weights
+        return current_weights + (
+            next_target - current_weights) / trading_days_to_target
 
 
-class SellAll(BaseTradingPolicy):
+class SellAll(PolicyEstimator):
     """Sell all assets to cash.
 
     This is useful to check the tcost model in the simulator.
@@ -152,10 +155,10 @@ class SellAll(BaseTradingPolicy):
         """Get current trade weights."""
         target = np.zeros(len(current_weights))
         target[-1] = 1.
-        return target - current_weights
+        return pd.Series(target, index=current_weights.index)
 
 
-class FixedTrades(BaseTradingPolicy):
+class FixedTrades(PolicyEstimator):
     """Each day trade the provided trade weights vector.
 
     If there are no weights defined for the given day, default to no
@@ -173,18 +176,21 @@ class FixedTrades(BaseTradingPolicy):
 
     def __init__(self, trades_weights):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
-        self.trades_weights = DataEstimator(trades_weights, data_includes_cash=True)
+        self.trades_weights = DataEstimator(
+            trades_weights, data_includes_cash=True)
 
     def values_in_time_recursive(self, t, current_weights, **kwargs):
         """We need to override recursion b/c we catch exception."""
         try:
-            super().values_in_time_recursive(t=t, current_weights=current_weights, **kwargs)
-            return pd.Series(self.trades_weights.current_value, current_weights.index)
+            super().values_in_time_recursive(
+                t=t, current_weights=current_weights, **kwargs)
+            return current_weights + pd.Series(
+                self.trades_weights.current_value, current_weights.index)
         except MissingTimesError:
-            return pd.Series(0., current_weights.index)
+            return current_weights
 
 
-class FixedWeights(BaseTradingPolicy):
+class FixedWeights(PolicyEstimator):
     """Each day trade to the provided trade weights vector.
 
     If there are no weights defined for the given day, default to no
@@ -202,25 +208,33 @@ class FixedWeights(BaseTradingPolicy):
 
     def __init__(self, target_weights):
         """Trade the tradevec vector (dollars) or tradeweight weights."""
-        self.target_weights = DataEstimator(target_weights, data_includes_cash=True)
+        self.target_weights = DataEstimator(
+            target_weights, data_includes_cash=True)
 
     def values_in_time_recursive(self, t, current_weights, **kwargs):
         """We need to override recursion b/c we catch exception."""
         try:
-            super().values_in_time_recursive(t=t, current_weights=current_weights, **kwargs)
-            return pd.Series(self.target_weights.current_value,
-                             current_weights.index) - current_weights
+            super().values_in_time_recursive(
+                t=t, current_weights=current_weights, **kwargs)
+            return current_weights + pd.Series(
+                self.target_weights.current_value, current_weights.index
+                ) - current_weights
         except MissingTimesError:
-            return pd.Series(0., current_weights.index)
+            return current_weights
 
 
 class Uniform(FixedWeights):
-    """Uniform allocation on non-cash assets."""
+    """Uniform allocation on non-cash assets.
+    
+    :param leverage: Leverage of the allocation.
+    :type leverage: float
+    """
 
     def __init__(self, leverage=1.):
         self.leverage = leverage
 
     def initialize_estimator(self, universe, backtest_times):
+        """Initialize this estimator."""
         target_weights = pd.Series(1., universe)
         target_weights.iloc[-1] = 0
         target_weights /= sum(target_weights)
@@ -235,10 +249,10 @@ class PeriodicRebalance(FixedWeights):
     This calls `FixedWeights`. If you want to change the target in time
     use that policy directly.
 
-    Args:
-        target (pd.Series): portfolio weights to rebalance to.
-        rebalancing_times (pd.DateTimeIndex): after the open trading on these days
-            portfolio is equal to target.
+    :param target: Allocation weights to rebalance to.
+    :type target: pandas.Series
+    :param rebalancing_times: Times at which we rebalance.
+    :type rebalancing_times: pandas.DateTimeIndex): 
     """
 
     def __init__(self, target, rebalancing_times):
@@ -248,17 +262,15 @@ class PeriodicRebalance(FixedWeights):
 
 
 class ProportionalRebalance(ProportionalTradeToTargets):
-    """Track a target weight exactly at given times, trading proportionally to.
-
-    it each period.
-
-    This calls `ProportionalTradeToTargets`. If you want to change the target in time
-    use that policy directly.
-
-    Args:
-        target (pd.Series): portfolio weights to rebalance to.
-        target_matching_times (pd.DateTimeIndex): after the open trading on these days
-            portfolio is equal to target.
+    """Trade proportionally in time to track fixed target weights at times.
+    
+    This calls `ProportionalTradeToTargets`. If you want to change 
+    the target in time use that policy directly.
+    
+    :param target: Allocation weights to rebalance to.
+    :type target: pandas.Series
+    :param rebalancing_times: Times at which we rebalance.
+    :type rebalancing_times: pandas.DateTimeIndex):
     """
 
     def __init__(self, target, target_matching_times):
@@ -266,7 +278,7 @@ class ProportionalRebalance(ProportionalTradeToTargets):
         super().__init__(targets)
 
 
-class AdaptiveRebalance(BaseTradingPolicy):
+class AdaptiveRebalance(PolicyEstimator):
     """Rebalance portfolio when deviates too far from target.
 
     We use the 2-norm as trigger for rebalance. You may want to
@@ -290,14 +302,15 @@ class AdaptiveRebalance(BaseTradingPolicy):
         self.tracking_error = DataEstimator(tracking_error)
 
     def values_in_time(self, t, current_weights, **kwargs):
+        """Return target allocation."""
         if np.linalg.norm(current_weights - self.target.current_value) >\
                 self.tracking_error.current_value:
-            return self.target.current_value - current_weights
+            return self.target.current_value
         else:
-            return pd.Series(0., current_weights.index)
+            return current_weights
 
 
-class MultiPeriodOptimization(BaseTradingPolicy):
+class MultiPeriodOptimization(PolicyEstimator):
     r"""Multi Period Optimization policy.
 
     Implements the model developed in Chapter 5, in particular
@@ -319,9 +332,10 @@ class MultiPeriodOptimization(BaseTradingPolicy):
     :param objective: these will be maximized;
         if you pass a single expression of BaseCost it is understood as the
         same for all steps; if it's a list you must also pass a list of lists
-        for `constraints`, each term represents the cost for each step of the optimization
-        (starting from the first, i.e., today) and the length of the list is
-        used as planning_horizon (the value you pass there will be ignored)
+        for `constraints`, each term represents the cost for each step of the
+        optimization (starting from the first, i.e., today) and the length of 
+        the list is used as planning_horizon (the value you pass there will be 
+        ignored)
     :type objective: algebra of BaseCost or list of
     :param constraints: these will be
         imposed on the optimization. Default []. Pass this as a list of
@@ -336,35 +350,45 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         (default is None) it will impose that at the last step of the multi
         period optimization the post-trade weights are equal to this.
     :type terminal_constraint: pd.Series or None
-    :param include_cash_return: whether to automatically include the ``CashReturn`` term in the objective,
-        with default parameters. Default is ``True``.
+    :param include_cash_return: whether to automatically include the 
+        ``CashReturn`` term in the objective, with default parameters. 
+        Default is ``True``.
     :type include_cash_return: bool
-    :param benchmark: benchmark weights to use in the risk model and other terms that need it. Implemented
-        ones are ``CashBenchmark``, the default, ``UniformBenchmark`` (uniform allocation on non-cash assets),
-        and ``MarketBenchmark``, which approximates the market-weighted portfolio.
+    :param benchmark: benchmark weights to use in the risk model and other 
+        terms that need it. Implemented ones are ``CashBenchmark``, 
+        the default, ``UniformBenchmark`` (uniform allocation on non-cash 
+        assets), and ``MarketBenchmark``, which approximates the 
+        market-weighted portfolio.
     :type benchmark: BaseBenchmark class or instance
     :param \**kwargs: these will be passed to cvxpy.Problem.solve,
         so you can choose your own solver and pass
         parameters to it.
     """
 
-    def __init__(self, objective, constraints=[], include_cash_return=True, planning_horizon=None, terminal_constraint=None, benchmark=CashBenchmark, **kwargs):
+    def __init__(
+        self, objective, constraints=[], include_cash_return=True, 
+        planning_horizon=None, terminal_constraint=None, 
+        benchmark=CashBenchmark, **kwargs):
         if hasattr(objective, '__iter__'):
-            if not (hasattr(constraints, '__iter__') and len(constraints) and (hasattr(constraints[0], '__iter__') and len(objective) == len(constraints))):
+            if not (hasattr(constraints, '__iter__') and len(constraints
+                    ) and (hasattr(constraints[0], '__iter__') and len(
+                    objective) == len(constraints))):
                 raise SyntaxError(
-                    'If you pass objective as a list, constraints should be a list of lists of the same length.')
+                    'If you pass the objective as a list, constraints should'
+                    + ' be a list of lists of the same length.')
             self._planning_horizon = len(objective)
             self.objective = objective
             self.constraints = constraints
         else:
             if not np.isscalar(planning_horizon):
                 raise SyntaxError(
-                    'If `objective` and `constraints` are the same for all steps you must specify `planning_horizon`.')
+                    'If `objective` and `constraints` are the same for '
+                    + 'all steps you must specify `planning_horizon`.')
             self._planning_horizon = planning_horizon
             self.objective = [objective._copy_keeping_multipliers()
                 if hasattr(objective, '_copy_keeping_multipliers')
-                    else copy.deepcopy(objective) for i in range(planning_horizon)
-                        ] if planning_horizon > 1 else [objective]
+                    else copy.deepcopy(objective) for i in range(
+                    planning_horizon)] if planning_horizon > 1 else [objective]
             self.constraints = [copy.deepcopy(constraints) for i in range(
                 planning_horizon)] if planning_horizon > 1 else [constraints]
 
@@ -372,14 +396,16 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         if self._include_cash_return:
             self.objective = [el + CashReturn() for el in self.objective]
         self.terminal_constraint = terminal_constraint
-        self.benchmark = benchmark() if isinstance(benchmark, type) else benchmark
+        self.benchmark = benchmark() if isinstance(benchmark, type
+            ) else benchmark
         self.cvxpy_kwargs = kwargs
 
     def compile_to_cvxpy(self):  # , w_plus, z, value):
         """Compile all cvxpy expressions and the problem."""
         self.cvxpy_objective = [
             el.compile_to_cvxpy(
-                self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i])
+                self.w_plus_at_lags[i], self.z_at_lags[i], 
+                self.w_plus_minus_w_bm_at_lags[i])
             for i, el in enumerate(self.objective)]
         for el, term in zip(self.objective, self.cvxpy_objective):
             if not term.is_dcp():
@@ -390,7 +416,8 @@ class MultiPeriodOptimization(BaseTradingPolicy):
 
         def compile_and_check_constraint(constr, i):
             result = constr.compile_to_cvxpy(
-                self.w_plus_at_lags[i], self.z_at_lags[i], self.w_plus_minus_w_bm_at_lags[i])
+                self.w_plus_at_lags[i], self.z_at_lags[i], 
+                self.w_plus_minus_w_bm_at_lags[i])
             for el in (result if hasattr(result, '__iter__') else [result]):
                 if not el.is_dcp():
                     raise ConvexSpecificationError(constr)
@@ -408,17 +435,20 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             self.cvxpy_constraints.append(
                 self.w_plus_at_lags[i] == self.z_at_lags[i] + w)
             self.cvxpy_constraints.append(
-                self.w_plus_at_lags[i] - self.w_bm == self.w_plus_minus_w_bm_at_lags[i])
+                self.w_plus_at_lags[i] - self.w_bm == \
+                    self.w_plus_minus_w_bm_at_lags[i])
             w = self.w_plus_at_lags[i]
         if not self.terminal_constraint is None:
             self.cvxpy_constraints.append(w == self.terminal_constraint)
         self.problem = cp.Problem(cp.Maximize(
             self.cvxpy_objective), self.cvxpy_constraints)
         if not self.problem.is_dcp():  # dpp=True)
-            raise SyntaxError(f"The optimization problem compiled by {self.__class__.__name__}"
-                              " does not follow the convex optimization rules. This should not happen"
-                              " if you're using the default cvxportfolio terms and is probably due to a"
-                              " mis-specified custom term.")
+            raise SyntaxError(
+                "The optimization problem compiled by %s"
+                + " does not follow the convex optimization rules."
+                + " This should not happen if you're using the default "
+                + " cvxportfolio terms and is probably due to a"
+                + " mis-specified custom term.", self.__class__.__name__)
 
     def initialize_estimator_recursive(self, universe, backtest_times):
         """No point in using recursive super() method."""
@@ -435,12 +465,6 @@ class MultiPeriodOptimization(BaseTradingPolicy):
             universe=universe, backtest_times=backtest_times)
         self.w_bm = cp.Parameter(len(universe))
 
-        # temporary
-        # self.w_bm = np.zeros(len(universe))
-        # self.w_bm[-1] = 1.
-
-        # initialize the problem
-        # self.portfolio_value = cp.Parameter(nonneg=True)
         self.w_current = cp.Parameter(len(universe))
         self.z_at_lags = [cp.Variable(len(universe))
                           for i in range(self._planning_horizon)]
@@ -452,33 +476,42 @@ class MultiPeriodOptimization(BaseTradingPolicy):
         # simulator will overwrite this with cached loaded from disk
         self.cache = {}
 
-        # self.compile_to_cvxpy()#self.w_plus, self.z, self.portfolio_value)
 
-    def values_in_time_recursive(self, t, current_weights, current_portfolio_value, past_returns, past_volumes, current_prices, **kwargs):
+    def values_in_time_recursive(
+        self, t, current_weights, 
+        current_portfolio_value, past_returns, past_volumes, 
+        current_prices, **kwargs):
         """Update all cvxpy parameters and solve."""
 
         if not current_portfolio_value > 0:
             raise Bankruptcy(
-                f"The backtest of policy:\n{self}\nat time {t} has resulted in bankruptcy.")
+                "The backtest of %s at time %s has resulted in bankruptcy.", 
+                self.__class__.__name__, t)
         assert np.isclose(sum(current_weights), 1)
 
         for i, obj in enumerate(self.objective):
-            obj.values_in_time_recursive(t=t, current_weights=current_weights,
-                                          current_portfolio_value=current_portfolio_value,
-                                          past_returns=past_returns, past_volumes=past_volumes,
-                                          current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)
+            obj.values_in_time_recursive(
+                t=t, current_weights=current_weights,
+                current_portfolio_value=current_portfolio_value,
+                past_returns=past_returns, past_volumes=past_volumes,
+                current_prices=current_prices, mpo_step=i, cache=self.cache, 
+                **kwargs)
 
         for i, constr_at_lag in enumerate(self.constraints):
             for constr in constr_at_lag:
-                constr.values_in_time_recursive(t=t, current_weights=current_weights,
-                                                 current_portfolio_value=current_portfolio_value,
-                                                 past_returns=past_returns, past_volumes=past_volumes,
-                                                 current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)
+                constr.values_in_time_recursive(
+                    t=t, current_weights=current_weights,
+                    current_portfolio_value=current_portfolio_value,
+                    past_returns=past_returns, past_volumes=past_volumes,
+                    current_prices=current_prices, mpo_step=i, 
+                    cache=self.cache, **kwargs)
 
-        self.benchmark.values_in_time_recursive(t=t, current_weights=current_weights,
-                                                 current_portfolio_value=current_portfolio_value,
-                                                 past_returns=past_returns, past_volumes=past_volumes,
-                                                 current_prices=current_prices, mpo_step=i, cache=self.cache, **kwargs)
+        self.benchmark.values_in_time_recursive(
+            t=t, current_weights=current_weights,
+            current_portfolio_value=current_portfolio_value,
+            past_returns=past_returns, past_volumes=past_volumes,
+            current_prices=current_prices, mpo_step=i, cache=self.cache, 
+            **kwargs)
 
         self.w_bm.value = self.benchmark.current_value
         self.w_current.value = current_weights.values
@@ -490,18 +523,22 @@ class MultiPeriodOptimization(BaseTradingPolicy):
                 self.problem.solve(**self.cvxpy_kwargs)
         except cp.SolverError:
             raise PortfolioOptimizationError(
-                f"Numerical solver for policy {self.__class__.__name__} at time {t} failed;"
-                "try changing it, relaxing some constraints, or dropping some costs.")
+                "Numerical solver for policy %s at time %s failed;"
+                + " try changing it, relaxing some constraints,"
+                + " or dropping some costs.", self.__class__.__name__, t)
+                
         if self.problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(
-                f"Policy {self.__class__.__name__} at time {t} resulted in an unbounded problem."
-            )
+                f"Policy %s at time %s  resulted in an unbounded problem.", 
+                    self.__class__.__name__, t)
+                    
         if self.problem.status in ["infeasible", 'infeasible_inaccurate']:
             raise PortfolioOptimizationError(
-                f"Policy {self.__class__.__name__} at time {t} resulted in an infeasible problem."
-            )
+                f"Policy %s at time %s resulted in an infeasible problem.", 
+                    self.__class__.__name__, t)
 
-        return pd.Series(self.z_at_lags[0].value, current_weights.index)
+        return current_weights + pd.Series(
+            self.z_at_lags[0].value, current_weights.index) 
 
     def collect_hyperparameters(self):
         result = []
@@ -522,24 +559,32 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     multiplied by its multiplier. You also specify a list
     of constraints.
 
-    :param objective: this algebraic combination of cvxportfolio cost objects will be maximized
+    :param objective: this algebraic combination of cvxportfolio cost objects 
+        will be maximized
     :type objective: CombinedCost
     :param constraints: these will be imposed on the optimization. Default [].
     :type constraints: list of BaseConstraints
-    :param include_cash_return: whether to automatically include the ``CashReturn`` term in the objective,
-        with default parameters. Default is ``True``.
+    :param include_cash_return: whether to automatically include the 
+        ``CashReturn`` term in the objective, with default parameters. 
+        Default is ``True``.
     :type include_cash_return: bool
-    :param benchmark: benchmark weights to use in the risk model and other terms that need it. Implemented
-        ones are ``CashBenchmark``, the default, ``UniformBenchmark`` (uniform allocation on non-cash assets),
-        and ``MarketBenchmark``, which approximates the market-weighted portfolio.
+    :param benchmark: benchmark weights to use in the risk model and 
+        other terms that need it. Implemented
+        ones are ``CashBenchmark``, the default, ``UniformBenchmark`` 
+        (uniform allocation on non-cash assets),
+        and ``MarketBenchmark``, which approximates the market-weighted 
+        portfolio.
     :type benchmark: BaseBenchmark class or instance
-    :param \**kwargs: these will be passed to cvxpy.Problem.solve, so you can choose your own solver and pass
-        parameters to it.
+    :param \**kwargs: these will be passed to cvxpy.Problem.solve, 
+        so you can choose your own solver and pass parameters to it.
     """
 
-    def __init__(self, objective, constraints=[], include_cash_return=True, benchmark=CashBenchmark, **kwargs):
-        super().__init__([objective], [constraints], include_cash_return=include_cash_return,
-                         benchmark=benchmark, **kwargs)
+    def __init__(self, objective, constraints=[], 
+                include_cash_return=True, benchmark=CashBenchmark, **kwargs):
+        super().__init__(
+            [objective], [constraints], 
+            include_cash_return=include_cash_return, 
+            benchmark=benchmark, **kwargs)
 
     # def __repr__(self):
     #     return self.__class__.__name__ + '(' \

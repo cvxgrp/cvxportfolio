@@ -49,7 +49,8 @@ class TestPolicies(unittest.TestCase):
         hold = Hold()
         w = pd.Series(0.5, ["AAPL", "CASH"])
         self.assertTrue(np.all(
-            hold.values_in_time_recursive(current_weights=w).values == np.zeros(2)))
+            hold.values_in_time_recursive(current_weights=w).values 
+            == w.values))
 
     def test_rank_and_long_short(self):
         hold = Hold()
@@ -64,9 +65,8 @@ class TestPolicies(unittest.TestCase):
             num_short=num_short,
             target_leverage=target_leverage,
         )
-        z = rls.values_in_time_recursive(t=None, current_weights=w)
-        print(z)
-        wplus = w + z
+        wplus = rls.values_in_time_recursive(t=None, current_weights=w)
+
         self.assertTrue(wplus["CASH"] == 1)
         self.assertTrue(wplus["TSLA"] == 0)
         self.assertTrue(wplus["AAPL"] == -wplus["GOOGL"])
@@ -86,27 +86,24 @@ class TestPolicies(unittest.TestCase):
             num_short=num_short,
             target_leverage=target_leverage,
         )
-        z1 = rls.values_in_time_recursive(t=index[0], current_weights=w)
-        print(z1)
-        wplus = w + z1
+        wplus = rls.values_in_time_recursive(t=index[0], current_weights=w)
+
         self.assertTrue(wplus["CASH"] == 1)
         self.assertTrue(wplus["TSLA"] == 0)
         self.assertTrue(wplus["AAPL"] == -wplus["GOOGL"])
         self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
-        z2 = rls.values_in_time_recursive(t=index[1], current_weights=w)
-        print(z2)
-        wplus = w + z2
+        wplus = rls.values_in_time_recursive(t=index[1], current_weights=w)
+
         self.assertTrue(wplus["CASH"] == 1)
         self.assertTrue(wplus["TSLA"] == 0)
         self.assertTrue(wplus["AAPL"] == -wplus["GOOGL"])
         self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
-        z3 = rls.values_in_time_recursive(t=index[2], current_weights=w)
-        wplus = w + z3
+        wplus = rls.values_in_time_recursive(t=index[2], current_weights=w)
+
         self.assertTrue(wplus["CASH"] == 1)
         self.assertTrue(wplus["AAPL"] == 0)
         self.assertTrue(wplus["TSLA"] == -wplus["GOOGL"])
         self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
-        print(z3)
 
     def test_proportional_trade(self):
 
@@ -131,14 +128,15 @@ class TestPolicies(unittest.TestCase):
             print(t)
             print(start_portfolio)
 
-            trade = policy.values_in_time_recursive(
+            wplus = policy.values_in_time_recursive(
                 t=t, current_weights=start_portfolio)
-            start_portfolio += trade
+            trade = wplus - start_portfolio.values
+            start_portfolio = pd.Series(wplus,copy=True)
 
             if t in targets.index:
                 self.assertTrue(np.all(start_portfolio == targets.loc[t]))
-
-        self.assertTrue(np.all(trade == 0.))
+        print('trade', trade)
+        self.assertTrue(np.allclose(trade, 0.))
 
     def test_sell_all(self):
         start_portfolio = pd.Series(
@@ -147,12 +145,12 @@ class TestPolicies(unittest.TestCase):
             self.returns.columns)
         policy = SellAll()
         t = pd.Timestamp('2022-01-01')
-        trade = policy.values_in_time_recursive(
+        wplus = policy.values_in_time_recursive(
             t=t, current_weights=start_portfolio)
         allcash = np.zeros(len(start_portfolio))
         allcash[-1] = 1
-        assert isinstance(trade, pd.Series)
-        assert np.allclose(allcash, start_portfolio + trade)
+        assert isinstance(wplus, pd.Series)
+        assert np.allclose(allcash, wplus)
 
     def test_fixed_trade(self):
         fixed_trades = pd.DataFrame(
@@ -164,13 +162,13 @@ class TestPolicies(unittest.TestCase):
 
         policy = FixedTrades(fixed_trades)
         t = self.returns.index[123]
-        trade = policy.values_in_time_recursive(t=t, current_weights=pd.Series(
-            0., self.returns.columns))
-        self.assertTrue(np.all(trade == fixed_trades.loc[t]))
-
+        w = pd.Series(0., self.returns.columns)
+        wplus = policy.values_in_time_recursive(t=t, current_weights=w)
+        self.assertTrue(np.all(wplus-w == fixed_trades.loc[t]))
+        w = wplus-w
         t = pd.Timestamp('1900-01-01')
-        trade = policy.values_in_time_recursive(t=t, current_weights=trade)
-        self.assertTrue(np.all(trade == 0.))
+        wplus = policy.values_in_time_recursive(t=t, current_weights=w)
+        self.assertTrue(np.all(wplus-w == 0.))
 
     def test_fixed_weights(self):
         fixed_weights = pd.DataFrame(
@@ -182,52 +180,54 @@ class TestPolicies(unittest.TestCase):
 
         policy = FixedWeights(fixed_weights)
         t = self.returns.index[123]
-        trade = policy.values_in_time_recursive(t=t, current_weights=pd.Series(
+        wplus = policy.values_in_time_recursive(t=t, current_weights=pd.Series(
             0., self.returns.columns))
-        self.assertTrue(np.all(trade == fixed_weights.loc[t]))
+        self.assertTrue(np.all(wplus == fixed_weights.loc[t]))
 
         t = self.returns.index[111]
-        trade = policy.values_in_time_recursive(
+        wplus = policy.values_in_time_recursive(
             t=t, current_weights=fixed_weights.iloc[110])
-        self.assertTrue(np.allclose(
-            trade + fixed_weights.iloc[110], fixed_weights.loc[t]))
+        self.assertTrue(np.allclose( wplus, fixed_weights.loc[t]))
 
         t = pd.Timestamp('1900-01-01')
-        trade = policy.values_in_time_recursive(t=t, current_weights=trade)
-        self.assertTrue(np.all(trade == 0.))
+        wplus1 = policy.values_in_time_recursive(t=t, current_weights=wplus)
+        self.assertTrue(np.all(wplus1 == wplus))
 
     def test_periodic_rebalance(self):
 
         target = pd.Series(np.random.uniform(
             size=self.returns.shape[1]), self.returns.columns)
         target /= sum(target)
-        rebalancing_times = pd.date_range(start=self.returns.index[0], end=self.returns.index[-1],
-                                          freq='7d')
+        rebalancing_times = pd.date_range(
+            start=self.returns.index[0], end=self.returns.index[-1], freq='7d')
 
         policy = PeriodicRebalance(target, rebalancing_times=rebalancing_times)
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
 
-        trade = policy.values_in_time_recursive(
+        wplus = policy.values_in_time_recursive(
             t=rebalancing_times[0], current_weights=init)
-        self.assertTrue(np.allclose(trade + init, target))
+        self.assertTrue(np.allclose(wplus, target))
 
-        trade = policy.values_in_time_recursive(t=rebalancing_times[0] + pd.Timedelta('1d'),
-                                                 current_weights=init)
-        self.assertTrue(np.allclose(trade, 0))
+        wplus = policy.values_in_time_recursive(
+            t=rebalancing_times[0] + pd.Timedelta('1d'), current_weights=init)
+        self.assertTrue(np.allclose(wplus, init))
 
     def test_uniform(self):
         pol = Uniform()
-        pol.initialize_estimator_recursive(self.returns.columns, self.returns.index)
+        pol.initialize_estimator_recursive(
+            self.returns.columns, self.returns.index)
 
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
-        trade = pol.values_in_time_recursive(
+        wplus = pol.values_in_time_recursive(
             t=self.returns.index[123], current_weights=init)
-        self.assertTrue(np.allclose((trade + init)[:-1],
-                                    np.ones(self.returns.shape[1]-1)/(self.returns.shape[1]-1)))
+        self.assertTrue(np.allclose(
+            wplus[:-1], 
+            np.ones(self.returns.shape[1]-1)/(self.returns.shape[1]-1)))
 
     def test_proportional_rebalance(self):
+        """Test the proportional rebalance policy."""
 
         target = pd.Series(np.random.uniform(
             size=self.returns.shape[1]), self.returns.columns)
@@ -242,12 +242,14 @@ class TestPolicies(unittest.TestCase):
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
 
-        trade = policy.values_in_time_recursive(
+        wplus = policy.values_in_time_recursive(
             t=self.returns.index[1], current_weights=init)
-        init += trade
-        trade2 = policy.values_in_time_recursive(
-            t=self.returns.index[2], current_weights=init)
+        trade = wplus - init
+        wplus2 = policy.values_in_time_recursive(
+            t=self.returns.index[2], current_weights=wplus)
+        trade2 = wplus2 - wplus
         self.assertTrue(np.allclose(trade, trade2))
+        print(trade + trade2 + init, target)
         self.assertTrue(np.allclose(trade + trade2 + init, target))
 
     def test_adaptive_rebalance(self):
@@ -265,20 +267,21 @@ class TestPolicies(unittest.TestCase):
 
         for tracking_error in [0.01, .02, .05, .1]:
             policy = AdaptiveRebalance(target, tracking_error=tracking_error)
-            trade = policy.values_in_time_recursive(
+            wplus = policy.values_in_time_recursive(
                 t=self.returns.index[1], current_weights=init)
-            self.assertTrue(np.allclose(init + trade, target.iloc[0]))
+            self.assertTrue(np.allclose(wplus, target.iloc[0]))
 
         for tracking_error in [.2, .5]:
             policy = AdaptiveRebalance(target, tracking_error=tracking_error)
-            trade = policy.values_in_time_recursive(
+            wplus = policy.values_in_time_recursive(
                 t=self.returns.index[1], current_weights=init)
-            self.assertTrue(np.allclose(trade, 0.))
+            self.assertTrue(np.allclose(wplus - init, 0.))
 
     def test_single_period_optimization(self):
 
         return_forecast = ReturnsForecast()
-        risk_forecast = FullCovariance(HistoricalFactorizedCovariance(kelly=False))
+        risk_forecast = FullCovariance(
+            HistoricalFactorizedCovariance(kelly=False))
         tcost = TransactionCost(a=1E-3/2, pershare_cost=0., b=None, exponent=2)
 
         policy = SinglePeriodOptimization(
@@ -319,14 +322,13 @@ class TestPolicies(unittest.TestCase):
         # + np.outer(self.returns.iloc[:121, :-1].mean(), self.returns.iloc[:121, :-1].mean())
         COV = self.returns.iloc[:121, :-1].cov(ddof=0).values
         w = cp.Variable(self.N)
-        cp.Problem(cp.Maximize(w[:-1].T @ self.returns.iloc[:121, :-1].mean().values -
-                               2 * cp.quad_form(w[:-1], COV) -
-                               5 * 1E-4 * cp.sum(cp.abs(w - curw)[:-1])
-                               ),
-                   [w >= 0, w <= 1, sum(w) == 1]
-                   ).solve(solver='ECOS')
+        cp.Problem(
+            cp.Maximize(w[:-1].T @ self.returns.iloc[:121, :-1].mean().values -
+            2 * cp.quad_form(w[:-1], COV) -
+            5 * 1E-4 * cp.sum(cp.abs(w - curw)[:-1])),
+            [w >= 0, w <= 1, sum(w) == 1]).solve(solver='ECOS')
 
-        cvxpy_result = pd.Series(w.value - curw, self.returns.columns)
+        cvxpy_result = pd.Series(w.value, self.returns.columns)
 
         print(cvxpy_result)
 
@@ -363,7 +365,7 @@ class TestPolicies(unittest.TestCase):
             current_portfolio_value=1000,
             past_returns=self.returns.iloc[:134],
             past_volumes=self.volumes.iloc[:134],
-            current_prices=pd.Series(1., self.volumes.columns))
+            current_prices=pd.Series(1., self.volumes.columns)) - curw
 
         self.assertFalse(np.allclose(result, 0.))
 
@@ -379,7 +381,7 @@ class TestPolicies(unittest.TestCase):
             current_portfolio_value=1000,
             past_returns=self.returns.iloc[:134],
             past_volumes=self.volumes.iloc[:134],
-            current_prices=pd.Series(1., self.volumes.columns))
+            current_prices=pd.Series(1., self.volumes.columns)) - curw
 
         self.assertTrue(np.allclose(result2, 0., atol=1e-7))
 
@@ -465,7 +467,8 @@ class TestPolicies(unittest.TestCase):
                 solver='ECOS')
 
             policy.initialize_estimator_recursive(
-                universe=self.returns.columns, backtest_times=self.returns.index)
+                universe=self.returns.columns, 
+                backtest_times=self.returns.index)
             policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
@@ -479,7 +482,8 @@ class TestPolicies(unittest.TestCase):
                 current_portfolio_value=1000,
                 past_returns=self.returns.iloc[:67],
                 past_volumes=self.volumes.iloc[:67],
-                current_prices=pd.Series(1., self.volumes.columns).values))
+                current_prices=pd.Series(1., self.volumes.columns).values)
+                -curw)
 
         self.assertTrue(np.allclose(results[0], results[1], atol=1e-4))
         self.assertTrue(np.allclose(results[1], results[2], atol=1e-4))
@@ -501,7 +505,8 @@ class TestPolicies(unittest.TestCase):
                 solver='ECOS')
 
             policy.initialize_estimator_recursive(
-                universe=self.returns.columns, backtest_times=self.returns.index)
+                universe=self.returns.columns, 
+                backtest_times=self.returns.index)
             policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
@@ -515,7 +520,7 @@ class TestPolicies(unittest.TestCase):
                 current_portfolio_value=1000,
                 past_returns=self.returns.iloc[:67],
                 past_volumes=self.volumes.iloc[:67],
-                current_prices=pd.Series(1., self.volumes.columns)))
+                current_prices=pd.Series(1., self.volumes.columns)) - curw)
 
         self.assertFalse(np.allclose(results[0], results[1], atol=1e-4))
         self.assertFalse(np.allclose(results[1], results[2], atol=1e-4))
@@ -556,7 +561,8 @@ class TestPolicies(unittest.TestCase):
                 solver='ECOS')
 
             policy.initialize_estimator_recursive(
-                universe=self.returns.columns, backtest_times=self.returns.index)
+                universe=self.returns.columns, 
+                backtest_times=self.returns.index)
             policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
@@ -570,7 +576,8 @@ class TestPolicies(unittest.TestCase):
                 current_portfolio_value=1000,
                 past_returns=self.returns.iloc[:67],
                 past_volumes=self.volumes.iloc[:67],
-                current_prices=pd.Series(1., self.volumes.columns)) + curw - benchmark)
+                current_prices=pd.Series(1., self.volumes.columns))
+                - benchmark)
 
         self.assertTrue(np.isclose(np.linalg.norm(diff_to_benchmarks[0]), 0.))
         self.assertTrue(np.linalg.norm(

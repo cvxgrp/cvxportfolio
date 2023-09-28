@@ -564,11 +564,13 @@ class MarketSimulator:
 
         # evaluate the policy
         s = time.time()
-        z = policy.values_in_time_recursive(
+        policy_w = policy.values_in_time_recursive(
             t=t, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value,
             past_returns=past_returns, past_volumes=past_volumes,
             current_prices=current_prices, **kwargs)
+            
+        z = policy_w - current_weights
 
         policy_time = time.time() - s
 
