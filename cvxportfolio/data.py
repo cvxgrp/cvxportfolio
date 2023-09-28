@@ -345,8 +345,7 @@ class YahooFinanceSymbolData(SymbolData):
             new = cls._internal_process(new)
             return pd.concat([current.iloc[:-overlap], new])
 
-    @staticmethod
-    def _preload(data):
+    def _preload(self, data):
         """Prepare data for use by Cvxportfolio.
 
         We drop the 'Volume' column expressed in number of stocks and
@@ -580,7 +579,8 @@ class BaseMarketData:
         """
         raise NotImplementedError
 
-    def trading_calendar(self, start_time, end_time):
+    def trading_calendar(self, start_time=None,
+                         end_time=None, include_end=True):
         """The trading calendar between two times (inclusive).
         
         :rtype: pandas.DatetimeIndex
@@ -671,7 +671,7 @@ class MarketDataInMemory(BaseMarketData):
 
         data = FredSymbolData('DFF', base_storage_location=self.base_location)
         cash_returns_per_period = resample_returns(
-            data.data/100, periods=self.PPY)
+            data.data/100, periods=self.periods_per_year)
 
         # we merge instead of assigning column because indexes might
         # be misaligned (e.g., with tz-aware timestamps)
@@ -681,7 +681,8 @@ class MarketDataInMemory(BaseMarketData):
         tmp[cash_key] = tmp[cash_key].ffill()
         self.returns = tmp.loc[original_returns_index]
 
-    def _get_backtest_times(self, start_time=None, end_time=None, include_end=True):
+    def trading_calendar(self, start_time=None,
+                         end_time=None, include_end=True):
         """Get trading calendar from market data."""
         result = self.returns.index
         result = result[result >= self._earliest_backtest_start]
@@ -834,10 +835,10 @@ class MarketDataInMemory(BaseMarketData):
                         (~(self.prices[col].isnull())).idxmax()
                     ] = np.nan
 
-    @property
-    def PPY(self):
-        """Periods per year, assumes returns are about equally spaced."""
-        return periods_per_year_from_datetime_index(self.returns.index)
+    # @property
+    # def PPY(self):
+    #     """Periods per year, assumes returns are about equally spaced."""
+    #     return periods_per_year_from_datetime_index(self.returns.index)
 
     def _check_sizes(self):
         """Check sizes of user-provided dataframes."""
@@ -870,10 +871,10 @@ class MarketDataInMemory(BaseMarketData):
         return int(np.round(self.periods_per_year * (
             self._min_history_timedelta / pd.Timedelta('365.24d'))))
 
-    @property
-    def PPY(self):
-        """Periods per year, assumes returns are about equally spaced."""
-        return periods_per_year_from_datetime_index(self.returns.index)
+    # @property
+    # def PPY(self):
+    #     """Periods per year, assumes returns are about equally spaced."""
+    #     return periods_per_year_from_datetime_index(self.returns.index)
 
 class UserProvidedMarketData(MarketDataInMemory):
 

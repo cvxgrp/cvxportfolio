@@ -122,9 +122,9 @@ class ProportionalTradeToTargets(PolicyEstimator):
     def __init__(self, targets):
         self.targets = targets
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         """Get list of trading days."""
-        self.trading_days = backtest_times
+        self.trading_days = trading_calendar
 
     def values_in_time(self, t, current_weights, **kwargs):
         """Get current trade weights."""
@@ -233,7 +233,7 @@ class Uniform(FixedWeights):
     def __init__(self, leverage=1.):
         self.leverage = leverage
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         """Initialize this estimator."""
         target_weights = pd.Series(1., universe)
         target_weights.iloc[-1] = 0
@@ -450,19 +450,19 @@ class MultiPeriodOptimization(PolicyEstimator):
                 + " cvxportfolio terms and is probably due to a"
                 + " mis-specified custom term.", self.__class__.__name__)
 
-    def initialize_estimator_recursive(self, universe, backtest_times):
+    def initialize_estimator_recursive(self, universe, trading_calendar):
         """No point in using recursive super() method."""
 
         for obj in self.objective:
             obj.initialize_estimator_recursive(
-                universe=universe, backtest_times=backtest_times)
+                universe=universe, trading_calendar=trading_calendar)
         for constr_at_lag in self.constraints:
             for constr in constr_at_lag:
                 constr.initialize_estimator_recursive(
-                    universe=universe, backtest_times=backtest_times)
+                    universe=universe, trading_calendar=trading_calendar)
 
         self.benchmark.initialize_estimator_recursive(
-            universe=universe, backtest_times=backtest_times)
+            universe=universe, trading_calendar=trading_calendar)
         self.w_bm = cp.Parameter(len(universe))
 
         self.w_current = cp.Parameter(len(universe))

@@ -46,7 +46,7 @@ class Benchmark(BaseBenchmark, DataEstimator):
 class CashBenchmark(BaseBenchmark):
     """Default benchmark weights for cvxportfolio risk models."""
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         """Define current_value as a constant."""
         self.current_value = np.zeros(len(universe))
         self.current_value[-1] = 1.
@@ -55,7 +55,7 @@ class CashBenchmark(BaseBenchmark):
 class UniformBenchmark(BaseBenchmark):
     """Benchmark weights uniform on non-cash assets."""
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         """Define current_value as a constant."""
         self.current_value = np.ones(len(universe))
         self.current_value[-1] = 0.

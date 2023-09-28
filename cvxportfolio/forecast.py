@@ -106,7 +106,7 @@ class HistoricalMeanReturn(BaseForecast):
         self._last_counts = None
         self._last_sum = None
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         self.__post_init__()
 
     def values_in_time(self, t, past_returns, cache=None, **kwargs):
@@ -146,7 +146,7 @@ class HistoricalVariance(BaseForecast):
         self._last_counts = None
         self._last_sum = None
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         self.__post_init__()
 
     def values_in_time(self, t, past_returns, **kwargs):
@@ -291,7 +291,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
         self._last_sum_matrix = None
         self._joint_mean = None
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         self.__post_init__()
 
     @staticmethod

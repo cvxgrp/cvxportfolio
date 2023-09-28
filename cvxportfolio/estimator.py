@@ -98,21 +98,22 @@ class PolicyEstimator(Estimator):
                 result += subestimator.collect_hyperparameters()
         return result
 
-    def initialize_estimator_recursive(self, universe, backtest_times):
+    def initialize_estimator_recursive(self, universe, trading_calendar):
         """Recursively initialize estimator tree for backtest.
 
         :param universe: names of assets to be traded
         :type universe: pandas.Index
-        :param backtest_times: times at which the estimator will be
+        :param trading_calendar: times at which the estimator will be
             evaluated
         :type backtest_time: pandas.DatetimeIndex
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "initialize_estimator_recursive"):
                 subestimator.initialize_estimator_recursive(
-                    universe=universe, backtest_times=backtest_times)
+                    universe=universe, trading_calendar=trading_calendar)
         if hasattr(self, "initialize_estimator"):
-            self.initialize_estimator(universe=universe, backtest_times=backtest_times)
+            self.initialize_estimator(universe=universe, 
+                                      trading_calendar=trading_calendar)
 
 
 class CvxpyExpressionEstimator(PolicyEstimator):
@@ -186,10 +187,10 @@ class DataEstimator(PolicyEstimator):
         self.data_includes_cash = data_includes_cash
         self.ignore_shape_check = ignore_shape_check
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         if self.compile_parameter:
             value = self._internal_values_in_time(
-                t=backtest_times[0])
+                t=trading_calendar[0])
             self.parameter = cp.Parameter(value.shape if hasattr(value, "shape") else (),
                                           PSD=self.positive_semi_definite, nonneg=self.non_negative)
 
@@ -322,7 +323,7 @@ class DataEstimator(PolicyEstimator):
         # if data is scalar or numpy
         return self.value_checker(self._universe_subselect(self.data))
 
-    def values_in_time_recursive(self, t, **kwargs):
+    def values_in_time_recursive(self, **kwargs):
         """Obtain value of `self.data` at time t or right before.
 
         Args:
@@ -333,7 +334,7 @@ class DataEstimator(PolicyEstimator):
                 sure that it returns a float or numpy array (and not,
                 for example, a pandas object)
         """
-        self.current_value = self._internal_values_in_time(t=t, **kwargs)
+        self.current_value = self._internal_values_in_time(**kwargs)
         if hasattr(self, 'parameter'):
             self.parameter.value = self.current_value
         return self.current_value
@@ -341,7 +342,8 @@ class DataEstimator(PolicyEstimator):
     def __repr__(self):
         if np.isscalar(self.data):
             return str(self.data)
-        if hasattr(self.data, 'values_in_time') or hasattr(self.data, 'values_in_time'):
+        if hasattr(self.data, 'values_in_time'
+            ) or hasattr(self.data, 'values_in_time'):
             return self.data.__repr__()
         return repr_numpy_pandas(self.data)
 
@@ -411,8 +413,8 @@ class DataEstimator(PolicyEstimator):
 #         self.positive_semi_definite = positive_semi_definite
 #         self.non_negative = non_negative
 #
-#     def initialize_estimator_recursive(self, universe, backtest_times):
-#         value = super()._internal_values_in_time(t=backtest_times[0])
+#     def initialize_estimator_recursive(self, universe, trading_calendar):
+#         value = super()._internal_values_in_time(t=trading_calendar[0])
 #         self.parameter = cp.Parameter(
 #             value if hasattr(value, "shape") else (),
 #             PSD=self.positive_semi_definite, nonneg=self.non_negative)
@@ -445,10 +447,10 @@ class DataEstimator(PolicyEstimator):
 #         self.allow_nans = allow_nans
 #         # super(DataEstimator).__init__(data, use_last_available_time)
 #
-#     def initialize_estimator_recursive(self, universe, backtest_times):
+#     def initialize_estimator_recursive(self, universe, trading_calendar):
 #         """Use the start time of the simulation to initialize the Parameter."""
-#         super().initialize_estimator_recursive(universe, backtest_times)
-#         value = super().values_in_time_recursive(t=backtest_times[0])
+#         super().initialize_estimator_recursive(universe, trading_calendar)
+#         value = super().values_in_time_recursive(t=trading_calendar[0])
 #         super().__init__(value.shape if hasattr(value, "shape") else (),
 #             PSD=self.positive_semi_definite, nonneg=self.non_negative)
 #

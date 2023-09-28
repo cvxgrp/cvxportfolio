@@ -183,7 +183,7 @@ class MarketNeutral(BaseWeightConstraint, EqualityConstraint):
         self.covarianceforecaster = HistoricalFactorizedCovariance()
         self.window = window
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         self.market_vector = cp.Parameter(len(universe)-1)
 
     def values_in_time(self, t, past_volumes, past_returns, **kwargs):
@@ -303,7 +303,7 @@ class NoTrade(BaseTradeConstraint):
         self.asset = asset
         self.periods = periods
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         self._index = (universe.get_loc if hasattr(
             universe, 'get_loc') else universe.index)(self.asset)
         self._low = cp.Parameter()
@@ -458,15 +458,15 @@ class MinMaxWeightsAtTimes(BaseWeightConstraint):
         self.base_limit = limit
         self.times = times
 
-    def initialize_estimator(self, universe, backtest_times):
-        self.backtest_times = backtest_times
+    def initialize_estimator(self, universe, trading_calendar):
+        self.trading_calendar = trading_calendar
         self.limit = cp.Parameter()
 
     def values_in_time(self, t, mpo_step, **kwargs):
-        tidx = self.backtest_times.get_loc(t)
+        tidx = self.trading_calendar.get_loc(t)
         nowtidx = tidx + mpo_step
-        if (nowtidx < len(self.backtest_times)) and\
-                (self.backtest_times[nowtidx] in self.times):
+        if (nowtidx < len(self.trading_calendar)) and\
+                (self.trading_calendar[nowtidx] in self.times):
             self.limit.value = self.base_limit
         else:
             self.limit.value = 100 * self.sign

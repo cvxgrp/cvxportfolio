@@ -118,7 +118,7 @@ class TestPolicies(unittest.TestCase):
         policy = ProportionalTradeToTargets(targets)
 
         policy.initialize_estimator_recursive(
-            universe=self.returns.columns, backtest_times=self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
         start_portfolio = pd.Series(
             np.random.randn(
                 self.returns.shape[1]),
@@ -237,7 +237,7 @@ class TestPolicies(unittest.TestCase):
         policy = ProportionalRebalance(
             target, target_matching_times=target_matching_times)
         policy.initialize_estimator_recursive(
-            universe=self.returns.columns, backtest_times=self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
 
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
@@ -295,7 +295,7 @@ class TestPolicies(unittest.TestCase):
             solver='ECOS')
 
         policy.initialize_estimator_recursive(
-            universe=self.returns.columns, backtest_times=self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
         policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
@@ -351,7 +351,7 @@ class TestPolicies(unittest.TestCase):
             solver='ECOS')
 
         policy.initialize_estimator_recursive(
-            universe=self.returns.columns, backtest_times=self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
         policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
@@ -399,7 +399,7 @@ class TestPolicies(unittest.TestCase):
             solver='ECOS')
 
         policy.initialize_estimator_recursive(
-            universe=self.returns.columns, backtest_times=self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
         policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
@@ -430,7 +430,7 @@ class TestPolicies(unittest.TestCase):
             solver='ECOS')
 
         policy.initialize_estimator_recursive(
-            universe=self.returns.columns, backtest_times=self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
         policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
@@ -468,7 +468,7 @@ class TestPolicies(unittest.TestCase):
 
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
-                backtest_times=self.returns.index)
+                trading_calendar=self.returns.index)
             policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
@@ -506,7 +506,7 @@ class TestPolicies(unittest.TestCase):
 
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
-                backtest_times=self.returns.index)
+                trading_calendar=self.returns.index)
             policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
@@ -562,7 +562,7 @@ class TestPolicies(unittest.TestCase):
 
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
-                backtest_times=self.returns.index)
+                trading_calendar=self.returns.index)
             policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)

@@ -45,18 +45,18 @@ __all__ = ['BacktestResult']
 class BacktestResult:
     """Store the data from a Backtest and produce metrics and plots."""
 
-    def __init__(self, universe, backtest_times, costs):
+    def __init__(self, universe, trading_calendar, costs):
         """Initialization of backtest result."""
-        self.h = pd.DataFrame(index=backtest_times,
+        self.h = pd.DataFrame(index=trading_calendar,
                               columns=universe, dtype=float)
-        self.u = pd.DataFrame(index=backtest_times,
+        self.u = pd.DataFrame(index=trading_calendar,
                               columns=universe, dtype=float)
-        self.z = pd.DataFrame(index=backtest_times,
+        self.z = pd.DataFrame(index=trading_calendar,
                               columns=universe, dtype=float)
         self.costs = {cost.__class__.__name__: pd.Series(
-            index=backtest_times, dtype=float) for cost in costs}
-        self.policy_times = pd.Series(index=backtest_times, dtype=float)
-        self.simulator_times = pd.Series(index=backtest_times, dtype=float)
+            index=trading_calendar, dtype=float) for cost in costs}
+        self.policy_times = pd.Series(index=trading_calendar, dtype=float)
+        self.simulator_times = pd.Series(index=trading_calendar, dtype=float)
 
         self._current_universe = pd.Index(universe)
 

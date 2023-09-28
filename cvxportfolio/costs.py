@@ -322,7 +322,7 @@ class HoldingCost(BaseCost):
             dividends)
         self.periods_per_year = periods_per_year
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         """Initialize cvxpy parameters.
 
         We don't use the parameter from DataEstimator because we need to
@@ -408,7 +408,7 @@ class HoldingCost(BaseCost):
         for est in [self.short_fees, self.long_fees, self.dividends]:
             if est is not None:
                 est.initialize_estimator_recursive(universe=h_plus.index,
-                                              backtest_times=[t])
+                                              trading_calendar=[t])
                 est.values_in_time_recursive(t=t)
 
         if self.short_fees is not None:
@@ -475,7 +475,7 @@ class TransactionCost(BaseCost):
         self.window_volume_est = window_volume_est
         self.exponent = exponent
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         if self.a is not None or self.pershare_cost is not None:
             self.first_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
@@ -542,11 +542,11 @@ class TransactionCost(BaseCost):
                 raise SyntaxError(
                     "If you don't provide prices you should"
                     " set pershare_cost to None")
-            result += self.pershare_cost.values_in_time_recursive(t) * int(
+            result += self.pershare_cost.values_in_time_recursive(t=t) * int(
                 sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
 
         if self.a is not None:
-            result += sum(self.a.values_in_time_recursive(t)
+            result += sum(self.a.values_in_time_recursive(t=t)
                           * np.abs(u.iloc[:-1]))
 
         if self.b is not None:
@@ -556,7 +556,7 @@ class TransactionCost(BaseCost):
             # we add 1E-8 to the volumes to prevent 0 volumes error
             # (trades are cancelled on 0 volumes)
             result += (np.abs(u.iloc[:-1])**exponent) @ (
-                self.b.values_in_time_recursive(t) *
+                self.b.values_in_time_recursive(t=t) *
                 sigma / ((current_and_past_volumes.iloc[-1] + 1E-8) ** (
                 exponent - 1)))
 

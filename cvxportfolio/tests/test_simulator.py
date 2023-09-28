@@ -263,7 +263,7 @@ class TestSimulator(unittest.TestCase):
 
             policy.initialize_estimator_recursive(
                 universe=simulator.market_data.universe,
-                backtest_times=simulator.market_data._get_backtest_times(
+                trading_calendar=simulator.market_data.trading_calendar(
                     start_time, end_time, include_end=False)
             )
 
@@ -302,7 +302,7 @@ class TestSimulator(unittest.TestCase):
             h = pd.Series(h0, copy=True)
             policy.initialize_estimator_recursive(
                 universe=simulator.market_data.universe,
-                backtest_times=simulator.market_data._get_backtest_times(
+                trading_calendar=simulator.market_data.trading_calendar(
                     start_time, end_time, include_end=False)
             )
 

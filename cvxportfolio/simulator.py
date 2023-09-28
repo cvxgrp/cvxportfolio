@@ -224,8 +224,9 @@ class MarketSimulator:
             current_and_past_returns=current_and_past_returns,
             current_prices=current_prices,
             t_next=t_next,
-            periods_per_year=self.market_data.PPY,
-            windowsigma=self.market_data.PPY) for cost in self.costs}
+            periods_per_year=self.market_data.periods_per_year,
+            windowsigma=self.market_data.periods_per_year)
+                for cost in self.costs}
 
         # initialize tomorrow's holdings
         h_next = pd.Series(h_plus, copy=True)
@@ -240,12 +241,12 @@ class MarketSimulator:
 
         return h_next, z, u, realized_costs, policy_time
 
-    def _get_initialized_policy(self, orig_policy, universe, backtest_times):
+    def _get_initialized_policy(self, orig_policy, universe, trading_calendar):
 
         policy = copy.deepcopy(orig_policy)
 
         policy.initialize_estimator_recursive(
-            universe=universe, backtest_times=backtest_times)
+            universe=universe, trading_calendar=trading_calendar)
 
         # if policy uses a cache load it from disk
         if hasattr(policy, 'cache') and self.enable_caching:
@@ -272,14 +273,18 @@ class MarketSimulator:
 
         timer = time.time()
 
-        backtest_times = self.market_data._get_backtest_times(start_time, end_time, include_end=True)
-        universe = self.market_data._universe_at_time(backtest_times[0])
+        trading_calendar = self.market_data.trading_calendar(
+            start_time, end_time, include_end=True)
 
-        used_policy = self._get_initialized_policy(policy, universe=universe, backtest_times=backtest_times)
+        universe = self.market_data._universe_at_time(trading_calendar[0])
 
-        result = BacktestResult(universe=universe, backtest_times=backtest_times, costs=self.costs)
+        used_policy = self._get_initialized_policy(
+            policy, universe=universe, trading_calendar=trading_calendar)
 
-        for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
+        result = BacktestResult(
+            universe=universe, trading_calendar=trading_calendar, costs=self.costs)
+
+        for t, t_next in zip(trading_calendar[:-1], trading_calendar[1:]):
 
             current_universe = self.market_data._universe_at_time(t)
 
@@ -288,15 +293,21 @@ class MarketSimulator:
                 self._finalize_policy(used_policy, h.index)
 
                 h = self._adjust_h_new_universe(h, current_universe)
-                used_policy = self._get_initialized_policy(policy, universe=current_universe, backtest_times=backtest_times[backtest_times >= t])
+                used_policy = self._get_initialized_policy(
+                    policy, universe=current_universe,
+                    trading_calendar=trading_calendar[trading_calendar >= t])
 
-            h_next, z, u, realized_costs, policy_time = self._simulate(t=t, h=h, policy=used_policy, t_next=t_next, mask=current_universe)
+            h_next, z, u, realized_costs, policy_time = self._simulate(
+                t=t, h=h, policy=used_policy,
+                t_next=t_next, mask=current_universe)
 
             simulator_time = time.time() - timer - policy_time
 
             timer = time.time()
 
-            result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs, policy_time=policy_time, simulator_time=simulator_time)
+            result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs,
+                                policy_time=policy_time,
+                                simulator_time=simulator_time)
 
             h = h_next
 
@@ -304,25 +315,25 @@ class MarketSimulator:
 
         result.cash_returns = self.market_data.returns.iloc[:, -1].loc[result.u.index]
 
-        result.h.loc[pd.Timestamp(backtest_times[-1])] = h
+        result.h.loc[pd.Timestamp(trading_calendar[-1])] = h
 
-        result.simulator_times.loc[pd.Timestamp(backtest_times[-2])] += time.time() - timer
+        result.simulator_times.loc[pd.Timestamp(trading_calendar[-2])] += time.time() - timer
 
         return result
 
     # def _single_backtest(self, policy, start_time, end_time, h, universe=None):
     #     if universe is None:
     #         universe = self.market_data.universe
-    #     backtest_times = self.market_data._get_backtest_times(
+    #     trading_calendar = self.market_data._get_trading_calendar(
     #         start_time, end_time, include_end=True)
     #
     #     if hasattr(policy, 'compile_to_cvxpy'):
     #         policy.compile_to_cvxpy()
     #
-    #     result = BacktestResult(universe, backtest_times, self.costs)
+    #     result = BacktestResult(universe, trading_calendar, self.costs)
     #
     #     # this is the main loop of a backtest
-    #     for t, t_next in zip(backtest_times[:-1], backtest_times[1:]):
+    #     for t, t_next in zip(trading_calendar[:-1], trading_calendar[1:]):
     #         # s = time.time()
     #         result.h.loc[t] = h
     #         h, result.z.loc[t], result.u.loc[t], realized_costs, \
@@ -558,18 +569,18 @@ class MarketSimulator:
             start_time = pd.Timestamp(start_time)
             if start_time.tz is None:
                 start_time = start_time.tz_localize(
-                    self.market_data.returns.index.tz)
+                    self.market_data.trading_calendar().tz)
 
         if end_time is not None:
             end_time = pd.Timestamp(end_time)
             if end_time.tz is None:
                 end_time = end_time.tz_localize(
-                    self.market_data.returns.index.tz)
+                    self.market_data.trading_calendar().tz)
 
-        backtest_times_inclusive = self.market_data._get_backtest_times(
+        trading_calendar_inclusive = self.market_data.trading_calendar(
             start_time, end_time, include_end=True)
-        start_time = backtest_times_inclusive[0]
-        end_time = backtest_times_inclusive[-1]
+        start_time = trading_calendar_inclusive[0]
+        end_time = trading_calendar_inclusive[-1]
 
         # initialize policies and get initial portfolios
         for i in range(len(policies)):

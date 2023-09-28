@@ -69,7 +69,7 @@ class FullCovariance(BaseRiskModel):
 
         self.Sigma = DataEstimator(Sigma)
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
     def values_in_time(self, t, past_returns, **kwargs):
@@ -105,7 +105,7 @@ class RiskForecastError(BaseRiskModel):
 
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         self.sigmas_parameter = cp.Parameter(
             len(universe)-1, nonneg=True)  # +self.kelly))
 
@@ -136,7 +136,7 @@ class DiagonalCovariance(BaseRiskModel):
             sigma_squares = sigma_squares()
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         self.sigmas_parameter = cp.Parameter(len(universe)-1)  # +self.kelly))
 
     def values_in_time(self, t, past_returns, **kwargs):
@@ -229,7 +229,7 @@ class FactorModelCovariance(BaseRiskModel):
         else:
             self._fit = False
 
-    def initialize_estimator(self, universe, backtest_times):
+    def initialize_estimator(self, universe, trading_calendar):
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         if self._fit:
             effective_num_factors = min(self.num_factors, len(universe)-1)
@@ -293,10 +293,10 @@ class WorstCaseRisk(BaseRiskModel):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
 
-    def initialize_estimator_recursive(self, universe, backtest_times):
+    def initialize_estimator_recursive(self, universe, trading_calendar):
         """Initialize objects."""
         for risk in self.riskmodels:
-            risk.initialize_estimator_recursive(universe, backtest_times)
+            risk.initialize_estimator_recursive(universe, trading_calendar)
 
     def values_in_time_recursive(self, **kwargs):
         """Update parameters."""

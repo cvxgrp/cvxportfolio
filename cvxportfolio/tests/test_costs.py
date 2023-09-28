@@ -56,7 +56,7 @@ class TestCosts(unittest.TestCase):
         cost3 = cost1 + cost2
 
         cost3.initialize_estimator_recursive(
-            universe=self.returns.columns, backtest_times=self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
         expr3 = cost3.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         expr1 = cost1.compile_to_cvxpy(
@@ -103,7 +103,7 @@ class TestCosts(unittest.TestCase):
 
         t = 100  # this is picked so that periods_per_year evaluates to 252
         hcost.initialize_estimator_recursive(
-            universe=self.returns.columns, backtest_times=self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
         expression = hcost.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         hcost.values_in_time_recursive(
@@ -143,7 +143,7 @@ class TestCosts(unittest.TestCase):
         t = self.returns.index[12]
 
         tcost.initialize_estimator_recursive(
-            universe=self.returns.columns, backtest_times=self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
         expression = tcost.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
 
