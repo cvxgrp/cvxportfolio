@@ -23,12 +23,13 @@ import cvxportfolio as cvx
 from cvxportfolio.costs import *
 from cvxportfolio.returns import *
 from cvxportfolio.risks import *
-from cvxportfolio.tests.base import CvxportfolioTest
+from cvxportfolio.tests import CvxportfolioTest
 
 # from cvxportfolio.legacy import LegacyReturnsForecast #, MultipleReturnsForecasts
 
 
 class TestCosts(CvxportfolioTest):
+    """Test base cost methods and tcost/hcost."""
 
     def test_cost_algebra(self):
         # n = len(self.returns.columns)

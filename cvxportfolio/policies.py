@@ -45,8 +45,59 @@ __all__ = [
     "Uniform",
 ]
 
+class BasePolicy(PolicyEstimator):
+    """Base trading policy class, defines execute method."""
+    
+    def execute(self, market_data, t=None, h=None, w=None, v=None, 
+                num_shares=None, cash=None):
+        """Execute trading policy at current time (or earlier)."""
+        
+        trading_calendar = market_data.trading_calendar()
+        
+        if t is None:
+            t = trading_calendar[-1]
+        
+        assert t in trading_calendar
+        
+        past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
+        
+        if num_shares is not None:
+            assert w is None
+            assert v is None
+            assert h is None
+            assert current_prices is not None
+            h = pd.Series(0., past_returns.columns)
+            h[num_shares.index] = num_shares * current_prices[num_shares.index]
+            assert cash is not None
+            h.iloc[-1] = cash
+        
+        if w is None:
+            assert h is not None
+            v = np.sum(h)
+            w = h / v
+        
+        assert v is not None
+        
+        self.initialize_estimator_recursive(
+            universe=past_returns.columns,
+            trading_calendar=trading_calendar[trading_calendar>=t]
+            )
+        
+        wplus = self.values_in_time_recursive(
+            t=t, past_returns=past_returns, past_volumes=past_volumes,
+            current_weights=w, current_value=v, current_prices=current_prices)
+            
+        z = w_plus - w
+        u = z * v
+        w_plus = w_plus * v
+        shares_traded = pd.Series(np.round(u / current_prices), dtype=int)
+        
+        return {'t'=t, 'w_plus':w_plus, 
+                'z':z, 'w_plus':hplus 'u':u,
+                'shares_traded':shares_traded}    
+        
 
-class Hold(PolicyEstimator):
+class Hold(BasePolicy):
     """Hold initial portfolio, don't trade."""
 
     def values_in_time(self, current_weights, **kwargs):
@@ -54,7 +105,7 @@ class Hold(PolicyEstimator):
         return current_weights
 
 
-class RankAndLongShort(PolicyEstimator):
+class RankAndLongShort(BasePolicy):
     """Rank assets by signal; long highest and short lowest.
 
     :param signal: time-indexed DataFrame of signal for all symbols
@@ -105,7 +156,7 @@ class RankAndLongShort(PolicyEstimator):
         return target_weights
 
 
-class ProportionalTradeToTargets(PolicyEstimator):
+class ProportionalTradeToTargets(BasePolicy):
     """Trade in equal proportion to match target weights in time.
 
     Initially, it loads the list of trading days and so at each day it knows
@@ -145,7 +196,7 @@ class ProportionalTradeToTargets(PolicyEstimator):
             next_target - current_weights) / trading_days_to_target
 
 
-class SellAll(PolicyEstimator):
+class SellAll(BasePolicy):
     """Sell all assets to cash.
 
     This is useful to check the tcost model in the simulator.
@@ -158,7 +209,7 @@ class SellAll(PolicyEstimator):
         return pd.Series(target, index=current_weights.index)
 
 
-class FixedTrades(PolicyEstimator):
+class FixedTrades(BasePolicy):
     """Each day trade the provided trade weights vector.
 
     If there are no weights defined for the given day, default to no
@@ -190,7 +241,7 @@ class FixedTrades(PolicyEstimator):
             return current_weights
 
 
-class FixedWeights(PolicyEstimator):
+class FixedWeights(BasePolicy):
     """Each day trade to the provided trade weights vector.
 
     If there are no weights defined for the given day, default to no
@@ -278,7 +329,7 @@ class ProportionalRebalance(ProportionalTradeToTargets):
         super().__init__(targets)
 
 
-class AdaptiveRebalance(PolicyEstimator):
+class AdaptiveRebalance(BasePolicy):
     """Rebalance portfolio when deviates too far from target.
 
     We use the 2-norm as trigger for rebalance. You may want to
@@ -310,7 +361,7 @@ class AdaptiveRebalance(PolicyEstimator):
             return current_weights
 
 
-class MultiPeriodOptimization(PolicyEstimator):
+class MultiPeriodOptimization(BasePolicy):
     r"""Multi Period Optimization policy.
 
     Implements the model developed in Chapter 5, in particular
