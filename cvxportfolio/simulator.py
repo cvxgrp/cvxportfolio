@@ -262,7 +262,7 @@ class MarketSimulator:
                           trading_frequency=self.trading_frequency,
                           base_location=self.base_location)
 
-    def _concatenated_backtests(self, policy, start_time, end_time, h):
+    def _backtest(self, policy, start_time, end_time, h):
         """Run a backtest with changing universe."""
 
         timer = time.time()
@@ -421,7 +421,7 @@ class MarketSimulator:
 
     @staticmethod
     def _worker(policy, simulator, start_time, end_time, h):
-        return simulator._concatenated_backtests(policy, start_time, end_time, h)
+        return simulator._backtest(policy, start_time, end_time, h)
 
     def optimize_hyperparameters(self, policy, start_time=None, end_time=None,
         initial_value=1E6, h=None, objective='sharpe_ratio', parallel=True):
@@ -584,11 +584,13 @@ class MarketSimulator:
             start_time, end_time, include_end=True)
         start_time = trading_calendar_inclusive[0]
         end_time = trading_calendar_inclusive[-1]
+        _, initial_returns, _, _, _ = self.market_data.serve(start_time)
+        initial_universe = initial_returns.index
 
         # initialize policies and get initial portfolios
         for i in range(len(policies)):
             if h[i] is None:
-                h[i] = pd.Series(0., self.market_data.universe)
+                h[i] = pd.Series(0., initial_universe)
                 h[i].iloc[-1] = initial_value
 
         n = len(policies)
