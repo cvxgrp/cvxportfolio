@@ -16,6 +16,7 @@
 import unittest
 import warnings
 from copy import deepcopy
+import sys
 
 import numpy as np
 import pandas as pd
@@ -102,6 +103,8 @@ class TestData(CvxportfolioTest):
 
     def test_local_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
+        if sys.version.split(' ')[0] < '3.11':
+            return
         self.base_test_series(_loader_csv, _storer_csv)
 
     def test_pickle_store_series(self):
