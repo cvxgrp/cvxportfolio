@@ -33,7 +33,7 @@ import requests
 from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
                     resample_returns)
 
-__all__ = ["YahooFinanceSymbolData", "FredSymbolData",
+__all__ = ["YahooFinance", "Fred",
            "UserProvidedMarketData", "DownloadedMarketData"]
 
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
@@ -216,7 +216,7 @@ def _now_timezoned():
     return pd.Timestamp(
         datetime.datetime.now(datetime.timezone.utc).astimezone())
 
-class YahooFinanceSymbolData(SymbolData):
+class YahooFinance(SymbolData):
     """Yahoo Finance symbol data."""
 
     @staticmethod
@@ -364,15 +364,15 @@ class YahooFinanceSymbolData(SymbolData):
         return data
 
 #
-# FRED.
+# Fred.
 #
 
-class FredSymbolData(SymbolData):
-    """Base class for FRED data access."""
+class Fred(SymbolData):
+    """Base class for Fred data access."""
 
     URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 
-    # TODO: implement FRED point-in-time
+    # TODO: implement Fred point-in-time
     # example:
     # https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=CES0500000003&vintage_date=2023-07-06
     # hourly wages time series **as it appeared** on 2023-07-06
@@ -384,7 +384,7 @@ class FredSymbolData(SymbolData):
             index_col=0, parse_dates=[0])[symbol]
 
     def _download(self, symbol="DFF", current=None, grace_period='5d'):
-        """Download or update pandas Series from FRED.
+        """Download or update pandas Series from Fred.
 
         If already downloaded don't change data stored locally and only
         add new entries at the end.
@@ -771,7 +771,7 @@ class MarketDataInMemory(MarketData):
             raise NotImplementedError(
                 'Currently the only data pipeline built is for USDOLLAR cash')
 
-        data = FredSymbolData('DFF', base_storage_location=self.base_location)
+        data = Fred('DFF', base_storage_location=self.base_location)
         cash_returns_per_period = resample_returns(
             data.data/100, periods=self.periods_per_year)
 
@@ -1019,7 +1019,7 @@ class DownloadedMarketData(MarketDataInMemory):
 
         self._post_init_(trading_frequency=trading_frequency)
 
-    DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}
+    DATASOURCES = {'YFinance': YahooFinance, 'Fred': Fred}
 
     def _get_market_data(self, universe, datasource):
         database_accesses = {}
@@ -1039,7 +1039,7 @@ class DownloadedMarketData(MarketDataInMemory):
                 {stock: database_accesses[stock].data['ValueVolume'] for stock in universe})
             self.prices = pd.DataFrame(
                 {stock: database_accesses[stock].data['Open'] for stock in universe})
-        else:  # only FRED for indexes
+        else:  # only Fred for indexes
             self.prices = pd.DataFrame(
                 {stock: database_accesses[stock].data for stock in universe})  # open prices
             self.returns = 1 - self.prices / self.prices.shift(-1)

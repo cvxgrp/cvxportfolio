@@ -6,10 +6,17 @@ Data Interfaces
 	 
 .. automodule:: cvxportfolio.data
 
-.. autoclass:: YahooFinanceSymbolData
+.. autoclass:: YahooFinance
 
-.. autoclass:: FredSymbolData
+.. autoclass:: Fred
 
 .. autoclass:: UserProvidedMarketData
 
 .. autoclass:: DownloadedMarketData
+
+Base Classes (for extending Cvxportfolio)
+-----------------------------------------
+
+.. autoclass:: SymbolData
+
+.. autoclass:: MarketData

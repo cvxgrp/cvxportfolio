@@ -33,9 +33,9 @@ import numpy as np
 import pandas as pd
 from multiprocess import Lock, Pool
 
-from .costs import BaseCost, StocksHoldingCost, StocksTransactionCost
-from .data import (BASE_LOCATION, DownloadedMarketData, FredSymbolData,
-                   UserProvidedMarketData, YahooFinanceSymbolData)
+from .costs import Cost, StocksHoldingCost, StocksTransactionCost
+from .data import (BASE_LOCATION, DownloadedMarketData, Fred,
+                   UserProvidedMarketData, YahooFinance)
 from .errors import DataError
 from .estimator import DataEstimator, Estimator
 from .result import BacktestResult
@@ -158,7 +158,7 @@ class MarketSimulator:
         result.iloc[-1] = -sum(result.iloc[:-1])
         return result
 
-    def _simulate(self, t, t_next, h, policy, past_returns, current_returns,
+    def simulate(self, t, t_next, h, policy, past_returns, current_returns,
                 past_volumes, current_volumes, current_prices):
         """Get next portfolio and statistics used by Backtest for reporting.
 
@@ -211,7 +211,7 @@ class MarketSimulator:
         h_plus = h + u
 
         # evaluate cost functions
-        realized_costs = {cost.__class__.__name__: cost._simulate(
+        realized_costs = {cost.__class__.__name__: cost.simulate(
             t=t, u=u,  h_plus=h_plus,
             past_volumes=past_volumes,
             current_volumes=current_volumes,
@@ -296,7 +296,7 @@ class MarketSimulator:
                     policy, universe=current_universe,
                     trading_calendar=trading_calendar[trading_calendar >= t])
 
-            h_next, z, u, realized_costs, policy_time = self._simulate(
+            h_next, z, u, realized_costs, policy_time = self.simulate(
                 t=t, h=h, policy=used_policy,
                 t_next=t_next,
                 past_returns=past_returns,
@@ -345,7 +345,7 @@ class MarketSimulator:
     #         # s = time.time()
     #         result.h.loc[t] = h
     #         h, result.z.loc[t], result.u.loc[t], realized_costs, \
-    #             result.policy_times.loc[t] = self._simulate(
+    #             result.policy_times.loc[t] = self.simulate(
     #                 t=t, h=h, policy=policy, t_next=t_next)
     #         for cost in realized_costs:
     #             result.costs[cost].loc[t] = realized_costs[cost]
@@ -641,11 +641,11 @@ class StockMarketSimulator(MarketSimulator):
     :param min_history: minimum history required for a stock to be included in a backtest. The stock
         will be ignored for this amount of time after its IPO, and then be included.
     :type min_history: pandas.Timedelta
-    :param costs: list of BaseCost instances or class objects. If class objects (the default) they will
+    :param costs: list of Cost instances or class objects. If class objects (the default) they will
         be instantiated internally with their default arguments.
     :type costs: list
     :param cash_key: name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
-        as the Federal Funds effective rate from FRED. If None, you must pass the cash returns
+        as the Federal Funds effective rate from Fred. If None, you must pass the cash returns
         along with the stock returns as its last column.
     :type cash_key: str or None
     :param base_location: base location for storage of data.

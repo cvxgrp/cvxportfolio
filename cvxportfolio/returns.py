@@ -18,7 +18,7 @@ portfolio optimization policies, and related objects.
 
 import cvxpy as cp
 
-from .costs import BaseCost, CombinedCosts
+from .costs import Cost, CombinedCosts
 from .estimator import DataEstimator  # , ParameterEstimator
 from .forecast import HistoricalMeanError, HistoricalMeanReturn
 from .risks import BaseRiskModel
@@ -30,7 +30,7 @@ __all__ = [
 ]
 
 
-class BaseReturnsModel(BaseCost):
+class BaseReturnsModel(Cost):
     """Base class for return models.
 
     Use this to define any logic common to return models.

@@ -23,8 +23,8 @@ import numpy as np
 import pandas as pd
 
 from .benchmark import *
-from .constraints import BaseConstraint
-from .costs import BaseCost
+from .constraints import Constraint
+from .costs import Cost
 from .errors import *
 from .estimator import DataEstimator, PolicyEstimator
 from .returns import BaseReturnsModel, CashReturn, ReturnsForecast
@@ -45,22 +45,43 @@ __all__ = [
     "Uniform",
 ]
 
-class BasePolicy(PolicyEstimator):
+class Policy(PolicyEstimator):
     """Base trading policy class, defines execute method."""
-    
-    def execute(self, market_data, t=None, h=None, w=None, v=None, 
+
+    def execute(self, market_data, t=None, h=None, w=None, v=None,
                 num_shares=None, cash=None):
-        """Execute trading policy at current time (or earlier)."""
-        
+        """Execute trading policy at current or user-specified time.
+                
+        :param market_data:
+        :type market_data: cvxportfolio.MarketData instance
+        :param t:
+        :type t: pandas.Timestamp or None
+        :param h:
+        :type h: pandas.Series or None
+        :param w:
+        :type w pandas.Series or None
+        :param v: 
+        :type v: float or None
+        :param num_shares:
+        :type num_shares: pandas.Series or None
+        :param cash: 
+        :type cash: float or None  
+                
+        :raises: SyntaxError, cvxportfolio.DataError
+                
+        :rtype: dict      
+                
+        """
+
         trading_calendar = market_data.trading_calendar()
-        
+
         if t is None:
             t = trading_calendar[-1]
-        
+
         assert t in trading_calendar
-        
+
         past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
-        
+
         if num_shares is not None:
             assert w is None
             assert v is None
@@ -70,34 +91,34 @@ class BasePolicy(PolicyEstimator):
             h[num_shares.index] = num_shares * current_prices[num_shares.index]
             assert cash is not None
             h.iloc[-1] = cash
-        
+
         if w is None:
             assert h is not None
             v = np.sum(h)
             w = h / v
-        
+
         assert v is not None
-        
+
         self.initialize_estimator_recursive(
             universe=past_returns.columns,
-            trading_calendar=trading_calendar[trading_calendar>=t]
+            trading_calendar =trading_calendar[trading_calendar >= t]
             )
-        
+
         wplus = self.values_in_time_recursive(
             t=t, past_returns=past_returns, past_volumes=past_volumes,
             current_weights=w, current_value=v, current_prices=current_prices)
-            
+
         z = w_plus - w
         u = z * v
         w_plus = w_plus * v
         shares_traded = pd.Series(np.round(u / current_prices), dtype=int)
-        
-        return {'t'=t, 'w_plus':w_plus, 
-                'z':z, 'w_plus':hplus 'u':u,
-                'shares_traded':shares_traded}    
-        
 
-class Hold(BasePolicy):
+        return {'t': t, 'w_plus': w_plus,
+                'z': z, 'hplus': hplus, 'u': u,
+                'shares_traded': shares_traded}
+
+
+class Hold(Policy):
     """Hold initial portfolio, don't trade."""
 
     def values_in_time(self, current_weights, **kwargs):
@@ -105,7 +126,7 @@ class Hold(BasePolicy):
         return current_weights
 
 
-class RankAndLongShort(BasePolicy):
+class RankAndLongShort(Policy):
     """Rank assets by signal; long highest and short lowest.
 
     :param signal: time-indexed DataFrame of signal for all symbols
@@ -156,7 +177,7 @@ class RankAndLongShort(BasePolicy):
         return target_weights
 
 
-class ProportionalTradeToTargets(BasePolicy):
+class ProportionalTradeToTargets(Policy):
     """Trade in equal proportion to match target weights in time.
 
     Initially, it loads the list of trading days and so at each day it knows
@@ -196,7 +217,7 @@ class ProportionalTradeToTargets(BasePolicy):
             next_target - current_weights) / trading_days_to_target
 
 
-class SellAll(BasePolicy):
+class SellAll(Policy):
     """Sell all assets to cash.
 
     This is useful to check the tcost model in the simulator.
@@ -209,7 +230,7 @@ class SellAll(BasePolicy):
         return pd.Series(target, index=current_weights.index)
 
 
-class FixedTrades(BasePolicy):
+class FixedTrades(Policy):
     """Each day trade the provided trade weights vector.
 
     If there are no weights defined for the given day, default to no
@@ -241,7 +262,7 @@ class FixedTrades(BasePolicy):
             return current_weights
 
 
-class FixedWeights(BasePolicy):
+class FixedWeights(Policy):
     """Each day trade to the provided trade weights vector.
 
     If there are no weights defined for the given day, default to no
@@ -329,7 +350,7 @@ class ProportionalRebalance(ProportionalTradeToTargets):
         super().__init__(targets)
 
 
-class AdaptiveRebalance(BasePolicy):
+class AdaptiveRebalance(Policy):
     """Rebalance portfolio when deviates too far from target.
 
     We use the 2-norm as trigger for rebalance. You may want to
@@ -361,7 +382,7 @@ class AdaptiveRebalance(BasePolicy):
             return current_weights
 
 
-class MultiPeriodOptimization(BasePolicy):
+class MultiPeriodOptimization(Policy):
     r"""Multi Period Optimization policy.
 
     Implements the model developed in Chapter 5, in particular
@@ -381,18 +402,18 @@ class MultiPeriodOptimization(BasePolicy):
     The future steps (planning horizon) are by default not returned.
 
     :param objective: these will be maximized;
-        if you pass a single expression of BaseCost it is understood as the
+        if you pass a single expression of Cost it is understood as the
         same for all steps; if it's a list you must also pass a list of lists
         for `constraints`, each term represents the cost for each step of the
         optimization (starting from the first, i.e., today) and the length of 
         the list is used as planning_horizon (the value you pass there will be 
         ignored)
-    :type objective: algebra of BaseCost or list of
+    :type objective: algebra of Cost or list of
     :param constraints: these will be
         imposed on the optimization. Default []. Pass this as a list of
         lists of the same length as `objective` to specify different
         constraints at different time steps.
-    :type constraints: list of BaseConstraints or list of those
+    :type constraints: list of Constraints or list of those
     :param planning_horizon:  how many steps in the future we
         plan for. Ignored if passing `objective` and `constraints` as lists.
         Default is None.
@@ -613,7 +634,7 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
         will be maximized
     :type objective: CombinedCost
     :param constraints: these will be imposed on the optimization. Default [].
-    :type constraints: list of BaseConstraints
+    :type constraints: list of Constraints
     :param include_cash_return: whether to automatically include the 
         ``CashReturn`` term in the objective, with default parameters. 
         Default is ``True``.

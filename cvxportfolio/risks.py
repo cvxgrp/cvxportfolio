@@ -17,7 +17,7 @@ import logging
 import cvxpy as cp
 import numpy as np
 
-from .costs import BaseCost
+from .costs import Cost
 from .estimator import DataEstimator
 from .forecast import (HistoricalFactorizedCovariance,
                        HistoricalLowRankCovarianceSVD, HistoricalVariance,
@@ -35,7 +35,7 @@ __all__ = [
 ]
 
 
-class BaseRiskModel(BaseCost):
+class BaseRiskModel(Cost):
     pass
 
 

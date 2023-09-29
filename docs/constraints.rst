@@ -106,6 +106,15 @@ Keep in mind that the resulting inequality constraint must be convex.
 You can't, for example, require that a risk term is larger or equal than
 some value.
 
+Base classes (for extending Cvxportfolio)
+-----------------------------------------
+
+.. autoclass:: Constraint
+
+.. autoclass:: EqualityConstraint
+
+.. autoclass:: InequalityConstraint
+
 
 
 

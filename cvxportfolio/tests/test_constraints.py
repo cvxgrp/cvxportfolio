@@ -14,9 +14,7 @@
 """Unit tests for the constraints objects."""
 
 import unittest
-from pathlib import Path
 
-import cvxpy as cp
 import numpy as np
 import pandas as pd
 
@@ -24,17 +22,16 @@ import cvxportfolio as cvx
 from cvxportfolio.tests import CvxportfolioTest
 
 
-def listvalue(li):
-    return all([el.value() for el in li])
+def _listvalue(_list):
+    """All elements of list's ``value`` method returns True."""
+    return all(el.value() for el in _list)
 
 
 class TestConstraints(CvxportfolioTest):
+    """Test Cvxportfolio constraint objects."""
 
     def build_constraint(self, constraint, t=None):
-        """Initialize constraint, build expression, and point it to given.
-
-        time.
-        """
+        """Initialize constraint, build expression, and point it to time."""
         constraint.initialize_estimator_recursive(
             self.returns.columns, self.returns.index)
         cvxpy_expression = constraint.compile_to_cvxpy(
@@ -44,20 +41,22 @@ class TestConstraints(CvxportfolioTest):
         return cvxpy_expression
 
     def test_long_only(self):
+        """Test long-only constraint."""
         model = cvx.LongOnly()
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones(self.N)
         self.assertTrue(cons.value())
-        # self.assertTrue(listvalue(cons))
+        # self.assertTrue(_listvalue(cons))
         self.w_plus.value = -np.ones(self.N)
         self.assertFalse(cons.value())
-        # self.assertFalse(listvalue(cons))
+        # self.assertFalse(_listvalue(cons))
         # model = cvx.LongOnly(nocash=True)
         # cons = self.build_constraint(model)
         # self.w_plus.value = np.ones(self.N)
-        # self.assertFalse(listvalue(cons))
+        # self.assertFalse(_listvalue(cons))
 
     def test_long_cash(self):
+        """Test long-cash constraint."""
         model = cvx.LongCash()
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones(self.N)
@@ -69,6 +68,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertFalse(cons.value())
 
     def test_min_cash(self):
+        """Test min-cash constraint."""
         model = cvx.MinCashBalance(10000)  # USD
         cons = self.build_constraint(model)
         self.w_plus.value = np.zeros(self.N)
@@ -81,6 +81,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertFalse(cons.value())
 
     def test_dollar_neutral(self):
+        """Test dollar-neutral constraint."""
         model = cvx.DollarNeutral()
         cons = self.build_constraint(model)
         tmpvalue = np.zeros(self.N)
@@ -93,6 +94,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertFalse(cons.value())
 
     def test_leverage_limit(self):
+        """Test leverage limit constraint."""
         model = cvx.LeverageLimit(2)
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones(self.N) / self.N
@@ -111,6 +113,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertTrue(cons.value())
 
     def test_leverage_limit_in_time(self):
+        """Test leverage limit constraint with time-varying limit."""
         limits = pd.Series(index=self.returns.index, data=2)
         limits.iloc[1] = 7
         model = cvx.LeverageLimit(limits)
@@ -124,6 +127,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertFalse(cons.value())
 
     def test_max_weights(self):
+        """Test max weights constraint."""
         model = cvx.MaxWeights(2)
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones(self.N) / self.N
@@ -158,6 +162,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertFalse(cons.value())
 
     def test_min_weights(self):
+        """Test min weights constraint."""
         model = cvx.MinWeights(2)
         cons = self.build_constraint(model, self.returns.index[1])
 
@@ -189,6 +194,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertFalse(cons.value())
 
     def test_factor_max_limit(self):
+        """Test factor max limit constraint."""
 
         model = cvx.FactorMaxLimit(
             np.ones((self.N - 1, 2)), np.array([0.5, 1]))
@@ -212,6 +218,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertTrue(cons.value())
 
     def test_factor_min_limit(self):
+        """Test factor min limit constraint."""
 
         model = cvx.FactorMinLimit(
             np.ones((self.N - 1, 2)), np.array([0.5, 1]))
@@ -236,6 +243,8 @@ class TestConstraints(CvxportfolioTest):
         self.assertTrue(cons.value())
 
     def test_fixed_alpha(self):
+        """Test fixed alpha constraint."""
+
         model = cvx.FixedFactorLoading(np.ones((self.N - 1, 1)), 1)
         cons = self.build_constraint(model, self.returns.index[1])
 
@@ -248,6 +257,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertTrue(cons.value())
 
     def test_turnover_limit(self):
+        """Test turnover limit constraint."""
         model = cvx.TurnoverLimit(0.1)
         cons = self.build_constraint(model)
         self.z.value = np.zeros(self.N)
@@ -263,7 +273,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertFalse(cons.value())
 
     def test_participation_rate(self):
-        """Test trading constraints."""
+        """Test max participation rate constraints."""
 
         t = self.returns.index[1]
 

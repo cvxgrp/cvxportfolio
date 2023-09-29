@@ -37,23 +37,12 @@ __all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
            "StocksTransactionCost", "StocksHoldingCost"]
 
 
-class BaseCost(CvxpyExpressionEstimator):
+class Cost(CvxpyExpressionEstimator):
     """Base class for cost objects (and also risks).
 
     Here there is some logic used to implement the algebraic operations.
     See also :class:`CombinedCost`.
     """
-
-    def _simulate(self, *args, **kwargs):
-        """Simulate cost, used by market simulator.
-
-        Look at its invocation in ``MarketSimulator`` for its list of
-        arguments.
-
-        Cost classes that are meant to be used in the simulator
-        should implement this.
-        """
-        raise NotImplementedError
 
     def __mul__(self, other):
         """Multiply by constant."""
@@ -112,10 +101,10 @@ class BaseCost(CvxpyExpressionEstimator):
         return (-self).__le__(other)
 
 
-class CombinedCosts(BaseCost):
-    """Algebraic combination of :class:`BaseCost` instances.
+class CombinedCosts(Cost):
+    """Algebraic combination of :class:`Cost` instances.
 
-    :param costs: instances of :class:`BaseCost`
+    :param costs: instances of :class:`Cost`
     :type costs: list
     :param multipliers: floats that multiply the ``costs``
     :type multipliers: list
@@ -123,7 +112,7 @@ class CombinedCosts(BaseCost):
 
     def __init__(self, costs, multipliers):
         for cost in costs:
-            if not isinstance(cost, BaseCost):
+            if not isinstance(cost, Cost):
                 raise SyntaxError(
                     "You can only sum cost instances to other cost instances.")
         self.costs = costs
@@ -201,12 +190,12 @@ class CombinedCosts(BaseCost):
             multipliers = self.multipliers)
 
 
-class SoftConstraint(BaseCost):
+class SoftConstraint(Cost):
     """Soft constraint cost.
 
     :param constraint: cvxportfolio constraint instance whose violation
         we penalize
-    :type constraint: cvx.BaseConstraint
+    :type constraint: cvx.Constraint
     """
 
     def __init__(self, constraint):
@@ -232,7 +221,22 @@ def _annual_percent_to_per_period(value, ppy):
     return np.exp(np.log(1 + value / 100) / ppy) - 1
 
 
-class HoldingCost(BaseCost):
+class SimulatorCost:
+    """Cost class that can be used by a MarketSimulator."""
+    
+    def simulate(self, *args, **kwargs):
+        """Simulate cost, used by market simulator.
+
+        Look at its invocation in ``MarketSimulator`` for its list of
+        arguments.
+
+        Cost classes that are meant to be used in the simulator
+        should implement this.
+        """
+        raise NotImplementedError
+        
+
+class HoldingCost(Cost, SimulatorCost):
     r"""Generic holding cost model, as described in page 11 of the book.
 
     There are two ways to use this class. Either in the costs attribute
@@ -389,7 +393,7 @@ class HoldingCost(BaseCost):
 
         return expression
 
-    def _simulate(self, t, h_plus, t_next, **kwargs):
+    def simulate(self, t, h_plus, t_next, **kwargs):
         """Simulate cost in a MarketSimulator.
 
         TODO: make sure simulator cost sign convention is
@@ -428,7 +432,7 @@ class HoldingCost(BaseCost):
         return cost
 
 
-class StocksHoldingCost(HoldingCost):
+class StocksHoldingCost(HoldingCost, SimulatorCost):
     r"""Holding cost specialized to stocks.
 
     This implements the simple model describe at page 11 of the book, *i.e.*
@@ -456,7 +460,7 @@ class StocksHoldingCost(HoldingCost):
         super().__init__(short_fees=short_fees)
 
 
-class TransactionCost(BaseCost):
+class TransactionCost(Cost):
     """This is a generic model for transaction cost of financial assets.
 
     Currently it is not meant to be used directly. Look at
@@ -523,7 +527,7 @@ class TransactionCost(BaseCost):
                      volume_est) ** (
                          (2 if self.exponent is None else self.exponent) - 1)
 
-    def _simulate(self, t, u, past_returns, current_returns,
+    def simulate(self, t, u, past_returns, current_returns,
                   past_volumes, current_volumes,
                   current_prices, **kwargs):
 

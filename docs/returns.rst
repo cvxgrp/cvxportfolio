@@ -67,3 +67,10 @@ Forecast error models
 .. autoclass:: ReturnsForecastError
 
 .. autoclass:: RiskForecastError
+
+Base classes (for extending Cvxportfolio)
+-----------------------------------------
+
+.. autoclass:: Cost
+
+.. autoclass:: SimulatorCost

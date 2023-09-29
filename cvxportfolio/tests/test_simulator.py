@@ -97,7 +97,7 @@ class TestSimulator(CvxportfolioTest):
 
             hcost = cvx.HoldingCost(short_fees=5, dividends=dividends)
 
-            sim_hcost = hcost._simulate(
+            sim_hcost = hcost.simulate(
                 t=t, h_plus=h_plus,
                 t_next=t + pd.Timedelta('1d'))
 
@@ -119,7 +119,7 @@ class TestSimulator(CvxportfolioTest):
         tcost = cvx.StocksTransactionCost()
         # syntax checks
         with self.assertRaises(SyntaxError):
-            tcost._simulate(t, u=u,
+            tcost.simulate(t, u=u,
                             past_returns=past_returns,
                             current_returns=current_returns,
                             past_volumes=past_volumes,
@@ -127,7 +127,7 @@ class TestSimulator(CvxportfolioTest):
                             current_prices=None)
 
         tcost = cvx.TransactionCost(pershare_cost=None,)
-        tcost._simulate(t, u=u, current_prices=None,
+        tcost.simulate(t, u=u, current_prices=None,
                         past_returns=past_returns,
                         current_returns=current_returns,
                         past_volumes=past_volumes,
@@ -135,14 +135,14 @@ class TestSimulator(CvxportfolioTest):
 
         tcost = cvx.TransactionCost()
         with self.assertRaises(SyntaxError):
-            tcost._simulate(t, u=u, current_prices=current_prices,
+            tcost.simulate(t, u=u, current_prices=current_prices,
                             past_returns=past_returns,
                             current_returns=current_returns,
                             past_volumes=None,
                             current_volumes=None)
 
         tcost = cvx.TransactionCost(b=None)
-        tcost._simulate(t, u=u, current_prices=current_prices,
+        tcost.simulate(t, u=u, current_prices=current_prices,
                         past_returns=past_returns,
                         current_returns=current_returns,
                         past_volumes=None,
@@ -169,7 +169,7 @@ class TestSimulator(CvxportfolioTest):
 
             tcost = cvx.StocksTransactionCost(a=spreads/2)
 
-            sim_cost = tcost._simulate(
+            sim_cost = tcost.simulate(
                 t, u=u, current_prices=current_prices,
                 past_returns=past_returns,
                 current_returns=current_returns,
@@ -224,7 +224,7 @@ class TestSimulator(CvxportfolioTest):
         market_data.prices.index = \
             market_data.prices.index.tz_localize(None).floor("D")
 
-    def test_simulate_policy(self):
+    def testsimulate_policy(self):
         simulator = StockMarketSimulator(
             ['META', 'AAPL'], base_location=self.datadir)
 
@@ -256,7 +256,7 @@ class TestSimulator(CvxportfolioTest):
                 oldcash = h.iloc[-1]
                 past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
-                h, z, u, costs, timer = simulator._simulate(
+                h, z, u, costs, timer = simulator.simulate(
                     t=t, h=h, policy=policy, t_next=t_next,
                     past_returns=past_returns, current_returns=current_returns,
                     past_volumes=past_volumes, current_volumes=current_volumes,
@@ -300,7 +300,7 @@ class TestSimulator(CvxportfolioTest):
                 oldcash = h.iloc[-1]
                 past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
-                h, z, u, costs, timer = simulator._simulate(
+                h, z, u, costs, timer = simulator.simulate(
                     t=t, h=h, policy=policy, t_next=t_next,
                     past_returns=past_returns, current_returns=current_returns,
                     past_volumes=past_volumes, current_volumes=current_volumes,

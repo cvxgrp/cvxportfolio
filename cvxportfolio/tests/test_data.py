@@ -20,8 +20,8 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.data import (DownloadedMarketData, FredSymbolData,
-                               UserProvidedMarketData, YahooFinanceSymbolData,
+from cvxportfolio.data import (DownloadedMarketData, Fred,
+                               UserProvidedMarketData, YahooFinance,
                                _loader_csv, _loader_pickle, _loader_sqlite,
                                _storer_csv, _storer_pickle, _storer_sqlite)
 from cvxportfolio.tests import CvxportfolioTest
@@ -33,7 +33,7 @@ class TestData(CvxportfolioTest):
     def test_yfinance_download(self):
         """Test YfinanceBase."""
 
-        data = YahooFinanceSymbolData._download("AAPL", start="2023-04-01",
+        data = YahooFinance._download("AAPL", start="2023-04-01",
                                        end="2023-04-15")
         # print(data)
         # print(data.loc["2023-04-10 13:30:00+00:00"]["Return"])
@@ -47,9 +47,9 @@ class TestData(CvxportfolioTest):
         self.assertTrue(np.isnan(data.iloc[-1]["Close"]))
 
     def test_fred(self):
-        """Test basic FRED usage."""
+        """Test basic Fred usage."""
 
-        store = FredSymbolData(
+        store = Fred(
             symbol="DFF", storage_backend='pickle',
             base_storage_location=self.datadir)
 
@@ -68,7 +68,7 @@ class TestData(CvxportfolioTest):
     def test_yahoo_finance(self):
         """Test yahoo finance ability to store and retrieve."""
 
-        store = YahooFinanceSymbolData(
+        store = YahooFinance(
             symbol="ZM", storage_backend='pickle',
             base_storage_location=self.datadir)
 

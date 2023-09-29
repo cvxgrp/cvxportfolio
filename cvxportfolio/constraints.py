@@ -70,17 +70,17 @@ __all__ = [
 ]
 
 
-class BaseConstraint(CvxpyExpressionEstimator):
+class Constraint(CvxpyExpressionEstimator):
     """Base cvxpy constraint class."""
 
 
-class BaseTradeConstraint(BaseConstraint):
+class BaseTradeConstraint(Constraint):
     """Base class for constraints that operate on trades."""
 
     pass
 
 
-class EqualityConstraint(BaseConstraint):
+class EqualityConstraint(Constraint):
     """Base class for equality constraints.
 
     This class is not exposed to the user, each equality
@@ -106,7 +106,7 @@ class EqualityConstraint(BaseConstraint):
         raise NotImplementedError
 
 
-class InequalityConstraint(BaseConstraint):
+class InequalityConstraint(Constraint):
     """Base class for inequality constraints.
 
     This class is not exposed to the user, each inequality
@@ -137,7 +137,7 @@ class CostInequalityConstraint(InequalityConstraint):
 
     The user does not interact with this class directly,
     it is returned by an expression such as ``cost <= value``
-    where ``cost`` is a :class:`BaseCost` instance and ``value``
+    where ``cost`` is a :class:`Cost` instance and ``value``
     is a scalar.
     """
 
@@ -156,7 +156,7 @@ class CostInequalityConstraint(InequalityConstraint):
         return self.cost.__repr__() + ' <= ' + self.value.__repr__()
 
 
-class BaseWeightConstraint(BaseConstraint):
+class BaseWeightConstraint(Constraint):
     """Base class for constraints that operate on weights.
 
     Here we can implement a method to pass benchmark weights and make

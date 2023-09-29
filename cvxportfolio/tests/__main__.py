@@ -15,6 +15,7 @@
 
 import unittest
 
+# pylint: disable=[unused-import]
 from .test_constraints import TestConstraints
 from .test_costs import TestCosts
 from .test_data import TestData, TestMarketData
