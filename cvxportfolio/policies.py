@@ -546,7 +546,7 @@ class MultiPeriodOptimization(Policy):
             len(universe)) for i in range(self._planning_horizon)]
 
         # simulator will overwrite this with cached loaded from disk
-        self.cache = {}
+        self._cache = {}
 
     def values_in_time_recursive(
         self, t, current_weights,
@@ -565,7 +565,7 @@ class MultiPeriodOptimization(Policy):
                 t=t, current_weights=current_weights,
                 current_portfolio_value=current_portfolio_value,
                 past_returns=past_returns, past_volumes=past_volumes,
-                current_prices=current_prices, mpo_step=i, cache=self.cache,
+                current_prices=current_prices, mpo_step=i, cache=self._cache,
                 **kwargs)
 
         for i, constr_at_lag in enumerate(self.constraints):
@@ -575,13 +575,13 @@ class MultiPeriodOptimization(Policy):
                     current_portfolio_value=current_portfolio_value,
                     past_returns=past_returns, past_volumes=past_volumes,
                     current_prices=current_prices, mpo_step=i,
-                    cache=self.cache, **kwargs)
+                    cache=self._cache, **kwargs)
 
         self.benchmark.values_in_time_recursive(
             t=t, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value,
             past_returns=past_returns, past_volumes=past_volumes,
-            current_prices=current_prices, mpo_step=i, cache=self.cache,
+            current_prices=current_prices, mpo_step=i, cache=self._cache,
             **kwargs)
 
         self.w_bm.value = self.benchmark.current_value

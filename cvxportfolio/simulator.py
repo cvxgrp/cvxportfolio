@@ -41,59 +41,11 @@ from .estimator import DataEstimator, Estimator
 from .result import BacktestResult
 from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
                     resample_returns)
+from .cache import _load_cache, _store_cache, _mp_init
 
 PPY = 252
 __all__ = ['StockMarketSimulator', 'MarketSimulator']
 
-
-def _mp_init(l):
-    global LOCK
-    LOCK = l
-
-
-def _hash_universe(universe):
-    return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
-
-
-def _load_cache(universe, trading_frequency, base_location):
-    """Load cache from disk."""
-    folder = base_location / (
-        f'hash(universe)={_hash_universe(universe)},'
-        + f'trading_frequency={trading_frequency}')
-    if 'LOCK' in globals():
-        logging.debug(f'Acquiring cache lock from process {os.getpid()}')
-        LOCK.acquire()
-    try:
-        with open(folder/'cache.pkl', 'rb') as f:
-            logging.info(
-                f'Loading cache for universe = {universe}'
-                f' and trading_frequency = {trading_frequency}')
-            return pickle.load(f)
-    except FileNotFoundError:
-        logging.info(f'Cache not found!')
-        return {}
-    finally:
-        if 'LOCK' in globals():
-            logging.debug(f'Releasing cache lock from process {os.getpid()}')
-            LOCK.release()
-
-
-def _store_cache(cache, universe, trading_frequency, base_location):
-    """Store cache to disk."""
-    folder = base_location / (
-        f'hash(universe)={_hash_universe(universe)},'
-        f'trading_frequency={trading_frequency}')
-    if 'LOCK' in globals():
-        logging.debug(f'Acquiring cache lock from process {os.getpid()}')
-        LOCK.acquire()
-    folder.mkdir(exist_ok=True)
-    with open(folder/'cache.pkl', 'wb') as f:
-        logging.info(
-            f'Storing cache for universe = {universe} and trading_frequency = {trading_frequency}')
-        pickle.dump(cache, f)
-    if 'LOCK' in globals():
-        logging.debug(f'Releasing cache lock from process {os.getpid()}')
-        LOCK.release()
 
 
 class MarketSimulator:
@@ -243,9 +195,9 @@ class MarketSimulator:
             universe=universe, trading_calendar=trading_calendar)
 
         # if policy uses a cache load it from disk
-        if hasattr(policy, 'cache') and self.enable_caching:
+        if hasattr(policy, '_cache') and self.enable_caching:
             logging.info('Trying to load cache from disk...')
-            policy.cache = _load_cache(
+            policy._cache = _load_cache(
                 universe=universe,
                 trading_frequency=self.trading_frequency,
                 base_location=self.base_location)
@@ -256,9 +208,9 @@ class MarketSimulator:
         return policy
 
     def _finalize_policy(self, policy, universe):
-        if hasattr(policy, 'cache') and self.enable_caching:
+        if hasattr(policy, '_cache') and self.enable_caching:
             logging.info('Storing cache from policy to disk...')
-            _store_cache(cache=policy.cache, universe=universe,
+            _store_cache(cache=policy._cache, universe=universe,
                           trading_frequency=self.trading_frequency,
                           base_location=self.base_location)
 
