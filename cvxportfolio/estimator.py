@@ -173,7 +173,8 @@ class DataEstimator(PolicyEstimator):
     """
 
     def __init__(self, data, use_last_available_time=False, allow_nans=False,
-                 compile_parameter=False, non_negative=False, positive_semi_definite=False,
+                 compile_parameter=False, non_negative=False, 
+                 positive_semi_definite=False,
                  data_includes_cash=False, # affects _universe_subselect
                  ignore_shape_check=False # affects _universe_subselect
                  ):

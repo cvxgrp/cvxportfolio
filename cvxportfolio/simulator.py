@@ -255,6 +255,12 @@ class MarketSimulator:
                 past_volumes=past_volumes,
                 current_volumes=current_volumes,
                 current_prices=current_prices)
+            
+            if hasattr(used_policy, 'benchmark'):
+                w_bm = used_policy.benchmark.current_value
+                bm_ret = w_bm @ current_returns
+            else:
+                bm_ret = None
 
             simulator_time = time.time() - timer - policy_time
 
@@ -263,7 +269,8 @@ class MarketSimulator:
             result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs,
                                 policy_time=policy_time,
                                 simulator_time=simulator_time,
-                                cash_return=current_returns.iloc[-1])
+                                cash_return=current_returns.iloc[-1],
+                                benchmark_return=bm_ret)
 
             h = h_next
 

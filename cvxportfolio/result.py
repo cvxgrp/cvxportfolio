@@ -58,6 +58,8 @@ class BacktestResult:
         self._policy_times = pd.Series(index=trading_calendar, dtype=float)
         self._simulator_times = pd.Series(index=trading_calendar, dtype=float)
         self._cash_returns = pd.Series(index=trading_calendar, dtype=float)
+        self._benchmark_returns = pd.Series(
+            index=trading_calendar, dtype=float)
         self._current_universe = pd.Index(universe)
         self._indexer = np.arange(len(universe), dtype=int)
 
@@ -99,7 +101,8 @@ class BacktestResult:
     def _log_trading(self, t: pd.Timestamp,
         h: pd.Series[float], u: pd.Series[float],
         z: pd.Series[float], costs: Dict[str, float],
-        cash_return: float, policy_time: float, simulator_time: float):
+        cash_return: float, benchmark_return:float or None,
+        policy_time: float, simulator_time: float):
         "Log one trading period."
 
         if not h.index.equals(self._current_universe):
@@ -117,6 +120,8 @@ class BacktestResult:
         self._simulator_times.iloc[tidx] = simulator_time
         self._policy_times.iloc[tidx] = policy_time
         self._cash_returns.iloc[tidx] = cash_return
+        if benchmark_return is not None:
+            self._benchmark_returns.iloc[tidx] = benchmark_return
 
     def _log_final(self, t, t_next, h, extra_simulator_time):
         """Log final elements and (if necessary) clean up."""
@@ -140,8 +145,13 @@ class BacktestResult:
 
     @property
     def cash_returns(self):
-        """The computation time of the policy object at each period."""
+        """Per-period returns on cash (*i.e.*, the risk-free rate)."""
         return pd.Series(self._cash_returns)
+    
+    @property
+    def benchmark_returns(self):
+        """Benchmark returns per period (if the policy has a benchmark)."""
+        return pd.Series(self._benchmark_returns)
 
     @property
     def cash_key(self):
@@ -322,9 +332,32 @@ class BacktestResult:
     #
     # Metrics relative to benchmark, defined in Chapter 3 Section 2
     #
+    
+    @property
+    def active_returns(self):
+        """Portfolio returns minus benchmark returns (if defined by policy)."""
+        return self.returns - self.benchmark_returns
 
-    # TODO: benchmark metrics
+    @property
+    def average_active_return(self):
+        r"""The average active return :math:`\overline{R^\text{a}}`."""
+        return np.mean(self.active_returns)
 
+    @property
+    def annualized_average_active_return(self):
+        """The average active return, annualized."""
+        return self.average_active_return * self.periods_per_year
+
+    @property
+    def active_volatility(self):
+        """Active volatility (standard deviation of the active returns)."""
+        return np.std(self.active_returns)
+
+    @property
+    def annualized_active_volatility(self):
+        """Annualized active volatility."""
+        return self.active_volatility * np.sqrt(self.periods_per_year)
+        
     @property
     def excess_returns(self):
         """Excess portfolio returns with respect to the cash returns."""
@@ -352,7 +385,7 @@ class BacktestResult:
 
     @property
     def sharpe_ratio(self):
-        r"""Sharpe Ratio (of the annualized excess portfolio returns).
+        r"""Sharpe ratio (using annualized excess portfolio returns).
 
         This is defined as
 
@@ -366,6 +399,23 @@ class BacktestResult:
         """
         return self.annualized_average_excess_return / (
             self.annualized_excess_volatility + 1E-8)
+            
+    @property
+    def information_ratio(self):
+        r"""Information ratio (using annualized active portfolio returns).
+
+        This is defined as
+
+        .. math::
+
+            \text{IR} = \overline{R^\text{a}}/\sigma^\text{a}
+
+        where :math:`\overline{R^\text{a}}` is the average active portfolio
+        return and :math:`\sigma^\text{a}` its standard deviation. Both are
+        annualized.
+        """
+        return self.annualized_average_active_return / (
+            self.annualized_active_volatility + 1E-8)
 
     @property
     def excess_growth_rates(self):
@@ -382,6 +432,20 @@ class BacktestResult:
         return np.log(self.excess_returns + 1)
 
     @property
+    def active_growth_rates(self):
+        r"""The growth rate of the portfolio, relative to benchmark.
+        
+        This is defined as:
+        
+        .. math::
+
+            G^\text{a}_t = \log(1 + R^\text{a}_t)
+
+        where :math:`R^\text{a}_t` are the active portfolio returns.
+        """
+        return np.log(self.active_returns + 1)
+
+    @property
     def average_excess_growth_rate(self):
         r"""The average excess growth rate :math:`\overline{G^\text{e}}`."""
         return np.mean(self.excess_growth_rates)
@@ -390,6 +454,16 @@ class BacktestResult:
     def annualized_average_excess_growth_rate(self):
         """The average excess growth rate, annualized."""
         return self.average_excess_growth_rate * self.periods_per_year
+        
+    @property
+    def average_active_growth_rate(self):
+        r"""The average active growth rate :math:`\overline{G^\text{a}}`."""
+        return np.mean(self.active_growth_rates)
+
+    @property
+    def annualized_average_active_growth_rate(self):
+        """The average active growth rate, annualized."""
+        return self.average_active_growth_rate * self.periods_per_year
 
     @property
     def drawdown(self):
