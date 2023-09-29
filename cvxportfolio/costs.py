@@ -541,30 +541,27 @@ class TransactionCost(BaseCost):
                           * np.abs(u.iloc[:-1]))
 
         if self.b is not None:
-            current_and_past_returns = pd.concat(
-                [past_returns, pd.DataFrame(current_returns).T], axis=0)
-                
+            
             if self.window_sigma_est is None:
                 windowsigma = periods_per_year_from_datetime_index(
-                    current_and_past_returns.index)
+                    pd.DatetimeIndex(list(past_returns.index) + [t]))
             else:
                 windowsigma = self.window_sigma_est
 
             exponent = (1.5 if self.exponent is None else self.exponent)
             
-            sigma = np.std(
-                current_and_past_returns.iloc[-windowsigma:, :-1], axis=0)
+            sigma = np.std(pd.concat(
+                [past_returns.iloc[-windowsigma + 1:, :-1], 
+                pd.DataFrame(current_returns.iloc[:-1]).T], axis=0), axis=0)
             if (current_volumes is None) or (past_volumes is None):
                 raise SyntaxError(
                     "If you don't provide volumes you should set b to None"
                     f" in the {self.__class__.__name__} simulator cost")
             # we add 1E-8 to the volumes to prevent 0 volumes error
             # (trades are cancelled on 0 volumes)
-            current_and_past_volumes = pd.concat(
-                [past_volumes, pd.DataFrame(current_volumes).T], axis=0)
             result += (np.abs(u.iloc[:-1])**exponent) @ (
                 self.b.values_in_time_recursive(t=t) *
-                sigma / ((current_and_past_volumes.iloc[-1] + 1E-8) ** (
+                sigma / ((current_volumes + 1E-8) ** (
                 exponent - 1)))
 
         assert not np.isnan(result)
