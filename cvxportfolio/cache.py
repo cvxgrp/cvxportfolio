@@ -47,6 +47,8 @@ def _load_cache(universe, trading_frequency, base_location):
     except FileNotFoundError:
         logging.info(f'Cache not found!')
         return {}
+    else:
+        logging.info(f'Cache found!')
     finally:
         if 'LOCK' in globals():
             logging.debug(f'Releasing cache lock from process {os.getpid()}')

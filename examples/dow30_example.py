@@ -22,6 +22,7 @@ are shown.
 # log=logging.getLogger('=>')
 
 import cvxportfolio as cvx
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -54,7 +55,6 @@ print(ress[idx])
 
 ress[idx].plot()
 
-
 print('\n\nLARGEST GROWTH RATE')
 idx = np.argmax([el.growth_rates.mean() for el in ress])
 
@@ -64,4 +64,26 @@ print(keys[idx])
 print('result')
 print(ress[idx])
 
-ress[idx].plot()
+print('\n\nUNIFORM (1/N) ALLOCATION FOR COMPARISON')
+result_uniform = sim.backtest(cvx.Uniform())
+
+print('result_uniform')
+print(result_uniform)
+
+result_uniform.plot()
+
+print('\n\nHYPERPARAMETER OPTIMIZATION')
+policy = cvx.MultiPeriodOptimization(cvx.ReturnsForecast() 
+        - cvx.Gamma() * cvx.FactorModelCovariance(num_factors=10) 
+        - cvx.Gamma() * cvx.StocksTransactionCost(), 
+        [cvx.LongOnly(), cvx.LeverageLimit(1)],
+        planning_horizon=6, solver='ECOS')
+sim.optimize_hyperparameters(policy, objective='profit')
+result_hyperparameter_optimized = sim.backtest(policy)
+
+print('result_hyperparameter_optimized')
+print(result_hyperparameter_optimized)
+
+result_hyperparameter_optimized.plot()
+
+plt.show()
