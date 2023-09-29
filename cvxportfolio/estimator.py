@@ -112,7 +112,7 @@ class PolicyEstimator(Estimator):
                 subestimator.initialize_estimator_recursive(
                     universe=universe, trading_calendar=trading_calendar)
         if hasattr(self, "initialize_estimator"):
-            self.initialize_estimator(universe=universe, 
+            self.initialize_estimator(universe=universe,
                                       trading_calendar=trading_calendar)
 
 

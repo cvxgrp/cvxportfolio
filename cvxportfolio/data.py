@@ -561,7 +561,7 @@ class MarketData:
     
     :method serve: Serve data for policy and simulator at time :math:`t`.
     """
-    
+
     def serve(self, t):
         """Serve data for policy and simulator at time :math:`t`.
 
@@ -598,7 +598,7 @@ class MarketData:
         :rtype: int
         """
         raise NotImplementedError
-        
+
     @property
     def full_universe(self):
         """Full universe (which might not be available for trading).
@@ -623,11 +623,11 @@ class MarketDataInMemory(MarketData):
         self._masked_returns = None
         self._masked_volumes = None
         self._masked_prices = None
-        
+
     def _mask_dataframes(self, mask):
         """Mask internal dataframes if necessary."""
         if (self._mask is None) or not np.all(self._mask == mask):
-            logging.info("Masking internal %s dataframes.", 
+            logging.info("Masking internal %s dataframes.",
                 self.__class__.__name__)
             colmask = self.returns.columns[mask]
             # self._masked_returns = self._df_or_ser_set_read_only(
@@ -651,20 +651,20 @@ class MarketDataInMemory(MarketData):
                 self._masked_prices = self._df_or_ser_set_read_only(
                     pd.DataFrame(self.prices.loc[:, colmask[:-1]], copy=True))
             self._mask = mask
-        
+
     def serve(self, t):
         """Serve data for policy and simulator at time :math:`t`."""
-        
+
         current_universe = self._universe_at_time(t)
         mask = self._universe_mask_at_time(t).values
         self._mask_dataframes(mask)
-        
+
         tidx = self.returns.index.get_loc(t)
         past_returns = self._df_or_ser_set_read_only(
             pd.DataFrame(self._masked_returns.iloc[:tidx]))
         current_returns = self._df_or_ser_set_read_only(
             pd.Series(self._masked_returns.iloc[tidx]))
-        
+
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
             past_volumes = self._df_or_ser_set_read_only(
@@ -674,17 +674,17 @@ class MarketDataInMemory(MarketData):
         else:
             past_volumes = None
             current_volumes = None
-            
+
         if not self.prices is None:
             tidx = self.prices.index.get_loc(t)
             current_prices = self._df_or_ser_set_read_only(
                 pd.Series(self._masked_prices.iloc[tidx]))
         else:
             current_prices = None
-            
+
         return (past_returns, current_returns, past_volumes, current_volumes,
                 current_prices)
-                
+
     # def _serve_data_policy(self, t, mask=None):
     #     if mask is not None:
     #         assert np.all(mask == self.universe[self._universe_mask_at_time(t)])
@@ -800,7 +800,7 @@ class MarketDataInMemory(MarketData):
         past_returns = self.returns.loc[self.returns.index < t]
         return self.universe[(past_returns.count() >= self.min_history) &
             (~self.returns.loc[t].isnull())]
-    
+
     def _universe_mask_at_time(self, t):
         """Return the valid universe at time t."""
         past_returns = self.returns.loc[self.returns.index < t]
@@ -825,7 +825,7 @@ class MarketDataInMemory(MarketData):
         data = df_or_ser.values
         data.flags.writeable = False
         if hasattr(df_or_ser, 'columns'):
-            return pd.DataFrame(data, index=df_or_ser.index, 
+            return pd.DataFrame(data, index=df_or_ser.index,
                                 columns=df_or_ser.columns)
         return pd.Series(data, index=df_or_ser.index, name=df_or_ser.name)
 
@@ -929,7 +929,6 @@ class MarketDataInMemory(MarketData):
                         (~(self.prices[col].isnull())).idxmax()
                     ] = np.nan
 
-
     def _check_sizes(self):
         """Check sizes of user-provided dataframes."""
 
@@ -1016,7 +1015,7 @@ class DownloadedMarketData(MarketDataInMemory):
         self._get_market_data(universe, datasource)
         self._add_cash_column(self.cash_key)
         self._remove_missing_recent()
-        
+
         self._post_init_(trading_frequency=trading_frequency)
 
     DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}

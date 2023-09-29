@@ -213,7 +213,7 @@ class TestEstimator(unittest.TestCase):
 
         # all ok if skipping check
         estimator = DataEstimator(data, data_includes_cash=True, ignore_shape_check=True)
-        estimator.initialize_estimator_recursive(['a', 'b', 'c', 'd'], 
+        estimator.initialize_estimator_recursive(['a', 'b', 'c', 'd'],
                                                  trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data)
@@ -261,7 +261,7 @@ class TestEstimator(unittest.TestCase):
 
         # universe are columns
         uni = ['a', 'b']
-        data = pd.DataFrame(np.random.randn(len(index), 2), 
+        data = pd.DataFrame(np.random.randn(len(index), 2),
                             index=index, columns=uni)
         estimator = DataEstimator(data, data_includes_cash=True)
         estimator.initialize_estimator_recursive(
@@ -270,7 +270,7 @@ class TestEstimator(unittest.TestCase):
         self.assertTrue(np.all(result == data.loc[t]))
 
         # wrong universe
-        data = pd.DataFrame(np.random.randn(len(index), 2), 
+        data = pd.DataFrame(np.random.randn(len(index), 2),
                             index=index, columns=uni)
         estimator = DataEstimator(data, data_includes_cash=True)
         estimator.initialize_estimator_recursive(

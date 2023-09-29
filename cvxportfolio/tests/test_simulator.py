@@ -146,7 +146,7 @@ class TestSimulator(unittest.TestCase):
         tcost = cvx.StocksTransactionCost()
         # syntax checks
         with self.assertRaises(SyntaxError):
-            tcost._simulate(t, u=u, 
+            tcost._simulate(t, u=u,
                             past_returns=past_returns,
                             current_returns=current_returns,
                             past_volumes=past_volumes,
@@ -181,7 +181,7 @@ class TestSimulator(unittest.TestCase):
 
         past_returns, current_returns, past_volumes, current_volumes, \
             current_prices = self.market_data.serve(t)
-            
+
         # print(current_prices)
 
         n = len(current_prices)
@@ -281,11 +281,11 @@ class TestSimulator(unittest.TestCase):
                     simulator.market_data.returns.index <= end_time)]):
                 t_next = simulator.market_data.returns.index[i+1]
                 oldcash = h.iloc[-1]
-                past_returns, current_returns, past_volumes, current_volumes,\
+                past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
                 h, z, u, costs, timer = simulator._simulate(
                     t=t, h=h, policy=policy, t_next=t_next,
-                    past_returns=past_returns, current_returns=current_returns, 
+                    past_returns=past_returns, current_returns=current_returns,
                     past_volumes=past_volumes, current_volumes=current_volumes,
                     current_prices=current_prices)
                 tcost, hcost = costs['StocksTransactionCost'
@@ -325,11 +325,11 @@ class TestSimulator(unittest.TestCase):
                         (simulator.market_data.returns.index <= end_time)]):
                 t_next = simulator.market_data.returns.index[i+1]
                 oldcash = h.iloc[-1]
-                past_returns, current_returns, past_volumes, current_volumes,\
+                past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
                 h, z, u, costs, timer = simulator._simulate(
                     t=t, h=h, policy=policy, t_next=t_next,
-                    past_returns=past_returns, current_returns=current_returns, 
+                    past_returns=past_returns, current_returns=current_returns,
                     past_volumes=past_volumes, current_volumes=current_volumes,
                     current_prices=current_prices)
                 tcost, hcost = costs['StocksTransactionCost'

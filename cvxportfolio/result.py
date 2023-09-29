@@ -104,13 +104,13 @@ class BacktestResult:
 
         if not h.index.equals(self._current_universe):
             self._change_universe(h.index)
-        
+
         tidx = self._h.index.get_loc(t)
-        
+
         self._h.iloc[tidx, self._indexer] = h
         self._u.iloc[tidx, self._indexer] = u
         self._z.iloc[tidx, self._indexer] = z
-        
+
         for cost in costs:
             self.costs[cost].iloc[tidx] = costs[cost]
 
@@ -126,12 +126,12 @@ class BacktestResult:
     def policy_times(self):
         """The computation time of the policy object at each period."""
         return pd.Series(self._policy_times)
-        
+
     @property
     def simulator_times(self):
         """The computation time of the simulator object at each period."""
         return pd.Series(self._simulator_times)
-        
+
     @property
     def cash_returns(self):
         """The computation time of the policy object at each period."""

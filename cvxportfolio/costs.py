@@ -541,7 +541,7 @@ class TransactionCost(BaseCost):
                           * np.abs(u.iloc[:-1]))
 
         if self.b is not None:
-            
+
             if self.window_sigma_est is None:
                 windowsigma = periods_per_year_from_datetime_index(
                     pd.DatetimeIndex(list(past_returns.index) + [t]))
@@ -549,9 +549,9 @@ class TransactionCost(BaseCost):
                 windowsigma = self.window_sigma_est
 
             exponent = (1.5 if self.exponent is None else self.exponent)
-            
+
             sigma = np.std(pd.concat(
-                [past_returns.iloc[-windowsigma + 1:, :-1], 
+                [past_returns.iloc[-windowsigma + 1:, :-1],
                 pd.DataFrame(current_returns.iloc[:-1]).T], axis=0), axis=0)
             if (current_volumes is None) or (past_volumes is None):
                 raise SyntaxError(

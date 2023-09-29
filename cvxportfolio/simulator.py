@@ -214,9 +214,9 @@ class MarketSimulator:
         realized_costs = {cost.__class__.__name__: cost._simulate(
             t=t, u=u,  h_plus=h_plus,
             past_volumes=past_volumes,
-            current_volumes=current_volumes, 
+            current_volumes=current_volumes,
             past_returns=past_returns,
-            current_returns=current_returns,            
+            current_returns=current_returns,
             current_prices=current_prices,
             t_next=t_next,
             periods_per_year=self.market_data.periods_per_year,
@@ -269,7 +269,7 @@ class MarketSimulator:
 
         trading_calendar = self.market_data.trading_calendar(
             start_time, end_time, include_end=True)
-        
+
         _, current_returns, _, _, _ = self.market_data.serve(
             trading_calendar[0])
         universe = current_returns.index
@@ -278,12 +278,12 @@ class MarketSimulator:
             policy, universe=universe, trading_calendar=trading_calendar)
 
         result = BacktestResult(
-            universe=universe, trading_calendar=trading_calendar, 
+            universe=universe, trading_calendar=trading_calendar,
             costs=self.costs)
 
         for t, t_next in zip(trading_calendar[:-1], trading_calendar[1:]):
 
-            past_returns, current_returns, past_volumes, current_volumes,\
+            past_returns, current_returns, past_volumes, current_volumes, \
                  current_prices = self.market_data.serve(t)
             current_universe = current_returns.index
 
@@ -298,10 +298,10 @@ class MarketSimulator:
 
             h_next, z, u, realized_costs, policy_time = self._simulate(
                 t=t, h=h, policy=used_policy,
-                t_next=t_next, 
+                t_next=t_next,
                 past_returns=past_returns,
                 current_returns=current_returns,
-                past_volumes=past_volumes, 
+                past_volumes=past_volumes,
                 current_volumes=current_volumes,
                 current_prices=current_prices)
 

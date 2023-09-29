@@ -16,9 +16,9 @@
 import shutil
 import tempfile
 import unittest
+import warnings
 from copy import deepcopy
 from pathlib import Path
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -299,7 +299,7 @@ class TestMarketData(unittest.TestCase):
             index=cls.volumes.index, columns=cls.volumes.columns)
         cls.market_data = UserProvidedMarketData(
             returns=cls.returns, volumes=cls.volumes, prices=cls.prices,
-            cash_key='cash', base_location=cls.datadir, 
+            cash_key='cash', base_location=cls.datadir,
             min_history=pd.Timedelta('0d'))
         cls.universe = cls.returns.columns
 
@@ -375,7 +375,6 @@ class TestMarketData(unittest.TestCase):
         self.assertTrue(np.all(past_returns.index < t))
         self.assertTrue(np.all(past_volumes.index < t))
 
-
     def test_market_data_object_safety(self):
         """Test safety of internal objects of MarketDataInMemory."""
         t = self.returns.index[10]
@@ -448,7 +447,7 @@ class TestMarketData(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             UserProvidedMarketData(
-                returns=self.returns, 
+                returns=self.returns,
                 volumes=self.volumes.iloc[:, :-3],
                 prices=self.prices, cash_key='cash',
                 base_location=self.datadir)
