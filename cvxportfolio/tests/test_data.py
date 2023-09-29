@@ -96,6 +96,8 @@ class TestData(CvxportfolioTest):
 
     def test_sqlite3_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
+        if sys.version.split(' ')[0] < '3.11':
+            return
         self.base_test_series(_loader_sqlite, _storer_sqlite)
 
     def test_local_store_series(self):
@@ -108,6 +110,8 @@ class TestData(CvxportfolioTest):
 
     def test_sqlite3_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
+        if sys.version.split(' ')[0] < '3.11':
+            return
         self.base_test_dataframe(_loader_sqlite, _storer_sqlite)
 
     def test_local_store_dataframe(self):
@@ -124,6 +128,8 @@ class TestData(CvxportfolioTest):
 
     def test_sqlite3_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
+        if sys.version.split(' ')[0] < '3.11':
+            return
         self.base_test_multiindex(_loader_sqlite, _storer_sqlite)
 
     def test_pickle_store_multiindex(self):

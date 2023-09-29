@@ -223,7 +223,7 @@ def _annual_percent_to_per_period(value, ppy):
 
 class SimulatorCost:
     """Cost class that can be used by a MarketSimulator."""
-    
+
     def simulate(self, *args, **kwargs):
         """Simulate cost, used by market simulator.
 
@@ -234,7 +234,7 @@ class SimulatorCost:
         should implement this.
         """
         raise NotImplementedError
-        
+
 
 class HoldingCost(Cost, SimulatorCost):
     r"""Generic holding cost model, as described in page 11 of the book.

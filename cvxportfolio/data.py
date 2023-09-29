@@ -427,7 +427,13 @@ def _close_sqlite(connection):
 def _loader_sqlite(symbol, storage_location):
     """Load data in sqlite format.
     
-    Limitations: if your pandas object's index has a name it will be lost,
+    We separately store dtypes for data consistency and safety.
+    
+    .. warning:: Unfortunately, we can't guarantee that this will work in 
+        all combinations of pandas versions that we do for the rest of the
+        package. Currently it is only tested against the latest version.
+
+    .. note:: If your pandas object's index has a name it will be lost,
         the index is renamed 'index'. If you pass timestamp data (including
         the index) it must have explicit timezone.
     """
@@ -463,11 +469,14 @@ def _storer_sqlite(symbol, data, storage_location):
     """Store data in sqlite format.
 
     We separately store dtypes for data consistency and safety.
+    
+    .. warning:: Unfortunately, we can't guarantee that this will work in 
+        all combinations of pandas versions that we do for the rest of the
+        package. Currently it is only tested against the latest version.
 
-    Limitations: if your pandas object's index has a name it will be lost,
+    .. note:: If your pandas object's index has a name it will be lost,
         the index is renamed 'index'. If you pass timestamp data (including
         the index) it must have explicit timezone.
-
     """
     connection = _open_sqlite(storage_location)
     exists = pd.read_sql_query(

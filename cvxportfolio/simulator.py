@@ -33,6 +33,7 @@ import numpy as np
 import pandas as pd
 from multiprocess import Lock, Pool
 
+from .cache import _load_cache, _mp_init, _store_cache
 from .costs import Cost, StocksHoldingCost, StocksTransactionCost
 from .data import (BASE_LOCATION, DownloadedMarketData, Fred,
                    UserProvidedMarketData, YahooFinance)
@@ -41,11 +42,9 @@ from .estimator import DataEstimator, Estimator
 from .result import BacktestResult
 from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
                     resample_returns)
-from .cache import _load_cache, _store_cache, _mp_init
 
 PPY = 252
 __all__ = ['StockMarketSimulator', 'MarketSimulator']
-
 
 
 class MarketSimulator:

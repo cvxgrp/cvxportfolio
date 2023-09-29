@@ -18,7 +18,6 @@ import hashlib
 import logging
 import os
 import pickle
-import logging
 
 
 def _mp_init(l):
