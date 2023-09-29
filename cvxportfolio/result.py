@@ -117,6 +117,12 @@ class BacktestResult:
         self._simulator_times.iloc[tidx] = simulator_time
         self._policy_times.iloc[tidx] = policy_time
         self._cash_returns.iloc[tidx] = cash_return
+        
+    def _log_final(self, t, t_next, h, extra_simulator_time):
+        """Log final elements and (if necessary) clean up."""
+        
+        self._h.loc[t_next] = h
+        self._simulator_times.loc[t] += extra_simulator_time
 
     #
     # General backtest information
