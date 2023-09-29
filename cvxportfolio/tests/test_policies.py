@@ -588,6 +588,26 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(np.isclose(execution['h_plus'].sum(),10000))
         self.assertTrue(execution['t'] == self.returns.index[-1])
         self.assertTrue(len(set(execution['w_plus'].iloc[:-1])) == 1)
+        
+        policy = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast() - 5 * cvx.FullCovariance(),
+            [cvx.LongOnly(applies_to_cash=True)])
+            
+        market_data = cvx.UserProvidedMarketData(
+                    returns=self.returns, volumes=self.volumes,
+                    cash_key='cash', base_location=self.datadir,
+                    min_history=pd.Timedelta('0d'))
+            
+        execution = policy.execute(market_data=market_data, h=h)
+        print(execution)
+        self.assertTrue(np.isclose(execution['z'].sum(),0.))
+        self.assertTrue(np.isclose(execution['u'].sum(),0.))
+        self.assertTrue(np.isclose(execution['w_plus'].sum(),1.))
+        self.assertTrue(np.isclose(np.abs(execution['w_plus'].iloc[:-1]
+            ).sum(),1.))
+        self.assertTrue(np.isclose(execution['h_plus'].sum(),10000))
+        self.assertTrue(execution['t'] == self.returns.index[-1])
+        self.assertTrue(execution['h_plus']['CSCO'] >= .9)
 
 
 if __name__ == '__main__':

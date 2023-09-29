@@ -79,6 +79,8 @@ class Policy(PolicyEstimator):
             t = trading_calendar[-1]
 
         assert t in trading_calendar
+        
+        result = {'t': t}
 
         past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
 
@@ -104,18 +106,21 @@ class Policy(PolicyEstimator):
             trading_calendar =trading_calendar[trading_calendar >= t]
             )
 
-        w_plus = self.values_in_time_recursive(
+        result['w_plus'] = self.values_in_time_recursive(
             t=t, past_returns=past_returns, past_volumes=past_volumes,
-            current_weights=w, current_value=v, current_prices=current_prices)
-
-        z = w_plus - w
-        u = z * v
-        h_plus = w_plus * v
-        shares_traded = pd.Series(np.round(u / current_prices), dtype=int)
-
-        return {'t': t, 'w_plus': w_plus,
-                'z': z, 'h_plus': h_plus, 'u': u,
-                'shares_traded': shares_traded}
+            current_weights=w, current_portfolio_value=v, 
+            current_prices=current_prices)
+        
+        
+        result['z'] = result['w_plus'] - w
+        result['u'] = result['z'] * v
+        result['h_plus'] = result['w_plus'] * v
+        
+        if current_prices is not None:
+            result['shares_traded'] = pd.Series(
+                np.round(result['u'] / current_prices), dtype=int)
+                
+        return result
 
 
 class Hold(Policy):
