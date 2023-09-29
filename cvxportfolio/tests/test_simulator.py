@@ -111,9 +111,6 @@ class TestSimulator(unittest.TestCase):
 
         t = self.returns.index[-20]
 
-        current_and_past_returns, current_and_past_volumes, current_prices = \
-            self.market_data._serve_data_simulator(t)
-
         cash_return = self.returns.loc[t, 'cash']
 
         # stock holding cost
@@ -129,7 +126,6 @@ class TestSimulator(unittest.TestCase):
 
             sim_hcost = hcost._simulate(
                 t=t, h_plus=h_plus,
-                current_and_past_returns=current_and_past_returns,
                 t_next=t + pd.Timedelta('1d'))
 
             hcost = -(np.exp(np.log(1.05)/365.24)-1) * sum(
@@ -142,41 +138,51 @@ class TestSimulator(unittest.TestCase):
 
         t = self.returns.index[-20]
 
-        current_and_past_returns, current_and_past_volumes, current_prices = \
-            self.market_data._serve_data_simulator(t)
+        past_returns, current_returns, past_volumes, current_volumes, \
+            current_prices = self.market_data.serve(t)
 
         u = pd.Series(np.ones(len(current_prices)+1), self.universe)
 
         tcost = cvx.StocksTransactionCost()
         # syntax checks
         with self.assertRaises(SyntaxError):
-            tcost._simulate(t, u=u, current_prices=None,
-                            current_and_past_volumes=current_and_past_volumes,
-                            current_and_past_returns=current_and_past_returns)
+            tcost._simulate(t, u=u, 
+                            past_returns=past_returns,
+                            current_returns=current_returns,
+                            past_volumes=past_volumes,
+                            current_volumes=current_volumes,
+                            current_prices=None)
 
         tcost = cvx.TransactionCost(pershare_cost=None,)
         tcost._simulate(t, u=u, current_prices=None,
-                        current_and_past_volumes=current_and_past_volumes,
-                        current_and_past_returns=current_and_past_returns)
+                        past_returns=past_returns,
+                        current_returns=current_returns,
+                        past_volumes=past_volumes,
+                        current_volumes=current_volumes)
 
         tcost = cvx.TransactionCost()
         with self.assertRaises(SyntaxError):
             tcost._simulate(t, u=u, current_prices=current_prices,
-                            current_and_past_volumes=None,
-                            current_and_past_returns=current_and_past_returns)
+                            past_returns=past_returns,
+                            current_returns=current_returns,
+                            past_volumes=None,
+                            current_volumes=None)
 
         tcost = cvx.TransactionCost(b=None)
         tcost._simulate(t, u=u, current_prices=current_prices,
-                        current_and_past_volumes=None,
-                        current_and_past_returns=current_and_past_returns)
+                        past_returns=past_returns,
+                        current_returns=current_returns,
+                        past_volumes=None,
+                        current_volumes=None)
 
     def test_transaction_cost(self):
 
         t = self.returns.index[-5]
 
-        current_and_past_returns, current_and_past_volumes, current_prices = \
-            self.market_data._serve_data_simulator(t)
-        print(current_prices)
+        past_returns, current_returns, past_volumes, current_volumes, \
+            current_prices = self.market_data.serve(t)
+            
+        # print(current_prices)
 
         n = len(current_prices)
 
@@ -192,8 +198,10 @@ class TestSimulator(unittest.TestCase):
 
             sim_cost = tcost._simulate(
                 t, u=u, current_prices=current_prices,
-                current_and_past_volumes=current_and_past_volumes,
-                current_and_past_returns=current_and_past_returns)
+                past_returns=past_returns,
+                current_returns=current_returns,
+                past_volumes=past_volumes,
+                current_volumes=current_volumes)
 
             shares = sum(np.abs(u[:-1] / current_prices))
             tcost = -0.005 * shares

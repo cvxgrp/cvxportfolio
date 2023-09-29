@@ -220,8 +220,10 @@ class MarketSimulator:
         # evaluate cost functions
         realized_costs = {cost.__class__.__name__: cost._simulate(
             t=t, u=u,  h_plus=h_plus,
-            current_and_past_volumes=current_and_past_volumes,
-            current_and_past_returns=current_and_past_returns,
+            past_volumes=current_and_past_volumes.iloc[:-1],
+            current_volumes=current_and_past_volumes.iloc[-1],
+            past_returns=current_and_past_returns.iloc[:-1],
+            current_returns=current_and_past_returns.iloc[-1],            
             current_prices=current_prices,
             t_next=t_next,
             periods_per_year=self.market_data.periods_per_year,

@@ -363,55 +363,52 @@ class TestMarketData(unittest.TestCase):
                 (1 + md.returns.loc[periods[i]]).prod(),
                 1 + new_md.returns.loc[testdays[i]]))
 
-    def test_market_data_methods1(self):
+    def test_market_data_methods(self):
+        """Test objects returned by serve method of MarketDataInMemory."""
         t = self.returns.index[10]
-        past_returns, past_volumes, current_prices = \
-            self.market_data._serve_data_policy(t)
-        self.assertTrue(past_returns.index[-1] < t)
-        self.assertTrue(past_volumes.index[-1] < t)
-        self.assertTrue(past_volumes.index[-1] == past_returns.index[-1])
-        print(current_prices.name)
-        print(t)
+        past_returns, current_returns, past_volumes, current_volumes, \
+            current_prices = self.market_data.serve(t)
+        self.assertTrue(current_returns.name == t)
+        self.assertTrue(current_volumes.name == t)
         self.assertTrue(current_prices.name == t)
+        self.assertTrue(np.all(past_returns.index < t))
+        self.assertTrue(np.all(past_volumes.index < t))
 
-    def test_market_data_methods2(self):
-        t = self.returns.index[10]
-        current_and_past_returns, current_and_past_volumes, current_prices = \
-            self.market_data._serve_data_simulator(t)
-        self.assertTrue(current_and_past_returns.index[-1] == t)
-        self.assertTrue(current_and_past_volumes.index[-1] == t)
-        print(current_prices.name)
-        print(t)
-        self.assertTrue(current_prices.name == t)
 
     def test_market_data_object_safety(self):
+        """Test safety of internal objects of MarketDataInMemory."""
         t = self.returns.index[10]
 
-        past_returns, past_volumes, current_prices = \
-            self.market_data._serve_data_policy(t)
+        past_returns, current_returns, past_volumes, current_volumes, \
+            current_prices = self.market_data.serve(t)
 
         with self.assertRaises(ValueError):
             past_returns.iloc[-2, -2] = 2.
-
+        with self.assertRaises(ValueError):
+            current_returns.iloc[-3] = 2.
         with self.assertRaises(ValueError):
             past_volumes.iloc[-1, -1] = 2.
+        with self.assertRaises(ValueError):
+            current_volumes.iloc[-3] = 2.
+        with self.assertRaises(ValueError):
+            current_prices.iloc[-3] = 2.
 
         obj2 = deepcopy(self.market_data)
         obj2._set_read_only()
 
-        past_returns, past_volumes, current_prices = obj2._serve_data_policy(t)
+        past_returns, _, past_volumes, _, current_prices = obj2.serve(t)
 
         with self.assertRaises(ValueError):
             current_prices.iloc[-1] = 2.
 
         current_prices.loc['BABA'] = 3.
 
-        past_returns, past_volumes, current_prices = obj2._serve_data_policy(t)
+        past_returns, _, past_volumes, _, current_prices = obj2.serve(t)
 
         self.assertFalse('BABA' in current_prices.index)
 
     def test_user_provided_market_data(self):
-        """Test user-provided market data."""
+        """Test UserProvidedMarketData."""
 
         used_returns = self.returns.iloc[:, :-1]
         used_returns.index = used_returns.index.tz_localize('UTC')
@@ -428,16 +425,18 @@ class TestMarketData(unittest.TestCase):
         without_prices = UserProvidedMarketData(
             returns=used_returns, volumes=used_prices, cash_key='USDOLLAR',
             base_location=self.datadir)
-        past_returns, past_volumes, current_prices = \
-            without_prices._serve_data_policy(t)
+        past_returns, _, past_volumes, _,  current_prices = \
+            without_prices.serve(t)
         self.assertTrue(current_prices is None)
 
-        without_volumes = UserProvidedMarketData(returns=used_returns, cash_key='USDOLLAR',
-                                     base_location=self.datadir)
-        current_and_past_returns, current_and_past_volumes, current_prices = \
-            without_volumes._serve_data_simulator(t)
+        without_volumes = UserProvidedMarketData(
+            returns=used_returns, cash_key='USDOLLAR',
+            base_location=self.datadir)
+        past_returns, current_returns, past_volumes, current_volumes, \
+            current_prices = without_volumes.serve(t)
 
-        self.assertTrue(current_and_past_volumes is None)
+        self.assertTrue(past_volumes is None)
+        self.assertTrue(current_volumes is None)
 
         with self.assertRaises(SyntaxError):
             UserProvidedMarketData(returns=self.returns, volumes=self.volumes,
@@ -445,9 +444,11 @@ class TestMarketData(unittest.TestCase):
                        base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
-            UserProvidedMarketData(returns=self.returns, volumes=self.volumes.iloc[:, :-3],
-                       prices=self.prices, cash_key='cash',
-                       base_location=self.datadir)
+            UserProvidedMarketData(
+                returns=self.returns, 
+                volumes=self.volumes.iloc[:, :-3],
+                prices=self.prices, cash_key='cash',
+                base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
             used_prices = pd.DataFrame(
@@ -466,13 +467,14 @@ class TestMarketData(unittest.TestCase):
                        base_location=self.datadir)
 
     def test_market_data_full(self):
+        """Test serve method of DownloadedMarketData."""
 
         md = DownloadedMarketData(['AAPL', 'ZM'], base_location=self.datadir)
         assert np.all(md.universe == ['AAPL', 'ZM', 'USDOLLAR'])
 
         t = md.returns.index[-40]
 
-        past_returns, past_volumes, current_prices = md._serve_data_policy(t)
+        past_returns, _, past_volumes, _, current_prices = md.serve(t)
         self.assertFalse(past_volumes is None)
         self.assertFalse(current_prices is None)
 
