@@ -320,9 +320,9 @@ class MarketSimulator:
 
         # result.cash_returns = self.market_data.returns.iloc[:, -1].loc[result.u.index]
 
-        result._log_final(t, t_next, h, 
+        result._log_final(t, t_next, h,
             extra_simulator_time=time.time() - timer)
-        
+
         # result._h.loc[pd.Timestamp(trading_calendar[-1])] = h
         #
         # result.simulator_times.loc[pd.Timestamp(trading_calendar[-2])] += time.time() - timer

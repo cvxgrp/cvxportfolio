@@ -21,21 +21,13 @@ import numpy as np
 import pandas as pd
 
 from cvxportfolio.risks import *
+from cvxportfolio.tests import CvxportfolioTest
 
 USED_RETURNS = 10
 
 
-class TestRisks(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        """Load the data and initialize cvxpy vars."""
-        cls.returns = pd.read_csv(Path(
-            __file__).parent / "returns.csv", index_col=0, parse_dates=[0]).iloc[:, :USED_RETURNS]
-        cls.w_plus = cp.Variable(cls.returns.shape[1])
-        cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
-        cls.z = cp.Variable(cls.returns.shape[1])
-        cls.N = cls.returns.shape[1]
+class TestRisks(CvxportfolioTest):
+    """Test risk objects."""
 
     def boilerplate(self, model):
         model.initialize_estimator_recursive(

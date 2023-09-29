@@ -33,7 +33,8 @@ import requests
 from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
                     resample_returns)
 
-__all__ = ["YahooFinanceSymbolData", "FredSymbolData"]
+__all__ = ["YahooFinanceSymbolData", "FredSymbolData",
+           "UserProvidedMarketData", "DownloadedMarketData"]
 
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
 

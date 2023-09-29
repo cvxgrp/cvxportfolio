@@ -14,12 +14,9 @@
 """Unit tests for the market simulator and its backtest methods."""
 
 import multiprocessing
-import shutil
-import tempfile
 import time
 import unittest
 from copy import deepcopy
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -30,38 +27,14 @@ from cvxportfolio.estimator import DataEstimator
 from cvxportfolio.simulator import (DownloadedMarketData, MarketSimulator,
                                     StockMarketSimulator,
                                     UserProvidedMarketData)
+from cvxportfolio.tests import CvxportfolioTest
 
 
-class TestSimulator(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        """Initialize data directory."""
-        cls.datadir = Path(tempfile.mkdtemp())
-        print('created', cls.datadir)
-
-        cls.returns = pd.read_csv(
-            Path(__file__).parent /
-                "returns.csv", index_col=0, parse_dates=[0])
-        cls.volumes = pd.read_csv(
-            Path(__file__).parent /
-                "volumes.csv", index_col=0, parse_dates=[0])
-        cls.prices = pd.DataFrame(
-            np.random.uniform(10, 200, size=cls.volumes.shape),
-            index=cls.volumes.index, columns=cls.volumes.columns)
-        cls.market_data = UserProvidedMarketData(
-            returns=cls.returns, volumes=cls.volumes, prices=cls.prices,
-            cash_key='cash', base_location=cls.datadir,
-            min_history=pd.Timedelta('0d'))
-        cls.universe = cls.returns.columns
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove data directory."""
-        print('removing', cls.datadir)
-        shutil.rmtree(cls.datadir)
+class TestSimulator(CvxportfolioTest):
+    """Test MarketSimulator and assorted end-to-end tests."""
 
     def test_simulator_raises(self):
+        """Test syntax checker of MarketSimulator."""
 
         with self.assertRaises(SyntaxError):
             simulator = MarketSimulator()

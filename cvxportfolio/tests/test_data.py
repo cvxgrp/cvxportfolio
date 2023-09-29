@@ -13,12 +13,9 @@
 # limitations under the License.
 """Unit tests for the data interfaces."""
 
-import shutil
-import tempfile
 import unittest
 import warnings
 from copy import deepcopy
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -27,21 +24,11 @@ from cvxportfolio.data import (DownloadedMarketData, FredSymbolData,
                                UserProvidedMarketData, YahooFinanceSymbolData,
                                _loader_csv, _loader_pickle, _loader_sqlite,
                                _storer_csv, _storer_pickle, _storer_sqlite)
+from cvxportfolio.tests import CvxportfolioTest
 
 
-class TestData(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        """Initialize data directory."""
-        cls.datadir = Path(tempfile.mkdtemp())
-        print('created', cls.datadir)
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove data directory."""
-        print('removing', cls.datadir)
-        shutil.rmtree(cls.datadir)
+class TestData(CvxportfolioTest):
+    """Test SymbolData methods and interface."""
 
     def test_yfinance_download(self):
         """Test YfinanceBase."""
@@ -280,34 +267,8 @@ class TestData(unittest.TestCase):
         self.assertTrue(all(data.dtypes == data1.dtypes))
 
 
-class TestMarketData(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        """Initialize data directory."""
-        cls.datadir = Path(tempfile.mkdtemp())
-        print('created', cls.datadir)
-
-        cls.returns = pd.read_csv(
-            Path(__file__).parent /
-                "returns.csv", index_col=0, parse_dates=[0])
-        cls.volumes = pd.read_csv(
-            Path(__file__).parent /
-                "volumes.csv", index_col=0, parse_dates=[0])
-        cls.prices = pd.DataFrame(
-            np.random.uniform(10, 200, size=cls.volumes.shape),
-            index=cls.volumes.index, columns=cls.volumes.columns)
-        cls.market_data = UserProvidedMarketData(
-            returns=cls.returns, volumes=cls.volumes, prices=cls.prices,
-            cash_key='cash', base_location=cls.datadir,
-            min_history=pd.Timedelta('0d'))
-        cls.universe = cls.returns.columns
-
-    @classmethod
-    def tearDownClass(cls):
-        """Remove data directory."""
-        print('removing', cls.datadir)
-        shutil.rmtree(cls.datadir)
+class TestMarketData(CvxportfolioTest):
+    """Test MarketData methods and interface."""
 
     @staticmethod
     def strip_tz_and_hour(market_data):

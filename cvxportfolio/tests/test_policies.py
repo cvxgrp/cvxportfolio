@@ -14,7 +14,6 @@
 """Unit tests for the policy objects."""
 
 import unittest
-from pathlib import Path
 
 import cvxpy as cp
 import numpy as np
@@ -28,22 +27,11 @@ from cvxportfolio.policies import *
 # from cvxportfolio.policies import SinglePeriodOptOLD, SinglePeriodOptNEW
 from cvxportfolio.returns import *
 from cvxportfolio.risks import *
+from cvxportfolio.tests import CvxportfolioTest
 
 
-class TestPolicies(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        """Load the data and initialize cvxpy vars."""
-        # cls.sigma = pd.read_csv(Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
-        cls.returns = pd.read_csv(
-            Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
-        cls.volumes = pd.read_csv(
-            Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
-        cls.w_plus = cp.Variable(cls.returns.shape[1])
-        cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
-        cls.z = cp.Variable(cls.returns.shape[1])
-        cls.N = cls.returns.shape[1]
+class TestPolicies(CvxportfolioTest):
+    """Test trading policies."""
 
     def test_hold(self):
         hold = Hold()

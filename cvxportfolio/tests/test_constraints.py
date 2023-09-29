@@ -21,27 +21,14 @@ import numpy as np
 import pandas as pd
 
 import cvxportfolio as cvx
+from cvxportfolio.tests import CvxportfolioTest
 
 
 def listvalue(li):
     return all([el.value() for el in li])
 
 
-class TestConstraints(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        """Load the data and initialize cvxpy vars."""
-        cls.sigma = pd.read_csv(
-            Path(__file__).parent / "sigmas.csv", index_col=0, parse_dates=[0])
-        cls.returns = pd.read_csv(
-            Path(__file__).parent / "returns.csv", index_col=0, parse_dates=[0])
-        cls.volumes = pd.read_csv(
-            Path(__file__).parent / "volumes.csv", index_col=0, parse_dates=[0])
-        cls.w_plus = cp.Variable(cls.returns.shape[1])
-        cls.w_plus_minus_w_bm = cp.Variable(cls.returns.shape[1])
-        cls.z = cp.Variable(cls.returns.shape[1])
-        cls.N = cls.returns.shape[1]
+class TestConstraints(CvxportfolioTest):
 
     def build_constraint(self, constraint, t=None):
         """Initialize constraint, build expression, and point it to given.
