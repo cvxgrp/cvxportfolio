@@ -298,7 +298,8 @@ class TestMarketData(unittest.TestCase):
             index=cls.volumes.index, columns=cls.volumes.columns)
         cls.market_data = UserProvidedMarketData(
             returns=cls.returns, volumes=cls.volumes, prices=cls.prices,
-            cash_key='cash', base_location=cls.datadir)
+            cash_key='cash', base_location=cls.datadir, 
+            min_history=pd.Timedelta('0d'))
         cls.universe = cls.returns.columns
 
     @classmethod

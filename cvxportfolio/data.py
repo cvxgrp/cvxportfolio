@@ -556,32 +556,36 @@ def _storer_csv(symbol, data, storage_location):
 # Market Data
 #
 
-class BaseMarketData:
-    """Prepare, hold, and serve market data."""
+class MarketData:
+    """Prepare, hold, and serve market data.
+    
+    :method serve: Serve data for policy and simulator at time :math:`t`.
+    """
+    
+    def serve(self, t):
+        """Serve data for policy and simulator at time :math:`t`.
 
-    def serve_data_policy(self, t):
-        """Give data to policy at time t.
-        
-        :param t: Trading time.
+        :param t: Trading time. It must be included in the timestamps returned
+            by :method:`trading_calendar`.
         :type t: pandas.Timestamp
-        
-        :rtype: tuple of pandas.DataFrames and pandas.Series
-        """
-        raise NotImplementedError
 
-    def serve_data_simulator(self, t):
-        """Give data to simulator at time t.
-        
-        :param t: Trading time.
-        :type t: pandas.Timestamp
-        
-        :rtype: tuple of pandas.DataFrames and pandas.Series
+        :rtype: (pandas.DataFrame, pandas.Series, pandas.DataFrame,
+            pandas.Series, pandas.Series)
         """
         raise NotImplementedError
 
     def trading_calendar(self, start_time=None,
                          end_time=None, include_end=True):
-        """The trading calendar between two times (inclusive).
+        """Get trading calendar between times.
+                         
+        :param start_time: Initial time of the trading calendar. Always 
+            inclusive if present. If None, use the first available time.
+        :type start_time: pandas.Timestamp
+        :param end_time: Final time of the trading calendar. If None, use the 
+            last available time.
+        :type end_time: pandas.Timestamp
+        :param include_end: Include end time.
+        :type include_end: bool
         
         :rtype: pandas.DatetimeIndex
         """
@@ -594,62 +598,128 @@ class BaseMarketData:
         :rtype: int
         """
         raise NotImplementedError
+        
+    @property
+    def full_universe(self):
+        """Full universe (which might not be available for trading).
+        
+        :rtype: pandas.Index
+        """
+        raise NotImplementedError
 
-class MarketDataInMemory(BaseMarketData):
+
+class MarketDataInMemory(MarketData):
     """Market data that is stored in memory when initialized."""
 
-    def __init__(self, trading_frequency):
-
+    def _post_init_(self, trading_frequency):
+        """Code called after derived classes' initializer."""
         if trading_frequency:
             self._downsample(trading_frequency)
         self.trading_frequency = trading_frequency
 
         self._set_read_only()
         self._check_sizes()
-
-    def _serve_data_policy(self, t, mask=None):
-        """Give data to policy at time t."""
+        
+    def serve(self, t):
+        """Serve data for policy and simulator at time :math:`t`."""
+        
+        # current_universe = self.returns.columns 
+        current_universe = self._universe_at_time(t)
+        # mask = np.ones(len(current_universe), dtype=bool)
+        mask = self._universe_mask_at_time(t).values
+        
         tidx = self.returns.index.get_loc(t)
-        past_returns = pd.DataFrame(self.returns.iloc[:tidx])
-        if not (mask is None):
-            past_returns = past_returns[mask]
+        past_returns = self._df_or_ser_set_read_only(
+            pd.DataFrame(self.returns.iloc[:, mask].iloc[:tidx]))
+        current_returns = self._df_or_ser_set_read_only(
+            pd.Series(self.returns.iloc[:, mask].iloc[tidx]))
+        
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
-            past_volumes = pd.DataFrame(self.volumes.iloc[:tidx])
-            if not (mask is None):
-                past_volumes = past_volumes[mask[:-1]]
+            past_volumes = self._df_or_ser_set_read_only(
+                pd.DataFrame(self.volumes.iloc[:,mask[:-1]].iloc[:tidx]))
+            current_volumes = self._df_or_ser_set_read_only(
+                pd.Series(self.volumes.iloc[:,mask[:-1]].iloc[tidx]))
         else:
             past_volumes = None
+            current_volumes = None
+            
         if not self.prices is None:
-            current_prices = pd.Series(self.prices.loc[t])
-            if not (mask is None):
-                current_prices = current_prices[mask[:-1]]
+            tidx = self.prices.index.get_loc(t)
+            current_prices = self._df_or_ser_set_read_only(
+                pd.Series(self.prices.iloc[:,mask[:-1]].iloc[tidx]))
         else:
             current_prices = None
-
+            
+        return (past_returns, current_returns, past_volumes, current_volumes,
+                current_prices)
+                
+    def _serve_data_policy(self, t, mask=None):
+        if mask is not None:
+            assert np.all(mask == self.universe[self._universe_mask_at_time(t)])
+        (past_returns, current_returns, past_volumes, current_volumes,
+                        current_prices) = self.serve(t)
         return past_returns, past_volumes, current_prices
-
+        
     def _serve_data_simulator(self, t, mask=None):
-        """Give data to simulator at time t."""
-        tidx = self.returns.index.get_loc(t)
-        current_and_past_returns = pd.DataFrame(self.returns.iloc[:tidx+1])
-        if not (mask is None):
-            current_and_past_returns = current_and_past_returns[mask]
-        if not self.volumes is None:
-            tidx = self.volumes.index.get_loc(t)
-            current_and_past_volumes = pd.DataFrame(self.volumes.iloc[:tidx+1])
-            if not (mask is None):
-                current_and_past_volumes = current_and_past_volumes[mask[:-1]]
+        if mask is not None:
+            assert np.all(mask == self.universe[self._universe_mask_at_time(t)])
+        (past_returns, current_returns, past_volumes, current_volumes,
+                        current_prices) = self.serve(t)
+        current_and_past_returns = self._df_or_ser_set_read_only(pd.concat(
+            [past_returns, pd.DataFrame(current_returns).T], axis=0))
+        if past_volumes is not None:
+            current_and_past_volumes = self._df_or_ser_set_read_only(pd.concat(
+                [past_volumes, pd.DataFrame(current_volumes).T], axis=0))
         else:
             current_and_past_volumes = None
-        if not (self.prices is None):
-            current_prices = pd.Series(self.prices.loc[t])
-            if not (mask is None):
-                current_prices = current_prices[mask[:-1]]
-        else:
-            current_prices = None
+            
+        return (current_and_past_returns, current_and_past_volumes, 
+            current_prices)
 
-        return current_and_past_returns, current_and_past_volumes, current_prices
+    # def _serve_data_policy(self, t, mask=None):
+    #     """Give data to policy at time t."""
+    #     tidx = self.returns.index.get_loc(t)
+    #     past_returns = pd.DataFrame(self.returns.iloc[:tidx])
+    #     if not (mask is None):
+    #         past_returns = past_returns[mask]
+    #     if not self.volumes is None:
+    #         tidx = self.volumes.index.get_loc(t)
+    #         past_volumes = pd.DataFrame(self.volumes.iloc[:tidx])
+    #         if not (mask is None):
+    #             past_volumes = past_volumes[mask[:-1]]
+    #     else:
+    #         past_volumes = None
+    #     if not self.prices is None:
+    #         current_prices = pd.Series(self.prices.loc[t])
+    #         if not (mask is None):
+    #             current_prices = current_prices[mask[:-1]]
+    #     else:
+    #         current_prices = None
+    #
+    #     return past_returns, past_volumes, current_prices
+
+    # def _serve_data_simulator(self, t, mask=None):
+    #     """Give data to simulator at time t."""
+    #     tidx = self.returns.index.get_loc(t)
+    #     current_and_past_returns = pd.DataFrame(self.returns.iloc[:tidx+1])
+    #     if not (mask is None):
+    #         current_and_past_returns = current_and_past_returns[mask]
+    #     if not self.volumes is None:
+    #         tidx = self.volumes.index.get_loc(t)
+    #         current_and_past_volumes = pd.DataFrame(self.volumes.iloc[:tidx+1])
+    #         if not (mask is None):
+    #             current_and_past_volumes = current_and_past_volumes[mask[:-1]]
+    #     else:
+    #         current_and_past_volumes = None
+    #     if not (self.prices is None):
+    #         current_prices = pd.Series(self.prices.loc[t])
+    #         if not (mask is None):
+    #             current_prices = current_prices[mask[:-1]]
+    #     else:
+    #         current_prices = None
+    #
+    #     return current_and_past_returns, current_and_past_volumes, current_prices
 
     @staticmethod
     def _resample_returns(returns, periods):
@@ -699,9 +769,15 @@ class MarketDataInMemory(BaseMarketData):
         past_returns = self.returns.loc[self.returns.index < t]
         return self.universe[(past_returns.count() >= self.min_history) &
             (~self.returns.loc[t].isnull())]
+    
+    def _universe_mask_at_time(self, t):
+        """Return the valid universe at time t."""
+        past_returns = self.returns.loc[self.returns.index < t]
+        return ((past_returns.count() >= self.min_history) &
+            (~self.returns.loc[t].isnull()))
 
     @staticmethod
-    def _df_set_read_only(df):
+    def _df_or_ser_set_read_only(df_or_ser):
         """Set numpy array contained in dataframe to read only.
         
         This is done on data store internally before it is served to
@@ -715,36 +791,23 @@ class MarketDataInMemory(BaseMarketData):
         dataframe (which doesn't copy data on creation) in
         serve_data_policy and serve_data_simulator.
         """
-        data = df.values
+        data = df_or_ser.values
         data.flags.writeable = False
-        return pd.DataFrame(data, index=df.index, columns=df.columns)
+        if hasattr(df_or_ser, 'columns'):
+            return pd.DataFrame(data, index=df_or_ser.index, 
+                                columns=df_or_ser.columns)
+        return pd.Series(data, index=df_or_ser.index, name=df_or_ser.name)
 
     def _set_read_only(self):
         """Set internal dataframes to read-only."""
 
-        self.returns = self._df_set_read_only(self.returns)
+        self.returns = self._df_or_ser_set_read_only(self.returns)
 
         if not self.prices is None:
-            self.prices = self._df_set_read_only(self.prices)
+            self.prices = self._df_or_ser_set_read_only(self.prices)
 
         if not self.volumes is None:
-            self.volumes = self._df_set_read_only(self.volumes)
-
-    # @property
-    # def _limited_universes(self):
-    #     """Valid universes for each section, minus cash.
-    #
-    #     A backtest is broken into multiple ones that start at each key
-    #     of this, have the universe specified by this, and end at the
-    #     next startpoint.
-    #     """
-    #     result = OrderedDict()
-    #     uni = []
-    #     for ts in self._break_timestamps:
-    #         uni += self.entry_dates[ts]
-    #         uni = [el for el in uni if not el in self.exit_dates[ts]]
-    #         result[ts] = tuple(sorted(uni))
-    #     return result
+            self.volumes = self._df_or_ser_set_read_only(self.volumes)
 
     @property
     def _earliest_backtest_start(self):
@@ -835,10 +898,6 @@ class MarketDataInMemory(BaseMarketData):
                         (~(self.prices[col].isnull())).idxmax()
                     ] = np.nan
 
-    # @property
-    # def PPY(self):
-    #     """Periods per year, assumes returns are about equally spaced."""
-    #     return periods_per_year_from_datetime_index(self.returns.index)
 
     def _check_sizes(self):
         """Check sizes of user-provided dataframes."""
@@ -871,10 +930,6 @@ class MarketDataInMemory(BaseMarketData):
         return int(np.round(self.periods_per_year * (
             self._min_history_timedelta / pd.Timedelta('365.24d'))))
 
-    # @property
-    # def PPY(self):
-    #     """Periods per year, assumes returns are about equally spaced."""
-    #     return periods_per_year_from_datetime_index(self.returns.index)
 
 class UserProvidedMarketData(MarketDataInMemory):
 
@@ -901,7 +956,7 @@ class UserProvidedMarketData(MarketDataInMemory):
         if cash_key != returns.columns[-1]:
             self._add_cash_column(cash_key)
 
-        super().__init__(trading_frequency=trading_frequency)
+        self._post_init_(trading_frequency=trading_frequency)
 
 
 class DownloadedMarketData(MarketDataInMemory):
@@ -927,27 +982,11 @@ class DownloadedMarketData(MarketDataInMemory):
         self._min_history_timedelta = min_history
         self.cash_key = cash_key
 
-        # if len(universe):
         self._get_market_data(universe, datasource)
         self._add_cash_column(self.cash_key)
         self._remove_missing_recent()
-        # else:
-        #     if returns is None:
-        #         raise SyntaxError(
-        #             "If you don't specify a universe you should pass `returns`.")
-        #     self.returns = pd.DataFrame(returns, copy=copy_dataframes)
-        #     self.volumes = volumes if volumes is None else\
-        #         pd.DataFrame(volumes, copy=copy_dataframes)
-        #     self.prices = prices if prices is None else\
-        #         pd.DataFrame(prices, copy=copy_dataframes)
-        #     if cash_key != returns.columns[-1]:
-        #         self._add_cash_column(cash_key)
-
-        if trading_frequency:
-            self._downsample(trading_frequency)
-
-        self._set_read_only()
-        self._check_sizes()
+        
+        self._post_init_(trading_frequency=trading_frequency)
 
     DATASOURCES = {'YFinance': YahooFinanceSymbolData, 'FRED': FredSymbolData}
 

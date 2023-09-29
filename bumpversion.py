@@ -14,7 +14,7 @@ def findversion(root='.'):
     We use the first __init__.py with a __version__ that we find.
     """
     p = Path(root)
-    
+
     for fname in p.iterdir():
 
         if fname.name == '__init__.py':
