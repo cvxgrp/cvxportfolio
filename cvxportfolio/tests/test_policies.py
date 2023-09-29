@@ -28,6 +28,7 @@ from cvxportfolio.policies import *
 from cvxportfolio.returns import *
 from cvxportfolio.risks import *
 from cvxportfolio.tests import CvxportfolioTest
+import cvxportfolio as cvx
 
 
 class TestPolicies(CvxportfolioTest):
@@ -284,7 +285,7 @@ class TestPolicies(CvxportfolioTest):
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
-        policy.compile_to_cvxpy()
+        # policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -340,7 +341,7 @@ class TestPolicies(CvxportfolioTest):
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
-        policy.compile_to_cvxpy()
+        # policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -388,7 +389,7 @@ class TestPolicies(CvxportfolioTest):
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
-        policy.compile_to_cvxpy()
+        # policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -419,7 +420,7 @@ class TestPolicies(CvxportfolioTest):
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
-        policy.compile_to_cvxpy()
+        # policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -457,7 +458,7 @@ class TestPolicies(CvxportfolioTest):
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
                 trading_calendar=self.returns.index)
-            policy.compile_to_cvxpy()
+            # policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
@@ -495,7 +496,7 @@ class TestPolicies(CvxportfolioTest):
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
                 trading_calendar=self.returns.index)
-            policy.compile_to_cvxpy()
+            # policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
@@ -551,7 +552,7 @@ class TestPolicies(CvxportfolioTest):
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
                 trading_calendar=self.returns.index)
-            policy.compile_to_cvxpy()
+            # policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
@@ -572,6 +573,21 @@ class TestPolicies(CvxportfolioTest):
             diff_to_benchmarks[0]) < np.linalg.norm(diff_to_benchmarks[1]))
         self.assertTrue(np.linalg.norm(
             diff_to_benchmarks[1]) < np.linalg.norm(diff_to_benchmarks[2]))
+            
+    def test_execute(self):
+        """Test the ``execute`` method."""
+        
+        policy = cvx.Uniform()
+        h = pd.Series(0., self.returns.columns)
+        h.iloc[-1] = 10000
+        execution = policy.execute(market_data=self.market_data, h=h)
+        print(execution)
+        self.assertTrue(np.isclose(execution['z'].sum(),0.))
+        self.assertTrue(np.isclose(execution['u'].sum(),0.))
+        self.assertTrue(np.isclose(execution['w_plus'].sum(),1.))
+        self.assertTrue(np.isclose(execution['h_plus'].sum(),10000))
+        self.assertTrue(execution['t'] == self.returns.index[-1])
+        self.assertTrue(len(set(execution['w_plus'].iloc[:-1])) == 1)
 
 
 if __name__ == '__main__':

@@ -104,17 +104,17 @@ class Policy(PolicyEstimator):
             trading_calendar =trading_calendar[trading_calendar >= t]
             )
 
-        wplus = self.values_in_time_recursive(
+        w_plus = self.values_in_time_recursive(
             t=t, past_returns=past_returns, past_volumes=past_volumes,
             current_weights=w, current_value=v, current_prices=current_prices)
 
         z = w_plus - w
         u = z * v
-        w_plus = w_plus * v
+        h_plus = w_plus * v
         shares_traded = pd.Series(np.round(u / current_prices), dtype=int)
 
         return {'t': t, 'w_plus': w_plus,
-                'z': z, 'hplus': hplus, 'u': u,
+                'z': z, 'h_plus': h_plus, 'u': u,
                 'shares_traded': shares_traded}
 
 
@@ -472,7 +472,7 @@ class MultiPeriodOptimization(Policy):
             ) else benchmark
         self.cvxpy_kwargs = kwargs
 
-    def compile_to_cvxpy(self):  # , w_plus, z, value):
+    def _compile_to_cvxpy(self):  # , w_plus, z, value):
         """Compile all cvxpy expressions and the problem."""
         self.cvxpy_objective = [
             el.compile_to_cvxpy(
@@ -545,8 +545,10 @@ class MultiPeriodOptimization(Policy):
         self.w_plus_minus_w_bm_at_lags = [cp.Variable(
             len(universe)) for i in range(self._planning_horizon)]
 
-        # simulator will overwrite this with cached loaded from disk
+        # simulator will overwrite this with cache loaded from disk
         self._cache = {}
+
+        self._compile_to_cvxpy()
 
     def values_in_time_recursive(
         self, t, current_weights,

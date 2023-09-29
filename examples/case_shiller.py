@@ -43,7 +43,7 @@ simulator = cvx.MarketSimulator(
     universe = UNIVERSE,
     # we enabled the default data interface to download index
     # prices from FRED
-    datasource='FRED', 
+    datasource='Fred', 
     costs = [cvx.TransactionCost(
         a=LINEAR_TCOST,
         b=None, # since we don't have market volumes, we can't use the

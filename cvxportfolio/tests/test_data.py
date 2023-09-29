@@ -13,10 +13,10 @@
 # limitations under the License.
 """Unit tests for the data interfaces."""
 
+import sys
 import unittest
 import warnings
 from copy import deepcopy
-import sys
 
 import numpy as np
 import pandas as pd
@@ -94,14 +94,14 @@ class TestData(CvxportfolioTest):
 
         self.assertTrue(np.allclose(
             data1.loc[data.index[:-1]].Return, data.iloc[:-1].Return))
-    
-    @unittest.skipIf(sys.version_info.major==3 and sys.version_info.minor<11, 
+
+    @unittest.skipIf(sys.version_info.major == 3 and sys.version_info.minor < 11,
         "Issues with timezoned timestamps.")
     def test_sqlite3_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
         self.base_test_series(_loader_sqlite, _storer_sqlite)
-    
-    @unittest.skipIf(sys.version_info.major==3 and sys.version_info.minor<11, 
+
+    @unittest.skipIf(sys.version_info.major == 3 and sys.version_info.minor < 11,
         "Issues with timezoned timestamps.")
     def test_local_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""

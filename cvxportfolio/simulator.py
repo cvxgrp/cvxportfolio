@@ -201,8 +201,8 @@ class MarketSimulator:
                 trading_frequency=self.trading_frequency,
                 base_location=self.base_location)
 
-        if hasattr(policy, 'compile_to_cvxpy'):
-            policy.compile_to_cvxpy()
+        # if hasattr(policy, 'compile_to_cvxpy'):
+        #     policy.compile_to_cvxpy()
 
         return policy
 
