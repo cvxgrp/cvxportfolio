@@ -1,5 +1,5 @@
-Backtests 
-=========
+Back-test result 
+================
 
 .. automodule:: cvxportfolio.result
 
@@ -47,21 +47,41 @@ Backtests
     .. autoproperty:: annualized_quadratic_risk
     
     .. autoproperty:: excess_returns
+
+    .. autoproperty:: excess_volatility
     
     .. autoproperty:: average_excess_return
     
     .. autoproperty:: annualized_average_excess_return
     
     .. autoproperty:: annualized_excess_volatility
-        
+    
+    .. autoproperty:: active_returns
+
+    .. autoproperty:: active_volatility
+    
+    .. autoproperty:: average_active_return
+    
+    .. autoproperty:: annualized_average_active_return
+    
+    .. autoproperty:: annualized_active_volatility
+    
     .. autoproperty:: sharpe_ratio
+    
+    .. autoproperty:: information_ratio
     
     .. autoproperty:: excess_growth_rates
 
     .. autoproperty:: average_excess_growth_rate
 
     .. autoproperty:: annualized_average_excess_growth_rate
+    
+    .. autoproperty:: active_growth_rates
 
+    .. autoproperty:: average_active_growth_rate
+
+    .. autoproperty:: annualized_average_active_growth_rate
+    
     .. autoproperty:: drawdown
 
     .. automethod:: plot
