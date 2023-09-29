@@ -1,6 +1,6 @@
 PYTHON        = python
-PYTHON310	  = python3.10
-PYTHON309	  = python3.9
+PYTHON310     = python3.10
+PYTHON309     = python3.9
 PROJECT       = cvxportfolio
 TESTS         = $(PROJECT)/tests
 COVERAGE      = 97  # target coverage score
@@ -12,17 +12,17 @@ ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
 BINDIR310     = $(ENVDIR)310/bin
 BINDIR309     = $(ENVDIR)309/bin
-DEPS310	      = numpy==1.23.4 scipy==1.9.3 cvxpy==1.2.3 pandas==1.5.0 osqp==0.6.2.post9 ecos==2.0.12 scs==3.2.2
-DEPS309	      = numpy==1.21.5 scipy==1.7.3 cvxpy==1.1.17 pandas==1.4.0 osqp==0.6.2.post0 ecos==2.0.11 scs==2.1.4
+DEPS310       = numpy==1.23.4 scipy==1.9.3 cvxpy==1.2.3 pandas==1.5.0 osqp==0.6.2.post9 ecos==2.0.12 scs==3.2.2 requests==2.28.1
+DEPS309       = numpy==1.21.5 scipy==1.7.3 cvxpy==1.1.17 pandas==1.4.0 osqp==0.6.2.post0 ecos==2.0.11 scs==2.1.4 requests==2.26.0
 
 
 ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
-	BINDIR310=$(ENVDIR)310/Scripts
-	BINDIR309=$(ENVDIR)309/Scripts
+    BINDIR310=$(ENVDIR)310/Scripts
+    BINDIR309=$(ENVDIR)309/Scripts
 endif
 
-.PHONY: env test lint clean docs opendocs coverage release fix
+.PHONY: env test lint clean docs opendocs coverage release fix env309 test309 env310 test310
 
 env:
 	$(PYTHON) -m venv $(ENVDIR)
