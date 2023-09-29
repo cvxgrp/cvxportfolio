@@ -619,27 +619,58 @@ class MarketDataInMemory(MarketData):
 
         self._set_read_only()
         self._check_sizes()
+        self._mask = None
+        self._masked_returns = None
+        self._masked_volumes = None
+        self._masked_prices = None
+        
+    def _mask_dataframes(self, mask):
+        """Mask internal dataframes if necessary."""
+        if (self._mask is None) or not np.all(self._mask == mask):
+            logging.info("Masking internal %s dataframes.", 
+                self.__class__.__name__)
+            colmask = self.returns.columns[mask]
+            # self._masked_returns = self._df_or_ser_set_read_only(
+            #     pd.DataFrame(self.returns.iloc[:, mask], copy=True))
+            self._masked_returns = self._df_or_ser_set_read_only(
+               pd.DataFrame(self.returns.loc[:, colmask], copy=True))
+            # self._masked_returns = self._df_or_ser_set_read_only(
+            #     pd.DataFrame(np.array(self.returns.values[:, mask]),
+            #         index=self.returns.index, columns=colmask))
+            if not self.volumes is None:
+                # self._masked_volumes = self._df_or_ser_set_read_only(
+                #     pd.DataFrame(self.volumes.iloc[:, mask[:-1]], copy=True))
+                self._masked_volumes = self._df_or_ser_set_read_only(
+                    pd.DataFrame(self.volumes.loc[:, colmask[:-1]], copy=True))
+                # self._masked_volumes = self._df_or_ser_set_read_only(
+                #     pd.DataFrame(np.array(self.volumes.values[:, mask[:-1]]),
+                #         index=self.volumes.index, columns=colmask[:-1]))
+            if not self.prices is None:
+                # self._masked_prices = self._df_or_ser_set_read_only(
+                #     pd.DataFrame(self.prices.iloc[:, mask[:-1]], copy=True))
+                self._masked_prices = self._df_or_ser_set_read_only(
+                    pd.DataFrame(self.prices.loc[:, colmask[:-1]], copy=True))
+            self._mask = mask
         
     def serve(self, t):
         """Serve data for policy and simulator at time :math:`t`."""
         
-        # current_universe = self.returns.columns 
         current_universe = self._universe_at_time(t)
-        # mask = np.ones(len(current_universe), dtype=bool)
         mask = self._universe_mask_at_time(t).values
+        self._mask_dataframes(mask)
         
         tidx = self.returns.index.get_loc(t)
         past_returns = self._df_or_ser_set_read_only(
-            pd.DataFrame(self.returns.iloc[:, mask].iloc[:tidx]))
+            pd.DataFrame(self._masked_returns.iloc[:tidx]))
         current_returns = self._df_or_ser_set_read_only(
-            pd.Series(self.returns.iloc[:, mask].iloc[tidx]))
+            pd.Series(self._masked_returns.iloc[tidx]))
         
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
             past_volumes = self._df_or_ser_set_read_only(
-                pd.DataFrame(self.volumes.iloc[:,mask[:-1]].iloc[:tidx]))
+                pd.DataFrame(self._masked_volumes.iloc[:tidx]))
             current_volumes = self._df_or_ser_set_read_only(
-                pd.Series(self.volumes.iloc[:,mask[:-1]].iloc[tidx]))
+                pd.Series(self._masked_volumes.iloc[tidx]))
         else:
             past_volumes = None
             current_volumes = None
@@ -647,35 +678,35 @@ class MarketDataInMemory(MarketData):
         if not self.prices is None:
             tidx = self.prices.index.get_loc(t)
             current_prices = self._df_or_ser_set_read_only(
-                pd.Series(self.prices.iloc[:,mask[:-1]].iloc[tidx]))
+                pd.Series(self._masked_prices.iloc[tidx]))
         else:
             current_prices = None
             
         return (past_returns, current_returns, past_volumes, current_volumes,
                 current_prices)
                 
-    def _serve_data_policy(self, t, mask=None):
-        if mask is not None:
-            assert np.all(mask == self.universe[self._universe_mask_at_time(t)])
-        (past_returns, current_returns, past_volumes, current_volumes,
-                        current_prices) = self.serve(t)
-        return past_returns, past_volumes, current_prices
-        
-    def _serve_data_simulator(self, t, mask=None):
-        if mask is not None:
-            assert np.all(mask == self.universe[self._universe_mask_at_time(t)])
-        (past_returns, current_returns, past_volumes, current_volumes,
-                        current_prices) = self.serve(t)
-        current_and_past_returns = self._df_or_ser_set_read_only(pd.concat(
-            [past_returns, pd.DataFrame(current_returns).T], axis=0))
-        if past_volumes is not None:
-            current_and_past_volumes = self._df_or_ser_set_read_only(pd.concat(
-                [past_volumes, pd.DataFrame(current_volumes).T], axis=0))
-        else:
-            current_and_past_volumes = None
-            
-        return (current_and_past_returns, current_and_past_volumes, 
-            current_prices)
+    # def _serve_data_policy(self, t, mask=None):
+    #     if mask is not None:
+    #         assert np.all(mask == self.universe[self._universe_mask_at_time(t)])
+    #     (past_returns, current_returns, past_volumes, current_volumes,
+    #                     current_prices) = self.serve(t)
+    #     return past_returns, past_volumes, current_prices
+    #
+    # def _serve_data_simulator(self, t, mask=None):
+    #     if mask is not None:
+    #         assert np.all(mask == self.universe[self._universe_mask_at_time(t)])
+    #     (past_returns, current_returns, past_volumes, current_volumes,
+    #                     current_prices) = self.serve(t)
+    #     current_and_past_returns = self._df_or_ser_set_read_only(pd.concat(
+    #         [past_returns, pd.DataFrame(current_returns).T], axis=0))
+    #     if past_volumes is not None:
+    #         current_and_past_volumes = self._df_or_ser_set_read_only(pd.concat(
+    #             [past_volumes, pd.DataFrame(current_volumes).T], axis=0))
+    #     else:
+    #         current_and_past_volumes = None
+    #
+    #     return (current_and_past_returns, current_and_past_volumes,
+    #         current_prices)
 
     # def _serve_data_policy(self, t, mask=None):
     #     """Give data to policy at time t."""

@@ -158,7 +158,8 @@ class MarketSimulator:
         result.iloc[-1] = -sum(result.iloc[:-1])
         return result
 
-    def _simulate(self, t, t_next, h, policy, mask=None, **kwargs):
+    def _simulate(self, t, t_next, h, policy, past_returns, current_returns,
+                past_volumes, current_volumes, current_prices):
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
@@ -170,16 +171,13 @@ class MarketSimulator:
         current_portfolio_value = sum(h)
         current_weights = h / current_portfolio_value
 
-        past_returns, past_volumes, current_prices =\
-            self.market_data._serve_data_policy(t, mask=mask)
-
         # evaluate the policy
         s = time.time()
         policy_w = policy.values_in_time_recursive(
             t=t, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value,
             past_returns=past_returns, past_volumes=past_volumes,
-            current_prices=current_prices, **kwargs)
+            current_prices=current_prices)
 
         z = policy_w - current_weights
 
@@ -192,13 +190,8 @@ class MarketSimulator:
         # trades in dollars
         u = z * current_portfolio_value
 
-        # get data for simulator
-        current_and_past_returns, current_and_past_volumes, current_prices =\
-            self.market_data._serve_data_simulator(t, mask=mask)
-
         # zero out trades on stock that weren't trading on that day
-        if not (current_and_past_volumes is None):
-            current_volumes = current_and_past_volumes.iloc[-1]
+        if not (current_volumes is None):
             non_tradable_stocks = current_volumes[current_volumes <= 0].index
             if len(non_tradable_stocks):
                 logging.info(
@@ -220,10 +213,10 @@ class MarketSimulator:
         # evaluate cost functions
         realized_costs = {cost.__class__.__name__: cost._simulate(
             t=t, u=u,  h_plus=h_plus,
-            past_volumes=current_and_past_volumes.iloc[:-1],
-            current_volumes=current_and_past_volumes.iloc[-1],
-            past_returns=current_and_past_returns.iloc[:-1],
-            current_returns=current_and_past_returns.iloc[-1],            
+            past_volumes=past_volumes,
+            current_volumes=current_volumes, 
+            past_returns=past_returns,
+            current_returns=current_returns,            
             current_prices=current_prices,
             t_next=t_next,
             periods_per_year=self.market_data.periods_per_year,
@@ -237,7 +230,6 @@ class MarketSimulator:
         h_next.iloc[-1] = h_plus.iloc[-1] - sum(realized_costs.values())
 
         # multiply positions (including cash) by market returns
-        current_returns = current_and_past_returns.iloc[-1]
         assert not np.any(current_returns.isnull())
         h_next *= (1 + current_returns)
 
@@ -277,18 +269,23 @@ class MarketSimulator:
 
         trading_calendar = self.market_data.trading_calendar(
             start_time, end_time, include_end=True)
-
-        universe = self.market_data._universe_at_time(trading_calendar[0])
+        
+        _, current_returns, _, _, _ = self.market_data.serve(
+            trading_calendar[0])
+        universe = current_returns.index
 
         used_policy = self._get_initialized_policy(
             policy, universe=universe, trading_calendar=trading_calendar)
 
         result = BacktestResult(
-            universe=universe, trading_calendar=trading_calendar, costs=self.costs)
+            universe=universe, trading_calendar=trading_calendar, 
+            costs=self.costs)
 
         for t, t_next in zip(trading_calendar[:-1], trading_calendar[1:]):
 
-            current_universe = self.market_data._universe_at_time(t)
+            past_returns, current_returns, past_volumes, current_volumes,\
+                 current_prices = self.market_data.serve(t)
+            current_universe = current_returns.index
 
             if not current_universe.equals(h.index):
 
@@ -301,7 +298,12 @@ class MarketSimulator:
 
             h_next, z, u, realized_costs, policy_time = self._simulate(
                 t=t, h=h, policy=used_policy,
-                t_next=t_next, mask=current_universe)
+                t_next=t_next, 
+                past_returns=past_returns,
+                current_returns=current_returns,
+                past_volumes=past_volumes, 
+                current_volumes=current_volumes,
+                current_prices=current_prices)
 
             simulator_time = time.time() - timer - policy_time
 
@@ -566,7 +568,6 @@ class MarketSimulator:
             raise SyntaxError(
                 'If passing lists of policies and initial portfolios they must have the same length.')
 
-        # TODO: here put get_trading_calendar
         if start_time is not None:
             start_time = pd.Timestamp(start_time)
             if start_time.tz is None:

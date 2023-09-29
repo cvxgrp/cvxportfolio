@@ -527,14 +527,6 @@ class TransactionCost(BaseCost):
                   past_volumes, current_volumes,
                   current_prices, **kwargs):
 
-        if self.window_sigma_est is None:
-            windowsigma = periods_per_year_from_datetime_index(
-                pd.DatetimeIndex(list(past_returns.index) + [t]))
-        else:
-            windowsigma = self.window_sigma_est
-
-        exponent = (1.5 if self.exponent is None else self.exponent)
-
         result = 0.
         if self.pershare_cost is not None:
             if current_prices is None:
@@ -551,6 +543,15 @@ class TransactionCost(BaseCost):
         if self.b is not None:
             current_and_past_returns = pd.concat(
                 [past_returns, pd.DataFrame(current_returns).T], axis=0)
+                
+            if self.window_sigma_est is None:
+                windowsigma = periods_per_year_from_datetime_index(
+                    current_and_past_returns.index)
+            else:
+                windowsigma = self.window_sigma_est
+
+            exponent = (1.5 if self.exponent is None else self.exponent)
+            
             sigma = np.std(
                 current_and_past_returns.iloc[-windowsigma:, :-1], axis=0)
             if (current_volumes is None) or (past_volumes is None):

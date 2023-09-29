@@ -18,6 +18,7 @@ import tempfile
 import unittest
 from copy import deepcopy
 from pathlib import Path
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -382,6 +383,8 @@ class TestMarketData(unittest.TestCase):
         past_returns, current_returns, past_volumes, current_volumes, \
             current_prices = self.market_data.serve(t)
 
+        # with warnings.catch_warnings():
+        #     warnings.simplefilter("ignore")
         with self.assertRaises(ValueError):
             past_returns.iloc[-2, -2] = 2.
         with self.assertRaises(ValueError):
