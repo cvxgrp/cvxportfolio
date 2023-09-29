@@ -47,17 +47,17 @@ class BacktestResult:
 
     def __init__(self, universe, trading_calendar, costs):
         """Initialization of backtest result."""
-        self.h = pd.DataFrame(index=trading_calendar,
+        self._h = pd.DataFrame(index=trading_calendar,
                               columns=universe, dtype=float)
-        self.u = pd.DataFrame(index=trading_calendar,
+        self._u = pd.DataFrame(index=trading_calendar,
                               columns=universe, dtype=float)
-        self.z = pd.DataFrame(index=trading_calendar,
+        self._z = pd.DataFrame(index=trading_calendar,
                               columns=universe, dtype=float)
         self.costs = {cost.__class__.__name__: pd.Series(
             index=trading_calendar, dtype=float) for cost in costs}
-        self.policy_times = pd.Series(index=trading_calendar, dtype=float)
-        self.simulator_times = pd.Series(index=trading_calendar, dtype=float)
-
+        self._policy_times = pd.Series(index=trading_calendar, dtype=float)
+        self._simulator_times = pd.Series(index=trading_calendar, dtype=float)
+        self._cash_returns = pd.Series(index=trading_calendar, dtype=float)
         self._current_universe = pd.Index(universe)
 
     def _change_universe(self, new_universe):
@@ -87,89 +87,93 @@ class BacktestResult:
 
             joined.append(new_universe[-1:])
 
-            self.h = self.h.reindex(columns = joined)
-            self.u = self.u.reindex(columns = joined)
-            self.z = self.z.reindex(columns = joined)
+            self._h = self._h.reindex(columns = joined)
+            self._u = self._u.reindex(columns = joined)
+            self._z = self._z.reindex(columns = joined)
 
-        assert new_universe.isin(self.h.columns).all()
+        assert new_universe.isin(self._h.columns).all()
         self._current_universe = new_universe
 
     def _log_trading(self, t: pd.Timestamp,
         h: pd.Series[float], u: pd.Series[float],
         z: pd.Series[float], costs: Dict[str, float],
-        policy_time: float, simulator_time: float):
+        cash_return: float, policy_time: float, simulator_time: float):
         "Log one trading period."
 
         if not h.index.equals(self._current_universe):
             self._change_universe(h.index)
+        
+        #tidx = self._h.index.get_loc(t)
 
-        self.h.loc[t] = h
-        self.u.loc[t] = u
-        self.z.loc[t] = z
+        self._h.loc[t, self._current_universe] = h
+        self._u.loc[t, self._current_universe] = u
+        self._z.loc[t, self._current_universe] = z
         for cost in costs:
             self.costs[cost].loc[t] = costs[cost]
-        self.simulator_times.loc[t] = simulator_time
-        self.policy_times.loc[t] = policy_time
+        self._simulator_times.loc[t] = simulator_time
+        self._policy_times.loc[t] = policy_time
+        self._cash_returns.loc[t] = cash_return
 
     #
     # General backtest information
     #
 
-    # TODO: activate these
-
-    # @property
-    # def policy_times(self):
-    #     """The computation time of the policy object at each period."""
-    #     return self._policy_times
-    #
-    # @property
-    # def simulator_times(self):
-    #     """The computation time of the simulator object at each period."""
-    #     return self._simulator_times
+    @property
+    def policy_times(self):
+        """The computation time of the policy object at each period."""
+        return pd.Series(self._policy_times)
+        
+    @property
+    def simulator_times(self):
+        """The computation time of the simulator object at each period."""
+        return pd.Series(self._simulator_times)
+        
+    @property
+    def cash_returns(self):
+        """The computation time of the policy object at each period."""
+        return pd.Series(self._cash_returns)
 
     @property
     def cash_key(self):
         """The name of the cash unit used (e.g., USDOLLAR)."""
-        return self.h.columns[-1]
+        return self._h.columns[-1]
 
     @property
     def periods_per_year(self):
         """Average trading periods per year in this backtest (rounded)."""
-        return periods_per_year_from_datetime_index(self.h.index)
+        return periods_per_year_from_datetime_index(self._h.index)
 
     #
     # Basic portfolio variables, defined in Chapter 2
     #
 
-    # TODO: activate these
+    @property
+    def h(self):
+        """The portfolio (holdings) at each trading period (including the end).
+        """
+        return pd.DataFrame(self._h)
 
-    # @property
-    # def h(self):
-    #     """The portfolio (holdings) at each trading period (including the end).
-    #     """
-    #     return self._h
-    #
-    # @property
-    # def u(self):
-    #     """The portfolio trade vector at each trading period."""
-    #     return self._u
-    #
-    # @property
-    # def z(self):
-    #     """The portfolio trade weights at each trading period."""
-    #     return self._u / self.v.loc[self._u]
-    #
-    # @property
-    # def z_policy(self):
-    #     """The trade weights requested by the policy at each trading period.
-    #
-    #     This is different from the trade weights :math:`z` because the
-    #     :class:`MarketSimulator` instance may change it by enforcing
-    #     the self-financing condition (recalculates cash value), rounding
-    #     trades to integer number of shares, canceling trades on assets whose
-    #     volume is zero for the day, :math:`\ldots`.
-    #     """
-    #     return self._z_policy
+    @property
+    def u(self):
+        """The portfolio trade vector at each trading period."""
+        return pd.DataFrame(self._u)
+
+    @property
+    def z(self):
+        """The portfolio trade weights at each trading period."""
+        return (self.u.T / self.v).T
+
+    @property
+    def z_policy(self):
+        """The trade weights requested by the policy at each trading period.
+
+        This is different from the trade weights :math:`z` because the
+        :class:`MarketSimulator` instance may change it by enforcing
+        the self-financing condition (recalculates cash value), rounding
+        trades to integer number of shares, canceling trades on assets whose
+        volume is zero for the day, :math:`\ldots`.
+        """
+        return pd.DataFrame(self._z)
 
     @property
     def v(self):

@@ -311,13 +311,14 @@ class MarketSimulator:
 
             result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs,
                                 policy_time=policy_time,
-                                simulator_time=simulator_time)
+                                simulator_time=simulator_time,
+                                cash_return=current_returns.iloc[-1])
 
             h = h_next
 
         self._finalize_policy(used_policy, h.index)
 
-        result.cash_returns = self.market_data.returns.iloc[:, -1].loc[result.u.index]
+        # result.cash_returns = self.market_data.returns.iloc[:, -1].loc[result.u.index]
 
         result.h.loc[pd.Timestamp(trading_calendar[-1])] = h
 
