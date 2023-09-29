@@ -59,6 +59,7 @@ class BacktestResult:
         self._simulator_times = pd.Series(index=trading_calendar, dtype=float)
         self._cash_returns = pd.Series(index=trading_calendar, dtype=float)
         self._current_universe = pd.Index(universe)
+        self._indexer = np.arange(len(universe), dtype=int)
 
     def _change_universe(self, new_universe):
         """Change current universe (columns of dataframes) during backtest."""
@@ -93,6 +94,7 @@ class BacktestResult:
 
         assert new_universe.isin(self._h.columns).all()
         self._current_universe = new_universe
+        self._indexer = self._h.columns.get_indexer(new_universe)
 
     def _log_trading(self, t: pd.Timestamp,
         h: pd.Series[float], u: pd.Series[float],
@@ -103,16 +105,18 @@ class BacktestResult:
         if not h.index.equals(self._current_universe):
             self._change_universe(h.index)
         
-        #tidx = self._h.index.get_loc(t)
-
-        self._h.loc[t, self._current_universe] = h
-        self._u.loc[t, self._current_universe] = u
-        self._z.loc[t, self._current_universe] = z
+        tidx = self._h.index.get_loc(t)
+        
+        self._h.iloc[tidx, self._indexer] = h
+        self._u.iloc[tidx, self._indexer] = u
+        self._z.iloc[tidx, self._indexer] = z
+        
         for cost in costs:
-            self.costs[cost].loc[t] = costs[cost]
-        self._simulator_times.loc[t] = simulator_time
-        self._policy_times.loc[t] = policy_time
-        self._cash_returns.loc[t] = cash_return
+            self.costs[cost].iloc[tidx] = costs[cost]
+
+        self._simulator_times.iloc[tidx] = simulator_time
+        self._policy_times.iloc[tidx] = policy_time
+        self._cash_returns.iloc[tidx] = cash_return
 
     #
     # General backtest information
