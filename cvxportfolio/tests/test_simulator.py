@@ -469,7 +469,7 @@ class TestSimulator(CvxportfolioTest):
         myunif['USDOLLAR'] = 0.
 
         policies = [cvx.SinglePeriodOptimization(objective, constraints, benchmark=bm)
-                    for bm in [cvx.CashBenchmark(), cvx.UniformBenchmark(), cvx.MarketBenchmark(),
+                    for bm in [cvx.AllCash(), cvx.UniformBenchmark(), cvx.MarketBenchmark(),
                                cvx.Benchmark(myunif)]]
 
         results = sim.backtest_many(policies, start_time='2023-01-01',

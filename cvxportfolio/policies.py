@@ -26,7 +26,7 @@ from .benchmark import *
 from .constraints import Constraint
 from .costs import Cost
 from .errors import *
-from .estimator import DataEstimator, PolicyEstimator
+from .estimator import DataEstimator, Estimator
 from .returns import BaseReturnsModel, CashReturn, ReturnsForecast
 from .utils import *
 
@@ -45,7 +45,7 @@ __all__ = [
     "Uniform",
 ]
 
-class Policy(PolicyEstimator):
+class Policy(Estimator):
     """Base trading policy class, defines execute method."""
 
     def execute(self, market_data, t=None, h=None, w=None, v=None,
@@ -79,7 +79,7 @@ class Policy(PolicyEstimator):
             t = trading_calendar[-1]
 
         assert t in trading_calendar
-        
+
         result = {'t': t}
 
         past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
@@ -108,18 +108,17 @@ class Policy(PolicyEstimator):
 
         result['w_plus'] = self.values_in_time_recursive(
             t=t, past_returns=past_returns, past_volumes=past_volumes,
-            current_weights=w, current_portfolio_value=v, 
+            current_weights=w, current_portfolio_value=v,
             current_prices=current_prices)
-        
-        
+
         result['z'] = result['w_plus'] - w
         result['u'] = result['z'] * v
         result['h_plus'] = result['w_plus'] * v
-        
+
         if current_prices is not None:
             result['shares_traded'] = pd.Series(
                 np.round(result['u'] / current_prices), dtype=int)
-                
+
         return result
 
 
@@ -241,10 +240,10 @@ class FixedTrades(Policy):
     If there are no weights defined for the given day, default to no
     trades.
 
-    :param trades_weights: target trade weights :math:`z_t` to trade at each period.
-        If constant in time use a pandas Series indexed by the assets'
-        names, including the cash account name (``cash_key`` option
-        to the simulator). If varying in time, use a pandas DataFrame
+    :param trades_weights: target trade weights :math:`z_t` to trade at each 
+        period. If constant in time use a pandas Series indexed by the assets'
+        names, including the cash account name (``cash_key`` option to
+        :class:`MarketSimulator`). If varying in time, use a pandas DataFrame
         with datetime index and as columns the assets names including cash.
         If a certain time in the backtest is not present in the data provided
         the policy defaults to not trading in that period.
@@ -252,19 +251,27 @@ class FixedTrades(Policy):
     """
 
     def __init__(self, trades_weights):
-        """Trade the tradevec vector (dollars) or tradeweight weights."""
+        """Trade fixed trade weigths in time."""
         self.trades_weights = DataEstimator(
             trades_weights, data_includes_cash=True)
 
     def values_in_time_recursive(self, t, current_weights, **kwargs):
-        """We need to override recursion b/c we catch exception."""
+        """Evaluate policy at time :math:`t`.
+        
+        We need to override the recursion because we catch an exception."""
         try:
             super().values_in_time_recursive(
                 t=t, current_weights=current_weights, **kwargs)
-            return current_weights + pd.Series(
+            result = current_weights + pd.Series(
                 self.trades_weights.current_value, current_weights.index)
         except MissingTimesError:
-            return current_weights
+            logging.info("%s didn't trade at time %s because it couldn't find"
+                + " trade weights among the provided ones.",
+                self.__class__.__name__, t)
+            result = current_weights
+        finally:
+            self._current_value = result
+            return result
 
 
 class FixedWeights(Policy):
@@ -273,8 +280,8 @@ class FixedWeights(Policy):
     If there are no weights defined for the given day, default to no
     trades.
 
-    :param target_weights: target weights :math:`w_t^+` to trade to at each period.
-        If constant in time use a pandas Series indexed by the assets'
+    :param target_weights: target weights :math:`w_t^+` to trade to at each 
+        period. If constant in time use a pandas Series indexed by the assets'
         names, including the cash account name (``cash_key`` option
         to the simulator). If varying in time, use a pandas DataFrame
         with datetime index and as columns the assets names including cash.
@@ -289,15 +296,23 @@ class FixedWeights(Policy):
             target_weights, data_includes_cash=True)
 
     def values_in_time_recursive(self, t, current_weights, **kwargs):
-        """We need to override recursion b/c we catch exception."""
+        """Evaluate policy at time :math:`t`.
+        
+        We need to override the recursion because we catch an exception."""
         try:
             super().values_in_time_recursive(
                 t=t, current_weights=current_weights, **kwargs)
-            return current_weights + pd.Series(
+            result = current_weights + pd.Series(
                 self.target_weights.current_value, current_weights.index
                 ) - current_weights
         except MissingTimesError:
-            return current_weights
+            logging.info("%s didn't trade at time %s because it couldn't find"
+                + " target weights among the provided ones.",
+                self.__class__.__name__, t)
+            result = current_weights
+        finally:
+            self._current_value = result
+            return result
 
 
 class Uniform(FixedWeights):
@@ -432,7 +447,7 @@ class MultiPeriodOptimization(Policy):
         Default is ``True``.
     :type include_cash_return: bool
     :param benchmark: benchmark weights to use in the risk model and other 
-        terms that need it. Implemented ones are ``CashBenchmark``, 
+        terms that need it. Implemented ones are ``AllCash``, 
         the default, ``UniformBenchmark`` (uniform allocation on non-cash 
         assets), and ``MarketBenchmark``, which approximates the 
         market-weighted portfolio.
@@ -445,7 +460,7 @@ class MultiPeriodOptimization(Policy):
     def __init__(
         self, objective, constraints=[], include_cash_return=True,
         planning_horizon=None, terminal_constraint=None,
-        benchmark=CashBenchmark, **kwargs):
+        benchmark=AllCash, **kwargs):
         if hasattr(objective, '__iter__'):
             if not (hasattr(constraints, '__iter__') and len(constraints
                     ) and (hasattr(constraints[0], '__iter__') and len(
@@ -615,8 +630,10 @@ class MultiPeriodOptimization(Policy):
                 f"Policy %s at time %s resulted in an infeasible problem.",
                     self.__class__.__name__, t)
 
-        return current_weights + pd.Series(
+        result = current_weights + pd.Series(
             self.z_at_lags[0].value, current_weights.index)
+        self._current_value = result
+        return result
 
     def collect_hyperparameters(self):
         result = []
@@ -648,7 +665,7 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     :type include_cash_return: bool
     :param benchmark: benchmark weights to use in the risk model and 
         other terms that need it. Implemented
-        ones are ``CashBenchmark``, the default, ``UniformBenchmark`` 
+        ones are ``AllCash``, the default, ``UniformBenchmark`` 
         (uniform allocation on non-cash assets),
         and ``MarketBenchmark``, which approximates the market-weighted 
         portfolio.
@@ -658,7 +675,7 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     """
 
     def __init__(self, objective, constraints=[],
-                include_cash_return=True, benchmark=CashBenchmark, **kwargs):
+                include_cash_return=True, benchmark=AllCash, **kwargs):
         super().__init__(
             [objective], [constraints],
             include_cash_return=include_cash_return,

@@ -255,7 +255,7 @@ class MarketSimulator:
                 past_volumes=past_volumes,
                 current_volumes=current_volumes,
                 current_prices=current_prices)
-            
+
             if hasattr(used_policy, 'benchmark'):
                 w_bm = used_policy.benchmark.current_value
                 bm_ret = w_bm @ current_returns

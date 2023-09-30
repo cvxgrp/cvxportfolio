@@ -19,6 +19,7 @@ import cvxpy as cp
 import numpy as np
 import pandas as pd
 
+import cvxportfolio as cvx
 from cvxportfolio.constraints import *
 from cvxportfolio.costs import *
 from cvxportfolio.errors import *
@@ -28,7 +29,6 @@ from cvxportfolio.policies import *
 from cvxportfolio.returns import *
 from cvxportfolio.risks import *
 from cvxportfolio.tests import CvxportfolioTest
-import cvxportfolio as cvx
 
 
 class TestPolicies(CvxportfolioTest):
@@ -573,39 +573,39 @@ class TestPolicies(CvxportfolioTest):
             diff_to_benchmarks[0]) < np.linalg.norm(diff_to_benchmarks[1]))
         self.assertTrue(np.linalg.norm(
             diff_to_benchmarks[1]) < np.linalg.norm(diff_to_benchmarks[2]))
-            
+
     def test_execute(self):
         """Test the ``execute`` method."""
-        
+
         policy = cvx.Uniform()
         h = pd.Series(0., self.returns.columns)
         h.iloc[-1] = 10000
         execution = policy.execute(market_data=self.market_data, h=h)
         print(execution)
-        self.assertTrue(np.isclose(execution['z'].sum(),0.))
-        self.assertTrue(np.isclose(execution['u'].sum(),0.))
-        self.assertTrue(np.isclose(execution['w_plus'].sum(),1.))
-        self.assertTrue(np.isclose(execution['h_plus'].sum(),10000))
+        self.assertTrue(np.isclose(execution['z'].sum(), 0.))
+        self.assertTrue(np.isclose(execution['u'].sum(), 0.))
+        self.assertTrue(np.isclose(execution['w_plus'].sum(), 1.))
+        self.assertTrue(np.isclose(execution['h_plus'].sum(), 10000))
         self.assertTrue(execution['t'] == self.returns.index[-1])
         self.assertTrue(len(set(execution['w_plus'].iloc[:-1])) == 1)
-        
+
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast() - 5 * cvx.FullCovariance(),
             [cvx.LongOnly(applies_to_cash=True)])
-            
+
         market_data = cvx.UserProvidedMarketData(
                     returns=self.returns, volumes=self.volumes,
                     cash_key='cash', base_location=self.datadir,
                     min_history=pd.Timedelta('0d'))
-            
+
         execution = policy.execute(market_data=market_data, h=h)
         print(execution)
-        self.assertTrue(np.isclose(execution['z'].sum(),0.))
-        self.assertTrue(np.isclose(execution['u'].sum(),0.))
-        self.assertTrue(np.isclose(execution['w_plus'].sum(),1.))
+        self.assertTrue(np.isclose(execution['z'].sum(), 0.))
+        self.assertTrue(np.isclose(execution['u'].sum(), 0.))
+        self.assertTrue(np.isclose(execution['w_plus'].sum(), 1.))
         self.assertTrue(np.isclose(np.abs(execution['w_plus'].iloc[:-1]
-            ).sum(),1.))
-        self.assertTrue(np.isclose(execution['h_plus'].sum(),10000))
+            ).sum(), 1.))
+        self.assertTrue(np.isclose(execution['h_plus'].sum(), 10000))
         self.assertTrue(execution['t'] == self.returns.index[-1])
         self.assertTrue(execution['h_plus']['CSCO'] >= .9)
 

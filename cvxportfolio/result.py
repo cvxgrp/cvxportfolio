@@ -101,7 +101,7 @@ class BacktestResult:
     def _log_trading(self, t: pd.Timestamp,
         h: pd.Series[float], u: pd.Series[float],
         z: pd.Series[float], costs: Dict[str, float],
-        cash_return: float, benchmark_return:float or None,
+        cash_return: float, benchmark_return: float or None,
         policy_time: float, simulator_time: float):
         "Log one trading period."
 
@@ -147,7 +147,7 @@ class BacktestResult:
     def cash_returns(self):
         """Per-period returns on cash (*i.e.*, the risk-free rate)."""
         return pd.Series(self._cash_returns)
-    
+
     @property
     def benchmark_returns(self):
         """Benchmark returns per period (if the policy has a benchmark)."""
@@ -332,7 +332,7 @@ class BacktestResult:
     #
     # Metrics relative to benchmark, defined in Chapter 3 Section 2
     #
-    
+
     @property
     def active_returns(self):
         """Portfolio returns minus benchmark returns (if defined by policy)."""
@@ -357,7 +357,7 @@ class BacktestResult:
     def annualized_active_volatility(self):
         """Annualized active volatility."""
         return self.active_volatility * np.sqrt(self.periods_per_year)
-        
+
     @property
     def excess_returns(self):
         """Excess portfolio returns with respect to the cash returns."""
@@ -399,7 +399,7 @@ class BacktestResult:
         """
         return self.annualized_average_excess_return / (
             self.annualized_excess_volatility + 1E-8)
-            
+
     @property
     def information_ratio(self):
         r"""Information ratio (using annualized active portfolio returns).
@@ -454,7 +454,7 @@ class BacktestResult:
     def annualized_average_excess_growth_rate(self):
         """The average excess growth rate, annualized."""
         return self.average_excess_growth_rate * self.periods_per_year
-        
+
     @property
     def average_active_growth_rate(self):
         r"""The average active growth rate :math:`\overline{G^\text{a}}`."""
@@ -572,13 +572,19 @@ class BacktestResult:
                 f"{100 * self.annualized_volatility:.1f}%",
             "Avg. excess return (annualized)":
                 f"{100 * self.annualized_average_excess_return:.1f}%",
+            "Avg. active return (annualized)":
+                f"{100 * self.annualized_average_active_return:.1f}%",
             "Excess volatility (annualized)":
                 f"{100 * self.annualized_excess_volatility:.1f}%",
+            "Active volatility (annualized)":
+                f"{100 * self.annualized_active_volatility:.1f}%",
             ' '*5: '',
             "Avg. growth rate (annualized)":
                 f"{100*self.annualized_average_growth_rate:.1f}%",
             "Avg. excess growth rate (annualized)":
                 f"{100*self.annualized_average_excess_growth_rate:.1f}%",
+            "Avg. active growth rate (annualized)":
+                f"{100*self.annualized_average_active_growth_rate:.1f}%",
         })
 
         if len(self.costs):
@@ -592,6 +598,7 @@ class BacktestResult:
         stats.update(collections.OrderedDict({
             ' '*7: '',
             "Sharpe ratio": f"{self.sharpe_ratio:.2f}",
+            "Information ratio": f"{self.information_ratio:.2f}",
             ' '*8: '',
             "Avg. drawdown": f"{self.drawdown.mean() * 100:.1f}%",
             "Min. drawdown": f"{self.drawdown.min() * 100:.1f}%",
@@ -605,6 +612,12 @@ class BacktestResult:
             "Total time":
                 f"{self.simulator_times.sum() + self.policy_times.sum():.3f}s",
             }))
+
+        if np.all(np.isnan(self.active_returns)):
+            del stats["Avg. active return (annualized)"]
+            del stats["Active volatility (annualized)"]
+            del stats["Avg. active growth rate (annualized)"]
+            del stats["Information ratio"]
 
         content = pd.Series(stats).to_string()
         lenline = len(content.split('\n')[0])

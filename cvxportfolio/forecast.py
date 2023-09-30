@@ -33,7 +33,7 @@ import numpy as np
 import pandas as pd
 
 from .errors import ForecastError
-from .estimator import PolicyEstimator
+from .estimator import Estimator
 
 
 def online_cache(values_in_time):
@@ -66,7 +66,7 @@ def online_cache(values_in_time):
     return wrapped
 
 
-class BaseForecast(PolicyEstimator):
+class BaseForecast(Estimator):
     """Base class for forecasters."""
 
     _last_time = None
@@ -187,7 +187,7 @@ class HistoricalMeanError(HistoricalVariance):
 
 
 @dataclass(unsafe_hash=True)
-class HistoricalLowRankCovarianceSVD(PolicyEstimator):
+class HistoricalLowRankCovarianceSVD(Estimator):
     """Build factor model covariance using truncated SVD."""
 
     num_factors: int

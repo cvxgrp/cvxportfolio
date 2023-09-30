@@ -19,12 +19,12 @@ for example, by risk terms of optimization-based policies.
 import numpy as np
 import pandas as pd
 
-from .estimator import DataEstimator, PolicyEstimator
+from .estimator import DataEstimator, Estimator
 
-__all__ = ['Benchmark', 'CashBenchmark', 'UniformBenchmark', 'MarketBenchmark']
+__all__ = ['Benchmark', 'AllCash', 'UniformBenchmark', 'MarketBenchmark']
 
 
-class BaseBenchmark(PolicyEstimator):
+class BaseBenchmark(Estimator):
     """Base class for cvxportfolio benchmark weights."""
 
 
@@ -43,13 +43,13 @@ class Benchmark(BaseBenchmark, DataEstimator):
             data_includes_cash=True)
 
 
-class CashBenchmark(BaseBenchmark):
+class AllCash(BaseBenchmark):
     """Default benchmark weights for cvxportfolio risk models."""
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Define current_value as a constant."""
-        self.current_value = np.zeros(len(universe))
-        self.current_value[-1] = 1.
+        """Define ``_current_value`` as a constant."""
+        self._current_value = np.zeros(len(universe))
+        self._current_value[-1] = 1.
 
 
 class UniformBenchmark(BaseBenchmark):
@@ -57,9 +57,9 @@ class UniformBenchmark(BaseBenchmark):
 
     def initialize_estimator(self, universe, trading_calendar):
         """Define current_value as a constant."""
-        self.current_value = np.ones(len(universe))
-        self.current_value[-1] = 0.
-        self.current_value /= np.sum(self.current_value[:-1])
+        self._current_value = np.ones(len(universe))
+        self._current_value[-1] = 0.
+        self._current_value /= np.sum(self.current_value[:-1])
 
 
 class MarketBenchmark(BaseBenchmark):

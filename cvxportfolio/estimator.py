@@ -26,21 +26,43 @@ from .utils import repr_numpy_pandas
 
 
 class Estimator:
-    """Estimator base class.
+    """Estimator abstraction, designed for repeated evaluation over time.
 
     Policies, costs, and constraints inherit from this. When overloading
-    methods defined here one should be careful on deciding whether to
-    call the `super()` corresponding method. It can make sense to call
-    it before some logic, after, or not calling it at all. Also, any
-    subclass of this that uses logic defined here should be careful to
-    put estimator subclasses at the class attribute level, so that the
-    two methods defined here get called recursively on them.
+    methods defined here one should be very careful. The recommended usage
+    (if you want a class that uses our recursive execution model) is to
+    put any sub-estimators at the class attribute level, like we do
+    throughout the library. That ensures that the sub-estimators will
+    be evaluated before the class itself by both 
+    :method:`initialize_estimator_recursive` and
+    :method:`values_in_time_recursive`.
     """
 
-    def values_in_time_recursive(self, **kwargs):
-        """Evaluates estimator at a point in time recursively on its sub-.
+    def initialize_estimator_recursive(self, universe, trading_calendar):
+        """Recursively initialize all estimators in a policy.
 
-        estimators.
+        :param universe: Names of assets to be traded.
+        :type universe: pandas.Index
+        :param trading_calendar: Times at which the estimator is expected
+            to be evaluated.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
+        for _, subestimator in self.__dict__.items():
+            if hasattr(subestimator, "initialize_estimator_recursive"):
+                subestimator.initialize_estimator_recursive(
+                    universe=universe, trading_calendar=trading_calendar)
+        if hasattr(self, "initialize_estimator"):
+            self.initialize_estimator(universe=universe,
+                                      trading_calendar=trading_calendar)
+
+    @property
+    def current_value(self):
+        """Current value of this instance."""
+        return self._current_value if hasattr(
+            self, '_current_value') else None
+
+    def values_in_time_recursive(self, **kwargs):
+        """Evaluate recursively on sub-estimators.
 
         This function is called by Simulator classes on Policy classes
         returning the current trades list. Policy classes, if they
@@ -56,8 +78,19 @@ class Estimator:
             if hasattr(subestimator, "values_in_time_recursive"):
                 subestimator.values_in_time_recursive(**kwargs)
         if hasattr(self, "values_in_time"):
-            self.current_value = self.values_in_time(**kwargs)
+            self._current_value = self.values_in_time(**kwargs)
             return self.current_value
+
+    def collect_hyperparameters(self):
+        """Collect (recursively) all hyperparameters defined in a policy.
+        
+        :rtype: list of cvxportfolio.HyperParameter
+        """
+        result = []
+        for _, subestimator in self.__dict__.items():
+            if hasattr(subestimator, "collect_hyperparameters"):
+                result += subestimator.collect_hyperparameters()
+        return result
 
     def __repr__(self):
         """Pretty-print the cvxportfolio object in question.
@@ -84,39 +117,7 @@ class Estimator:
         return lhs + core + rhs
 
 
-class PolicyEstimator(Estimator):
-    """Base class for (most) estimators that are part of policy objects."""
-
-    def collect_hyperparameters(self):
-        """This method finds all hyperparameters defined as part of a.
-
-        policy.
-        """
-        result = []
-        for _, subestimator in self.__dict__.items():
-            if hasattr(subestimator, "collect_hyperparameters"):
-                result += subestimator.collect_hyperparameters()
-        return result
-
-    def initialize_estimator_recursive(self, universe, trading_calendar):
-        """Recursively initialize estimator tree for backtest.
-
-        :param universe: names of assets to be traded
-        :type universe: pandas.Index
-        :param trading_calendar: times at which the estimator will be
-            evaluated
-        :type backtest_time: pandas.DatetimeIndex
-        """
-        for _, subestimator in self.__dict__.items():
-            if hasattr(subestimator, "initialize_estimator_recursive"):
-                subestimator.initialize_estimator_recursive(
-                    universe=universe, trading_calendar=trading_calendar)
-        if hasattr(self, "initialize_estimator"):
-            self.initialize_estimator(universe=universe,
-                                      trading_calendar=trading_calendar)
-
-
-class CvxpyExpressionEstimator(PolicyEstimator):
+class CvxpyExpressionEstimator(Estimator):
     """Base class for estimators that are Cvxpy expressions."""
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -145,7 +146,7 @@ class CvxpyExpressionEstimator(PolicyEstimator):
         raise NotImplementedError
 
 
-class DataEstimator(PolicyEstimator):
+class DataEstimator(Estimator):
     """Estimator of point-in-time values from internal `self.data`.
 
     It also implements logic to check that no `np.nan` are returned
@@ -173,7 +174,7 @@ class DataEstimator(PolicyEstimator):
     """
 
     def __init__(self, data, use_last_available_time=False, allow_nans=False,
-                 compile_parameter=False, non_negative=False, 
+                 compile_parameter=False, non_negative=False,
                  positive_semi_definite=False,
                  data_includes_cash=False, # affects _universe_subselect
                  ignore_shape_check=False # affects _universe_subselect
@@ -189,13 +190,16 @@ class DataEstimator(PolicyEstimator):
         self.ignore_shape_check = ignore_shape_check
 
     def initialize_estimator(self, universe, trading_calendar):
+        """Initialize with current universe."""
         if self.compile_parameter:
             value = self._internal_values_in_time(
                 t=trading_calendar[0])
-            self.parameter = cp.Parameter(value.shape if hasattr(value, "shape") else (),
-                                          PSD=self.positive_semi_definite, nonneg=self.non_negative)
+            self.parameter = cp.Parameter(
+                value.shape if hasattr(value, "shape") else (),
+                PSD=self.positive_semi_definite, nonneg=self.non_negative)
 
-        self.universe_maybe_noncash = universe if self.data_includes_cash else universe[:-1]
+        self.universe_maybe_noncash = \
+            universe if self.data_includes_cash else universe[:-1]
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned."""
@@ -237,7 +241,7 @@ class DataEstimator(PolicyEstimator):
         we check that at least one dimension is the same as the
         universe's. If the universe is None we skip all checks. (We may
         revisit this choice.) This only happens if the DataEstimator
-        instance is not part of a PolicyEstimator tree (a usecase which
+        instance is not part of a Estimator tree (a usecase which
         we will probably drop).
         """
 
@@ -287,12 +291,13 @@ class DataEstimator(PolicyEstimator):
 
         # here we trust the result (change?)
         if hasattr(self.data, "values_in_time_recursive"):
-            return self.data.values_in_time_recursive(t=t, **kwargs)
+            return self.data.current_value
 
         # here (probably user-provided) we check
         if hasattr(self.data, "values_in_time"):
             return self.value_checker(self._universe_subselect(
-                self.data.values_in_time(t=t, **kwargs)))
+                self.data.current_value if hasattr(self.data, 'current_value')
+                else self.data.values_in_time(t=t, **kwargs)))
 
         # if self.data is pandas and has datetime (first) index
         if (hasattr(self.data, "loc") and hasattr(self.data, "index")
@@ -324,21 +329,18 @@ class DataEstimator(PolicyEstimator):
         # if data is scalar or numpy
         return self.value_checker(self._universe_subselect(self.data))
 
-    def values_in_time_recursive(self, **kwargs):
+    def values_in_time(self, **kwargs):
         """Obtain value of `self.data` at time t or right before.
 
-        Args:
-            t (pandas.TimeStamp): time at which we evaluate the estimator
+        :param t: Time of evaluation.
+        :type t: pandas.TimeStamp
 
-        Returns:
-            result (float, numpy.array): if you use a callable object make
-                sure that it returns a float or numpy array (and not,
-                for example, a pandas object)
+        :rtype: int, float, numpy.ndarray
         """
-        self.current_value = self._internal_values_in_time(**kwargs)
+        result = self._internal_values_in_time(**kwargs)
         if hasattr(self, 'parameter'):
-            self.parameter.value = self.current_value
-        return self.current_value
+            self.parameter.value = result
+        return result
 
     def __repr__(self):
         if np.isscalar(self.data):
@@ -429,7 +431,7 @@ class DataEstimator(PolicyEstimator):
 #     def __init__(self, *args, **kwargs):
 #         super().__init__(self, *args, compile_parameter=True, **kwargs)
 
-# class ParameterEstimator(cvxpy.Parameter, DataEstimator, PolicyEstimator):
+# class ParameterEstimator(cvxpy.Parameter, DataEstimator, Estimator):
 #     """Data estimator of point-in-time values that contains a Cvxpy Parameter.
 #
 #     Attributes:
