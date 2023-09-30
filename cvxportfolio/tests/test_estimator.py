@@ -121,6 +121,10 @@ class TestEstimator(unittest.TestCase):
             t="2022-01-04") == data.loc["2022-01-04"])
         with self.assertRaises(NaNError):
             estimator.values_in_time_recursive(t="2022-01-05")
+            
+        estimator = DataEstimator('hello')
+        with self.assertRaises(DataError):
+            estimator.values_in_time_recursive(t="2022-01-05")
 
     def test_dataframe_timeindex(self):
         """Test DataEstimator with time-indexed dataframe."""
@@ -212,7 +216,8 @@ class TestEstimator(unittest.TestCase):
             result = estimator.values_in_time_recursive(t=t)
 
         # all ok if skipping check
-        estimator = DataEstimator(data, data_includes_cash=True, ignore_shape_check=True)
+        estimator = DataEstimator(data, data_includes_cash=True, 
+            ignore_shape_check=True)
         estimator.initialize_estimator_recursive(['a', 'b', 'c', 'd'],
                                                  trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
@@ -293,11 +298,11 @@ class TestEstimator(unittest.TestCase):
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
         estimator = DataEstimator(data, compile_parameter=True,
             data_includes_cash=True)
-        self.assertTrue(not hasattr(estimator, "parameter"))
+        self.assertTrue(estimator.parameter is None)
         estimator.initialize_estimator_recursive(
             universe=data.columns, trading_calendar=timeindex)
         # assert hasattr(estimator, 'parameter')
-        self.assertTrue(hasattr(estimator, "parameter"))
+        self.assertTrue(estimator.parameter is not None)
         estimator.values_in_time_recursive(t="2022-01-05")
         self.assertTrue(
             np.all(estimator.parameter.value == data.loc["2022-01-05"]))

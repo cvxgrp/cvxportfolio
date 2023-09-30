@@ -16,12 +16,13 @@
 Policies, costs, and constraints inherit from this.
 """
 
+import numbers
+
 import cvxpy as cp
 import numpy as np
 import pandas as pd
 
 from .errors import DataError, MissingAssetsError, MissingTimesError, NaNError
-from .hyperparameters import HyperParameter
 from .utils import repr_numpy_pandas
 
 
@@ -55,11 +56,12 @@ class Estimator:
             self.initialize_estimator(universe=universe,
                                       trading_calendar=trading_calendar)
 
+    _current_value = None
+
     @property
     def current_value(self):
         """Current value of this instance."""
-        return self._current_value if hasattr(
-            self, '_current_value') else None
+        return self._current_value
 
     def values_in_time_recursive(self, **kwargs):
         """Evaluate recursively on sub-estimators.
@@ -80,6 +82,7 @@ class Estimator:
         if hasattr(self, "values_in_time"):
             self._current_value = self.values_in_time(**kwargs)
             return self.current_value
+        return None
 
     def collect_hyperparameters(self):
         """Collect (recursively) all hyperparameters defined in a policy.
@@ -155,16 +158,16 @@ class DataEstimator(Estimator):
 
     :param data: Data expressed preferably as pandas Series or DataFrame
         where the first index is a pandas.DateTimeIndex. Otherwise you can
-        pass a callable object which implements the values_in_time_recursive method
-        (with the standard signature) and returns the corresponding value in time,
-        or a constant float, numpy.array, or even pandas Series or DataFrame not
-        indexed by time (e.g., a covariance matrix where both index and columns
-        are the stock symbols).
+        pass a callable object which implements the values_in_time_recursive 
+        method (with the standard signature) and returns the corresponding 
+        value in time, or a constant float, numpy.array, or even pandas Series 
+        or DataFrame not indexed by time (e.g., a covariance matrix where both 
+        index and columns are the stock symbols).
     :type data: object, pandas.Series, pandas.DataFrame
     :param use_last_available_time: if the pandas index exists
-        and is a pandas.DateTimeIndex you can instruct self.values_in_time_recursive
-        to retrieve the last available value at time t by setting
-        this to True. Default is False.
+        and is a pandas.DateTimeIndex you can instruct 
+        :method:`values_in_time_recursive` to retrieve the last available value 
+        at time t by setting this to True. Default is False.
     :type use_last_available_time: bool
 
     :raises cvxportfolio.NaNError: If np.nan's are present in result.
@@ -180,52 +183,53 @@ class DataEstimator(Estimator):
                  ignore_shape_check=False # affects _universe_subselect
                  ):
         self.data = data
-        self.use_last_available_time = use_last_available_time
-        self.allow_nans = allow_nans
-        self.compile_parameter = compile_parameter
-        self.non_negative = non_negative
-        self.positive_semi_definite = positive_semi_definite
-        self.universe_maybe_noncash = None
-        self.data_includes_cash = data_includes_cash
-        self.ignore_shape_check = ignore_shape_check
+        self._use_last_available_time = use_last_available_time
+        self._allow_nans = allow_nans
+        self._compile_parameter = compile_parameter
+        self._non_negative = non_negative
+        self._positive_semi_definite = positive_semi_definite
+        self._universe_maybe_noncash = None
+        self._data_includes_cash = data_includes_cash
+        self._ignore_shape_check = ignore_shape_check
+        self.parameter = None
 
     def initialize_estimator(self, universe, trading_calendar):
         """Initialize with current universe."""
-        if self.compile_parameter:
+        if self._compile_parameter:
             value = self._internal_values_in_time(
                 t=trading_calendar[0])
             self.parameter = cp.Parameter(
                 value.shape if hasattr(value, "shape") else (),
-                PSD=self.positive_semi_definite, nonneg=self.non_negative)
+                PSD=self._positive_semi_definite, nonneg=self._non_negative)
 
-        self.universe_maybe_noncash = \
-            universe if self.data_includes_cash else universe[:-1]
+        self._universe_maybe_noncash = \
+            universe if self._data_includes_cash else universe[:-1]
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned."""
 
-        if np.isscalar(result):
-            if np.isnan(result) and not self.allow_nans:
+        if isinstance(result, numbers.Number):
+            if np.isnan(result) and not self._allow_nans:
                 raise NaNError(
-                    f"{self.__class__.__name__}.values_in_time_recursive result is a np.nan scalar."
-                )
-            else:
-                return result
+                    f"{self.__class__.__name__}.values_in_time_recursive" 
+                    +" result is a np.nan scalar.")
+            return result
 
         if isinstance(result, np.ndarray):
-            if np.any(np.isnan(result)) and not self.allow_nans:
-                message = f"{self.__class__.__name__}.values_in_time_recursive result is an array with np.nan's."
-                if hasattr(self.data, 'columns') and len(self.data.columns) == len(result):
-                    message += "Specifically, the problem is with symbol(s): " + str(
-                        self.data.columns[np.isnan(result)])
+            if np.any(np.isnan(result)) and not self._allow_nans:
+                message = f"{self.__class__.__name__}.values_in_time_recursive"
+                message += " result is an array with np.nan's."
+                # if hasattr(self.data, 'columns'
+                #     ) and len(self.data.columns) == len(result):
+                #     message += "Specifically, the problem is with symbol(s): "
+                #     message += str(self.data.columns[np.isnan(result)])
                 raise NaNError(message)
-            else:
-                # we pass a copy because it can be accidentally overwritten
-                return np.array(result)
+            # we pass a copy because it can be accidentally overwritten
+            return np.array(result)
 
         raise DataError(
-            f"{self.__class__.__name__}.values_in_time_recursive result is not a scalar or array."
-        )
+            f"{self.__class__.__name__}.values_in_time_recursive result"
+            +" is not a scalar or array.")
 
     def _universe_subselect(self, data):
         """This function subselects from ``data`` the relevant universe.
@@ -245,49 +249,59 @@ class DataEstimator(Estimator):
         we will probably drop).
         """
 
-        if (self.universe_maybe_noncash is None) or self.ignore_shape_check:
+        if (self._universe_maybe_noncash is None) or self._ignore_shape_check:
             return data.values if hasattr(data, 'values') else data
 
         if isinstance(data, pd.Series):
             try:
-                return data.loc[self.universe_maybe_noncash].values
-            except KeyError:
+                return data.loc[self._universe_maybe_noncash].values
+            except KeyError as exc:
                 raise MissingAssetsError(
-                f"The pandas Series found by {self.__class__.__name__} has index {data.index}"
-                f" while the current universe {'minus cash' if not self.data_includes_cash else ''}"
-                f" is {self.universe_maybe_noncash}. It was not possible to reconcile the two.")
+                    "The pandas Series found by %s has index %s"
+                    + " while the current universe%s"
+                    + " is %s. It was not possible to reconcile the two.",
+                    self.__class__.__name__, data.index,
+                    ' minus cash' if not self._data_includes_cash else ' ',
+                    self._universe_maybe_noncash) from exc
 
         if isinstance(data, pd.DataFrame):
             try:
-                return data.loc[self.universe_maybe_noncash, self.universe_maybe_noncash].values
+                return data.loc[self._universe_maybe_noncash,
+                    self._universe_maybe_noncash].values
             except KeyError:
                 try:
-                    return data.loc[:, self.universe_maybe_noncash].values
+                    return data.loc[:, self._universe_maybe_noncash].values
                 except KeyError:
                     try:
-                        return data.loc[self.universe_maybe_noncash, :].values
+                        return data.loc[self._universe_maybe_noncash, :].values
                     except KeyError:
                         pass
             raise MissingAssetsError(
-                f"The pandas DataFrame found by {self.__class__.__name__} has index {data.index}"
-                f" and columns {data.columns}"
-                f" while the current universe {'minus cash' if not self.data_includes_cash else ''}"
-                f" is {self.universe_maybe_noncash}. It was not possible to reconcile the two.")
+                "The pandas DataFrame found by %s has index %s"
+                + " and columns %s"
+                + " while the current universe%s"
+                + " is %s. It was not possible to reconcile the two.",
+                self.__class__.__name__, data.columns,
+                ' minus cash' if not self._data_includes_cash else ' ',
+                self._universe_maybe_noncash)
 
         if isinstance(data, np.ndarray):
             dimensions = data.shape
-            if not len(self.universe_maybe_noncash) in dimensions:
+            if not len(self._universe_maybe_noncash) in dimensions:
                 raise MissingAssetsError(
-                    f"The numpy array found by {self.__class__.__name__} has dimensions {data.shape}"
-                    f" while the current universe {'minus cash' if not self.data_includes_cash else ''}"
-                    f" has size {len(self.universe_maybe_noncash)}.")
+                    "The numpy array found by %s has dimensions %s"
+                    + " while the current universe%s "
+                    + "has size %s. It was not possible to reconcile the two.",
+                    self.__class__.__name__, data.shape,
+                    ' minus cash' if not self._data_includes_cash else ' ',
+                    len(self._universe_maybe_noncash))
             return data
 
         # scalar
         return data
 
     def _internal_values_in_time(self, t, **kwargs):
-        """Internal method called by `self.values_in_time_recursive`."""
+        """Internal method called by :method:`values_in_time`."""
 
         # here we trust the result (change?)
         if hasattr(self.data, "values_in_time_recursive"):
@@ -303,9 +317,10 @@ class DataEstimator(Estimator):
         if (hasattr(self.data, "loc") and hasattr(self.data, "index")
             and (isinstance(self.data.index, pd.DatetimeIndex)
                  or (isinstance(self.data.index, pd.MultiIndex) and
-                     isinstance(self.data.index.levels[0], pd.DatetimeIndex)))):
+                     isinstance(self.data.index.levels[0],
+                         pd.DatetimeIndex)))):
             try:
-                if self.use_last_available_time:
+                if self._use_last_available_time:
                     if isinstance(self.data.index, pd.MultiIndex):
                         newt = self.data.index.levels[0][
                             self.data.index.levels[0] <= t][-1]
@@ -317,10 +332,10 @@ class DataEstimator(Estimator):
 
                 return self.value_checker(self._universe_subselect(tmp))
 
-            except (KeyError, IndexError):
+            except (KeyError, IndexError) as exc:
                 raise MissingTimesError(
                     "%s.values_in_time_recursive could not find data"
-                    + " for time %s.", self, t)
+                    + " for time %s.", self, t) from exc
 
         # if data is pandas but no datetime index (constant in time)
         if hasattr(self.data, "values"):
@@ -337,126 +352,20 @@ class DataEstimator(Estimator):
 
         :rtype: int, float, numpy.ndarray
         """
-        result = self._internal_values_in_time(**kwargs)
-        if hasattr(self, 'parameter'):
+        try:
+            result = self._internal_values_in_time(**kwargs)
+        except NaNError as exc:
+            raise NaNError(f"{self.__class__.__name__} found NaNs"
+                + f" at time {kwargs['t']}.") from exc
+        if self.parameter is not None:
             self.parameter.value = result
         return result
 
     def __repr__(self):
+        "Pretty-print."
         if np.isscalar(self.data):
             return str(self.data)
-        if hasattr(self.data, 'values_in_time'
+        if hasattr(self.data, 'values_in_time_recursive'
             ) or hasattr(self.data, 'values_in_time'):
             return self.data.__repr__()
         return repr_numpy_pandas(self.data)
-
-# class ConstantEstimator(cvxpy.Constant, DataEstimator):
-#     """Cvxpy constant that uses the pre_evalution method to be initialized."""
-#
-#     def initialize_estimator_recursive(self, returns, volumes, start_time, end_time, **kwargs):
-#         """You should call super().__init__ it here."""
-#         raise NotImplementedError
-
-
-# class KnownData(DataEstimator):
-#     """Data known beforehand to use in backtest.
-#
-#     :param data: user-provided data (known beforehand) in the form of time-indexed
-#         Series or DataFrame (points-in-time are used in the backtest),
-#         non-time indexed Series of DataFrame (treated as constant in time),
-#         or float. If time-indexed, it can be multi-indexed (for example for
-#         covariance matrices at points in time).
-#     :type data: pd.DataFrame, pd.Series, float
-#     :param use_last_available_time: if True, use last available time in the data
-#         at each point in the backtest
-#     :type use_last_available_time: bool
-#
-#     :ivar value: current point-in-time value populated during a backtest
-#
-#     :raises MissingValueError: if data retrieved at a point in time contains nan's
-#     """
-#
-#     def __init__(self, data, use_last_available_time=False):
-#         self.data = data
-#         self.use_last_available_time = use_last_available_time
-#
-#     def values_in_time_recursive(self, t, **kwargs):
-#         self.value = self._internal_values_in_time(t, *args, **kwargs)
-#
-#
-# class KnownDataParameter(KnownData):
-#     """Data known beforehand to use in backtest as Cvxpy parameter.
-#
-#     :param data: user-provided data (known beforehand) in the form of time-indexed
-#         Series or DataFrame (points-in-time are used in the backtest),
-#         non-time indexed Series of DataFrame (treated as constant in time),
-#         or float. If time-indexed, it can be multi-indexed (for example for
-#         covariance matrices at points in time).
-#     :type data: pd.DataFrame, pd.Series, float
-#     :param use_last_available_time: if True, use last available time in the data
-#         at each point in the backtest
-#     :type use_last_available_time: bool
-#     :param cvxpy: if True, creates a Cvxpy parameter as self.parameter
-#         with the shape of the provided data at the first point in time, and optional
-#         attributes positive_semi_definite and non_negative
-#     :type cvxpy: bool
-#     :param positive_semi_definite: if True, make a PSD Cvxpy parameter
-#     :type positive_semi_definite: bool
-#     :param non_negative: if True, make a non negative Cvxpy parameter
-#     :type non_negative: bool
-#
-#     :ivar parameter: Cvxpy parameter (if :param cvxpy: is True) with
-#         value equal to :ivar value:
-#
-#     :raises MissingValueError: if data retrieved at a point in time contains nan's
-#     """
-#
-#     def __init__(self, data, positive_semi_definite=False, non_negative=False, **kwargs):
-#         super().__init__(data, **kwargs)
-#         self.positive_semi_definite = positive_semi_definite
-#         self.non_negative = non_negative
-#
-#     def initialize_estimator_recursive(self, universe, trading_calendar):
-#         value = super()._internal_values_in_time(t=trading_calendar[0])
-#         self.parameter = cp.Parameter(
-#             value if hasattr(value, "shape") else (),
-#             PSD=self.positive_semi_definite, nonneg=self.non_negative)
-#
-#     def values_in_time_recursive(self, t, **kwargs):
-#         self.parameter.value = self._internal_values_in_time(t, **kwargs)
-
-
-#
-# class ParameterEstimator(DataEstimator):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(self, *args, compile_parameter=True, **kwargs)
-
-# class ParameterEstimator(cvxpy.Parameter, DataEstimator, Estimator):
-#     """Data estimator of point-in-time values that contains a Cvxpy Parameter.
-#
-#     Attributes:
-#         parameter (cvxpy.Parameter): the parameter object to use with cvxpy
-#             expressions
-#     Args:
-#         same as cvxportfolio.DataEstimator
-#
-#     """
-#
-#     def __init__(self, data, positive_semi_definite=False, non_negative=False, use_last_available_time=False, allow_nans=False):
-#         self.positive_semi_definite = positive_semi_definite
-#         self.non_negative = non_negative
-#         self.use_last_available_time = use_last_available_time
-#         self.data = data
-#         self.allow_nans = allow_nans
-#         # super(DataEstimator).__init__(data, use_last_available_time)
-#
-#     def initialize_estimator_recursive(self, universe, trading_calendar):
-#         """Use the start time of the simulation to initialize the Parameter."""
-#         super().initialize_estimator_recursive(universe, trading_calendar)
-#         value = super().values_in_time_recursive(t=trading_calendar[0])
-#         super().__init__(value.shape if hasattr(value, "shape") else (),
-#             PSD=self.positive_semi_definite, nonneg=self.non_negative)
-#
-#     def values_in_time_recursive(self, t, **kwargs):
-#         """Update Cvxpy Parameter value."""
-#         self.value = super().values_in_time_recursive(t=t, **kwargs)
