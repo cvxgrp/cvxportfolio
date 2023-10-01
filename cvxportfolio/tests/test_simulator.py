@@ -393,7 +393,7 @@ class TestSimulator(CvxportfolioTest):
             ) - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)]),
             cvx.SinglePeriodOptimization(cvx.ReturnsForecast(
             ) - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)],
-                benchmark=cvx.UniformBenchmark),
+                benchmark=cvx.Uniform),
             cvx.SinglePeriodOptimization(cvx.ReturnsForecast(
             ) - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)],
                 benchmark=cvx.MarketBenchmark),
@@ -469,8 +469,8 @@ class TestSimulator(CvxportfolioTest):
         myunif['USDOLLAR'] = 0.
 
         policies = [cvx.SinglePeriodOptimization(objective, constraints, benchmark=bm)
-                    for bm in [cvx.AllCash(), cvx.UniformBenchmark(), cvx.MarketBenchmark(),
-                               cvx.Benchmark(myunif)]]
+                    for bm in [cvx.AllCash(), cvx.Uniform(), cvx.MarketBenchmark(),
+                               myunif]]
 
         results = sim.backtest_many(policies, start_time='2023-01-01',
                                     parallel=False)  # important for test coverage!!
@@ -495,7 +495,8 @@ class TestSimulator(CvxportfolioTest):
         """Test SPO with market neutral constraint."""
 
         sim = cvx.MarketSimulator(
-            ['AAPL', 'MSFT', 'GE', 'GOOG', 'META', 'GLD'], trading_frequency='monthly', base_location=self.datadir)
+            ['AAPL', 'MSFT', 'GE', 'GOOG', 'META', 'GLD'],
+            trading_frequency='monthly', base_location=self.datadir)
 
         objective = cvx.ReturnsForecast() - 2 * cvx.FullCovariance()
 
@@ -538,10 +539,11 @@ class TestSimulator(CvxportfolioTest):
             self.assertTrue(np.isclose(result.z['AAPL'].loc[t], 0., atol=1E-3))
 
         # cvx.MinWeightsAtTimes, cvx.MaxWeightsAtTimes
-        policies = [cvx.MultiPeriodOptimization(objective - cvx.StocksTransactionCost(),
-                                                [cvx.MinWeightsAtTimes(
-                                                    0., no_trade_ts), cvx.MaxWeightsAtTimes(0., no_trade_ts)],
-                                                planning_horizon=p) for p in [1, 3, 5]]
+        policies = [cvx.MultiPeriodOptimization(
+            objective - cvx.StocksTransactionCost(),
+            [cvx.MinWeightsAtTimes(0., no_trade_ts),
+            cvx.MaxWeightsAtTimes(0., no_trade_ts)],
+            planning_horizon=p) for p in [1, 3, 5]]
 
         results = sim.backtest_many(
             policies, start_time='2023-01-01', initial_value=1E6,
@@ -558,12 +560,14 @@ class TestSimulator(CvxportfolioTest):
         """We check that soft DollarNeutral penalizes non-dollar-neutrality."""
 
         sim = cvx.StockMarketSimulator(
-            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+            trading_frequency='monthly', base_location=self.datadir)
 
         objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance()
 
-        policies = [cvx.SinglePeriodOptimization(objective - cvx.SoftConstraint(cvx.DollarNeutral()) * gamma)
-                    for gamma in [.0001, .001, .01]]
+        policies = [cvx.SinglePeriodOptimization(
+            objective - cvx.SoftConstraint(cvx.DollarNeutral()) * gamma)
+            for gamma in [.0001, .001, .01]]
         policies.append(cvx.SinglePeriodOptimization(
             objective, [cvx.DollarNeutral()]))
         results = sim.backtest_many(policies, start_time='2023-01-01',
@@ -579,13 +583,14 @@ class TestSimulator(CvxportfolioTest):
         """We check that soft LongOnly penalizes shorts."""
 
         sim = cvx.StockMarketSimulator(
-            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+            trading_frequency='monthly', base_location=self.datadir)
 
         objective = cvx.ReturnsForecast() - .5 * cvx.FullCovariance()
 
-        policies = [cvx.SinglePeriodOptimization(objective - cvx.SoftConstraint(cvx.LongOnly()) * gamma,
-                                                 [cvx.MarketNeutral()])
-                    for gamma in [.0001, .001, .01]]
+        policies = [cvx.SinglePeriodOptimization(
+            objective - cvx.SoftConstraint(cvx.LongOnly()) * gamma,
+            [cvx.MarketNeutral()]) for gamma in [.0001, .001, .01]]
         policies.append(cvx.SinglePeriodOptimization(
             objective, [cvx.LongOnly(), cvx.MarketNeutral()]))
         results = sim.backtest_many(policies, start_time='2023-01-01',
@@ -602,7 +607,8 @@ class TestSimulator(CvxportfolioTest):
         """We check that cost constraints work as expected."""
 
         sim = cvx.StockMarketSimulator(
-            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+            trading_frequency='monthly', base_location=self.datadir)
 
         policies = [
             cvx.SinglePeriodOptimization(cvx.ReturnsForecast(), [
@@ -635,9 +641,10 @@ class TestSimulator(CvxportfolioTest):
             sim.backtest(policy)
 
     def test_hyperparameters_optimize(self):
+        """Test hyperparameter optimization."""
 
-        GAMMA_RISK = cvx.GammaRisk()
-        GAMMA_TRADE = cvx.GammaTrade()
+        GAMMA_RISK = cvx.Gamma()
+        GAMMA_TRADE = cvx.Gamma()
         objective = cvx.ReturnsForecast() - GAMMA_RISK * cvx.FullCovariance()\
              - GAMMA_TRADE * cvx.StocksTransactionCost()
         policy = cvx.SinglePeriodOptimization(
@@ -651,12 +658,14 @@ class TestSimulator(CvxportfolioTest):
         self.assertTrue(GAMMA_RISK.current_value == 1.)
         self.assertTrue(GAMMA_TRADE.current_value == 1.)
 
-        simulator.optimize_hyperparameters(policy, start_time='2023-01-01', end_time='2023-10-01')
+        simulator.optimize_hyperparameters(
+            policy, start_time='2023-01-01', end_time='2023-10-01')
 
-        self.assertTrue(GAMMA_RISK.current_value == 10.)
-        self.assertTrue(GAMMA_TRADE.current_value == 1.)
+        self.assertTrue(np.isclose(GAMMA_RISK.current_value, 1.4641))
+        self.assertTrue(np.isclose(GAMMA_TRADE.current_value, 0.385543289))
 
     def test_cancel_trades(self):
+        """Test trade cancellation."""
 
         sim = cvx.StockMarketSimulator(
             ['AAPL', 'ZM'],
@@ -672,6 +681,7 @@ class TestSimulator(CvxportfolioTest):
         sim.backtest(policy, start_time='2023-01-01')
 
     def test_svd_covariance_forecaster(self):
+        """Test SVD covariance forecaster in simulation."""
 
         sim = cvx.StockMarketSimulator(
             ['AAPL', 'MSFT', 'GE', 'ZM', 'META', 'GOOG', 'GLD'],
@@ -698,6 +708,22 @@ class TestSimulator(CvxportfolioTest):
 
         print(result_svd)
         print(result_eig)
+
+    def test_bankruptcy(self):
+        """Test policy bankruptcy"""
+        sim = cvx.StockMarketSimulator(
+            ['SPY', 'QQQ'],
+            base_location=self.datadir)
+
+        policy = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast(), [cvx.LeverageLimit(20)])
+
+        result = sim.backtest(policy,
+            start_time='2020-02-15', end_time='2020-04-15')
+        # print(result)
+        print(result.h)
+
+        self.assertTrue(result.final_value < 0)
 
 
 if __name__ == '__main__':

@@ -22,15 +22,16 @@ import cvxpy as cp
 import numpy as np
 import pandas as pd
 
-from .benchmark import *
 from .constraints import Constraint
 from .costs import Cost
-from .errors import *
+from .errors import (ConvexityError, ConvexSpecificationError, DataError,
+                     MissingTimesError, PortfolioOptimizationError)
 from .estimator import DataEstimator, Estimator
 from .returns import BaseReturnsModel, CashReturn, ReturnsForecast
 from .utils import *
 
 __all__ = [
+    "AllCash",
     "Hold",
     "SellAll",
     "FixedTrades",
@@ -39,6 +40,7 @@ __all__ = [
     "AdaptiveRebalance",
     "SinglePeriodOptimization",
     "MultiPeriodOptimization",
+    "MarketBenchmark",
     "ProportionalTradeToTargets",
     "RankAndLongShort",
     "FixedWeights",
@@ -48,26 +50,17 @@ __all__ = [
 class Policy(Estimator):
     """Base trading policy class, defines execute method."""
 
-    def execute(self, market_data, t=None, h=None, w=None, v=None,
-                num_shares=None, cash=None):
+    def execute(self, h, market_data, t=None):
         """Execute trading policy at current or user-specified time.
-                
+        
+        :param h:
+        :type h: pandas.Series
         :param market_data:
         :type market_data: cvxportfolio.MarketData instance
         :param t:
         :type t: pandas.Timestamp or None
-        :param h:
-        :type h: pandas.Series or None
-        :param w:
-        :type w pandas.Series or None
-        :param v: 
-        :type v: float or None
-        :param num_shares:
-        :type num_shares: pandas.Series or None
-        :param cash: 
-        :type cash: float or None  
-                
-        :raises: SyntaxError, cvxportfolio.DataError
+
+        :raises: cvxportfolio.DataError
                 
         :rtype: dict      
                 
@@ -80,46 +73,34 @@ class Policy(Estimator):
 
         assert t in trading_calendar
 
-        result = {'t': t}
+        v = np.sum(h)
+
+        if v < 0.:
+            raise DataError(
+                f"Holdings provided to {self.__class__.__name__}.execute "
+                + " have negative sum.")
+
+        w = h / v
 
         past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
 
-        if num_shares is not None:
-            assert w is None
-            assert v is None
-            assert h is None
-            assert current_prices is not None
-            h = pd.Series(0., past_returns.columns)
-            h[num_shares.index] = num_shares * current_prices[num_shares.index]
-            assert cash is not None
-            h.iloc[-1] = cash
-
-        if w is None:
-            assert h is not None
-            v = np.sum(h)
-            w = h / v
-
-        assert v is not None
-
         self.initialize_estimator_recursive(
             universe=past_returns.columns,
-            trading_calendar =trading_calendar[trading_calendar >= t]
-            )
+            trading_calendar=trading_calendar[trading_calendar >= t])
 
-        result['w_plus'] = self.values_in_time_recursive(
+        w_plus = self.values_in_time_recursive(
             t=t, past_returns=past_returns, past_volumes=past_volumes,
             current_weights=w, current_portfolio_value=v,
             current_prices=current_prices)
-
-        result['z'] = result['w_plus'] - w
-        result['u'] = result['z'] * v
-        result['h_plus'] = result['w_plus'] * v
+        z = w_plus - w
+        u = z * v
 
         if current_prices is not None:
-            result['shares_traded'] = pd.Series(
-                np.round(result['u'] / current_prices), dtype=int)
+            shares_traded =  pd.Series(np.round(u / current_prices), dtype=int)
+        else:
+            shares_traded = None
 
-        return result
+        return u, t, shares_traded
 
 
 class Hold(Policy):
@@ -129,6 +110,29 @@ class Hold(Policy):
         """Return current_weights."""
         return current_weights
 
+class AllCash(Policy):
+    """Default benchmark weights for cvxportfolio risk models."""
+
+    def values_in_time(self, past_returns, **kwargs):
+        """All cash weights."""
+        result = pd.Series(0., past_returns.columns)
+        result.iloc[-1] = 1.
+        return result
+
+class MarketBenchmark(Policy):
+    """Portfolio weighted by last year's total volumes."""
+
+    def values_in_time(self, past_returns, past_volumes, **kwargs):
+        """Update current_value using past year's volumes."""
+        if past_volumes is None:
+            raise DataError(
+                f"{self.__class__.__name__} can only be used if MarketData"
+                + " provides market volumes.")
+        sumvolumes = past_volumes.loc[past_volumes.index >= (
+            past_volumes.index[-1] - pd.Timedelta('365d'))].mean()
+        result = np.zeros(len(sumvolumes) + 1)
+        result[:-1] = sumvolumes / sum(sumvolumes)
+        return pd.Series(result, index=past_returns.columns)
 
 class RankAndLongShort(Policy):
     """Rank assets by signal; long highest and short lowest.
@@ -488,8 +492,14 @@ class MultiPeriodOptimization(Policy):
         if self._include_cash_return:
             self.objective = [el + CashReturn() for el in self.objective]
         self.terminal_constraint = terminal_constraint
-        self.benchmark = benchmark() if isinstance(benchmark, type
-            ) else benchmark
+
+        if isinstance(benchmark, pd.Series) or isinstance(
+                benchmark, pd.DataFrame):
+            self.benchmark = DataEstimator(benchmark, data_includes_cash=True)
+        else:
+            self.benchmark = benchmark() if isinstance(benchmark, type
+                ) else benchmark
+
         self.cvxpy_kwargs = kwargs
 
     def _compile_to_cvxpy(self):  # , w_plus, z, value):
@@ -577,8 +587,8 @@ class MultiPeriodOptimization(Policy):
         """Update all cvxpy parameters and solve."""
 
         if not current_portfolio_value > 0:
-            raise Bankruptcy(
-                "The backtest of %s at time %s has resulted in bankruptcy.",
+            raise DataError(
+                "Policy %s was evaluated at %s with negative portfolio value.",
                 self.__class__.__name__, t)
         assert np.isclose(sum(current_weights), 1)
 
@@ -603,10 +613,11 @@ class MultiPeriodOptimization(Policy):
             t=t, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value,
             past_returns=past_returns, past_volumes=past_volumes,
-            current_prices=current_prices, mpo_step=i, cache=self._cache,
-            **kwargs)
+            current_prices=current_prices, **kwargs)
 
-        self.w_bm.value = self.benchmark.current_value
+        self.w_bm.value = self.benchmark.current_value.values if hasattr(
+            self.benchmark.current_value, 'values'
+            ) else self.benchmark.current_value
         self.w_current.value = current_weights.values
 
         try:
@@ -614,11 +625,11 @@ class MultiPeriodOptimization(Policy):
                 warnings.filterwarnings(
                     "ignore", message='Solution may be inaccurate')
                 self.problem.solve(**self.cvxpy_kwargs)
-        except cp.SolverError:
+        except cp.SolverError as exc:
             raise PortfolioOptimizationError(
                 "Numerical solver for policy %s at time %s failed;"
                 + " try changing it, relaxing some constraints,"
-                + " or dropping some costs.", self.__class__.__name__, t)
+                + " or removing costs.", self.__class__.__name__, t) from exc
 
         if self.problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(

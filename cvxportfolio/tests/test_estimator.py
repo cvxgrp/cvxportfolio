@@ -121,7 +121,7 @@ class TestEstimator(unittest.TestCase):
             t="2022-01-04") == data.loc["2022-01-04"])
         with self.assertRaises(NaNError):
             estimator.values_in_time_recursive(t="2022-01-05")
-            
+
         estimator = DataEstimator('hello')
         with self.assertRaises(DataError):
             estimator.values_in_time_recursive(t="2022-01-05")
@@ -216,7 +216,7 @@ class TestEstimator(unittest.TestCase):
             result = estimator.values_in_time_recursive(t=t)
 
         # all ok if skipping check
-        estimator = DataEstimator(data, data_includes_cash=True, 
+        estimator = DataEstimator(data, data_includes_cash=True,
             ignore_shape_check=True)
         estimator.initialize_estimator_recursive(['a', 'b', 'c', 'd'],
                                                  trading_calendar=[t])

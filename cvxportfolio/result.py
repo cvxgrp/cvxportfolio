@@ -128,6 +128,16 @@ class BacktestResult:
 
         self._h.loc[t_next] = h
         self._simulator_times.loc[t] += extra_simulator_time
+        # in case of bankruptcy
+        if t_next < self._h.index[-1]:
+            tidx = self._h.index.get_loc(t_next)
+            self._h = self._h.iloc[:tidx+1]
+            self._u = self._u.iloc[:tidx]
+            self._z = self._z.iloc[:tidx]
+            self._simulator_times = self._simulator_times.iloc[:tidx]
+            self._policy_times = self._policy_times.iloc[:tidx]
+            self._cash_returns = self._cash_returns.iloc[:tidx]
+            self._benchmark_returns = self._benchmark_returns.iloc[:tidx]
 
     #
     # General backtest information
@@ -199,6 +209,16 @@ class BacktestResult:
     def v(self):
         """The total value (or NAV) of the portfolio at each period."""
         return self.h.sum(axis=1)
+
+    @property
+    def initial_value(self):
+        """The initial value (or NAV) of the portfolio."""
+        return self.v.iloc[0]
+
+    @property
+    def final_value(self):
+        """The portfolio value (or NAV) at the end of the back-test."""
+        return self.v.iloc[-1]
 
     @property
     def profit(self):
@@ -562,8 +582,8 @@ class BacktestResult:
             "Initial timestamp": self.h.index[0],
             "Final timestamp": self.h.index[-1],
             "Number of periods": self.u.shape[0],
-            f"Initial value ({self.cash_key})": f"{self.v.iloc[0]:.3e}",
-            f"Final value ({self.cash_key})": f"{self.v.iloc[-1]:.3e}",
+            f"Initial value ({self.cash_key})": f"{self.initial_value:.3e}",
+            f"Final value ({self.cash_key})": f"{self.final_value:.3e}",
             f"Profit ({self.cash_key})": f"{self.profit:.3e}",
             ' '*4: '',
             "Avg. return (annualized)":

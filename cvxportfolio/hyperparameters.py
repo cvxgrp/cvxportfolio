@@ -22,11 +22,11 @@ import copy
 
 import numpy as np
 
-GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]
-GAMMA_COST_RANGE = [0., .1, .2, .5, 1., 2., 5., 10.]
+# GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]
+# GAMMA_COST_RANGE = [0., .1, .2, .5, 1., 2., 5., 10.]
 
 
-__all__ = ['GammaRisk', 'GammaTrade', 'GammaHold', 'Gamma']
+__all__ = ['Gamma', 'RangeHyperParameter']
 
 
 class HyperParameter:
@@ -112,7 +112,7 @@ class RangeHyperParameter(HyperParameter):
     def __init__(self, values_range, current_value):
         if not (current_value in values_range):
             raise SyntaxError('Initial value must be in the provided range')
-        self.values_range = values_range
+        self.values_range = list(values_range)
         self._index = self.values_range.index(current_value)
 
     @property
@@ -156,23 +156,23 @@ class Gamma(RangeHyperParameter):
         # if self._index == 0:
         #     raise IndexError
         self._index -= 1
-
-class GammaRisk(RangeHyperParameter):
-    """Multiplier of a risk term."""
-
-    def __init__(self, values_range=GAMMA_RISK_RANGE, current_value=1.):
-        super().__init__(values_range, current_value)
-
-
-class GammaTrade(RangeHyperParameter):
-    """Multiplier of a transaction cost term."""
-
-    def __init__(self, values_range=GAMMA_COST_RANGE, current_value=1.):
-        super().__init__(values_range, current_value)
-
-
-class GammaHold(RangeHyperParameter):
-    """Multiplier of a holding cost term."""
-
-    def __init__(self, values_range=GAMMA_COST_RANGE, current_value=1.):
-        super().__init__(values_range, current_value)
+#
+# class GammaRisk(RangeHyperParameter):
+#     """Multiplier of a risk term."""
+#
+#     def __init__(self, values_range=GAMMA_RISK_RANGE, current_value=1.):
+#         super().__init__(values_range, current_value)
+#
+#
+# class GammaTrade(RangeHyperParameter):
+#     """Multiplier of a transaction cost term."""
+#
+#     def __init__(self, values_range=GAMMA_COST_RANGE, current_value=1.):
+#         super().__init__(values_range, current_value)
+#
+#
+# class GammaHold(RangeHyperParameter):
+#     """Multiplier of a holding cost term."""
+#
+#     def __init__(self, values_range=GAMMA_COST_RANGE, current_value=1.):
+#         super().__init__(values_range, current_value)

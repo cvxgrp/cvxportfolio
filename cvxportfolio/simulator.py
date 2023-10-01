@@ -274,16 +274,14 @@ class MarketSimulator:
 
             h = h_next
 
-        self._finalize_policy(used_policy, h.index)
+            if sum(h) <= 0.: # bankruptcy
+                logging.warning(f'Back-test ended in bankruptcy at time {t}!')
+                break
 
-        # result.cash_returns = self.market_data.returns.iloc[:, -1].loc[result.u.index]
+        self._finalize_policy(used_policy, h.index)
 
         result._log_final(t, t_next, h,
             extra_simulator_time=time.time() - timer)
-
-        # result._h.loc[pd.Timestamp(trading_calendar[-1])] = h
-        #
-        # result.simulator_times.loc[pd.Timestamp(trading_calendar[-2])] += time.time() - timer
 
         return result
 
@@ -318,29 +316,7 @@ class MarketSimulator:
     #
     #     return result
 
-    # def _concatenate_backtest_results(self, results):
-    #
-    #     res = BacktestResult.__new__(BacktestResult)
-    #     res.costs = {}
-    #
-    #     res.h = pd.concat([el.h.iloc[:-1] if i < len(results) -
-    #                       1 else el.h for i, el in enumerate(results)])
-    #     for attr in ['cash_returns', 'u', 'z', 'simulator_times', 'policy_times']:
-    #         res.__setattr__(attr, pd.concat(
-    #             [el.__getattribute__(attr) for el in results]))
-    #
-    #     # pandas concat can misalign the columns ordering
-    #     ck = self.market_data.cash_key
-    #     sortcol = sorted([el for el in res.u.columns if not el == ck]) + [ck]
-    #     res.u = res.u[sortcol]
-    #     res.z = res.z[sortcol]
-    #     res.h = res.h[sortcol]
-    #     for k in results[0].costs:
-    #         res.costs[k] = pd.concat([el.costs[k] for el in results])
-    #
-    #     return res
-
-    def _adjust_h_new_universe(self, h: pd.Series, new_universe: pd.Index) -> pd.Series:
+    def _adjust_h_new_universe(self, h, new_universe):
         """Adjust holdings vector for change in universe.
         
         :param h: (Pre-trade) holdings vector in value units (e.g., USDOLLAR).

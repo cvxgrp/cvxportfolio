@@ -19,8 +19,23 @@ import cvxpy as cp
 import pandas as pd
 
 import cvxportfolio as cvx
-from cvxportfolio.hyperparameters import GammaRisk, GammaTrade
 from cvxportfolio.tests import CvxportfolioTest
+
+GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]
+GAMMA_COST_RANGE = [0., .1, .2, .5, 1., 2., 5., 10.]
+
+class GammaRisk(cvx.RangeHyperParameter):
+    """Multiplier of a risk term."""
+
+    def __init__(self, values_range=GAMMA_RISK_RANGE, current_value=1.):
+        super().__init__(values_range, current_value)
+
+
+class GammaTrade(cvx.RangeHyperParameter):
+    """Multiplier of a transaction cost term."""
+
+    def __init__(self, values_range=GAMMA_COST_RANGE, current_value=1.):
+        super().__init__(values_range, current_value)
 
 
 class TestHyperparameters(CvxportfolioTest):
@@ -41,6 +56,21 @@ class TestHyperparameters(CvxportfolioTest):
             cvx.SinglePeriodOptimization(GammaRisk * cvx.FullCovariance())
 
         cvx.SinglePeriodOptimization(-GammaRisk() * cvx.FullCovariance())
+
+    def test_range_hyper_parameter(self):
+        """Test range hyperparameter."""
+
+        gamma = GammaRisk(current_value=1)
+        self.assertTrue((gamma).current_value == 1)
+        gamma._decrement()
+        self.assertTrue((gamma).current_value == .5)
+        with self.assertRaises(IndexError):
+            gamma._decrement()
+
+        gamma = GammaRisk(current_value=10)
+        self.assertTrue((gamma).current_value == 10)
+        with self.assertRaises(IndexError):
+            gamma._increment()
 
     def test_hyper_parameters_algebra(self):
         """Test algebra of HPs objects."""

@@ -19,7 +19,6 @@ modules. The __all__ attribute of each is used.
 
 __version__ = "0.4.10"
 
-from .benchmark import *
 from .constraints import *
 from .costs import *
 from .data import *

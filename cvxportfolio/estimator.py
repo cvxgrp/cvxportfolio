@@ -211,8 +211,8 @@ class DataEstimator(Estimator):
         if isinstance(result, numbers.Number):
             if np.isnan(result) and not self._allow_nans:
                 raise NaNError(
-                    f"{self.__class__.__name__}.values_in_time_recursive" 
-                    +" result is a np.nan scalar.")
+                    f"{self.__class__.__name__}.values_in_time_recursive"
+                    + " result is a np.nan scalar.")
             return result
 
         if isinstance(result, np.ndarray):
@@ -229,7 +229,7 @@ class DataEstimator(Estimator):
 
         raise DataError(
             f"{self.__class__.__name__}.values_in_time_recursive result"
-            +" is not a scalar or array.")
+            + " is not a scalar or array.")
 
     def _universe_subselect(self, data):
         """This function subselects from ``data`` the relevant universe.

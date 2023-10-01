@@ -23,6 +23,9 @@ import cvxportfolio as cvx
 from cvxportfolio.constraints import *
 from cvxportfolio.costs import *
 from cvxportfolio.errors import *
+from cvxportfolio.errors import (ConvexityError, ConvexSpecificationError,
+                                 DataError, MissingAssetsError,
+                                 MissingTimesError, PortfolioOptimizationError)
 from cvxportfolio.forecast import HistoricalFactorizedCovariance
 from cvxportfolio.policies import *
 # from cvxportfolio.policies import SinglePeriodOptOLD, SinglePeriodOptNEW
@@ -35,6 +38,7 @@ class TestPolicies(CvxportfolioTest):
     """Test trading policies."""
 
     def test_hold(self):
+        """Test hold policy."""
         hold = Hold()
         w = pd.Series(0.5, ["AAPL", "CASH"])
         self.assertTrue(np.all(
@@ -42,6 +46,7 @@ class TestPolicies(CvxportfolioTest):
             == w.values))
 
     def test_rank_and_long_short(self):
+        """Test rank-and-long-short policy."""
         hold = Hold()
         w = pd.Series(0.25, ["AAPL", "TSLA", "GOOGL", "CASH"])
         signal = pd.Series([1, 2, 3], ["AAPL", "TSLA", "GOOGL"])
@@ -95,6 +100,7 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(np.abs(wplus[:-1]).sum() == 3)
 
     def test_proportional_trade(self):
+        """Test proportional trade policy."""
 
         a = pd.Series(1., self.returns.columns)
         a.iloc[-1] = 1 - sum(a.iloc[:-1])
@@ -128,6 +134,7 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(np.allclose(trade, 0.))
 
     def test_sell_all(self):
+        """Test sell-all policy."""
         start_portfolio = pd.Series(
             np.random.randn(
                 self.returns.shape[1]),
@@ -142,6 +149,7 @@ class TestPolicies(CvxportfolioTest):
         assert np.allclose(allcash, wplus)
 
     def test_fixed_trade(self):
+        """Test fixed trade policy."""
         fixed_trades = pd.DataFrame(
             np.random.randn(
                 len(self.returns),
@@ -160,6 +168,7 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(np.all(wplus-w == 0.))
 
     def test_fixed_weights(self):
+        """Test fixed weights policy."""
         fixed_weights = pd.DataFrame(
             np.random.randn(
                 len(self.returns),
@@ -183,6 +192,7 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(np.all(wplus1 == wplus))
 
     def test_periodic_rebalance(self):
+        """Test periodic rebalance policy."""
 
         target = pd.Series(np.random.uniform(
             size=self.returns.shape[1]), self.returns.columns)
@@ -203,6 +213,7 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(np.allclose(wplus, init))
 
     def test_uniform(self):
+        """Test uniform allocation."""
         pol = Uniform()
         pol.initialize_estimator_recursive(
             self.returns.columns, self.returns.index)
@@ -242,6 +253,7 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(np.allclose(trade + trade2 + init, target))
 
     def test_adaptive_rebalance(self):
+        """Test adaptive rebalance policy."""
         np.random.seed(0)
         target = pd.Series(
             np.random.uniform(
@@ -267,6 +279,7 @@ class TestPolicies(CvxportfolioTest):
             self.assertTrue(np.allclose(wplus - init, 0.))
 
     def test_single_period_optimization(self):
+        """Test basic SPO."""
 
         return_forecast = ReturnsForecast()
         risk_forecast = FullCovariance(
@@ -326,6 +339,7 @@ class TestPolicies(CvxportfolioTest):
             cvxportfolio_result - cvxpy_result, 0., atol=1e-5))
 
     def test_single_period_optimization_solve_twice(self):
+        """Test resolve of SPO policy with Cvxpy parameters."""
 
         return_forecast = ReturnsForecast()
         risk_forecast = FullCovariance()
@@ -375,6 +389,7 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(np.allclose(result2, 0., atol=1e-7))
 
     def test_single_period_optimization_infeasible(self):
+        """Test SPO policy with infeasible result."""
 
         return_forecast = ReturnsForecast()
         risk_forecast = FullCovariance()
@@ -406,6 +421,7 @@ class TestPolicies(CvxportfolioTest):
                 current_prices=pd.Series(1., self.volumes.columns))
 
     def test_single_period_optimization_unbounded(self):
+        """Test SPO policy with unbounded result."""
 
         return_forecast = ReturnsForecast()
         risk_forecast = FullCovariance()
@@ -580,14 +596,11 @@ class TestPolicies(CvxportfolioTest):
         policy = cvx.Uniform()
         h = pd.Series(0., self.returns.columns)
         h.iloc[-1] = 10000
-        execution = policy.execute(market_data=self.market_data, h=h)
-        print(execution)
-        self.assertTrue(np.isclose(execution['z'].sum(), 0.))
-        self.assertTrue(np.isclose(execution['u'].sum(), 0.))
-        self.assertTrue(np.isclose(execution['w_plus'].sum(), 1.))
-        self.assertTrue(np.isclose(execution['h_plus'].sum(), 10000))
-        self.assertTrue(execution['t'] == self.returns.index[-1])
-        self.assertTrue(len(set(execution['w_plus'].iloc[:-1])) == 1)
+        u, t, shares_traded = policy.execute(market_data=self.market_data, h=h)
+        print(t, u, shares_traded)
+        self.assertTrue(np.isclose(u.sum(), 0.))
+        self.assertTrue(t == self.returns.index[-1])
+        self.assertTrue(len(set(u.iloc[:-1])) == 1)
 
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast() - 5 * cvx.FullCovariance(),
@@ -600,15 +613,15 @@ class TestPolicies(CvxportfolioTest):
 
         execution = policy.execute(market_data=market_data, h=h)
         print(execution)
-        self.assertTrue(np.isclose(execution['z'].sum(), 0.))
-        self.assertTrue(np.isclose(execution['u'].sum(), 0.))
-        self.assertTrue(np.isclose(execution['w_plus'].sum(), 1.))
-        self.assertTrue(np.isclose(np.abs(execution['w_plus'].iloc[:-1]
-            ).sum(), 1.))
-        self.assertTrue(np.isclose(execution['h_plus'].sum(), 10000))
-        self.assertTrue(execution['t'] == self.returns.index[-1])
-        self.assertTrue(execution['h_plus']['CSCO'] >= .9)
+        u, t, shares_traded = execution
+        self.assertTrue(shares_traded is None)
+        self.assertTrue(np.isclose(u.sum(), 0.))
+        self.assertTrue(t == self.returns.index[-1])
+        self.assertTrue(u['CSCO'] >= .9)
 
+        h.iloc[-1] = -100
+        with self.assertRaises(DataError):
+            execution = policy.execute(market_data=market_data, h=h)
 
 if __name__ == '__main__':
     unittest.main()
