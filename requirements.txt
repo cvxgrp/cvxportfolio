@@ -8,7 +8,6 @@ cvxpy
 scipy
 requests
 matplotlib
-numpydoc
 myst_parser
 coverage
 sphinx-rtd-theme

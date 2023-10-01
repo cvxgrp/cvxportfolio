@@ -15,9 +15,7 @@
 
 import sys
 import unittest
-import warnings
 from copy import deepcopy
-from unittest import mock
 
 import numpy as np
 import pandas as pd
@@ -500,10 +498,10 @@ class TestMarketData(CvxportfolioTest):
                     grace_period=grace_period)
                 res.iloc[-20] = np.nan
                 return res
-        with self.assertLogs(level='ERROR') as _:
+        with self.assertLogs(level='WARNING') as _:
             a = YahooFinanceErroneous2('GOOGL',
                 base_storage_location=self.datadir)
-        with self.assertLogs(level='ERROR') as _:
+        with self.assertLogs(level='WARNING') as _:
             a = YahooFinanceErroneous2(
                 'GOOGL', base_storage_location=self.datadir)
 

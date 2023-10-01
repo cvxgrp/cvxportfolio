@@ -39,8 +39,8 @@ Simple policies
 
 .. autoclass:: SellAll
 
-Base Class (for extending Cvxportfolio)
------------------------------------------
+Base policy class (for defining your own policy)
+------------------------------------------------
 
-.. autoclass:: Policy
+.. autoclass:: cvxportfolio.policies.Policy
 

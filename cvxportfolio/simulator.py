@@ -57,11 +57,10 @@ class MarketSimulator:
 
     def __init__(self, universe=(), returns=None, volumes=None,
                  prices=None, market_data=None, costs=(), round_trades=False,
-                 min_history=pd.Timedelta('365d'),
                  datasource='YahooFinance',
-                 cash_key="USDOLLAR", base_location=BASE_LOCATION,
-                 trading_frequency=None,
-                 copy_dataframes=True):
+                 cash_key="USDOLLAR",
+                 base_location=BASE_LOCATION,
+                 trading_frequency=None):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
 
@@ -74,16 +73,13 @@ class MarketSimulator:
                     volumes=volumes, prices=prices,
                     cash_key=cash_key,
                     base_location=base_location,
-                    trading_frequency=trading_frequency,
-                    min_history=min_history,
-                    copy_dataframes=copy_dataframes)
+                    trading_frequency=trading_frequency)
             else:
                 self.market_data = DownloadedMarketData(
                     universe=universe,
                     cash_key=cash_key,
                     base_location=base_location,
                     trading_frequency=trading_frequency,
-                    min_history=min_history,
                     datasource=datasource)
 
         # TODO fix this (when passing MarketData)
@@ -599,12 +595,12 @@ class StockMarketSimulator(MarketSimulator):
     def __init__(self, universe=(),
                  returns=None, volumes=None, prices=None,
                  costs=(StocksTransactionCost, StocksHoldingCost),
-                 round_trades=True, min_history=pd.Timedelta('365d'),
+                 round_trades=True,
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
                  trading_frequency=None, **kwargs):
 
         super().__init__(universe=universe,
                          returns=returns, volumes=volumes, prices=prices,
-                         costs=costs, round_trades=round_trades, min_history=min_history,
+                         costs=costs, round_trades=round_trades,
                          cash_key=cash_key, base_location=base_location,
                          trading_frequency=trading_frequency, **kwargs)

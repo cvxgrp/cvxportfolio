@@ -68,9 +68,9 @@ Forecast error models
 
 .. autoclass:: RiskForecastError
 
-Base classes (for extending Cvxportfolio)
------------------------------------------
+Base classes (for defining your own objective terms)
+----------------------------------------------------
 
-.. autoclass:: Cost
+.. autoclass:: cvxportfolio.costs.Cost
 
-.. autoclass:: SimulatorCost
+.. autoclass:: cvxportfolio.costs.SimulatorCost

@@ -115,8 +115,9 @@ Table of Contents
    hello_world
    policies
    simulator
-   returns
+   objective_terms
    constraints
    result
    data
+   examples
 

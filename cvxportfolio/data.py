@@ -71,56 +71,21 @@ class SymbolData:
     These may have limitations. See their docstrings for more information.
     
     
-    :param symbol: the symbol that we download
+    :param symbol: The symbol that we downloaded.
     :type symbol: str
-    :param storage_backend: the storage backend
+    :param storage_backend: The storage backend, implemented ones are
+        ``'pickle'``, ``'csv'``, and ``'sqlite'``. By default ``'pickle'``.
     :type storage_backend: str
-    :param base_storage_location: the location of the storage. We store in a 
-        subdirectory named after the class which derives from this.
+    :param base_storage_location: The location of the storage. We store in a 
+        subdirectory named after the class which derives from this. By default
+        it's a directory named ``cvxportfolio_data`` in your home folder.
     :type base_storage_location: pathlib.Path
+    :param grace_period: If the most recent observation in the data is less 
+        old than this we do not download new data. By default it's one day.
+    :type grace_period: pandas.Timedelta
+    
+    :attribute data: The downloaded data for the symbol.
     """
-    # """Base class for Cvxportfolio database interface.
-    #
-    # Provides a back-end independent way to load and store
-    # pandas Series and DataFrames where the first index is a
-    # pandas Timestamp (or numpy datetime64). It also provides
-    # a systematic way to access external data sources via
-    # the network. We specialize it to storing data locally
-    # and downloading public time series of financial data.
-    # By emulating some of these classes you can interface
-    # cvxportfolio with other databases or other data sources.
-    #
-    # This interface is also used by cvxportfolio to store the
-    # data it generates, such as Backtest classes data, or
-    # estimators such as factor risk models.
-    #
-    # Cvxportfolio uses in-memory data whenever possible, and
-    # in particular never uses BaseData methods during a backtest.
-    # This ensures thread safety and allows us to use simple
-    # local databases such as sqlite (or even flat csv files!).
-    # Cvxportfolio loads data from the database before (possibly parallel)
-    # backtesting, and stores it after backtesting. So, only one process
-    # at a time accesses this class' methods. If you write custom callbacks
-    # that are invoked during backtests, such as callables inside
-    # DataEstimator, you should most probably not use cvxportfolio.data methods
-    # inside them.
-    #
-    # LIMITATIONS:
-    #     - columns names should be strings in order to work with all current
-    #       data storage backends. If you create a DataFrame from a numpy array
-    #       without specifying column names they will default to integers (0, 1, ...).
-    #       If you store and load it back you will may get string column names ('0', '1', ...),
-    #       depending on the backend.
-    #     - the first level of the index should be a pandas Timestamp or equivalently
-    #       numpy datetime64
-    #     - you can only store sql-friendly data: integers, floats (including `np.nan`),
-    #       datetime (including `np.datetime64('NaT')`), and simple alphanumeric strings
-    #       (i.e., without commas or quote marks).
-    #       If you need to store more complex python objects, such as the string
-    #         "{'parameter1':3.0, 'parameter2': pd.Timestamp('2022-01-01')}",
-    #       you will have to check that it works with the backend you use
-    #      (it probably would not not with csv).
-    # """
 
     def __init__(self, symbol,
                  storage_backend='pickle',
@@ -196,8 +161,10 @@ class SymbolData:
             self.symbol, current, grace_period=grace_period)
 
         if np.any(updated.iloc[:-1].isnull()):
-            logging.error(f"{self.__class__.__name__} downloaded data"
-                + f" for {self.symbol} has NaNs!")
+            logging.warning(
+              f"{self.__class__.__name__} downloaded data"
+              + f" for {self.symbol} has NaNs. You may want inspect "
+              + f"cvxportfolio.{self.__class__.__name__}({self.symbol}).data")
 
         if (current is not None): # and (not hasattr(current,'columns')
                 #or np.all(current.columns==updated.columns)):
@@ -218,28 +185,6 @@ class SymbolData:
                         f"{self.__class__.__name__} update"
                         + f" of {self.symbol} changed last value!")
         self._store(updated)
-
-    # def _download_if_necessary(self, symbol, current):
-    #     """Download only if current data is too old."""
-    #
-    #     if current is None:
-    #         logging.info('Downloading from the start.')
-    #         return self._download(symbol, current=None)
-    #
-    #     # don't download if current is more recent than the minimum
-    #     # historical period length
-    #     if len(current.index) > 5:
-    #         min_period_len = np.min(current.index[1:] - current.index[:-1])
-    #         last = current.index[-1]
-    #         if last.tz is None:
-    #             last = last.tz_localize('UTC')
-    #         if (now_timezoned() - last) < min_period_len:
-    #             logging.info(
-    #                 "Skipping download because stored data is recent enough."
-    #                 + f"The minimum period length is {min_period_len}.")
-    #             return current
-    #
-    #     return self._download(symbol, current)
 
     def _download(self, symbol, current, **kwargs):
         """Download data from external source given already downloaded data.
@@ -280,7 +225,26 @@ def _timestamp_convert(unix_seconds_ts):
 
 
 class YahooFinance(SymbolData):
-    """Yahoo Finance symbol data."""
+    """Yahoo Finance symbol data.    
+    
+    :param symbol: The symbol that we downloaded.
+    :type symbol: str
+    :param storage_backend: The storage backend, implemented ones are
+        ``'pickle'``, ``'csv'``, and ``'sqlite'``.
+    :type storage_backend: str
+    :param base_storage_location: The location of the storage. We store in a 
+        subdirectory named after the class which derives from this.
+    :type base_storage_location: pathlib.Path
+    :param grace_period: If the most recent observation in the data is less 
+        old than this we do not download new data.
+    :type grace_period: pandas.Timedelta
+    
+    :attribute data: The downloaded, and cleaned, data for the symbol.
+    :type data: pandas.DataFrame
+    """
+
+    # is open-high-low-close-volume-(total)return
+    IS_OHLCVR = True
 
     @staticmethod
     def _clean(data):
@@ -328,7 +292,7 @@ class YahooFinance(SymbolData):
         data['close'] = data['close'].fillna(data['open'])
 
         # fill open price with close from day(s) before
-        # repeat as long as it helps
+        # repeat as long as it helps (up to 1 year)
         for shifter in range(252):
             logging.info(
                 f"Filling opens with close from {shifter} days before")
@@ -515,7 +479,23 @@ class YahooFinance(SymbolData):
 #
 
 class Fred(SymbolData):
-    """Base class for Fred data access."""
+    """Fred single-symbol data.
+    
+    :param symbol: The symbol that we downloaded.
+    :type symbol: str
+    :param storage_backend: The storage backend, implemented ones are
+        ``'pickle'``, ``'csv'``, and ``'sqlite'``. By default ``'pickle'``.
+    :type storage_backend: str
+    :param base_storage_location: The location of the storage. We store in a 
+        subdirectory named after the class which derives from this. By default
+        it's a directory named ``cvxportfolio_data`` in your home folder.
+    :type base_storage_location: pathlib.Path
+    :param grace_period: If the most recent observation in the data is less 
+        old than this we do not download new data. By default it's one day.
+    :type grace_period: pandas.Timedelta
+    
+    :attribute data: The downloaded data for the symbol.
+    """
 
     URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 
@@ -723,9 +703,11 @@ class MarketData:
         """Serve data for policy and simulator at time :math:`t`.
 
         :param t: Trading time. It must be included in the timestamps returned
-            by :method:`trading_calendar`.
+            by :meth:`trading_calendar`.
         :type t: pandas.Timestamp
 
+        :returns: past_returns, current_returns, past_volumes, current_volumes,
+            current_prices
         :rtype: (pandas.DataFrame, pandas.Series, pandas.DataFrame,
             pandas.Series, pandas.Series)
         """
@@ -1115,10 +1097,11 @@ class DownloadedMarketData(MarketDataInMemory):
                  datasource='YahooFinance',
                  cash_key='USDOLLAR',
                  base_location=BASE_LOCATION,
+                 storage_backend='pickle',
                  min_history=pd.Timedelta('365.24d'),
                  grace_period=pd.Timedelta('1d'),
-                 # TODO change logic for this (it's now this to not drop quarterly data)
                  trading_frequency=None):
+        """Initializer."""
 
         # drop duplicates and ensure ordering
         universe = sorted(set(universe))
@@ -1126,31 +1109,33 @@ class DownloadedMarketData(MarketDataInMemory):
         self.base_location = Path(base_location)
         self._min_history_timedelta = min_history
         self.cash_key = cash_key
-        self.datasource = datasource
-        self._get_market_data(universe, grace_period)
+        if isinstance(datasource, type):
+            self.datasource = datasource
+        else: # try to load in current module
+            self.datasource = globals()[datasource]
+        self._get_market_data(universe, grace_period, storage_backend)
         self._add_cash_column(self.cash_key)
         self._remove_missing_recent()
 
         self._post_init_(trading_frequency=trading_frequency)
 
-    DATASOURCES = {'YahooFinance': YahooFinance, 'Fred': Fred}
-
-    def _get_market_data(self, universe, grace_period):
+    def _get_market_data(self, universe, grace_period, storage_backend):
+        """Download market data."""
         database_accesses = {}
         print('Updating data', end='')
         sys.stdout.flush()
 
         for stock in universe:
             logging.info(
-                f'Updating {stock} with {self.DATASOURCES[self.datasource]}.')
+                f'Updating {stock} with {self.datasource.__name__}.')
             print('.', end='')
             sys.stdout.flush()
-            database_accesses[stock] = self.DATASOURCES[self.datasource](
+            database_accesses[stock] = self.datasource(
                 stock, base_storage_location=self.base_location,
-                grace_period=grace_period)
+                grace_period=grace_period, storage_backend=storage_backend)
         print()
 
-        if self.datasource == 'YahooFinance':
+        if hasattr(self.datasource, 'IS_OHLCVR') and self.datasource.IS_OHLCVR:
             self.returns = pd.DataFrame(
                 {stock: database_accesses[stock].data['return']
                 for stock in universe})
@@ -1160,7 +1145,8 @@ class DownloadedMarketData(MarketDataInMemory):
             self.prices = pd.DataFrame(
                 {stock: database_accesses[stock].data['open']
                 for stock in universe})
-        else:  # only Fred for indexes
+        else:  # for now only Fred for indexes, we assume prices!
+            assert isinstance(database_accesses[universe[0]].data, pd.Series)
             self.prices = pd.DataFrame(
                 {stock: database_accesses[stock].data for stock in universe})  # open prices
             self.returns = 1 - self.prices / self.prices.shift(-1)
@@ -1169,7 +1155,7 @@ class DownloadedMarketData(MarketDataInMemory):
     def _remove_missing_recent(self):
         """Clean recent data.
 
-        Yfinance has some issues with most recent data; we remove recent
+        Yahoo Finance may has issues with most recent data; we remove recent
         days if there are NaNs.
         """
 
@@ -1193,7 +1179,8 @@ class DownloadedMarketData(MarketDataInMemory):
         """Unique signature of this instance with a partial universe."""
         assert isinstance(partial_universe, pd.Index)
         assert np.all(partial_universe.isin(self.full_universe))
-        result = f'{self.__class__.__name__}(datasource={self.datasource}, '
+        result = f'{self.__class__.__name__}('
+        result += f'datasource={self.datasource.__name__}, '
         result += f'partial_universe_hash={hash_(np.array(partial_universe))},'
         result += f' trading_frequency={self.trading_frequency})'
         return result

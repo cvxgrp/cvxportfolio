@@ -12,11 +12,23 @@ Data Interfaces
 
 .. autoclass:: UserProvidedMarketData
 
+    .. automethod:: serve
+    
+    .. automethod:: trading_calendar
+
 .. autoclass:: DownloadedMarketData
 
-Base Classes (for extending Cvxportfolio)
------------------------------------------
+    .. automethod:: serve
+    
+    .. automethod:: trading_calendar
+
+Base classes (for using other data sources)
+-------------------------------------------
 
 .. autoclass:: SymbolData
 
 .. autoclass:: MarketData
+    
+    .. automethod:: serve
+    
+    .. automethod:: trading_calendar
