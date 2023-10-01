@@ -25,18 +25,28 @@ import logging
 import sqlite3
 import warnings
 from pathlib import Path
+from urllib.error import URLError
+import sys
 
 import numpy as np
 import pandas as pd
 import requests
+from requests.exceptions import ConnectionError
 
 from .utils import (hash_, periods_per_year_from_datetime_index,
                     repr_numpy_pandas, resample_returns)
+
+from .errors import DataError
 
 __all__ = ["YahooFinance", "Fred",
            "UserProvidedMarketData", "DownloadedMarketData"]
 
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
+
+def now_timezoned():
+    """Return current timestamp with local timezone."""
+    return pd.Timestamp(
+        datetime.datetime.now(datetime.timezone.utc).astimezone())
 
 class SymbolData:
     """Base class for a single symbol time series data.
@@ -115,12 +125,13 @@ class SymbolData:
 
     def __init__(self, symbol,
                  storage_backend='pickle',
-                 base_storage_location=BASE_LOCATION):
+                 base_storage_location=BASE_LOCATION,
+                 grace_period=pd.Timedelta('1d')):
         self._symbol = symbol
         self._storage_backend = storage_backend
         self._base_storage_location = base_storage_location
-        self._update()
-        self._data = self._load()
+        self.update(grace_period)
+        self._data = self.load()
 
     @property
     def storage_location(self):
@@ -153,11 +164,15 @@ class SymbolData:
         # we could implement multiprocess safety here
         loader = globals()['_loader_' + self._storage_backend]
         try:
+            logging.info(
+                f"Trying to load {self.symbol}" 
+                + f" with {self._storage_backend} backend" 
+                + f" from {self.storage_location}")
             return loader(self.symbol, self.storage_location)
         except FileNotFoundError:
             return None
 
-    def _load(self):
+    def load(self):
         """Load data from database using `self.preload` function to process.
         """
         return self._preload(self._load_raw())
@@ -166,15 +181,63 @@ class SymbolData:
         """Store data in database."""
         # we could implement multiprocess safety here
         storer = globals()['_storer_' + self._storage_backend]
+        logging.info(
+            f"Storing {self.symbol}" 
+            + f" with {self._storage_backend} backend" 
+            + f" in {self.storage_location}")
         storer(self.symbol, data, self.storage_location)
 
-    def _update(self):
+    def update(self, grace_period):
         """Update current stored data for symbol."""
         current = self._load_raw()
-        updated = self._download(self.symbol, current)
-        self._store(updated)
+        logging.info(
+            f"Downloading {self.symbol}" 
+            + f" from {self.__class__.__name__}")
+        updated = self._download(
+            self.symbol, current, grace_period=grace_period)
+        
+        if np.any(updated.iloc[:-1].isnull()):
+            logging.error(f"Downloaded data for {self.symbol} has NaNs!")
 
-    def _download(self, symbol, current):
+        if current is not None:
+            if not np.all(
+                    updated.loc[current.index[:-1]] == current.iloc[:-1]):
+                logging.error(f"Update of {self.symbol} is not append-only!")
+            if hasattr(current, 'columns'): 
+                # the first column is open price
+                if not current.iloc[-1, 0] == updated.loc[
+                        current.index[-1]].iloc[0]:
+                    logging.error(
+                        f"Update of {self.symbol} changed last open price!")
+            else:
+                if not current.iloc[-1] == updated.loc[current.index[-1]]:
+                    logging.error(
+                        f"Update of {self.symbol} changed last value!")
+        self._store(updated)
+        
+    # def _download_if_necessary(self, symbol, current):
+    #     """Download only if current data is too old."""
+    #
+    #     if current is None:
+    #         logging.info('Downloading from the start.')
+    #         return self._download(symbol, current=None)
+    #
+    #     # don't download if current is more recent than the minimum
+    #     # historical period length
+    #     if len(current.index) > 5:
+    #         min_period_len = np.min(current.index[1:] - current.index[:-1])
+    #         last = current.index[-1]
+    #         if last.tz is None:
+    #             last = last.tz_localize('UTC')
+    #         if (now_timezoned() - last) < min_period_len:
+    #             logging.info(
+    #                 "Skipping download because stored data is recent enough."
+    #                 + f"The minimum period length is {min_period_len}.")
+    #             return current
+    #
+    #     return self._download(symbol, current)
+        
+    def _download(self, symbol, current, **kwargs):
         """Download data from external source given already downloaded data.
         
         This method must be redefined by derived classes.
@@ -211,10 +274,7 @@ def _timestamp_convert(unix_seconds_ts):
     """Convert a UNIX timestamp in seconds to a pandas.Timestamp."""
     return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
 
-def _now_timezoned():
-    """Return current timestamp with local timezone."""
-    return pd.Timestamp(
-        datetime.datetime.now(datetime.timezone.utc).astimezone())
+
 
 class YahooFinance(SymbolData):
     """Yahoo Finance symbol data."""
@@ -265,12 +325,17 @@ class YahooFinance(SymbolData):
         start = int(pd.Timestamp(start).timestamp())
         end = int(pd.Timestamp(end).timestamp())
 
-        res = requests.get(
-            url=f"{BASE_URL}/v8/finance/chart/{ticker}",
-            params={'interval': '1d',
-                "period1": start,
-                "period2": end},
-            headers=HEADERS)
+        try:
+            res = requests.get(
+                url=f"{BASE_URL}/v8/finance/chart/{ticker}",
+                params={'interval': '1d',
+                    "period1": start,
+                    "period2": end},
+                headers=HEADERS)
+        except ConnectionError as exc:
+            raise DataError(
+                f"Download of {ticker} from YahooFinance failed."
+                + " Are you connected to the Internet?") from exc
 
         # print(res)
 
@@ -335,11 +400,14 @@ class YahooFinance(SymbolData):
         if (current is None) or (len(current) < overlap):
             updated = cls._get_data_yahoo(symbol, **kwargs)
             # updated = yf.download(symbol, **kwargs)
+            logging.info('Downloading from the start.')
             return cls._internal_process(updated)
         else:
-            if (_now_timezoned() - current.index[-1]
+            if (now_timezoned() - current.index[-1]
             # if (pd.Timestamp.now() - current.index[-1]
                 ) < pd.Timedelta(grace_period):
+                logging.info(
+                    'Skipping download because stored data is recent enough.')
                 return current
             new = cls._get_data_yahoo(symbol, start=current.index[-overlap])
             # new = yf.download(symbol,  start=current.index[-overlap])
@@ -379,9 +447,14 @@ class Fred(SymbolData):
     # store using pd.Series() of diff'ed values only.
 
     def _internal_download(self, symbol):
-        return pd.read_csv(
-            self.URL + f'?id={symbol}',
-            index_col=0, parse_dates=[0])[symbol]
+        try:
+            return pd.read_csv(
+                self.URL + f'?id={symbol}',
+                index_col=0, parse_dates=[0])[symbol]
+        except URLError as exc:
+            raise DataError(f"Download of {symbol}"
+                + f" from {self.__class__.__name__} failed."
+                + " Are you connected to the Internet?") from exc
 
     def _download(self, symbol="DFF", current=None, grace_period='5d'):
         """Download or update pandas Series from Fred.
@@ -398,12 +471,15 @@ class Fred(SymbolData):
         else:
             if (pd.Timestamp.today() - current.index[-1]
                 ) < pd.Timedelta(grace_period):
+                logging.info(
+                    'Skipping download because stored data is recent enough.')
                 return current
 
             new = self._internal_download(symbol)
             new = new.loc[new.index > current.index[-1]]
 
             if new.empty:
+                logging.info('New downloaded data is empty!')
                 return current
 
             assert new.index[0] > current.index[-1]
@@ -899,11 +975,6 @@ class MarketDataInMemory(MarketData):
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
 
-    # @property
-    # def universe(self):
-    #     """Full trading universe including cash."""
-    #     return self.returns.columns
-
     @property
     def periods_per_year(self):
         """Average trading periods per year inferred from the data."""
@@ -957,6 +1028,7 @@ class DownloadedMarketData(MarketDataInMemory):
                  cash_key='USDOLLAR',
                  base_location=BASE_LOCATION,
                  min_history=pd.Timedelta('365.24d'),
+                 grace_period=pd.Timedelta('1d'),
                  # TODO change logic for this (it's now this to not drop quarterly data)
                  trading_frequency=None):
 
@@ -967,7 +1039,7 @@ class DownloadedMarketData(MarketDataInMemory):
         self._min_history_timedelta = min_history
         self.cash_key = cash_key
         self.datasource = datasource
-        self._get_market_data(universe)
+        self._get_market_data(universe, grace_period)
         self._add_cash_column(self.cash_key)
         self._remove_missing_recent()
 
@@ -975,16 +1047,20 @@ class DownloadedMarketData(MarketDataInMemory):
 
     DATASOURCES = {'YahooFinance': YahooFinance, 'Fred': Fred}
 
-    def _get_market_data(self, universe):
+    def _get_market_data(self, universe, grace_period):
         database_accesses = {}
-        print('Updating data')
+        print('Updating data', end='')
+        sys.stdout.flush()
 
         for stock in universe:
             logging.info(
                 f'Updating {stock} with {self.DATASOURCES[self.datasource]}.')
-            print('.')
+            print('.', end='')
+            sys.stdout.flush()
             database_accesses[stock] = self.DATASOURCES[self.datasource](
-                stock, base_storage_location=self.base_location)
+                stock, base_storage_location=self.base_location, 
+                grace_period=grace_period)
+        print()
 
         if self.datasource == 'YahooFinance':
             self.returns = pd.DataFrame(

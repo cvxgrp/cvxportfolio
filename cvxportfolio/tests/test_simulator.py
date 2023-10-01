@@ -720,12 +720,12 @@ class TestSimulator(CvxportfolioTest):
 
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast(), [cvx.LeverageLimit(20)])
-
-        result = sim.backtest(policy,
-            start_time='2020-02-15', end_time='2020-04-15')
+        with self.assertLogs(level='WARNING') as _:
+            result = sim.backtest(policy,
+                start_time='2020-02-15', end_time='2020-04-15')
         # print(result)
         print(result.h)
-
+        self.assertTrue(result.h.shape[0] < 20)
         self.assertTrue(result.final_value < 0)
 
     def test_cache_missing_signature(self):

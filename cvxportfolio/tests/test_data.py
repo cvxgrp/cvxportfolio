@@ -17,6 +17,7 @@ import sys
 import unittest
 import warnings
 from copy import deepcopy
+from unittest import mock
 
 import numpy as np
 import pandas as pd
@@ -26,7 +27,7 @@ from cvxportfolio.data import (DownloadedMarketData, Fred,
                                _loader_csv, _loader_pickle, _loader_sqlite,
                                _storer_csv, _storer_pickle, _storer_sqlite)
 from cvxportfolio.tests import CvxportfolioTest
-
+from cvxportfolio.errors import DataError
 
 class TestData(CvxportfolioTest):
     """Test SymbolData methods and interface."""
@@ -83,8 +84,8 @@ class TestData(CvxportfolioTest):
             data.loc["2023-04-05 13:30:00+00:00", "Open"] - 1,
         ))
 
-        store._update()
-        data1 = store._load()
+        store.update(grace_period=pd.Timedelta('1d'))
+        data1 = store.load()
         # print(data1)
 
         self.assertTrue(np.isnan(data1.iloc[-1]["Close"]))
@@ -474,6 +475,63 @@ class TestMarketData(CvxportfolioTest):
             base_location=self.datadir)
 
         print(md.partial_universe_signature(md.full_universe))
+        
+    def test_download_errors(self):
+        """Test single-symbol download error."""
+        
+        class YahooFinanceErroneous(YahooFinance):
+            
+            def _download(self, symbol, current, grace_period):
+                res = super()._download(symbol, current, 
+                    grace_period=grace_period)
+                res.iloc[-1, 0 ] = np.nan
+                return res
+        
+        a = YahooFinanceErroneous('CVX', base_storage_location=self.datadir)
+        with self.assertLogs(level='ERROR') as _:
+            a = YahooFinanceErroneous(
+                'CVX', base_storage_location=self.datadir)
+                
+        class YahooFinanceErroneous2(YahooFinance):
+            
+            def _download(self, symbol, current, grace_period):
+                res = super()._download(symbol, current,
+                    grace_period=grace_period)
+                res.iloc[-20] = np.nan
+                return res
+                
+        a = YahooFinanceErroneous2('CVX', base_storage_location=self.datadir)
+        with self.assertLogs(level='ERROR') as _:
+            a = YahooFinanceErroneous2(
+                'CVX', base_storage_location=self.datadir)
+                
+        class FredErroneous(Fred):
+            
+            def _download(self, symbol, current, grace_period):
+                res = super()._download(symbol, current, 
+                    grace_period=grace_period)
+                res.iloc[-1] = np.nan
+                return res
+                
+        a = FredErroneous('DFF', base_storage_location=self.datadir)
+        with self.assertLogs(level='ERROR') as _:
+            a = FredErroneous(
+                'DFF', base_storage_location=self.datadir)
+                
+    
+    def test_yahoo_finance_errors(self):
+        """Test errors with Yahoo Finance."""
+        
+        import sys
+        import logging
+        logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+        
+        with self.assertRaises(DataError):
+            YahooFinance("DOESNTEXIST", base_storage_location=self.datadir)
+
+        
+            
+        
 
 
 if __name__ == '__main__':
