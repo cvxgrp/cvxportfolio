@@ -23,20 +23,19 @@ than the ones we provide, you should derive from either of those two classes.
 import datetime
 import logging
 import sqlite3
+import sys
 import warnings
 from pathlib import Path
 from urllib.error import URLError
-import sys
 
 import numpy as np
 import pandas as pd
 import requests
 from requests.exceptions import ConnectionError
 
+from .errors import DataError
 from .utils import (hash_, periods_per_year_from_datetime_index,
                     repr_numpy_pandas, resample_returns)
-
-from .errors import DataError
 
 __all__ = ["YahooFinance", "Fred",
            "UserProvidedMarketData", "DownloadedMarketData"]
@@ -165,8 +164,8 @@ class SymbolData:
         loader = globals()['_loader_' + self._storage_backend]
         try:
             logging.info(
-                f"Trying to load {self.symbol}" 
-                + f" with {self._storage_backend} backend" 
+                f"{self.__class__.__name__} is trying to load {self.symbol}"
+                + f" with {self._storage_backend} backend"
                 + f" from {self.storage_location}")
             return loader(self.symbol, self.storage_location)
         except FileNotFoundError:
@@ -182,8 +181,8 @@ class SymbolData:
         # we could implement multiprocess safety here
         storer = globals()['_storer_' + self._storage_backend]
         logging.info(
-            f"Storing {self.symbol}" 
-            + f" with {self._storage_backend} backend" 
+            f"{self.__class__.__name__} is storing {self.symbol}"
+            + f" with {self._storage_backend} backend"
             + f" in {self.storage_location}")
         storer(self.symbol, data, self.storage_location)
 
@@ -191,30 +190,35 @@ class SymbolData:
         """Update current stored data for symbol."""
         current = self._load_raw()
         logging.info(
-            f"Downloading {self.symbol}" 
+            f"Downloading {self.symbol}"
             + f" from {self.__class__.__name__}")
         updated = self._download(
             self.symbol, current, grace_period=grace_period)
-        
-        if np.any(updated.iloc[:-1].isnull()):
-            logging.error(f"Downloaded data for {self.symbol} has NaNs!")
 
-        if current is not None:
+        if np.any(updated.iloc[:-1].isnull()):
+            logging.error(f"{self.__class__.__name__} downloaded data"
+                + f" for {self.symbol} has NaNs!")
+
+        if (current is not None): # and (not hasattr(current,'columns')
+                #or np.all(current.columns==updated.columns)):
             if not np.all(
                     updated.loc[current.index[:-1]] == current.iloc[:-1]):
-                logging.error(f"Update of {self.symbol} is not append-only!")
-            if hasattr(current, 'columns'): 
+                logging.error(f"{self.__class__.__name__} update"
+                    + f" of {self.symbol} is not append-only!")
+            if hasattr(current, 'columns'):
                 # the first column is open price
                 if not current.iloc[-1, 0] == updated.loc[
                         current.index[-1]].iloc[0]:
                     logging.error(
-                        f"Update of {self.symbol} changed last open price!")
+                        f"{self.__class__.__name__} update "
+                        + f" of {self.symbol} changed last open price!")
             else:
                 if not current.iloc[-1] == updated.loc[current.index[-1]]:
                     logging.error(
-                        f"Update of {self.symbol} changed last value!")
+                        f"{self.__class__.__name__} update"
+                        + f" of {self.symbol} changed last value!")
         self._store(updated)
-        
+
     # def _download_if_necessary(self, symbol, current):
     #     """Download only if current data is too old."""
     #
@@ -236,7 +240,7 @@ class SymbolData:
     #             return current
     #
     #     return self._download(symbol, current)
-        
+
     def _download(self, symbol, current, **kwargs):
         """Download data from external source given already downloaded data.
         
@@ -275,35 +279,114 @@ def _timestamp_convert(unix_seconds_ts):
     return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
 
 
-
 class YahooFinance(SymbolData):
     """Yahoo Finance symbol data."""
 
     @staticmethod
-    def _internal_process(data):
-        """Manipulate yfinance data for better storing."""
+    def _clean(data):
+        """Clean Yahoo Finance open-close-high-low-volume-adjclose data."""
+
+        # print(data)
+        # print(data.isnull().sum())
 
         # nan-out nonpositive prices
-        data.loc[data["Open"] <= 0, 'Open'] = np.nan
-        data.loc[data["Close"] <= 0, "Close"] = np.nan
-        data.loc[data["High"] <= 0, "High"] = np.nan
-        data.loc[data["Low"] <= 0, "Low"] = np.nan
-        data.loc[data["Adj Close"] <= 0, "Adj Close"] = np.nan
+        data.loc[data["open"] <= 0, 'open'] = np.nan
+        data.loc[data["close"] <= 0, "close"] = np.nan
+        data.loc[data["high"] <= 0, "high"] = np.nan
+        data.loc[data["low"] <= 0, "low"] = np.nan
+        data.loc[data["adjclose"] <= 0, "adjclose"] = np.nan
 
         # nan-out negative volumes
-        data.loc[data["Volume"] < 0, 'Volume'] = np.nan
+        data.loc[data["volume"] < 0, 'volume'] = np.nan
 
-        intraday_logreturn = np.log(data["Close"]) - np.log(data["Open"])
-        close_to_close_logreturn = np.log(data["Adj Close"]).diff().shift(-1)
-        open_to_open_logreturn = (
-            close_to_close_logreturn + intraday_logreturn -
-            intraday_logreturn.shift(-1)
-        )
-        data["Return"] = np.exp(open_to_open_logreturn) - 1
-        del data["Adj Close"]
+        # all infinity values are nans
+        data.iloc[:, :] = np.nan_to_num(
+            data.values, copy=True, nan=np.nan, posinf=np.nan, neginf=np.nan)
+
+        # print(data)
+        # print(data.isnull().sum())
+
+        # if low is not the lowest, set it to nan
+        data['low'].loc[
+            data['low'] > data[['open', 'high', 'close']].min(1)] = np.nan
+
+        # if high is not the highest, set it to nan
+        data['high'].loc[
+            data['high'] < data[['open', 'high', 'close']].max(1)] = np.nan
+
+        # print(data)
+        # print(data.isnull().sum())
+
+        #
+        # fills
+        #
+
+        # fill volumes with zeros (safest choice)
+        data['volume'] = data['volume'].fillna(0.)
+
+        # fill close price with open price
+        data['close'] = data['close'].fillna(data['open'])
+
+        # fill open price with close from day(s) before
+        # repeat as long as it helps
+        for shifter in range(252):
+            logging.info(
+                f"Filling opens with close from {shifter} days before")
+            orig_missing_opens = data['open'].isnull().sum()
+            data['open'] = data['open'].fillna(data['close'].shift(
+                shifter+1))
+            new_missing_opens = data['open'].isnull().sum()
+            if orig_missing_opens == new_missing_opens:
+                break
+
+        # fill close price with same day's open
+        data['close'] = data['close'].fillna(data['open'])
+
+        # fill high price with max
+        data['high'] = data['high'].fillna(data[['open', 'close']].max(1))
+
+        # fill low price with max
+        data['low'] = data['low'].fillna(data[['open', 'close']].min(1))
+
+        # print(data)
+        # print(data.isnull().sum())
+
+        #
+        # Compute returns
+        #
+
+        # compute log of ratio between adjclose and close
+        log_adjustment_ratio = np.log(data['adjclose'] / data['close'])
+
+        # forward fill adjustment ratio
+        log_adjustment_ratio = log_adjustment_ratio.ffill()
+
+        # non-market log returns (dividends, splits)
+        non_market_lr = log_adjustment_ratio.diff().shift(-1)
+
+        # full open-to-open returns
+        open_to_open = np.log(data["open"]).diff().shift(-1)
+        data['return'] = np.exp(open_to_open + non_market_lr) - 1
+
+        # print(data)
+        # print(data.isnull().sum())
+
+        # intraday_logreturn = np.log(data["close"]) - np.log(data["open"])
+        # close_to_close_logreturn = np.log(data["adjclose"]).diff().shift(-1)
+        # open_to_open_logreturn = (
+        #     close_to_close_logreturn + intraday_logreturn -
+        #     intraday_logreturn.shift(-1)
+        # )
+        # data["return"] = np.exp(open_to_open_logreturn) - 1
+        del data["adjclose"]
+
         # eliminate last period's intraday data
-        data.loc[data.index[-1], ["High", "Low",
-                                  "Close", "Return", "Volume"]] = np.nan
+        data.loc[data.index[-1],
+            ["high", "low", "close", "return", "volume"]] = np.nan
+
+        # print(data)
+        # print(data.isnull().sum())
+
         return data
 
     @staticmethod
@@ -350,9 +433,8 @@ class YahooFinance(SymbolData):
 
         data = res.json()['chart']['result'][0]
 
-        index = pd.DatetimeIndex([
-            _timestamp_convert(el)
-            for el in data['timestamp']])
+        index = pd.DatetimeIndex(
+            [_timestamp_convert(el) for el in data['timestamp']])
 
         df_result = pd.DataFrame(data['indicators']['quote'][0], index=index)
         df_result['adjclose'] = data['indicators']['adjclose'][0]['adjclose']
@@ -368,12 +450,8 @@ class YahooFinance(SymbolData):
             df_result.index = pd.DatetimeIndex(
                 list(df_result.index[:-1]) + [newlast])
 
-        # remove later, for now we match yfinance column names and ordering
-        df_result = df_result[['open', 'high', 'low',
-                              'close', 'adjclose', 'volume']]
-        df_result.columns = ['Open', 'High', 'Low',
-                             'Close', 'Adj Close', 'Volume']
-        return df_result
+        return df_result[
+            ['open', 'low', 'high', 'close', 'adjclose', 'volume']]
 
     @classmethod
     def _download(cls, symbol, current=None,
@@ -401,34 +479,35 @@ class YahooFinance(SymbolData):
             updated = cls._get_data_yahoo(symbol, **kwargs)
             # updated = yf.download(symbol, **kwargs)
             logging.info('Downloading from the start.')
-            return cls._internal_process(updated)
+            return cls._clean(updated)
         else:
             if (now_timezoned() - current.index[-1]
-            # if (pd.Timestamp.now() - current.index[-1]
-                ) < pd.Timedelta(grace_period):
+                    ) < pd.Timedelta(grace_period):
                 logging.info(
                     'Skipping download because stored data is recent enough.')
                 return current
             new = cls._get_data_yahoo(symbol, start=current.index[-overlap])
-            # new = yf.download(symbol,  start=current.index[-overlap])
-            new = cls._internal_process(new)
+            new = cls._clean(new)
+            # if not np.all(new.columns == current.columns):
+            #     logging.warning(
+            #         f"{cls.__name__} is overwriting the data"
+            #         + f" already downloaded for {symbol}"
+            #         + f" because the storage format changed.")
+            #     new = cls._get_data_yahoo(symbol)
+            #     new = cls._internal_process(new)
+            #     return new
             return pd.concat([current.iloc[:-overlap], new])
 
     def _preload(self, data):
         """Prepare data for use by Cvxportfolio.
 
-        We drop the 'Volume' column expressed in number of stocks and
-        replace it with 'ValueVolume' which is an estimate of the (e.g.,
+        We drop the `volume` column expressed in number of stocks and
+        replace it with `valuevolume` which is an estimate of the (e.g.,
         US dollar) value of the volume exchanged on the day.
         """
-        data["ValueVolume"] = data["Volume"] * data["Open"]
-        del data["Volume"]
-        # remove infty values
-        data.iloc[:, :] = np.nan_to_num(
-            data.values, copy=True, nan=np.nan, posinf=np.nan, neginf=np.nan)
-        # remove extreme values
-        # data.loc[data["Return"] < -.99, "Return"] = np.nan
-        # data.loc[data["Return"] > .99, "Return"] = np.nan
+        data["valuevolume"] = data["volume"] * data["open"]
+        del data["volume"]
+
         return data
 
 #
@@ -919,6 +998,9 @@ class MarketDataInMemory(MarketData):
                     (~(self.returns[col].isnull())).idxmax()
                 ] = np.nan
 
+        # and we drop the first row, which is mostly NaNs anyway
+        self.returns = self.returns.iloc[1:]
+
         if self.volumes is not None:
             new_volumes_index = pd.Series(
                 self.volumes.index, self.volumes.index
@@ -941,6 +1023,9 @@ class MarketDataInMemory(MarketData):
                         (~(self.volumes[col].isnull())).idxmax()
                     ] = np.nan
 
+            # and we drop the first row, which is mostly NaNs anyway
+            self.volumes = self.volumes.iloc[1:]
+
         if self.prices is not None:
             new_prices_index = pd.Series(
                 self.prices.index, self.prices.index
@@ -959,6 +1044,9 @@ class MarketDataInMemory(MarketData):
                 self.prices[col].loc[
                         (~(self.prices[col].isnull())).idxmax()
                     ] = np.nan
+
+            # and we drop the first row, which is mostly NaNs anyway
+            self.prices = self.prices.iloc[1:]
 
     def _check_sizes(self):
         """Check sizes of user-provided dataframes."""
@@ -1058,19 +1146,19 @@ class DownloadedMarketData(MarketDataInMemory):
             print('.', end='')
             sys.stdout.flush()
             database_accesses[stock] = self.DATASOURCES[self.datasource](
-                stock, base_storage_location=self.base_location, 
+                stock, base_storage_location=self.base_location,
                 grace_period=grace_period)
         print()
 
         if self.datasource == 'YahooFinance':
             self.returns = pd.DataFrame(
-                {stock: database_accesses[stock].data['Return']
+                {stock: database_accesses[stock].data['return']
                 for stock in universe})
             self.volumes = pd.DataFrame(
-                {stock: database_accesses[stock].data['ValueVolume']
+                {stock: database_accesses[stock].data['valuevolume']
                 for stock in universe})
             self.prices = pd.DataFrame(
-                {stock: database_accesses[stock].data['Open']
+                {stock: database_accesses[stock].data['open']
                 for stock in universe})
         else:  # only Fred for indexes
             self.prices = pd.DataFrame(

@@ -26,8 +26,9 @@ from cvxportfolio.data import (DownloadedMarketData, Fred,
                                UserProvidedMarketData, YahooFinance,
                                _loader_csv, _loader_pickle, _loader_sqlite,
                                _storer_csv, _storer_pickle, _storer_sqlite)
-from cvxportfolio.tests import CvxportfolioTest
 from cvxportfolio.errors import DataError
+from cvxportfolio.tests import CvxportfolioTest
+
 
 class TestData(CvxportfolioTest):
     """Test SymbolData methods and interface."""
@@ -42,11 +43,11 @@ class TestData(CvxportfolioTest):
         # print(data.loc["2023-04-11 13:30:00+00:00", "Open"] /
         #       data.loc["2023-04-10 13:30:00+00:00", "Open"] - 1)
         self.assertTrue(np.isclose(
-            data.loc["2023-04-10 13:30:00+00:00", "Return"],
-            data.loc["2023-04-11 13:30:00+00:00", "Open"] /
-            data.loc["2023-04-10 13:30:00+00:00", "Open"] - 1,
+            data.loc["2023-04-10 13:30:00+00:00", "return"],
+            data.loc["2023-04-11 13:30:00+00:00", "open"] /
+            data.loc["2023-04-10 13:30:00+00:00", "open"] - 1,
         ))
-        self.assertTrue(np.isnan(data.iloc[-1]["Close"]))
+        self.assertTrue(np.isnan(data.iloc[-1]["close"]))
 
     def test_fred(self):
         """Test basic Fred usage."""
@@ -79,22 +80,22 @@ class TestData(CvxportfolioTest):
         # print(data)
 
         self.assertTrue(np.isclose(
-            data.loc["2023-04-05 13:30:00+00:00", "Return"],
-            data.loc["2023-04-06 13:30:00+00:00", "Open"] /
-            data.loc["2023-04-05 13:30:00+00:00", "Open"] - 1,
+            data.loc["2023-04-05 13:30:00+00:00", "return"],
+            data.loc["2023-04-06 13:30:00+00:00", "open"] /
+            data.loc["2023-04-05 13:30:00+00:00", "open"] - 1,
         ))
 
         store.update(grace_period=pd.Timedelta('1d'))
         data1 = store.load()
         # print(data1)
 
-        self.assertTrue(np.isnan(data1.iloc[-1]["Close"]))
+        self.assertTrue(np.isnan(data1.iloc[-1]["close"]))
 
         # print((data1.iloc[: len(data) - 1].Return -
         #       data.iloc[:-1].Return).describe().T)
 
         self.assertTrue(np.allclose(
-            data1.loc[data.index[:-1]].Return, data.iloc[:-1].Return))
+            data1.loc[data.index[:-1]]['return'], data.iloc[:-1]['return']))
 
     @unittest.skipIf(sys.version_info.major == 3 and sys.version_info.minor < 11,
         "Issues with timezoned timestamps.")
@@ -475,63 +476,66 @@ class TestMarketData(CvxportfolioTest):
             base_location=self.datadir)
 
         print(md.partial_universe_signature(md.full_universe))
-        
+
     def test_download_errors(self):
         """Test single-symbol download error."""
-        
+
         class YahooFinanceErroneous(YahooFinance):
-            
+
             def _download(self, symbol, current, grace_period):
-                res = super()._download(symbol, current, 
+                res = super()._download(symbol, current,
                     grace_period=grace_period)
                 res.iloc[-1, 0 ] = np.nan
                 return res
-        
-        a = YahooFinanceErroneous('CVX', base_storage_location=self.datadir)
+
+        a = YahooFinanceErroneous('AMZN', base_storage_location=self.datadir)
         with self.assertLogs(level='ERROR') as _:
             a = YahooFinanceErroneous(
-                'CVX', base_storage_location=self.datadir)
-                
+                'AMZN', base_storage_location=self.datadir)
+
         class YahooFinanceErroneous2(YahooFinance):
-            
+
             def _download(self, symbol, current, grace_period):
                 res = super()._download(symbol, current,
                     grace_period=grace_period)
                 res.iloc[-20] = np.nan
                 return res
-                
-        a = YahooFinanceErroneous2('CVX', base_storage_location=self.datadir)
+        with self.assertLogs(level='ERROR') as _:
+            a = YahooFinanceErroneous2('GOOGL',
+                base_storage_location=self.datadir)
         with self.assertLogs(level='ERROR') as _:
             a = YahooFinanceErroneous2(
-                'CVX', base_storage_location=self.datadir)
-                
+                'GOOGL', base_storage_location=self.datadir)
+
         class FredErroneous(Fred):
-            
+
             def _download(self, symbol, current, grace_period):
-                res = super()._download(symbol, current, 
+                res = super()._download(symbol, current,
                     grace_period=grace_period)
                 res.iloc[-1] = np.nan
                 return res
-                
+
         a = FredErroneous('DFF', base_storage_location=self.datadir)
         with self.assertLogs(level='ERROR') as _:
             a = FredErroneous(
                 'DFF', base_storage_location=self.datadir)
-                
-    
+
     def test_yahoo_finance_errors(self):
         """Test errors with Yahoo Finance."""
-        
-        import sys
+
         import logging
+        import sys
         logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-        
+
         with self.assertRaises(DataError):
             YahooFinance("DOESNTEXIST", base_storage_location=self.datadir)
 
-        
-            
-        
+    def test_yahoo_finance_cleaning(self):
+        """Test our logic to clean Yahoo Finance data."""
+
+        data = YahooFinance("ENI.MI").data
+        self.assertTrue((data.valuevolume == 0).sum() > 0)
+        self.assertTrue(data.iloc[:-1].isnull().sum().sum() == 0)
 
 
 if __name__ == '__main__':
