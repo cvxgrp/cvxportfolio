@@ -48,7 +48,7 @@ class CvxportfolioTest(unittest.TestCase):
             index=cls.volumes.index, columns=cls.volumes.columns)
         cls.market_data = cvx.UserProvidedMarketData(
             returns=cls.returns, volumes=cls.volumes, prices=cls.prices,
-            cash_key='cash', base_location=cls.datadir,
+            cash_key='cash',
             min_history=pd.Timedelta('0d'))
         cls.universe = cls.returns.columns
         cls.w_plus = cp.Variable(cls.returns.shape[1])

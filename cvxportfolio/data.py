@@ -76,10 +76,10 @@ class SymbolData:
     :param storage_backend: The storage backend, implemented ones are
         ``'pickle'``, ``'csv'``, and ``'sqlite'``. By default ``'pickle'``.
     :type storage_backend: str
-    :param base_storage_location: The location of the storage. We store in a 
+    :param base_location: The location of the storage. We store in a 
         subdirectory named after the class which derives from this. By default
         it's a directory named ``cvxportfolio_data`` in your home folder.
-    :type base_storage_location: pathlib.Path
+    :type base_location: pathlib.Path
     :param grace_period: If the most recent observation in the data is less 
         old than this we do not download new data. By default it's one day.
     :type grace_period: pandas.Timedelta
@@ -89,11 +89,11 @@ class SymbolData:
 
     def __init__(self, symbol,
                  storage_backend='pickle',
-                 base_storage_location=BASE_LOCATION,
+                 base_location=BASE_LOCATION,
                  grace_period=pd.Timedelta('1d')):
         self._symbol = symbol
         self._storage_backend = storage_backend
-        self._base_storage_location = base_storage_location
+        self._base_location = base_location
         self.update(grace_period)
         self._data = self.load()
 
@@ -103,7 +103,7 @@ class SymbolData:
         
         :rtype: pathlib.Path
         """
-        loc = self._base_storage_location / f"{self.__class__.__name__}"
+        loc = self._base_location / f"{self.__class__.__name__}"
         loc.mkdir(parents=True, exist_ok=True)
         return loc
 
@@ -862,7 +862,7 @@ class MarketDataInMemory(MarketData):
             raise NotImplementedError(
                 'Currently the only data pipeline built is for USDOLLAR cash')
 
-        data = Fred('DFF', base_storage_location=self.base_location)
+        data = Fred('DFF', base_location=self.base_location)
         cash_returns_per_period = resample_returns(
             data.data/100, periods=self.periods_per_year)
 
@@ -1058,11 +1058,42 @@ class MarketDataInMemory(MarketData):
 
 
 class UserProvidedMarketData(MarketDataInMemory):
+    """User-provided market data.
+    
+    :param returns: Historical open-to-open returns. The return
+        at time :math:`t` is :math:`r_t = p_{t+1}/p_t -1` where
+        :math:`p_t` is the (open) price at time :math:`t`. Must
+        have datetime index.
+    :type returns: pandas.DataFrame
+    :param volumes: Historical market volumes, expressed in units
+        of value (*e.g.*, US dollars).
+    :type volumes: pandas.DataFrame or None
+    :param prices: Historical open prices (*e.g.*, used for rounding
+        trades in the :class:`MarketSimulator`).
+    :type prices: pandas.DataFrame or None
+    :param trading_frequency: Instead of using frequency implied by
+        the index of the returns, down-sample all dataframes.
+        We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
+        ``'annual'``. By default (None) don't down-sample. 
+    :type trading_frequency: str or None
+    :param min_history: Minimum amount of time for which the returns
+         are not ``np.nan`` before each assets enters in a back-test.
+    :type min_history: pandas.Timedelta
+    :param base_location: The location of the storage, only used
+        in case it downloads the cash returns. By default
+        it's a directory named ``cvxportfolio_data`` in your home folder.
+    :type base_location: pathlib.Path
+    :param cash_key: Name of the cash account. If not in the columns
+        of the provided returns, it will be downloaded. Its returns
+        are the risk-free rate.
+    :type cash_key: str
+    
+    """
 
     def __init__(self, returns, volumes=None, prices=None,
                  copy_dataframes=True, trading_frequency=None,
-                 base_location=BASE_LOCATION,
                  min_history=pd.Timedelta('365.24d'),
+                 base_location=BASE_LOCATION,
                  cash_key='USDOLLAR'):
 
         if returns is None:
@@ -1086,10 +1117,36 @@ class UserProvidedMarketData(MarketDataInMemory):
 
 
 class DownloadedMarketData(MarketDataInMemory):
-    """Prepare, hold, and serve market data.
-
-    Not meant to be accessed by user. Most of its initialization is
-    documented in MarketSimulator.
+    """Market data that is downloaded.
+    
+    :param universe: List of names as understood by the data source 
+        used, *e.g.*, ``['AAPL', 'GOOG']`` if using the default
+        Yahoo Finance data source.
+    :type universe: list
+    :param datasource: The data source used. 
+    :type datasource: str or :class:`SymbolData` class
+    :param cash_key: Name of the cash account, its rates will be downloaded
+        and added as last columns of the returns. Its returns are the 
+        risk-free rate.
+    :type cash_key: str
+    :param base_location: The location of the storage. By default
+        it's a directory named ``cvxportfolio_data`` in your home folder.
+    :type base_location: pathlib.Path
+    :param storage_backend: The storage backend, implemented ones are
+        ``'pickle'``, ``'csv'``, and ``'sqlite'``. By default ``'pickle'``.
+    :type storage_backend: str
+    :param min_history: Minimum amount of time for which the returns
+         are not ``np.nan`` before each assets enters in a back-test.
+    :type min_history: pandas.Timedelta
+    :param grace_period: If the most recent observation of each symbol's
+        data is less old than this we do not download new data. 
+        By default it's one day.
+    :type grace_period: pandas.Timedelta
+    :param trading_frequency: Instead of using frequency implied by
+        the index of the returns, down-sample all dataframes.
+        We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
+        ``'annual'``. By default (None) don't down-sample. 
+    :type trading_frequency: str or None
     """
 
     def __init__(self,
@@ -1131,7 +1188,7 @@ class DownloadedMarketData(MarketDataInMemory):
             print('.', end='')
             sys.stdout.flush()
             database_accesses[stock] = self.datasource(
-                stock, base_storage_location=self.base_location,
+                stock, base_location=self.base_location,
                 grace_period=grace_period, storage_backend=storage_backend)
         print()
 

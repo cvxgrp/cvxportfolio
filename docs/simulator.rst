@@ -10,7 +10,17 @@ Simulator
     .. automethod:: backtest
     
     .. automethod:: backtest_many
+	
+    .. automethod:: optimize_hyperparameters
+
     
 .. autoclass:: StockMarketSimulator
+
+    .. automethod:: backtest
+    
+    .. automethod:: backtest_many
+	
+    .. automethod:: optimize_hyperparameters
+
 
 

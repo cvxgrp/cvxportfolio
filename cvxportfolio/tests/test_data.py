@@ -52,7 +52,7 @@ class TestData(CvxportfolioTest):
 
         store = Fred(
             symbol="DFF", storage_backend='pickle',
-            base_storage_location=self.datadir)
+            base_location=self.datadir)
 
         print(store.data)
         data = store.data
@@ -71,7 +71,7 @@ class TestData(CvxportfolioTest):
 
         store = YahooFinance(
             symbol="ZM", storage_backend='pickle',
-            base_storage_location=self.datadir)
+            base_location=self.datadir)
 
         data = store.data
 
@@ -408,31 +408,27 @@ class TestMarketData(CvxportfolioTest):
 
         with self.assertRaises(SyntaxError):
             UserProvidedMarketData(returns=self.returns, volumes=self.volumes,
-                       prices=self.prices.iloc[:, :-1], cash_key='cash',
-                       base_location=self.datadir)
+                       prices=self.prices.iloc[:, :-1], cash_key='cash')
 
         with self.assertRaises(SyntaxError):
             UserProvidedMarketData(
                 returns=self.returns,
                 volumes=self.volumes.iloc[:, :-3],
-                prices=self.prices, cash_key='cash',
-                base_location=self.datadir)
+                prices=self.prices, cash_key='cash')
 
         with self.assertRaises(SyntaxError):
             used_prices = pd.DataFrame(
                 self.prices, index=self.prices.index,
                 columns=self.prices.columns[::-1])
             UserProvidedMarketData(returns=self.returns, volumes=self.volumes,
-                       prices=used_prices, cash_key='cash',
-                       base_location=self.datadir)
+                       prices=used_prices, cash_key='cash')
 
         with self.assertRaises(SyntaxError):
             used_volumes = pd.DataFrame(
                 self.volumes, index=self.volumes.index,
                 columns=self.volumes.columns[::-1])
             UserProvidedMarketData(returns=self.returns, volumes=used_volumes,
-                       prices=self.prices, cash_key='cash',
-                       base_location=self.datadir)
+                       prices=self.prices, cash_key='cash')
 
     def test_market_data_full(self):
         """Test serve method of DownloadedMarketData."""
@@ -486,10 +482,10 @@ class TestMarketData(CvxportfolioTest):
                 res.iloc[-1, 0 ] = np.nan
                 return res
 
-        a = YahooFinanceErroneous('AMZN', base_storage_location=self.datadir)
+        a = YahooFinanceErroneous('AMZN', base_location=self.datadir)
         with self.assertLogs(level='ERROR') as _:
             a = YahooFinanceErroneous(
-                'AMZN', base_storage_location=self.datadir)
+                'AMZN', base_location=self.datadir)
 
         class YahooFinanceErroneous2(YahooFinance):
 
@@ -500,10 +496,10 @@ class TestMarketData(CvxportfolioTest):
                 return res
         with self.assertLogs(level='WARNING') as _:
             a = YahooFinanceErroneous2('GOOGL',
-                base_storage_location=self.datadir)
+                base_location=self.datadir)
         with self.assertLogs(level='WARNING') as _:
             a = YahooFinanceErroneous2(
-                'GOOGL', base_storage_location=self.datadir)
+                'GOOGL', base_location=self.datadir)
 
         class FredErroneous(Fred):
 
@@ -513,10 +509,10 @@ class TestMarketData(CvxportfolioTest):
                 res.iloc[-1] = np.nan
                 return res
 
-        a = FredErroneous('DFF', base_storage_location=self.datadir)
+        a = FredErroneous('DFF', base_location=self.datadir)
         with self.assertLogs(level='ERROR') as _:
             a = FredErroneous(
-                'DFF', base_storage_location=self.datadir)
+                'DFF', base_location=self.datadir)
 
     def test_yahoo_finance_errors(self):
         """Test errors with Yahoo Finance."""
@@ -526,12 +522,12 @@ class TestMarketData(CvxportfolioTest):
         logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
         with self.assertRaises(DataError):
-            YahooFinance("DOESNTEXIST", base_storage_location=self.datadir)
+            YahooFinance("DOESNTEXIST", base_location=self.datadir)
 
     def test_yahoo_finance_cleaning(self):
         """Test our logic to clean Yahoo Finance data."""
 
-        data = YahooFinance("ENI.MI").data
+        data = YahooFinance("ENI.MI", base_location=self.datadir).data
         self.assertTrue((data.valuevolume == 0).sum() > 0)
         self.assertTrue(data.iloc[:-1].isnull().sum().sum() == 0)
 

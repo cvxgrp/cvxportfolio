@@ -49,10 +49,63 @@ __all__ = ['StockMarketSimulator', 'MarketSimulator']
 
 class MarketSimulator:
     """This class is a generic financial market simulator.
+    
+    It can either be initialized with a :class:`MarketData` instance,
+    or we provide a selection of the arguments to
+    :class:`DownloadedMarketData` and :class:`UserProvidedMarketData`
+    to initialize either internally.
 
-    It is (currently) not meant to be used directly. Look at
-    :class:`StockMarketSimulator` for its version specialized
-    to the stock market.
+    :param universe: List of names as understood by the data source 
+        used, *e.g.*, ``['AAPL', 'GOOG']`` if using the default
+        Yahoo Finance data source. If provided, a :class:`DownloadedMarketData` 
+        will be initialized.
+    :type universe: list
+    :param returns: Historical open-to-open returns. The return
+        at time :math:`t` is :math:`r_t = p_{t+1}/p_t -1` where
+        :math:`p_t` is the (open) price at time :math:`t`. Must
+        have datetime index. If provided, a 
+        :class:`UserProvidedMarketData` will be initialized. If
+        universe is specified it is ignored.
+    :type returns: pandas.DataFrame
+    
+    :param volumes: Historical market volumes, expressed in units
+        of value (*e.g.*, US dollars). If
+        universe is specified it is ignored.
+    :type volumes: pandas.DataFrame or None
+    :param prices: Historical open prices (*e.g.*, used for rounding
+        trades in the :class:`MarketSimulator`). If
+        universe is specified it is ignored.
+    :type prices: pandas.DataFrame or None
+    
+    :param datasource: The data source used, if providing a universe
+        (for :class:`DownloadedMarketData`).
+    :type datasource: str or :class:`SymbolData` class
+    
+    :param cash_key: Name of the cash account. Its returns
+        are the risk-free rate.
+    :type cash_key: str
+
+    :param trading_frequency: Instead of using frequency implied by
+        the index of the returns, down-sample all dataframes.
+        We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
+        ``'annual'``. By default (None) don't down-sample. 
+    :type trading_frequency: str or None
+    
+    :param market_data: An instance of a :class:`MarketData`. If provided,
+        all previous arguments are ignored.
+    :type market_data: :class:`MarketData` instance or None
+    :param base_location: The location of the storage. By default
+        it's a directory named ``cvxportfolio_data`` in your home folder.
+    :type base_location: pathlib.Path
+    
+    :param costs: List of costs that are applied at each time in a back-test.
+    :type costs: list of :class:`SimulatorCost` classes or instances
+    
+    :param round_trades: If market prices are available, round trades to
+        integer number of shares.
+    :type round_trades: bool
+    
+ 
     """
 
     def __init__(self, universe=(), returns=None, volumes=None,
@@ -67,6 +120,13 @@ class MarketSimulator:
         if not market_data is None:
             self.market_data = market_data
         else:
+
+            if not len(universe) and prices is None:
+                if round_trades:
+                    raise SyntaxError(
+                        "If you don't specify prices you can't request "
+                        + "`round_trades`.")
+
             if not len(universe):
                 self.market_data = UserProvidedMarketData(
                     returns=returns,
@@ -81,13 +141,6 @@ class MarketSimulator:
                     base_location=base_location,
                     trading_frequency=trading_frequency,
                     datasource=datasource)
-
-        # TODO fix this (when passing MarketData)
-        if not len(universe) and prices is None:
-            if round_trades:
-                raise SyntaxError(
-                    "If you don't specify prices you can't request "
-                    + "`round_trades`.")
 
         self.round_trades = round_trades
         self.costs = [el() if isinstance(el, type) else el for el in costs]
@@ -357,9 +410,29 @@ class MarketSimulator:
 
     def optimize_hyperparameters(self, policy, start_time=None, end_time=None,
         initial_value=1E6, h=None, objective='sharpe_ratio', parallel=True):
-        """Optimize hyperparameters of a policy to maximize backtest objective.
+        """Optimize hyperparameters of a policy to maximize back-test objective.
 
-        EXPERIMENTAL: this method is currently being developed.
+        :param policy: Trading policy with symbolic hyperparameters.
+        :type policy: cvx.BaseTradingPolicy
+        :param start_time: start time of the back-test on which we optimize; 
+            if market it close, the first trading day after it is selected.
+        :type start_time: str or datetime
+        :param end_time: End time of the back-test on which we optimize;  
+            if market it closed, the last trading day before it is selected
+        :type end_time: str or datetime or None
+        :param initial_value: Initial value in dollar of the portfolio, if not specifying
+            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified
+            this is ignored.
+        :type initial_value: float
+        :param h: Initial portfolio ``h`` expressed in dollar positions. If ``None``
+            an initial portfolio of ``initial_value`` in cash is used.
+        :type h: pd.Series or None
+        
+        :param objective: Attribute of :class:`BacktestResult` that is maximized.
+        :type objective: str
+
+        :returns: The provided policy, whose hyperparameters have optimal values.
+        :rtype: cvxportfolio.Policy
         """
 
         def modify_orig_policy(target_policy):
@@ -380,14 +453,14 @@ class MarketSimulator:
 
         for i in range(100):
             print('iteration', i)
-            print('Current optimal hyper-parameters:')
-            print(policy)
+            # print('Current optimal hyper-parameters:')
+            # print(policy)
             print('Current objective:')
             print(current_objective)
-            print()
-            print('Current result:')
-            print(current_result)
-            print()
+            # print()
+            # print('Current result:')
+            # print(current_result)
+            # print()
 
             test_policies = []
             for hp in policy.collect_hyperparameters():
@@ -544,63 +617,46 @@ class MarketSimulator:
 
 class StockMarketSimulator(MarketSimulator):
     """This class implements a simulator of the stock market.
+    It simplifies the interface of :class:`MarketSimulator` and
+    has (realistic) default costs.
 
-    We strive to make the parameters here as accurate as possible. The following is
-    accurate as of 2023 using numbers obtained on the public website of a
-    `large US-based broker <https://www.interactivebrokers.com/>`_.
+    :param universe: List of Yahoo Finance stock names.
+    :type universe: list
+    
+    :param cash_key: Name of the cash account. Its returns
+        are the risk-free rate.
+    :type cash_key: str
 
-    :param universe: list of `Yahoo Finance <https://finance.yahoo.com/>`_ tickers on which to
-        simulate performance of the trading strategy. If left unspecified you should at least
-        pass `returns` and `volumes`. If you define a different market data access interface
-        (look in `cvxportfolio.data` for how to do it) you should pass instead
-        the symbol names for that data provider. Default is empty list.
-    :type universe: list or None
-    :param returns: historical open-to-open returns. Default is None, it is ignored
-        if universe is specified.
-    :type returns: pandas.DataFrame
-    :param volumes: historical market volumes expressed in value (e.g., US dollars).
-            Default is None, it is ignored if universe is specified.
-    :type volumes: pandas.DataFrame
-    :param prices: historical open prices. Default is None, it is ignored
-        if universe is specified. These are used to round the trades to integer number of stocks
-        if round_trades is True, and compute per-share transaction costs (if `per_share_fixed_cost`
-        is greater than zero).
-    :type prices: pandas.DataFrame
-    :param round_trades: round the trade weights provided by a policy so they correspond to an integer
-        number of stocks traded. Default is True using Yahoo Finance open prices.
-    :type round_trades: bool
-    :param min_history: minimum history required for a stock to be included in a backtest. The stock
-        will be ignored for this amount of time after its IPO, and then be included.
-    :type min_history: pandas.Timedelta
-    :param costs: list of Cost instances or class objects. If class objects (the default) they will
-        be instantiated internally with their default arguments.
-    :type costs: list
-    :param cash_key: name of the cash account. Default is 'USDOLLAR', which gets downloaded by `cvxportfolio.data`
-        as the Federal Funds effective rate from Fred. If None, you must pass the cash returns
-        along with the stock returns as its last column.
-    :type cash_key: str or None
-    :param base_location: base location for storage of data.
-        Default is `Path.home() / "cvxportfolio_data"`. Unused if passing `returns` and `volumes`.
-    :type base_location: pathlib.Path or str:
-    :param trading_frequency: optionally choose a different frequency for
-        trades than the one of the data used.
-        The default interface (Yahoo finance) provides daily trading data,
-        and so that is the default frequency for trades. With this argument you can set instead
-        the trading frequency to ``"weekly"``, which trades every Monday (or the first
-        non-holiday trading day of each week), ``"monthly"``, which trades every first of the month (ditto),
-        ``"quarterly"``, and ``"annual"``.
+    :param trading_frequency: Instead of using frequency implied by
+        the index of the returns, down-sample all dataframes.
+        We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
+        ``'annual'``. By default (None) don't down-sample. 
     :type trading_frequency: str or None
+    
+    :param base_location: The location of the storage. By default
+        it's a directory named ``cvxportfolio_data`` in your home folder.
+    :type base_location: pathlib.Path
+    
+    :param costs: List of costs that are applied at each time in a back-test.
+        By default we add :class:`StocksTransactionCost` 
+        and :class:`StocksHoldingCost`.
+    :type costs: list of :class:`SimulatorCost` classes or instances
+    
+    :param round_trades: Round trades to integer number of shares. By default, True.
+    :type round_trades: bool
+    
+    :param kwargs: You can add any other argument to pass to 
+        :class:`MarketSimulator`'s initializer.
+    :type kwargs: dict
     """
 
     def __init__(self, universe=(),
-                 returns=None, volumes=None, prices=None,
                  costs=(StocksTransactionCost, StocksHoldingCost),
                  round_trades=True,
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
                  trading_frequency=None, **kwargs):
 
         super().__init__(universe=universe,
-                         returns=returns, volumes=volumes, prices=prices,
                          costs=costs, round_trades=round_trades,
                          cash_key=cash_key, base_location=base_location,
                          trading_frequency=trading_frequency, **kwargs)
