@@ -25,47 +25,48 @@ def _mp_init(l):
     global LOCK
     LOCK = l
 
-def _hash_universe(universe):
-    """Hash given universe"""
-    return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
+# def _hash_universe(universe):
+#     """Hash given universe"""
+#     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
 
-def _load_cache(universe, trading_frequency, base_location):
+def cache_name(signature, base_location):
+    """Cache name."""
+    return (base_location / 'backtest_cache') / (signature + '.pkl')
+
+def _load_cache(signature, base_location):
     """Load cache from disk."""
-    folder = base_location / (
-        f'hash(universe)={_hash_universe(universe)},'
-        + f'trading_frequency={trading_frequency}')
+    if signature is None:
+        logging.info(f'Market data has no signature!')
+        return {}
+    name = cache_name(signature, base_location)
     if 'LOCK' in globals():
         logging.debug(f'Acquiring cache lock from process {os.getpid()}')
         LOCK.acquire()
     try:
-        with open(folder/'cache.pkl', 'rb') as f:
-            logging.info(
-                f'Loading cache for universe = {universe}'
-                f' and trading_frequency = {trading_frequency}')
-            return pickle.load(f)
+        with open(name, 'rb') as f:
+            res = pickle.load(f)
+            logging.info(f'Loaded cache {name}')
+            return res
     except FileNotFoundError:
         logging.info(f'Cache not found!')
         return {}
-    else:
-        logging.info(f'Cache found!')
     finally:
         if 'LOCK' in globals():
             logging.debug(f'Releasing cache lock from process {os.getpid()}')
             LOCK.release()
 
-
-def _store_cache(cache, universe, trading_frequency, base_location):
+def _store_cache(cache, signature, base_location):
     """Store cache to disk."""
-    folder = base_location / (
-        f'hash(universe)={_hash_universe(universe)},'
-        f'trading_frequency={trading_frequency}')
+    if signature is None:
+        logging.info(f'Market data has no signature!')
+        return {}
+    name = cache_name(signature, base_location)
     if 'LOCK' in globals():
         logging.debug(f'Acquiring cache lock from process {os.getpid()}')
         LOCK.acquire()
-    folder.mkdir(exist_ok=True)
-    with open(folder/'cache.pkl', 'wb') as f:
-        logging.info(
-            f'Storing cache for universe = {universe} and trading_frequency = {trading_frequency}')
+    name.parent.mkdir(exist_ok=True)
+    with open(name, 'wb') as f:
+        logging.info(f'Storing cache {name}')
         pickle.dump(cache, f)
     if 'LOCK' in globals():
         logging.debug(f'Releasing cache lock from process {os.getpid()}')

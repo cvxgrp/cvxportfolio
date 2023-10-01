@@ -14,6 +14,7 @@
 """Unit tests for the market simulator and its backtest methods."""
 
 import multiprocessing
+import os
 import time
 import unittest
 from copy import deepcopy
@@ -190,6 +191,7 @@ class TestSimulator(CvxportfolioTest):
             self.assertTrue(np.isclose(tcost, -sim_cost))
 
     def test_methods(self):
+        """Test some methods of MarketSimulator."""
         simulator = MarketSimulator(
             ['ZM', 'META', 'AAPL'], base_location=self.datadir)
 
@@ -205,7 +207,7 @@ class TestSimulator(CvxportfolioTest):
                 np.random.seed(i)
                 tmp = np.random.uniform(size=4)*1000
                 tmp[3] = -sum(tmp[:3])
-                u = pd.Series(tmp, simulator.market_data.universe)
+                u = pd.Series(tmp, simulator.market_data.full_universe)
                 rounded = simulator._round_trade_vector(
                     u, simulator.market_data.prices.loc[t])
                 self.assertTrue(sum(rounded) == 0)
@@ -224,7 +226,8 @@ class TestSimulator(CvxportfolioTest):
         market_data.prices.index = \
             market_data.prices.index.tz_localize(None).floor("D")
 
-    def testsimulate_policy(self):
+    def test_simulate_policy(self):
+        """Test basic policy simulation."""
         simulator = StockMarketSimulator(
             ['META', 'AAPL'], base_location=self.datadir)
 
@@ -240,11 +243,11 @@ class TestSimulator(CvxportfolioTest):
             np.random.seed(i)
             h = np.random.randn(3)*10000
             h[-1] = 10000 - sum(h[:-1])
-            h0 = pd.Series(h, simulator.market_data.universe)
+            h0 = pd.Series(h, simulator.market_data.full_universe)
             h = pd.Series(h0, copy=True)
 
             policy.initialize_estimator_recursive(
-                universe=simulator.market_data.universe,
+                universe=simulator.market_data.full_universe,
                 trading_calendar=simulator.market_data.trading_calendar(
                     start_time, end_time, include_end=False)
             )
@@ -288,7 +291,7 @@ class TestSimulator(CvxportfolioTest):
             h0 = pd.Series(h, simulator.market_data.returns.columns)
             h = pd.Series(h0, copy=True)
             policy.initialize_estimator_recursive(
-                universe=simulator.market_data.universe,
+                universe=simulator.market_data.full_universe,
                 trading_calendar=simulator.market_data.trading_calendar(
                     start_time, end_time, include_end=False)
             )
@@ -725,6 +728,26 @@ class TestSimulator(CvxportfolioTest):
 
         self.assertTrue(result.final_value < 0)
 
+    def test_cache_missing_signature(self):
+        """Test backtest with missing market data signature."""
+        md = cvx.UserProvidedMarketData(
+            returns=self.returns, volumes=self.volumes,
+            cash_key='cash', base_location=self.datadir,
+            min_history=pd.Timedelta('0d'))
+        md.partial_universe_signature = lambda x: None
+
+        simulator = cvx.MarketSimulator(market_data=md)
+
+        # print(os.listdir(self.datadir/'cache'))
+
+        policy = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast() - .5 * cvx.FullCovariance(),
+            [cvx.LongOnly(applies_to_cash=True)])
+
+        simulator.backtest(
+            policy, start_time = self.returns.index[10],
+            end_time = self.returns.index[20],
+            )
 
 if __name__ == '__main__':
     unittest.main()

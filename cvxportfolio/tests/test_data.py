@@ -438,13 +438,42 @@ class TestMarketData(CvxportfolioTest):
         """Test serve method of DownloadedMarketData."""
 
         md = DownloadedMarketData(['AAPL', 'ZM'], base_location=self.datadir)
-        assert np.all(md.universe == ['AAPL', 'ZM', 'USDOLLAR'])
+        assert np.all(md.full_universe == ['AAPL', 'ZM', 'USDOLLAR'])
 
         t = md.returns.index[-40]
 
         past_returns, _, past_volumes, _, current_prices = md.serve(t)
         self.assertFalse(past_volumes is None)
         self.assertFalse(current_prices is None)
+
+    def test_signature(self):
+        """Test partial-universe signature of MarketData."""
+
+        md = DownloadedMarketData(['AAPL', 'ZM'], base_location=self.datadir)
+
+        sig1 = md.partial_universe_signature(md.full_universe)
+
+        md = DownloadedMarketData(['AAPL', 'ZM'], trading_frequency='monthly',
+            base_location=self.datadir)
+
+        sig2 = md.partial_universe_signature(md.full_universe)
+
+        self.assertFalse(sig1 == sig2)
+
+        md = DownloadedMarketData(['AAPL', 'ZM', 'GOOG'],
+            trading_frequency='monthly',
+            base_location=self.datadir)
+
+        sig3 = md.partial_universe_signature(
+            pd.Index(['AAPL', 'ZM', 'USDOLLAR']))
+
+        self.assertTrue(sig3 == sig2)
+
+        md = DownloadedMarketData(['WM2NS'],
+            datasource='Fred',
+            base_location=self.datadir)
+
+        print(md.partial_universe_signature(md.full_universe))
 
 
 if __name__ == '__main__':

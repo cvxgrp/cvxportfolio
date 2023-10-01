@@ -30,8 +30,8 @@ import numpy as np
 import pandas as pd
 import requests
 
-from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
-                    resample_returns)
+from .utils import (hash_, periods_per_year_from_datetime_index,
+                    repr_numpy_pandas, resample_returns)
 
 __all__ = ["YahooFinance", "Fred",
            "UserProvidedMarketData", "DownloadedMarketData"]
@@ -603,12 +603,28 @@ class MarketData:
 
     @property
     def full_universe(self):
-        """Full universe (which might not be available for trading).
+        """Full universe, which might not be available for trading.
         
         :rtype: pandas.Index
         """
         raise NotImplementedError
 
+    def partial_universe_signature(self, partial_universe):
+        """Unique signature of this instance with a partial universe.
+        
+        A partial universe is a subset of the full universe that is
+        available at some time for trading.
+        
+        This is used in cvxportfolio.cache to sign back-test caches
+        that are saved on disk. See its implementation below for details.
+        If not redefined it returns None which disables on-disk caching.
+        
+        :param partial_universe: A subset of the full universe.
+        :type partial_universe: pandas.Index
+        
+        :rtype: str
+        """
+        return None
 
 class MarketDataInMemory(MarketData):
     """Market data that is stored in memory when initialized."""
@@ -654,6 +670,10 @@ class MarketDataInMemory(MarketData):
                     pd.DataFrame(self.prices.loc[:, colmask[:-1]], copy=True))
             self._mask = mask
 
+    @property
+    def full_universe(self):
+        return self.returns.columns
+
     def serve(self, t):
         """Serve data for policy and simulator at time :math:`t`."""
 
@@ -686,73 +706,6 @@ class MarketDataInMemory(MarketData):
 
         return (past_returns, current_returns, past_volumes, current_volumes,
                 current_prices)
-
-    # def _serve_data_policy(self, t, mask=None):
-    #     if mask is not None:
-    #         assert np.all(mask == self.universe[self._universe_mask_at_time(t)])
-    #     (past_returns, current_returns, past_volumes, current_volumes,
-    #                     current_prices) = self.serve(t)
-    #     return past_returns, past_volumes, current_prices
-    #
-    # def _serve_data_simulator(self, t, mask=None):
-    #     if mask is not None:
-    #         assert np.all(mask == self.universe[self._universe_mask_at_time(t)])
-    #     (past_returns, current_returns, past_volumes, current_volumes,
-    #                     current_prices) = self.serve(t)
-    #     current_and_past_returns = self._df_or_ser_set_read_only(pd.concat(
-    #         [past_returns, pd.DataFrame(current_returns).T], axis=0))
-    #     if past_volumes is not None:
-    #         current_and_past_volumes = self._df_or_ser_set_read_only(pd.concat(
-    #             [past_volumes, pd.DataFrame(current_volumes).T], axis=0))
-    #     else:
-    #         current_and_past_volumes = None
-    #
-    #     return (current_and_past_returns, current_and_past_volumes,
-    #         current_prices)
-
-    # def _serve_data_policy(self, t, mask=None):
-    #     """Give data to policy at time t."""
-    #     tidx = self.returns.index.get_loc(t)
-    #     past_returns = pd.DataFrame(self.returns.iloc[:tidx])
-    #     if not (mask is None):
-    #         past_returns = past_returns[mask]
-    #     if not self.volumes is None:
-    #         tidx = self.volumes.index.get_loc(t)
-    #         past_volumes = pd.DataFrame(self.volumes.iloc[:tidx])
-    #         if not (mask is None):
-    #             past_volumes = past_volumes[mask[:-1]]
-    #     else:
-    #         past_volumes = None
-    #     if not self.prices is None:
-    #         current_prices = pd.Series(self.prices.loc[t])
-    #         if not (mask is None):
-    #             current_prices = current_prices[mask[:-1]]
-    #     else:
-    #         current_prices = None
-    #
-    #     return past_returns, past_volumes, current_prices
-
-    # def _serve_data_simulator(self, t, mask=None):
-    #     """Give data to simulator at time t."""
-    #     tidx = self.returns.index.get_loc(t)
-    #     current_and_past_returns = pd.DataFrame(self.returns.iloc[:tidx+1])
-    #     if not (mask is None):
-    #         current_and_past_returns = current_and_past_returns[mask]
-    #     if not self.volumes is None:
-    #         tidx = self.volumes.index.get_loc(t)
-    #         current_and_past_volumes = pd.DataFrame(self.volumes.iloc[:tidx+1])
-    #         if not (mask is None):
-    #             current_and_past_volumes = current_and_past_volumes[mask[:-1]]
-    #     else:
-    #         current_and_past_volumes = None
-    #     if not (self.prices is None):
-    #         current_prices = pd.Series(self.prices.loc[t])
-    #         if not (mask is None):
-    #             current_prices = current_prices[mask[:-1]]
-    #     else:
-    #         current_prices = None
-    #
-    #     return current_and_past_returns, current_and_past_volumes, current_prices
 
     @staticmethod
     def _resample_returns(returns, periods):
@@ -800,7 +753,7 @@ class MarketDataInMemory(MarketData):
     def _universe_at_time(self, t):
         """Return the valid universe at time t."""
         past_returns = self.returns.loc[self.returns.index < t]
-        return self.universe[(past_returns.count() >= self.min_history) &
+        return self.full_universe[(past_returns.count() >= self.min_history) &
             (~self.returns.loc[t].isnull())]
 
     def _universe_mask_at_time(self, t):
@@ -946,10 +899,10 @@ class MarketDataInMemory(MarketData):
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
 
-    @property
-    def universe(self):
-        """Full trading universe including cash."""
-        return self.returns.columns
+    # @property
+    # def universe(self):
+    #     """Full trading universe including cash."""
+    #     return self.returns.columns
 
     @property
     def periods_per_year(self):
@@ -1000,7 +953,7 @@ class DownloadedMarketData(MarketDataInMemory):
 
     def __init__(self,
                  universe=(),
-                 datasource='YFinance',
+                 datasource='YahooFinance',
                  cash_key='USDOLLAR',
                  base_location=BASE_LOCATION,
                  min_history=pd.Timedelta('365.24d'),
@@ -1013,33 +966,36 @@ class DownloadedMarketData(MarketDataInMemory):
         self.base_location = Path(base_location)
         self._min_history_timedelta = min_history
         self.cash_key = cash_key
-
-        self._get_market_data(universe, datasource)
+        self.datasource = datasource
+        self._get_market_data(universe)
         self._add_cash_column(self.cash_key)
         self._remove_missing_recent()
 
         self._post_init_(trading_frequency=trading_frequency)
 
-    DATASOURCES = {'YFinance': YahooFinance, 'Fred': Fred}
+    DATASOURCES = {'YahooFinance': YahooFinance, 'Fred': Fred}
 
-    def _get_market_data(self, universe, datasource):
+    def _get_market_data(self, universe):
         database_accesses = {}
         print('Updating data')
 
         for stock in universe:
-            logging.debug(
-                f'Getting data for {stock} with {self.DATASOURCES[datasource]}.')
+            logging.info(
+                f'Updating {stock} with {self.DATASOURCES[self.datasource]}.')
             print('.')
-            database_accesses[stock] = self.DATASOURCES[datasource](
+            database_accesses[stock] = self.DATASOURCES[self.datasource](
                 stock, base_storage_location=self.base_location)
 
-        if datasource == 'YFinance':
+        if self.datasource == 'YahooFinance':
             self.returns = pd.DataFrame(
-                {stock: database_accesses[stock].data['Return'] for stock in universe})
+                {stock: database_accesses[stock].data['Return']
+                for stock in universe})
             self.volumes = pd.DataFrame(
-                {stock: database_accesses[stock].data['ValueVolume'] for stock in universe})
+                {stock: database_accesses[stock].data['ValueVolume']
+                for stock in universe})
             self.prices = pd.DataFrame(
-                {stock: database_accesses[stock].data['Open'] for stock in universe})
+                {stock: database_accesses[stock].data['Open']
+                for stock in universe})
         else:  # only Fred for indexes
             self.prices = pd.DataFrame(
                 {stock: database_accesses[stock].data for stock in universe})  # open prices
@@ -1068,3 +1024,12 @@ class DownloadedMarketData(MarketDataInMemory):
         self.returns.iloc[-1] = np.nan
         if self.volumes is not None:
             self.volumes.iloc[-1] = np.nan
+
+    def partial_universe_signature(self, partial_universe):
+        """Unique signature of this instance with a partial universe."""
+        assert isinstance(partial_universe, pd.Index)
+        assert np.all(partial_universe.isin(self.full_universe))
+        result = f'{self.__class__.__name__}(datasource={self.datasource}, '
+        result += f'partial_universe_hash={hash_(np.array(partial_universe))},'
+        result += f' trading_frequency={self.trading_frequency})'
+        return result

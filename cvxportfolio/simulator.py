@@ -58,14 +58,12 @@ class MarketSimulator:
     def __init__(self, universe=(), returns=None, volumes=None,
                  prices=None, market_data=None, costs=(), round_trades=False,
                  min_history=pd.Timedelta('365d'),
-                 datasource='YFinance',
+                 datasource='YahooFinance',
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
                  trading_frequency=None,
                  copy_dataframes=True):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
-
-        self.enable_caching = len(universe) > 0
 
         if not market_data is None:
             self.market_data = market_data
@@ -88,8 +86,7 @@ class MarketSimulator:
                     min_history=min_history,
                     datasource=datasource)
 
-        self.trading_frequency = trading_frequency
-
+        # TODO fix this (when passing MarketData)
         if not len(universe) and prices is None:
             if round_trades:
                 raise SyntaxError(
@@ -194,12 +191,11 @@ class MarketSimulator:
             universe=universe, trading_calendar=trading_calendar)
 
         # if policy uses a cache load it from disk
-        if hasattr(policy, '_cache') and self.enable_caching:
+        if hasattr(policy, '_cache'):
             logging.info('Trying to load cache from disk...')
             policy._cache = _load_cache(
-                universe=universe,
-                trading_frequency=self.trading_frequency,
-                base_location=self.base_location)
+              signature=self.market_data.partial_universe_signature(universe),
+              base_location=self.base_location)
 
         # if hasattr(policy, 'compile_to_cvxpy'):
         #     policy.compile_to_cvxpy()
@@ -207,11 +203,12 @@ class MarketSimulator:
         return policy
 
     def _finalize_policy(self, policy, universe):
-        if hasattr(policy, '_cache') and self.enable_caching:
+        if hasattr(policy, '_cache'):
             logging.info('Storing cache from policy to disk...')
-            _store_cache(cache=policy._cache, universe=universe,
-                          trading_frequency=self.trading_frequency,
-                          base_location=self.base_location)
+            _store_cache(
+              cache=policy._cache,
+              signature=self.market_data.partial_universe_signature(universe),
+              base_location=self.base_location)
 
     def _backtest(self, policy, start_time, end_time, h):
         """Run a backtest with changing universe."""
@@ -350,7 +347,8 @@ class MarketSimulator:
         remove_assets = pd.Index(set(h.index).difference(new_universe))
         if len(remove_assets):
             total_liquidation = h[remove_assets].sum()
-            logging.info(f"Adjusting h vector by removing assets {remove_assets}."
+            logging.info(
+                f"Adjusting h vector by removing assets {remove_assets}."
                 " Their current market value of {total_liquidation} is added"
                 " to the cash account.")
             new_h.iloc[-1] += total_liquidation
@@ -376,7 +374,8 @@ class MarketSimulator:
 
         results = {}
 
-        current_result = self.backtest(policy, start_time=start_time, end_time=end_time,
+        current_result = self.backtest(policy, start_time=start_time,
+            end_time=end_time,
             initial_value=initial_value, h=h)
 
         current_objective = getattr(current_result, objective)
@@ -415,10 +414,12 @@ class MarketSimulator:
                 break
 
             results_partial = self.backtest_many(test_policies,
-                start_time=start_time, end_time=end_time, initial_value=initial_value,
+                start_time=start_time, end_time=end_time,
+                initial_value=initial_value,
                 h=h, parallel=parallel)
 
-            objectives_partial = [getattr(res, objective) for res in results_partial]
+            objectives_partial = [getattr(res, objective)
+                for res in results_partial]
 
             for pol, obje in zip(test_policies, objectives_partial):
                 results[str(pol)] = obje
