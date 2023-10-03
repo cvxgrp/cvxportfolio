@@ -87,8 +87,7 @@ class BacktestResult:
                 joined = pd.Index(
                     sorted(set(self._current_universe[:-1]
                         ).union(new_universe[:-1])))
-
-            joined.append(new_universe[-1:])
+                joined.append(new_universe[-1:])
 
             self._h = self._h.reindex(columns = joined)
             self._u = self._u.reindex(columns = joined)
