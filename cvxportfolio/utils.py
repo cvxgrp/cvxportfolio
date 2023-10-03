@@ -21,13 +21,19 @@ TRUNCATE_REPR_HASH = 10  # probability of conflict is 1e-16
 
 
 __all__ = ['periods_per_year_from_datetime_index', 'resample_returns',
-           'flatten_heterogeneous_list', 'repr_numpy_pandas']
+           'flatten_heterogeneous_list', 'repr_numpy_pandas',
+           'average_periods_per_year']
 
+
+def average_periods_per_year(num_periods, first_time, last_time):
+    """Average periods per year, rounded to int."""
+    return int(np.round(num_periods / ((last_time - first_time) /
+                                    pd.Timedelta('365.24d'))))
 
 def periods_per_year_from_datetime_index(idx):
-    """Average periods per year of a datetime index (rounded to int)."""
-    return int(np.round(len(idx) / ((idx[-1] - idx[0]) /
-                                    pd.Timedelta('365.24d'))))
+    """Average periods per year of a datetime index, rounded to int."""
+    return average_periods_per_year(
+        num_periods=len(idx), first_time=idx[0], last_time=idx[-1])
 
 
 def resample_returns(returns, periods):

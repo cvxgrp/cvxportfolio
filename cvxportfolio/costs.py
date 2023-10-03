@@ -31,7 +31,8 @@ from .constraints import (CostInequalityConstraint, EqualityConstraint,
 from .errors import ConvexityError, ConvexSpecificationError
 from .estimator import CvxpyExpressionEstimator, DataEstimator
 from .hyperparameters import HyperParameter
-from .utils import periods_per_year_from_datetime_index
+from .utils import (average_periods_per_year,
+                    periods_per_year_from_datetime_index)
 
 __all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
            "StocksTransactionCost", "StocksHoldingCost"]
@@ -527,9 +528,28 @@ class TransactionCost(Cost):
                      volume_est) ** (
                          (2 if self.exponent is None else self.exponent) - 1)
 
-    def simulate(self, t, u, past_returns, current_returns,
-                  past_volumes, current_volumes,
+    def simulate(self, t, u, past_returns, current_returns, current_volumes,
                   current_prices, **kwargs):
+        """Simulate transaction cost in cash units.
+
+        :param t: Current timestamp.
+        :type t: pandas.Timestamp
+        :param u: Trades vector.
+        :type u: pandas.Series
+        :param past_returns: Dataframe of past market returns.
+        :type past_returns: pandas.DataFrame
+        :param current_returns: Current period's market returns.
+        :type current_returns: pandas.Series
+        :param current_volumes: Current market volumes.
+        :type current_volumes: pandas.Series or None
+        :param current_prices: Current market prices.
+        :type current_prices: pandas.Series or None
+        :param kwargs: Unused arguments passed by :class:`MarketSimulator`.
+        :type kwargs: dict
+
+        :returns: Transaction cost for this period in cash units.
+        :rtype: float
+        """
 
         result = 0.
         if self.pershare_cost is not None:
@@ -547,8 +567,9 @@ class TransactionCost(Cost):
         if self.b is not None:
 
             if self.window_sigma_est is None:
-                windowsigma = periods_per_year_from_datetime_index(
-                    pd.DatetimeIndex(list(past_returns.index) + [t]))
+                windowsigma = average_periods_per_year(
+                    num_periods=len(past_returns)+1,
+                    first_time=past_returns.index[0], last_time=t)
             else:
                 windowsigma = self.window_sigma_est
 
@@ -557,7 +578,7 @@ class TransactionCost(Cost):
             sigma = np.std(pd.concat(
                 [past_returns.iloc[-windowsigma + 1:, :-1],
                 pd.DataFrame(current_returns.iloc[:-1]).T], axis=0), axis=0)
-            if (current_volumes is None) or (past_volumes is None):
+            if current_volumes is None:
                 raise SyntaxError(
                     "If you don't provide volumes you should set b to None"
                     f" in the {self.__class__.__name__} simulator cost")
