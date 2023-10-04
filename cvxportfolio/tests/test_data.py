@@ -95,6 +95,14 @@ class TestData(CvxportfolioTest):
         self.assertTrue(np.allclose(
             data1.loc[data.index[:-1]]['return'], data.iloc[:-1]['return']))
 
+    def test_yahoo_finance_removefirstline(self):
+        """Test that the first line of OHLCV is removed if there are NaNs."""
+
+        # this symbol was found to have NaNs in the first line
+        store = YahooFinance(
+            symbol="CVX", storage_backend='pickle',
+            base_location=self.datadir)
+
     @unittest.skipIf(sys.version_info.major == 3 and sys.version_info.minor < 11,
         "Issues with timezoned timestamps.")
     def test_sqlite3_store_series(self):

@@ -162,14 +162,18 @@ class SymbolData:
 
         if np.any(updated.iloc[:-1].isnull()):
             logging.warning(
-              f"{self.__class__.__name__} downloaded data"
-              + f" for {self.symbol} has NaNs. You may want inspect "
-              + f"cvxportfolio.{self.__class__.__name__}({self.symbol}).data")
+              f" cvxportfolio.{self.__class__.__name__}('{self.symbol}').data"
+              + " contains NaNs."
+              + " You may want to inspect it. If you want, you can delete the"
+              + f" data file in {self.storage_location} to force"
+              + f" re-download from the start.")
 
-        if (current is not None): # and (not hasattr(current,'columns')
-                #or np.all(current.columns==updated.columns)):
+        if (current is not None):
             if not np.all(
-                    updated.loc[current.index[:-1]] == current.iloc[:-1]):
+                    # we fill NaNs (not in-place!)
+                    # because otherwise equality fails
+                    updated.loc[current.index[:-1]].fillna(0.)
+                    == current.iloc[:-1].fillna(0.)):
                 logging.error(f"{self.__class__.__name__} update"
                     + f" of {self.symbol} is not append-only!")
             if hasattr(current, 'columns'):
@@ -441,9 +445,12 @@ class YahooFinance(SymbolData):
                 'There could be issues with DST and Yahoo finance data.')
         if (current is None) or (len(current) < overlap):
             updated = cls._get_data_yahoo(symbol, **kwargs)
-            # updated = yf.download(symbol, **kwargs)
             logging.info('Downloading from the start.')
-            return cls._clean(updated)
+            result = cls._clean(updated)
+            # we remove first row if it contains NaNs
+            if np.any(result.iloc[0].isnull()):
+                result = result.iloc[1:]
+            return result
         else:
             if (now_timezoned() - current.index[-1]
                     ) < pd.Timedelta(grace_period):
