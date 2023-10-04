@@ -23,6 +23,7 @@ from cvxportfolio.forecast import (ForecastError,
                                    HistoricalFactorizedCovariance,
                                    HistoricalLowRankCovarianceSVD,
                                    HistoricalMeanError, HistoricalMeanReturn,
+                                   HistoricalStandardDeviation,
                                    HistoricalVariance)
 from cvxportfolio.tests import CvxportfolioTest
 
@@ -31,6 +32,7 @@ class TestForecast(CvxportfolioTest):
     """Test forecast estimators and their caching."""
 
     def test_mean_update(self):
+        """Test the mean forecaster."""
         forecaster = HistoricalMeanReturn()  # lastforcash=True)
 
         returns = pd.DataFrame(self.returns, copy=True)
@@ -47,6 +49,7 @@ class TestForecast(CvxportfolioTest):
                 mean, past_returns.iloc[:, :-1].mean()))
 
     def test_variance_update(self):
+        """Test the variance forecaster."""
         forecaster = HistoricalVariance(kelly=False)
 
         returns = pd.DataFrame(self.returns, copy=True)
@@ -61,7 +64,24 @@ class TestForecast(CvxportfolioTest):
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(var, past_returns.var(ddof=0)[:-1]))
 
+    def test_variance_update(self):
+        """Test the standard deviation forecaster."""
+        forecaster = HistoricalStandardDeviation(kelly=False)
+
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:20, 3:10] = np.nan
+
+        for tidx in [50, 51, 52, 55, 56, 57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index < t]
+            std = forecaster.values_in_time_recursive(
+                t=t, past_returns=past_returns)
+            print(std)
+            # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
+            self.assertTrue(np.allclose(std, past_returns.std(ddof=0)[:-1]))
+
     def test_meanerror_update(self):
+        """Test the forecaster of the standard deviation on the mean."""
         forecaster = HistoricalMeanError()
 
         returns = pd.DataFrame(self.returns, copy=True)

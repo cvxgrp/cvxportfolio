@@ -168,6 +168,18 @@ class HistoricalVariance(BaseForecast):
         self._last_time = t
 
 
+@dataclass(unsafe_hash=True)
+class HistoricalStandardDeviation(HistoricalVariance):
+    """Historical standard deviation."""
+
+    kelly: bool = True
+
+    def values_in_time(self, t, past_returns, **kwargs):
+        """Compute value at time t."""
+        variances = \
+            super().values_in_time(t=t, past_returns=past_returns, **kwargs)
+        return np.sqrt(variances)
+
 class HistoricalMeanError(HistoricalVariance):
     r"""Historical standard deviations of the mean of non-cash returns.
 
