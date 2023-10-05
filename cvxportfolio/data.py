@@ -170,10 +170,11 @@ class SymbolData:
 
         if (current is not None):
             if not np.all(
-                    # we fill NaNs (not in-place!)
-                    # because otherwise equality fails
-                    updated.loc[current.index[:-1]].fillna(0.)
-                    == current.iloc[:-1].fillna(0.)):
+                    # we use numpy.isclose because returns may be computed
+                    # via logreturns and numerical errors can sift through
+                    np.isclose(updated.loc[current.index[:-1]],
+                        current.iloc[:-1], equal_nan=True,
+                        rtol=1e-08, atol=1e-08)):
                 logging.error(f"{self.__class__.__name__} update"
                     + f" of {self.symbol} is not append-only!")
             if hasattr(current, 'columns'):
