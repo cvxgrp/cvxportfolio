@@ -5,7 +5,7 @@ with open('README.md') as f:
 
 setup(
     name='cvxportfolio',
-    version='1.0.0',
+    version='1.0.1',
     author='Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.',
     maintainer='Enzo Busseti',
     author_email='enzo.busseti@gmail.com',
