@@ -86,29 +86,46 @@ to apply to any given selection of assets.
 
 Development
 -----------
-To set up a development environment locally you should
+To set up a development environment locally you should clone
+the repository (or,
+[fork on Github](https://docs.github.com/en/get-started/quickstart/fork-a-repo)
+and then clone your fork)
 
-```
+```bash
 git clone https://github.com/cvxgrp/cvxportfolio.git
 cd cvxportfolio
-make env
 ```
-This will replicate our [development environment](https://docs.python.org/3/library/venv.html). From there you can test with
 
-```
+Then, you should have a look at our
+[Makefile](https://www.gnu.org/software/make/manual/make.html#Introduction)
+and possibly change the `PYTHON` variable to match your system's python
+interpreter. Once you have done that,
+
+```bash
+make env
 make test
 ```
 
-You activate the shell environment with one of scripts in `env/bin` (or `env\Scripts` on windows), for example if you use bash on POSIX
-```
+This will replicate our [development environment](https://docs.python.org/3/library/venv.html)
+and run our test suite.
+
+You activate the shell environment with one of scripts in `env/bin`
+(or `env\Scripts` on Windows), for example if you use bash on POSIX
+
+```bash
 source env/bin/activate
 ```
-and from the environment you can run any of the scripts in the examples (the cvxportfolio package is installed in [editable mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html)). 
-Or, if you don't want to activate the environment, you can just run scripts directly using `env/bin/python` or `env\Scripts\python` on windows, like we do in the Makefile.
+and from the environment you can run any of the scripts in the examples
+(the cvxportfolio package is installed in
+[editable mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html)).
+Or, if you don't want to activate the environment, you can just run scripts
+directly using `env/bin/python` (or `env\Scripts\python` on Windows)
+like we do in the Makefile.
 
-Additionally, to match our CI/CD pipeline, you may set the following [git hooks](https://git-scm.com/docs/githooks)
+Additionally, to match our CI/CD pipeline, you may set the following
+[git hooks](https://git-scm.com/docs/githooks)
 
-```
+```bash
 echo "make lint" > .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 echo "make test" > .git/hooks/pre-push
