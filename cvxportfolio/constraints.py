@@ -60,6 +60,7 @@ __all__ = [
     "NoTrade",
     "FactorMaxLimit",
     "FactorMinLimit",
+    "FactorGrossLimit",
     "FixedFactorLoading",
     "MarketNeutral",
     "MinWeightsAtTimes",
@@ -569,6 +570,43 @@ class FactorMinLimit(BaseWeightConstraint, InequalityConstraint):
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
         return -self.limit.parameter
+
+
+class FactorGrossLimit(BaseWeightConstraint, InequalityConstraint):
+    r"""A gross limit on portfolio-wide factor (e.g. beta) exposure.
+
+    :param factor_exposure: Series or DataFrame giving the factor exposure.
+        If Series it is indexed by assets' names and represents factor
+        exposures constant in time. If DataFrame it is indexed by time
+        and has the assets names as columns, and it represents factor
+        exposures that change in time. In the latter case an observation
+        must be present for every point in time of a backtest.
+        If you want you can also pass multiple factor exposures at once:
+        as a dataframe indexed by assets' names and whose columns are the
+        factors (if constant in time), or a dataframe with multiindex:
+        first level is time, second level are assets' names (if changing
+        in time). However this latter usecase is probably better served
+        by making multiple instances of this constraint, one for each
+        factor.
+    :type factor_exposure: pd.Series or pd.DataFrame
+    :param limit: Factor limit, either constant or varying in time. Use
+        a DataFrame if you pass multiple factors as once.
+    :type limit: float or pd.Series or pd.DataFrame
+    """
+
+    def __init__(self, factor_exposure, limit):
+        self.factor_exposure = DataEstimator(
+            factor_exposure, non_negative=True, compile_parameter=True)
+        self.limit = DataEstimator(limit, compile_parameter=True,
+            ignore_shape_check=True)
+
+    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile left hand side of the constraint expression."""
+        return self.factor_exposure.parameter.T @ cp.abs(w_plus[:-1])
+
+    def _rhs(self):
+        """Compile right hand side of the constraint expression."""
+        return self.limit.parameter
 
 
 class FixedFactorLoading(BaseWeightConstraint, EqualityConstraint):

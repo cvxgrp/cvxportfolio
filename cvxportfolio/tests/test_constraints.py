@@ -242,6 +242,30 @@ class TestConstraints(CvxportfolioTest):
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
 
+    def test_factor_gross_limit(self):
+        """Test factor gross limit constraint."""
+
+        model = cvx.FactorGrossLimit(
+            np.ones((self.N - 1, 2)), np.array([0.5, 1]))
+        cons = self.build_constraint(model, self.returns.index[1])
+
+        self.w_plus.value = np.ones(self.N) / self.N
+        self.assertFalse(cons.value())
+        tmp = np.zeros(self.N)
+        tmp[0] = 4
+        tmp[1] = -3
+        self.w_plus.value = tmp
+        self.assertFalse(cons.value())
+
+        model = cvx.FactorGrossLimit(np.ones((self.N - 1, 2)), np.array([7, 7]))
+        cons = self.build_constraint(model, self.returns.index[1])
+
+        tmp = np.zeros(self.N)
+        tmp[0] = 4
+        tmp[1] = -3
+        self.w_plus.value = tmp
+        self.assertTrue(cons.value())
+
     def test_fixed_alpha(self):
         """Test fixed alpha constraint."""
 
