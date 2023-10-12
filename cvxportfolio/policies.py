@@ -106,7 +106,7 @@ class Policy(Estimator):
         u = z * v
 
         if current_prices is not None:
-            shares_traded =  pd.Series(np.round(u.iloc[:-1] / current_prices), 
+            shares_traded =  pd.Series(np.round(u.iloc[:-1] / current_prices),
                 dtype=int)
         else:
             shares_traded = None

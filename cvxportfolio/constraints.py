@@ -501,6 +501,23 @@ class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 class FactorMaxLimit(BaseWeightConstraint, InequalityConstraint):
     r"""A max limit on portfolio-wide factor (e.g. beta) exposure.
 
+    It models the term:
+
+    .. math::
+
+        f_t^T {(w_t^+)}_{1:n} \leq l_t
+
+    where :math:`f_t` is the factor exposure vector and
+    :math:`l_t` the limit at time :math:`t`. It can also model a vector
+    constraint
+
+    .. math::
+
+        F_t^T {(w_t^+)}_{1:n} \leq l_t
+
+    where :math:`F_t` is a matrix of factor exposures and
+    :math:`l_t` a vector of limits at time :math:`t`. See below for details.
+
     :param factor_exposure: Series or DataFrame giving the factor exposure.
         If Series it is indexed by assets' names and represents factor
         exposures constant in time. If DataFrame it is indexed by time
@@ -537,6 +554,23 @@ class FactorMaxLimit(BaseWeightConstraint, InequalityConstraint):
 
 class FactorMinLimit(BaseWeightConstraint, InequalityConstraint):
     """A min limit on portfolio-wide factor (e.g. beta) exposure.
+
+    It models the term:
+
+    .. math::
+
+        f_t^T {(w_t^+)}_{1:n} \geq l_t
+
+    where :math:`f_t` is the factor exposure vector and
+    :math:`l_t` the limit at time :math:`t`. It can also model a vector
+    constraint
+
+    .. math::
+
+        F_t^T {(w_t^+)}_{1:n} \geq l_t
+
+    where :math:`F_t` is a matrix of factor exposures and
+    :math:`l_t` a vector of limits at time :math:`t`. See below for details.
 
     :param factor_exposure: Series or DataFrame giving the factor exposure.
         If Series it is indexed by assets' names and represents factor
@@ -575,7 +609,25 @@ class FactorMinLimit(BaseWeightConstraint, InequalityConstraint):
 class FactorGrossLimit(BaseWeightConstraint, InequalityConstraint):
     r"""A gross limit on portfolio-wide factor (e.g. beta) exposure.
 
+    It models the term:
+
+    .. math::
+
+        f_t^T |{(w_t^+)}_{1:n}| \leq l_t
+
+    where :math:`f_t` is the factor exposure vector and
+    :math:`l_t` the limit at time :math:`t`. It can also model a vector
+    constraint
+
+    .. math::
+
+        F_t^T |{(w_t^+)}_{1:n}| \leq l_t
+
+    where :math:`F_t` is a matrix of factor exposures and
+    :math:`l_t` a vector of limits at time :math:`t`. See below for details.
+
     :param factor_exposure: Series or DataFrame giving the factor exposure.
+        All elements must be non-negative.
         If Series it is indexed by assets' names and represents factor
         exposures constant in time. If DataFrame it is indexed by time
         and has the assets names as columns, and it represents factor
@@ -615,6 +667,23 @@ class FixedFactorLoading(BaseWeightConstraint, EqualityConstraint):
     This can be used to impose market neutrality,
     a certain portfolio-wide alpha, ....
 
+    It models the term:
+
+    .. math::
+
+        f_t^T {(w_t^+)}_{1:n} = l_t
+
+    where :math:`f_t` is the factor exposure vector and
+    :math:`l_t` the limit at time :math:`t`. It can also model a vector
+    constraint
+
+    .. math::
+
+        F_t^T {(w_t^+)}_{1:n} = l_t
+
+    where :math:`F_t` is a matrix of factor exposures and
+    :math:`l_t` a vector of limits at time :math:`t`. See below for details.
+
     :param factor_exposure: Series or DataFrame giving the factor exposure.
         If Series it is indexed by assets' names and represents factor
         exposures constant in time. If DataFrame it is indexed by time
@@ -653,16 +722,34 @@ class FactorNeutral(FixedFactorLoading):
 
     This is developed at page 35 of
     `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
-    We require
+    This models the term
 
     .. math::
-        {(F_t)}^T_i (w_t + z_t) = 0,
 
-    where :math:`{(F_t)}_i` is the exposure to the :math:`i`-th factor
-    of a risk model at time :math:`t`.
+        {(f_t)}^T {(w_t^+)}_{1:n} = 0
 
-    :param factor_exposure: Either constant (if Series) or varying in time
-        (if Dataframe with datetime index) factor exposure.
+    where :math:`f_t` is the factor exposure vector. It can also model
+    a vector constraint
+
+    .. math::
+
+        F_t^T {(w_t^+)}_{1:n} = 0
+
+    where :math:`F_t` is a matrix of factor exposures. See below for details.
+
+    :param factor_exposure: Series or DataFrame giving the factor exposure.
+        If Series it is indexed by assets' names and represents factor
+        exposures constant in time. If DataFrame it is indexed by time
+        and has the assets names as columns, and it represents factor
+        exposures that change in time. In the latter case an observation
+        must be present for every point in time of a backtest.
+        If you want you can also pass multiple factor exposures at once:
+        as a dataframe indexed by assets' names and whose columns are the
+        factors (if constant in time), or a dataframe with multiindex:
+        first level is time, second level are assets' names (if changing
+        in time). However this latter usecase is probably better served
+        by making multiple instances of this constraint, one for each
+        factor.
     :type factor_exposure: pd.Series or pd.DataFrame
     """
 

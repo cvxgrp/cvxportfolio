@@ -12,6 +12,8 @@ Constraints
 
 .. autoclass:: FactorMinLimit
 
+.. autoclass:: FactorGrossLimit
+
 .. autoclass:: FactorNeutral
 
 .. autoclass:: FixedFactorLoading
