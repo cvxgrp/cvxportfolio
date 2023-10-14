@@ -64,7 +64,7 @@ class TestForecast(CvxportfolioTest):
             # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
             self.assertTrue(np.allclose(var, past_returns.var(ddof=0)[:-1]))
 
-    def test_variance_update(self):
+    def test_stddev_update(self):
         """Test the standard deviation forecaster."""
         forecaster = HistoricalStandardDeviation(kelly=False)
 
