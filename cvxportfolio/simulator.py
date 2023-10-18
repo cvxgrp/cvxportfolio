@@ -166,7 +166,7 @@ class MarketSimulator:
 
         # translate to weights
         current_portfolio_value = sum(h)
-        current_weights = h / current_portfolio_value
+        current_weights = pd.to_numeric(h / current_portfolio_value)
 
         # evaluate the policy
         s = time.time()

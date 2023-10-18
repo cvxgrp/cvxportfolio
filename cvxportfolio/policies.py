@@ -627,9 +627,9 @@ class MultiPeriodOptimization(Policy):
             past_returns=past_returns, past_volumes=past_volumes,
             current_prices=current_prices, **kwargs)
 
-        self.w_bm.value = self.benchmark.current_value.values if hasattr(
-            self.benchmark.current_value, 'values'
-            ) else self.benchmark.current_value
+        self.w_bm.value = np.array(self.benchmark.current_value.values)\
+             if hasattr(self.benchmark.current_value, 'values'
+            ) else np.array(self.benchmark.current_value)
         self.w_current.value = current_weights.values
 
         try:
