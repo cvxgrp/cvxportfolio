@@ -195,15 +195,16 @@ class DataEstimator(Estimator):
 
     def initialize_estimator(self, universe, trading_calendar):
         """Initialize with current universe."""
+
+        self._universe_maybe_noncash = \
+            universe if self._data_includes_cash else universe[:-1]
+
         if self._compile_parameter:
             value = self._internal_values_in_time(
                 t=trading_calendar[0])
             self.parameter = cp.Parameter(
                 value.shape if hasattr(value, "shape") else (),
                 PSD=self._positive_semi_definite, nonneg=self._non_negative)
-
-        self._universe_maybe_noncash = \
-            universe if self._data_includes_cash else universe[:-1]
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned."""
