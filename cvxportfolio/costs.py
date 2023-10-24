@@ -234,7 +234,7 @@ class SimulatorCost:
         Cost classes that are meant to be used in the simulator
         should implement this.
         """
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
 
 class HoldingCost(Cost, SimulatorCost):

@@ -87,11 +87,11 @@ class BaseForecast(Estimator):
 
     def _initial_compute(self, t, past_returns):
         """Make forecast from scratch."""
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
     def _online_update(self, t, past_returns):
         """Update forecast from period before."""
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
 
 @dataclass(unsafe_hash=True)

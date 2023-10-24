@@ -571,7 +571,7 @@ class BacktestResult:
         axes[2].grid(True, linestyle='--')
 
         if show:
-            fig.show()
+            fig.show() # pragma: no cover
 
     def __repr__(self):
         """Print the class instance."""

@@ -22,11 +22,6 @@ import cvxportfolio as cvx
 from cvxportfolio.tests import CvxportfolioTest
 
 
-def _listvalue(_list):
-    """All elements of list's ``value`` method returns True."""
-    return all(el.value() for el in _list)
-
-
 class TestConstraints(CvxportfolioTest):
     """Test Cvxportfolio constraint objects."""
 

@@ -205,7 +205,7 @@ class SymbolData:
         :rtype: pandas.Series or pandas.DataFrame
         
         """
-        raise NotImplementedError
+        raise NotImplementedError #pragma: no cover
 
     def _preload(self, data):
         """Prepare data to serve to the user.
@@ -384,8 +384,8 @@ class YahooFinance(SymbolData):
                     "period1": start,
                     "period2": end},
                 headers=HEADERS)
-        except ConnectionError as exc:
-            raise DataError(
+        except ConnectionError as exc: # pragma: no cover
+            raise DataError( # pragma: no cover
                 f"Download of {ticker} from YahooFinance failed."
                 + " Are you connected to the Internet?") from exc
 
@@ -398,7 +398,7 @@ class YahooFinance(SymbolData):
 
         if res.status_code != 200:
             raise DataError(f'Yahoo finance data download failed. Json:',
-                str(res.json()))
+                str(res.json())) # pragma: no cover
 
         data = res.json()['chart']['result'][0]
 
@@ -518,8 +518,8 @@ class Fred(SymbolData):
             return pd.read_csv(
                 self.URL + f'?id={symbol}',
                 index_col=0, parse_dates=[0])[symbol]
-        except URLError as exc:
-            raise DataError(f"Download of {symbol}"
+        except URLError as exc: # pragma: no cover
+            raise DataError(f"Download of {symbol}" # pragma: no cover
                 + f" from {self.__class__.__name__} failed."
                 + " Are you connected to the Internet?") from exc
 
@@ -719,7 +719,7 @@ class MarketData:
         :rtype: (pandas.DataFrame, pandas.Series, pandas.DataFrame,
             pandas.Series, pandas.Series)
         """
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
     def trading_calendar(self, start_time=None,
                          end_time=None, include_end=True):
@@ -736,7 +736,7 @@ class MarketData:
         
         :rtype: pandas.DatetimeIndex
         """
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
     @property
     def periods_per_year(self):
@@ -744,7 +744,7 @@ class MarketData:
         
         :rtype: int
         """
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
     @property
     def full_universe(self):
@@ -752,7 +752,7 @@ class MarketData:
         
         :rtype: pandas.Index
         """
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
     def partial_universe_signature(self, partial_universe):
         """Unique signature of this instance with a partial universe.
