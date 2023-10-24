@@ -6,8 +6,12 @@ jobs:
 
   pylint:
 
-    runs-on: ubuntu-latest
-    python-version: '3.11'
+    runs-on: ${{matrix.os}}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ['3.11']
 
     steps:
 
@@ -26,7 +30,7 @@ jobs:
   test:
 
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
