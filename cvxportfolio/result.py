@@ -24,6 +24,7 @@ in addition to a ``plot`` method and a rich ``__repr__`` magic method
 from __future__ import annotations, print_function
 
 import collections
+import logging
 from typing import Dict
 
 import matplotlib.pyplot as plt
@@ -63,8 +64,13 @@ class BacktestResult:
         self._current_universe = pd.Index(universe)
         self._indexer = np.arange(len(universe), dtype=int)
 
+    @property
+    def _current_full_universe(self):
+        """Helper property used by _change_universe."""
+        return self._h.columns
+
     def _change_universe(self, new_universe):
-        """Change current universe (columns of dataframes) during backtest."""
+        """Change current universe (columns of dataframes) during back-test."""
 
         # print('new universe')
         # print(new_universe)
@@ -83,9 +89,12 @@ class BacktestResult:
                 joined = new_universe
 
             # otherwise we lose the ordering :(
-            else: #TODO: write testcase for this
+            else:
+                logging.info(
+                    f"{self.__class__.__name__} joining new universe with old")
                 joined = pd.Index(
-                    sorted(set(self._current_universe[:-1]
+                    # need to join with full, not current!
+                    sorted(set(self._current_full_universe[:-1]
                         ).union(new_universe[:-1])))
                 joined = joined.append(new_universe[-1:])
 
