@@ -39,6 +39,7 @@ ignored-argument-names = "kwargs,universe,trading_calendar"
 # this is for correctly reporting lines run in subprocesses by, e.g.,
 # backtest_many; we use multiprocess but API should be same
 concurrency = ["multiprocessing"]
+parallel = true
 
 [tool.coverage.report]
 fail_under = 97

@@ -1,3 +1,6 @@
+# This contains development environment tools
+# and stuff to build the sphinx docs; eventually
+# it will be merged into pyproject.toml
 build
 setuptools
 twine

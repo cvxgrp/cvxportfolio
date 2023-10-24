@@ -1,3 +1,7 @@
+# This Makefile is used to automate some development tasks.
+# Ideally this logic would be in pyproject.toml but it appears
+# easier to do it this way for now.
+
 PYTHON        = python
 PROJECT       = cvxportfolio
 TESTS         = $(PROJECT)/tests
@@ -29,12 +33,11 @@ test:
 	$(BINDIR)/coverage report
 	$(BINDIR)/coverage xml
 	$(BINDIR)/diff-cover coverage.xml --config-file pyproject.toml
+	# disabled for now, we need to change pickle as default on-disk cache
+	# $(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
 lint:
 	$(BINDIR)/pylint $(PROJECT)
-
-# hardtest: test
-#	$(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
 docs:
 	$(BINDIR)/sphinx-build -E docs $(BUILDDIR)
@@ -47,8 +50,8 @@ coverage:
 	open htmlcov/index.html
 
 fix:
-	# selected among many popular python code auto-fixers
-	$(BINDIR)/autopep8  -i $(PROJECT)/*.py $(TESTS)/*.py #--select W291,W293,W391,E231,E225,E303
+	# selected among many code auto-fixers, tweaked in pyproject.toml
+	$(BINDIR)/autopep8 -i $(PROJECT)/*.py $(TESTS)/*.py
 	$(BINDIR)/isort $(PROJECT)/*.py $(TESTS)/*.py
 
 release: update lint test
