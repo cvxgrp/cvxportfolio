@@ -14,7 +14,6 @@
 """This module contains trading policies that can be back-tested."""
 
 import copy
-import datetime as dt
 import logging
 import warnings
 
@@ -22,12 +21,10 @@ import cvxpy as cp
 import numpy as np
 import pandas as pd
 
-from .constraints import Constraint
-from .costs import Cost
 from .errors import (ConvexityError, ConvexSpecificationError, DataError,
                      MissingTimesError, PortfolioOptimizationError)
 from .estimator import DataEstimator, Estimator
-from .returns import BaseReturnsModel, CashReturn, ReturnsForecast
+from .returns import CashReturn
 from .utils import *
 
 __all__ = [

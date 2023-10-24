@@ -61,3 +61,12 @@ class CvxportfolioTest(unittest.TestCase):
         """Finalize test class."""
         print('removing', cls.datadir)
         shutil.rmtree(cls.datadir)
+
+    @staticmethod
+    def strip_tz_and_hour(market_data):
+        market_data.returns.index = \
+            market_data.returns.index.tz_localize(None).floor("D")
+        market_data.volumes.index = \
+            market_data.volumes.index.tz_localize(None).floor("D")
+        market_data.prices.index = \
+            market_data.prices.index.tz_localize(None).floor("D")

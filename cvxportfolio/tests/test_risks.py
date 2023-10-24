@@ -14,9 +14,7 @@
 """Unit tests for the risk objects."""
 
 import unittest
-from pathlib import Path
 
-import cvxpy as cp
 import numpy as np
 import pandas as pd
 

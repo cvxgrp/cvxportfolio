@@ -18,8 +18,6 @@ and Multi Period Optimization policies and can be iterated (and
 optimized over) automatically.
 """
 
-import copy
-
 import numpy as np
 
 # GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]

@@ -14,11 +14,8 @@
 """Unit tests for the return forecast objects."""
 
 import unittest
-from pathlib import Path
 
-import cvxpy as cp
 import numpy as np
-import pandas as pd
 
 from cvxportfolio.returns import *
 from cvxportfolio.tests import *

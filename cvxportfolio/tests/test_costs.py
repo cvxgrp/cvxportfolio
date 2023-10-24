@@ -15,11 +15,9 @@
 
 import unittest
 
-import cvxpy as cp
 import numpy as np
 import pandas as pd
 
-import cvxportfolio as cvx
 from cvxportfolio.costs import *
 from cvxportfolio.returns import *
 from cvxportfolio.risks import *

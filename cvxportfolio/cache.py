@@ -13,8 +13,6 @@
 # limitations under the License.
 """Caching functions used by :class:`MarketSimulator`."""
 
-import copy
-import hashlib
 import logging
 import os
 import pickle

@@ -18,7 +18,7 @@ portfolio optimization policies, and related objects.
 
 import cvxpy as cp
 
-from .costs import CombinedCosts, Cost
+from .costs import Cost
 from .estimator import DataEstimator  # , ParameterEstimator
 from .forecast import HistoricalMeanError, HistoricalMeanReturn
 from .risks import BaseRiskModel

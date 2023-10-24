@@ -19,13 +19,8 @@ past. In financial jargon this is called *backtesting*.
 """
 
 import copy
-import hashlib
 import logging
-import os
-import pickle
 import time
-from collections import OrderedDict, defaultdict
-from functools import cached_property
 from itertools import starmap
 from pathlib import Path
 
@@ -34,14 +29,9 @@ import pandas as pd
 from multiprocess import Lock, Pool
 
 from .cache import _load_cache, _mp_init, _store_cache
-from .costs import Cost, StocksHoldingCost, StocksTransactionCost
-from .data import (BASE_LOCATION, DownloadedMarketData, Fred,
-                   UserProvidedMarketData, YahooFinance)
-from .errors import DataError
-from .estimator import DataEstimator, Estimator
+from .costs import StocksHoldingCost, StocksTransactionCost
+from .data import BASE_LOCATION, DownloadedMarketData, UserProvidedMarketData
 from .result import BacktestResult
-from .utils import (periods_per_year_from_datetime_index, repr_numpy_pandas,
-                    resample_returns)
 
 PPY = 252
 __all__ = ['StockMarketSimulator', 'MarketSimulator']

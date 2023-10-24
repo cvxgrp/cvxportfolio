@@ -35,7 +35,7 @@ from requests.exceptions import ConnectionError
 
 from .errors import DataError
 from .utils import (hash_, periods_per_year_from_datetime_index,
-                    repr_numpy_pandas, resample_returns)
+                    resample_returns)
 
 __all__ = ["YahooFinance", "Fred",
            "UserProvidedMarketData", "DownloadedMarketData"]

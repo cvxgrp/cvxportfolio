@@ -15,9 +15,6 @@
 
 import unittest
 
-import cvxpy as cp
-import pandas as pd
-
 import cvxportfolio as cvx
 from cvxportfolio.tests import CvxportfolioTest
 

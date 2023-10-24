@@ -99,7 +99,7 @@ class TestData(CvxportfolioTest):
         """Test that the first line of OHLCV is removed if there are NaNs."""
 
         # this symbol was found to have NaNs in the first line
-        store = YahooFinance(
+        _ = YahooFinance(
             symbol="CVX", storage_backend='pickle',
             base_location=self.datadir)
 
@@ -282,15 +282,6 @@ class TestData(CvxportfolioTest):
 
 class TestMarketData(CvxportfolioTest):
     """Test MarketData methods and interface."""
-
-    @staticmethod
-    def strip_tz_and_hour(market_data):
-        market_data.returns.index = \
-            market_data.returns.index.tz_localize(None).floor("D")
-        market_data.volumes.index = \
-            market_data.volumes.index.tz_localize(None).floor("D")
-        market_data.prices.index = \
-            market_data.prices.index.tz_localize(None).floor("D")
 
     def test_market_data__downsample(self):
         """Test downsampling of market data."""
@@ -483,30 +474,32 @@ class TestMarketData(CvxportfolioTest):
         """Test single-symbol download error."""
 
         class YahooFinanceErroneous(YahooFinance):
-
+            """Modified YF that nans last open price."""
             def _download(self, symbol, current, grace_period):
+                """Modified download method."""
                 res = super()._download(symbol, current,
                     grace_period=grace_period)
                 res.iloc[-1, 0 ] = np.nan
                 return res
 
-        a = YahooFinanceErroneous('AMZN', base_location=self.datadir)
+        _ = YahooFinanceErroneous('AMZN', base_location=self.datadir)
         with self.assertLogs(level='ERROR') as _:
-            a = YahooFinanceErroneous(
+            _ = YahooFinanceErroneous(
                 'AMZN', base_location=self.datadir)
 
         class YahooFinanceErroneous2(YahooFinance):
-
+            """Modified YF that nans some line."""
             def _download(self, symbol, current, grace_period):
+                """Modified download method."""
                 res = super()._download(symbol, current,
                     grace_period=grace_period)
                 res.iloc[-20] = np.nan
                 return res
         with self.assertLogs(level='WARNING') as _:
-            a = YahooFinanceErroneous2('GOOGL',
+            _ = YahooFinanceErroneous2('GOOGL',
                 base_location=self.datadir)
         with self.assertLogs(level='WARNING') as _:
-            a = YahooFinanceErroneous2(
+            _ = YahooFinanceErroneous2(
                 'GOOGL', base_location=self.datadir)
 
         class FredErroneous(Fred):
@@ -517,17 +510,13 @@ class TestMarketData(CvxportfolioTest):
                 res.iloc[-1] = np.nan
                 return res
 
-        a = FredErroneous('DFF', base_location=self.datadir)
+        _ = FredErroneous('DFF', base_location=self.datadir)
         with self.assertLogs(level='ERROR') as _:
-            a = FredErroneous(
+            _ = FredErroneous(
                 'DFF', base_location=self.datadir)
 
     def test_yahoo_finance_errors(self):
         """Test errors with Yahoo Finance."""
-
-        import logging
-        import sys
-        logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
         with self.assertRaises(DataError):
             YahooFinance("DOESNTEXIST", base_location=self.datadir)
