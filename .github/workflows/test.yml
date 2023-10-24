@@ -42,7 +42,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-              coverage run -m unittest discover cvxportfolio
+              coverage run -m cvxportfolio.tests
               coverage lcov
 
       - name: Coveralls GitHub Action
