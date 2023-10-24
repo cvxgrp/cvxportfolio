@@ -31,7 +31,7 @@ from urllib.error import URLError
 import numpy as np
 import pandas as pd
 import requests
-import requests.exceptions.ConnectionError
+import requests.exceptions
 
 from .errors import DataError
 from .utils import (hash_, periods_per_year_from_datetime_index,
