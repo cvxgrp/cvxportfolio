@@ -35,14 +35,8 @@ good-names = ["t", "u", "v", "w", "h", "z"]
 # sharing data between elements of a policy's DAG
 ignored-argument-names = "kwargs,universe,trading_calendar"
 
-[tool.coverage.run]
-# this is for correctly reporting lines run in subprocesses by, e.g.,
-# backtest_many; we use multiprocess but API should be same
-concurrency = ["multiprocessing"]
-parallel = true
-
 [tool.coverage.report]
-fail_under = 97
+fail_under = 98
 
 [tool.diff_cover]
 compare_branch = "origin/master"

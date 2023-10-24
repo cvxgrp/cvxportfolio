@@ -624,4 +624,5 @@ class TestPolicies(CvxportfolioTest):
             execution = policy.execute(market_data=market_data, h=h)
 
 if __name__ == '__main__':
-    unittest.main()
+
+    unittest.main() # pragma: no cover

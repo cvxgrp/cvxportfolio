@@ -46,7 +46,7 @@ opendocs: docs
 	open build/index.html
 
 coverage:
-	$(BINDIR)/coverage html
+	$(BINDIR)/coverage html --fail-under=0 # overwrite pyproject.toml default
 	open htmlcov/index.html
 
 fix:

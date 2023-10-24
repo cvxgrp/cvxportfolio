@@ -323,4 +323,5 @@ class TestForecast(CvxportfolioTest):
 
 
 if __name__ == '__main__':
-    unittest.main()#warnings='error')
+
+    unittest.main() # pragma: no cover

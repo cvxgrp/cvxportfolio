@@ -46,14 +46,19 @@ class TestConstraints(CvxportfolioTest):
         cons = self.build_constraint(model)
         self.w_plus.value = np.ones(self.N)
         self.assertTrue(cons.value())
-        # self.assertTrue(_listvalue(cons))
         self.w_plus.value = -np.ones(self.N)
         self.assertFalse(cons.value())
-        # self.assertFalse(_listvalue(cons))
-        # model = cvx.LongOnly(nocash=True)
-        # cons = self.build_constraint(model)
-        # self.w_plus.value = np.ones(self.N)
-        # self.assertFalse(_listvalue(cons))
+
+    def test_nocash(self):
+        """Test no cash constraint."""
+        model = cvx.NoCash()
+        cons = self.build_constraint(model)
+        self.w_plus.value = np.ones(self.N)
+        self.assertFalse(cons.value())
+        self.w_plus.value = -np.ones(self.N)
+        self.assertFalse(cons.value())
+        self.w_plus.value[-1] = 0.
+        self.assertTrue(cons.value())
 
     def test_long_cash(self):
         """Test long-cash constraint."""
@@ -321,4 +326,5 @@ class TestConstraints(CvxportfolioTest):
 
 
 if __name__ == '__main__':
-    unittest.main()
+
+    unittest.main() # pragma: no cover

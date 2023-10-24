@@ -32,6 +32,9 @@ class TestUtils(unittest.TestCase):
         print(re1)
         self.assertTrue(re == re1)
 
+        with self.assertRaises(NotImplementedError):
+            repr_numpy_pandas('Hello!')
+
         a = pd.Series([1, 2, 3], ['2020-01-01', '2021-01-01', '2022-01-01'])
         re = repr_numpy_pandas(a)
         print(re)
@@ -61,4 +64,4 @@ class TestUtils(unittest.TestCase):
 
 if __name__ == '__main__':
 
-    unittest.main()
+    unittest.main() # pragma: no cover
