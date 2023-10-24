@@ -21,6 +21,7 @@ jobs:
       - name: Pylint
         run: |
               python -m pip install pylint
+              python -m pip install . # to install dependencies
               pylint cvxportfolio
 
   test:
