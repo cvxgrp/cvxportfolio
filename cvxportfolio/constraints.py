@@ -58,6 +58,7 @@ __all__ = [
     "MaxWeights",
     "MinWeights",
     "NoTrade",
+    "NoCash",
     "FactorMaxLimit",
     "FactorMinLimit",
     "FactorGrossLimit",
@@ -159,9 +160,20 @@ class CostInequalityConstraint(InequalityConstraint):
 class BaseWeightConstraint(Constraint):
     """Base class for constraints that operate on weights.
 
-    Here we can implement a method to pass benchmark weights and make
-    the constraint relative to it rather than to the null portfolio.
+    Here we can implement methods common to those.
     """
+
+
+class NoCash(BaseWeightConstraint, EqualityConstraint):
+    """Require that the cash balance is zero at each period."""
+
+    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile left hand side of the constraint expression."""
+        return w_plus[-1]
+
+    def _rhs(self):
+        """Compile right hand side of the constraint expression."""
+        return 0
 
 
 class MarketNeutral(BaseWeightConstraint, EqualityConstraint):

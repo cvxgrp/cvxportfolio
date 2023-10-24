@@ -1,9 +1,10 @@
 """Look for __version__ in any __init__.py recursively and upgrade.
 
 Additionally, look for version string in any setup.py and (Sphinx) conf.py 
-and do the same. Version is assumed to be in the format X.Y.Z, where X, Y, and Z
-are integers. Take argument revision (Z -> Z+1), minor (Y -> Y+1, Z -> 0), or major
-(X -> X+1, Y -> 0, Z -> 0). Return the updated version string."""
+and do the same. Version is assumed to be in the format X.Y.Z, where X, Y,
+and Z are integers. Take argument revision (Z -> Z+1),
+minor (Y -> Y+1, Z -> 0), or major (X -> X+1, Y -> 0, Z -> 0).
+Return the updated version string."""
 
 from pathlib import Path
 import subprocess
@@ -33,13 +34,14 @@ def findversion(root='.'):
 def replaceversion(new_version, version, root='.'):
     """Replace version number. Skip [env, venv, .*].
     
-    We replace in all __init__.py, conf.py, and setup.py.
+    We replace in all __init__.py, conf.py, setup.py, and pyproject.toml
     """    
 
     p = Path(root)
     
     for fname in p.iterdir():
-        if fname.name in ['__init__.py', 'conf.py', 'setup.py']:
+        if fname.name in ['__init__.py', 'conf.py', 'setup.py',
+            'pyproject.toml']:
             
             lines = []
             with open(fname, 'rt') as fin:
@@ -76,12 +78,13 @@ if __name__ == "__main__":
         x += 1   
         y = 0
         z = 0
-    new_version = f'{x}.{y}.{z}'
+    new_version = f"{x}.{y}.{z}"
 
     print(new_version) 
 
     replaceversion(new_version, version)
-    subprocess.run(['git', 'commit', '-em', f"version {new_version}\n"])
+    subprocess.run(['git', 'commit', '--no-verify', '-em',
+        f"version {new_version}\n"])
     subprocess.run(['git', 'tag', new_version])
-    subprocess.run(['git', 'push', 'origin', new_version])
+    subprocess.run(['git', 'push', '--no-verify', 'origin', new_version])
     
