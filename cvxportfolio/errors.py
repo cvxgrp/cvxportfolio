@@ -21,38 +21,29 @@ __all__ = ['DataError', 'MissingTimesError',
 class DataError(Exception):
     """Base class for exception related to data."""
 
-    pass
-
 
 class MissingTimesError(DataError):
     """Cvxportfolio couldn't find data for a certain time."""
 
-    pass
-
 
 class NaNError(DataError):
     """Cvxportfolio tried to access data that includes np.nan."""
-    pass
 
 
 class MissingAssetsError(DataError):
     """Cvxportfolio couldn't find data for certain assets."""
-    pass
 
 
 class ForecastError(DataError):
     """Forecast procedure failed."""
-    pass
 
 
 class PortfolioOptimizationError(Exception):
     """Errors with portfolio optimization problems."""
-    pass
 
 
 class Bankruptcy(Exception):
     """A backtest resulted in a bankruptcy."""
-    pass
 
 
 class ConvexSpecificationError(SyntaxError):

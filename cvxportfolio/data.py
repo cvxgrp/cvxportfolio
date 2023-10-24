@@ -31,7 +31,7 @@ from urllib.error import URLError
 import numpy as np
 import pandas as pd
 import requests
-from requests.exceptions import ConnectionError
+import requests.exceptions.ConnectionError
 
 from .errors import DataError
 from .utils import (hash_, periods_per_year_from_datetime_index,
@@ -166,9 +166,9 @@ class SymbolData:
               + " contains NaNs."
               + " You may want to inspect it. If you want, you can delete the"
               + f" data file in {self.storage_location} to force"
-              + f" re-download from the start.")
+              + " re-download from the start.")
 
-        if (current is not None):
+        if current is not None:
             if not np.all(
                     # we use numpy.isclose because returns may be computed
                     # via logreturns and numerical errors can sift through
@@ -384,8 +384,8 @@ class YahooFinance(SymbolData):
                     "period1": start,
                     "period2": end},
                 headers=HEADERS)
-        except ConnectionError as exc: # pragma: no cover
-            raise DataError( # pragma: no cover
+        except requests.exceptions.ConnectionError as exc:
+            raise DataError(
                 f"Download of {ticker} from YahooFinance failed."
                 + " Are you connected to the Internet?") from exc
 

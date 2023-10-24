@@ -21,7 +21,7 @@ import pickle
 def _mp_init(l):
     """Shared lock to disk access for multiprocessing."""
     global LOCK
-    LOCK = l
+    LOCK = l # pragma: no cover
 
 # def _hash_universe(universe):
 #     """Hash given universe"""
@@ -38,8 +38,9 @@ def _load_cache(signature, base_location):
         return {}
     name = cache_name(signature, base_location)
     if 'LOCK' in globals():
-        logging.debug(f'Acquiring cache lock from process {os.getpid()}')
-        LOCK.acquire()
+        logging.debug( # pragma: no cover
+            f'Acquiring cache lock from process {os.getpid()}')
+        LOCK.acquire() # pragma: no cover
     try:
         with open(name, 'rb') as f:
             res = pickle.load(f)
@@ -50,8 +51,9 @@ def _load_cache(signature, base_location):
         return {}
     finally:
         if 'LOCK' in globals():
-            logging.debug(f'Releasing cache lock from process {os.getpid()}')
-            LOCK.release()
+            logging.debug( # pragma: no cover
+                f'Releasing cache lock from process {os.getpid()}')
+            LOCK.release() # pragma: no cover
 
 def _store_cache(cache, signature, base_location):
     """Store cache to disk."""
@@ -60,12 +62,14 @@ def _store_cache(cache, signature, base_location):
         return {}
     name = cache_name(signature, base_location)
     if 'LOCK' in globals():
-        logging.debug(f'Acquiring cache lock from process {os.getpid()}')
-        LOCK.acquire()
+        logging.debug( # pragma: no cover
+            f'Acquiring cache lock from process {os.getpid()}')
+        LOCK.acquire() # pragma: no cover
     name.parent.mkdir(exist_ok=True)
     with open(name, 'wb') as f:
         logging.info(f'Storing cache {name}')
         pickle.dump(cache, f)
     if 'LOCK' in globals():
-        logging.debug(f'Releasing cache lock from process {os.getpid()}')
-        LOCK.release()
+        logging.debug( # pragma: no cover
+            f'Releasing cache lock from process {os.getpid()}')
+        LOCK.release() # pragma: no cover
