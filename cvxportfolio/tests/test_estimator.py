@@ -162,20 +162,23 @@ class TestEstimator(unittest.TestCase):
         # data includes cash acct
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data, data_includes_cash=True)
-        estimator.initialize_estimator_recursive(universe, trading_calendar=[t])
+        estimator.initialize_estimator_recursive(
+            universe, trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data.values)
 
         # data excludes cash acct
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data)
-        estimator.initialize_estimator_recursive(universe, trading_calendar=[t])
+        estimator.initialize_estimator_recursive(
+            universe, trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data.values[:2])
 
         # shuffled universe
         estimator = DataEstimator(data.iloc[::-1])
-        estimator.initialize_estimator_recursive(universe, trading_calendar=[t])
+        estimator.initialize_estimator_recursive(
+            universe, trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data.values[:2])
 

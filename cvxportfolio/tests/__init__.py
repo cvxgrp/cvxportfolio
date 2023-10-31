@@ -64,6 +64,7 @@ class CvxportfolioTest(unittest.TestCase):
 
     @staticmethod
     def strip_tz_and_hour(market_data):
+        """Transform DFs indexes from datetime with tz to date without tz."""
         market_data.returns.index = \
             market_data.returns.index.tz_localize(None).floor("D")
         market_data.volumes.index = \

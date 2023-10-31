@@ -257,7 +257,8 @@ class TestConstraints(CvxportfolioTest):
         self.w_plus.value = tmp
         self.assertFalse(cons.value())
 
-        model = cvx.FactorGrossLimit(np.ones((self.N - 1, 2)), np.array([7, 7]))
+        model = cvx.FactorGrossLimit(
+            np.ones((self.N - 1, 2)), np.array([7, 7]))
         cons = self.build_constraint(model, self.returns.index[1])
 
         tmp = np.zeros(self.N)

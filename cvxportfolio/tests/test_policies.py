@@ -168,8 +168,8 @@ class TestPolicies(CvxportfolioTest):
 
         policy = cvx.FixedWeights(fixed_weights)
         t = self.returns.index[123]
-        wplus = policy.values_in_time_recursive(t=t, current_weights=pd.Series(
-            0., self.returns.columns))
+        wplus = policy.values_in_time_recursive(
+            t=t, current_weights=pd.Series(0., self.returns.columns))
         self.assertTrue(np.all(wplus == fixed_weights.loc[t]))
 
         t = self.returns.index[111]
@@ -190,7 +190,8 @@ class TestPolicies(CvxportfolioTest):
         rebalancing_times = pd.date_range(
             start=self.returns.index[0], end=self.returns.index[-1], freq='7d')
 
-        policy = cvx.PeriodicRebalance(target, rebalancing_times=rebalancing_times)
+        policy = cvx.PeriodicRebalance(
+            target, rebalancing_times=rebalancing_times)
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
 
@@ -257,13 +258,15 @@ class TestPolicies(CvxportfolioTest):
         init /= sum(init)
 
         for tracking_error in [0.01, .02, .05, .1]:
-            policy = cvx.AdaptiveRebalance(target, tracking_error=tracking_error)
+            policy = cvx.AdaptiveRebalance(
+                target, tracking_error=tracking_error)
             wplus = policy.values_in_time_recursive(
                 t=self.returns.index[1], current_weights=init)
             self.assertTrue(np.allclose(wplus, target.iloc[0]))
 
         for tracking_error in [.2, .5]:
-            policy = cvx.AdaptiveRebalance(target, tracking_error=tracking_error)
+            policy = cvx.AdaptiveRebalance(
+                target, tracking_error=tracking_error)
             wplus = policy.values_in_time_recursive(
                 t=self.returns.index[1], current_weights=init)
             self.assertTrue(np.allclose(wplus - init, 0.))
@@ -313,7 +316,6 @@ class TestPolicies(CvxportfolioTest):
 
         # REPLICATE WITH CVXPY
 
-        # + np.outer(self.returns.iloc[:121, :-1].mean(), self.returns.iloc[:121, :-1].mean())
         covariance = self.returns.iloc[:121, :-1].cov(ddof=0).values
         w = cp.Variable(self.N)
         cp.Problem(

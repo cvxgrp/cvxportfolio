@@ -97,6 +97,7 @@ class TestForecast(CvxportfolioTest):
                             :-1] / np.sqrt(past_returns.count()[:-1])))
 
     def test_counts_matrix(self):
+        """Test internal method(s) of HistoricalFactorizedCovariance."""
         forecaster = HistoricalFactorizedCovariance()  # kelly=True)
         returns = pd.DataFrame(self.returns, copy=True)
         returns.iloc[:20, 3:10] = np.nan

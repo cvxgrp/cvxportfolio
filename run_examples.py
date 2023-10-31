@@ -1,4 +1,6 @@
+"""Run some example scripts and produce plots for the documentation."""
 import sys
+
 import matplotlib.pyplot as plt
 
 EXAMPLES = ['hello_world']

@@ -6,8 +6,9 @@ and Z are integers. Take argument revision (Z -> Z+1),
 minor (Y -> Y+1, Z -> 0), or major (X -> X+1, Y -> 0, Z -> 0).
 Return the updated version string."""
 
-from pathlib import Path
 import subprocess
+from pathlib import Path
+
 
 def findversion(root='.'):
     """Find version number. Skip [env, venv, .*].
@@ -29,37 +30,37 @@ def findversion(root='.'):
                 result = findversion(fname)
                 if result:
                     return result
-        
+
 
 def replaceversion(new_version, version, root='.'):
     """Replace version number. Skip [env, venv, .*].
     
     We replace in all __init__.py, conf.py, setup.py, and pyproject.toml
-    """    
+    """
 
     p = Path(root)
-    
+
     for fname in p.iterdir():
         if fname.name in ['__init__.py', 'conf.py', 'setup.py',
             'pyproject.toml']:
-            
+
             lines = []
             with open(fname, 'rt') as fin:
                 for line in fin:
                     lines.append(line.replace(version, new_version))
-                    
+
             with open(fname, "wt") as fout:
                 for line in lines:
                     fout.write(line)
             subprocess.run(['git', 'add', str(fname)])
-                               
+
         if fname.is_dir():
             if not (fname.name in ['env', 'venv'] or fname.name[0] == '.'):
                 replaceversion(new_version, version, root=fname)
 
-    
+
 if __name__ == "__main__":
-    
+
     while True:
         print('[revision/minor/major]')
         what = input()
@@ -67,24 +68,23 @@ if __name__ == "__main__":
             break
 
     version = findversion()
-    
-    x,y,z = [int(el) for el in version.split('.')]
+
+    x, y, z = [int(el) for el in version.split('.')]
     if what == 'revision':
         z += 1
     if what == 'minor':
         y += 1
         z = 0
     if what == 'major':
-        x += 1   
+        x += 1
         y = 0
         z = 0
     new_version = f"{x}.{y}.{z}"
 
-    print(new_version) 
+    print(new_version)
 
     replaceversion(new_version, version)
     subprocess.run(['git', 'commit', '--no-verify', '-em',
         f"version {new_version}\n"])
     subprocess.run(['git', 'tag', new_version])
     subprocess.run(['git', 'push', '--no-verify', 'origin', new_version])
-    

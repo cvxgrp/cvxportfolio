@@ -27,8 +27,10 @@ class TestReturns(CvxportfolioTest):
     def boilerplate(self, model):
         """Initialize objects, compile cvxpy expression."""
         model.initialize_estimator_recursive(
-            universe=self.returns.columns, trading_calendar=self.returns.index)
-        return model.compile_to_cvxpy(self.w_plus, self.z, self.w_plus_minus_w_bm)
+            universe=self.returns.columns,
+            trading_calendar=self.returns.index)
+        return model.compile_to_cvxpy(
+            self.w_plus, self.z, self.w_plus_minus_w_bm)
 
     def test_cash_returns(self):
         """Test CashReturn object with last return as forecast."""
@@ -61,10 +63,8 @@ class TestReturns(CvxportfolioTest):
         self.w_plus.value = np.random.randn(self.N)
         print(cvxpy_expression.value)
         print(self.w_plus[:-1].value @ self.returns.iloc[123][:-1])
-        # + ((self.w_plus[-1].value + np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1]))
         self.assertTrue(np.isclose(cvxpy_expression.value,
                         self.w_plus[:-1].value @ self.returns.iloc[123][:-1]))
-        # + ((self.w_plus[-1].value + 2 * np.sum(np.minimum(self.w_plus[:-1].value, 0.))) * self.returns.iloc[123][-1])))
 
     def test_full_returns_forecast(self):
         """Test ReturnsForecast object with historical mean forecasts."""
@@ -77,7 +77,6 @@ class TestReturns(CvxportfolioTest):
         self.w_plus.value /= sum(self.w_plus.value)
         myforecast = self.returns.iloc[:, :-
                                        1].loc[self.returns.index < t].mean()
-        # myforecast.iloc[-1] = self.returns.iloc[122, -1]
         self.assertTrue(np.isclose(cvxpy_expression.value,
                         self.w_plus.value[:-1] @ myforecast))
 
@@ -85,7 +84,6 @@ class TestReturns(CvxportfolioTest):
         """Test ReturnsForecastError object with provided values."""
         delta = self.returns.iloc[:, :-
                                   1].std(ddof=0) / np.sqrt(len(self.returns))
-        # delta.iloc[-1] = 0
         error_risk = ReturnsForecastError(delta)
         cvxpy_expression = self.boilerplate(error_risk)
         error_risk.values_in_time_recursive(t='ciao', past_returns='hello')
