@@ -17,13 +17,13 @@ It implements the models described in Chapter 7 of the book (Examples).
 
 For example, historical means of market returns, and covariances, are
 forecasted here. These are used internally by cvxportfolio objects. In
-addition, some of the classes defined here have the ability to cache the 
-result of their computation online so that if multiple copies of the same 
-forecaster need access to the estimated value (as is the
-case in MultiPeriodOptimization policies) the expensive evaluation is
-only done once. The same cache is stored on disk when a back-test ends,
-so next time the user runs a back-test with the same universe and market
-data, the forecasted values will be retrieved automatically.
+addition, some of the classes defined here have the ability to cache the
+result of their computation online so that if multiple copies of the
+same forecaster need access to the estimated value (as is the case in
+MultiPeriodOptimization policies) the expensive evaluation is only done
+once. The same cache is stored on disk when a back-test ends, so next
+time the user runs a back-test with the same universe and market data,
+the forecasted values will be retrieved automatically.
 """
 
 import logging
@@ -107,9 +107,11 @@ class HistoricalMeanReturn(BaseForecast):
         self._last_sum = None
 
     def initialize_estimator(self, universe, trading_calendar):
+        """Re-initialize whenever universe changes."""
         self.__post_init__()
 
-    def values_in_time(self, t, past_returns, cache=None, **kwargs):
+    def values_in_time(self, t, past_returns, **kwargs):
+        """Obtain current value of the mean returns."""
         self._agnostic_update(t=t, past_returns=past_returns)
         return (self._last_sum / self._last_counts).values
 
@@ -148,9 +150,11 @@ class HistoricalVariance(BaseForecast):
         self._last_sum = None
 
     def initialize_estimator(self, universe, trading_calendar):
+        """Re-initialize whenever universe changes."""
         self.__post_init__()
 
     def values_in_time(self, t, past_returns, **kwargs):
+        """Obtain current value either by update or from scratch."""
         self._agnostic_update(t=t, past_returns=past_returns)
         result = (self._last_sum / self._last_counts).values
         if not self.kelly:
@@ -158,12 +162,13 @@ class HistoricalVariance(BaseForecast):
         return result
 
     def _initial_compute(self, t, past_returns):
+        """Compute from scratch."""
         self._last_counts = past_returns.iloc[:, :-1].count()
         self._last_sum = (past_returns.iloc[:, :-1]**2).sum()
         self._last_time = t
 
-    # , last_estimation, last_counts, last_time):
     def _online_update(self, t, past_returns):
+        """Update from estimate at t-1."""
         self._last_counts += ~(past_returns.iloc[-1, :-1].isnull())
         self._last_sum += past_returns.iloc[-1, :-1].fillna(0.)**2
         self._last_time = t
@@ -194,6 +199,7 @@ class HistoricalMeanError(HistoricalVariance):
         super().__init__(kelly=False)
 
     def values_in_time(self, t, past_returns, **kwargs):
+        """Current value of the forecast."""
         variance = super().values_in_time(
             t=t, past_returns=past_returns, **kwargs)
         return np.sqrt(variance / self._last_counts.values)
@@ -207,9 +213,15 @@ class HistoricalLowRankCovarianceSVD(Estimator):
     svd_iters: int = 10
     svd: str = 'numpy'
 
-    # brought back from old commit
-    # https://github.com/cvxgrp/cvxportfolio/commit/aa3d2150d12d85a6fb1befdf22cb7967fcc27f30
-    # matches original 2016 method from example notebooks, with new heuristic for NaNs
+    # brought back from old commit;
+    #
+    #  https://github.com/cvxgrp/cvxportfolio/commit
+    #     /aa3d2150d12d85a6fb1befdf22cb7967fcc27f30
+    #
+    # matches original 2016 method from example
+    # notebooks with new heuristic for NaNs. can probably be improved
+    # by terminating early if idyosyncratic becomes negative
+
     @staticmethod
     def build_low_rank_model(rets, num_factors=10, iters=10, svd='numpy'):
         r"""Build a low rank risk model from past returns that include NaNs.
@@ -219,16 +231,10 @@ class HistoricalLowRankCovarianceSVD(Estimator):
         total entries). If there are (many) NaNs, one should probably
         also use a rather large risk forecast error.
         """
-        # rets = past_returns.iloc[:,:-1] # drop cash
         nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
         normalizer = np.sqrt((rets**2).mean())
-        # if normalize:
-        #     normalized = rets/(normalizer + 1E-8)
-        # else:
         normalized = rets
         if nan_fraction:
-            #if nan_fraction > 0.1 and not shrink:
-            #    warnings.warn("Low rank model estimation on past returns with many NaNs should use the `shrink` option")
             nan_implicit_imputation = pd.DataFrame(0.,
                 columns=normalized.columns, index = normalized.index)
             for _ in range(iters):
@@ -240,7 +246,7 @@ class HistoricalLowRankCovarianceSVD(Estimator):
                     raise SyntaxError(
                         'Currently only numpy svd is implemented')
                 nan_implicit_imputation = pd.DataFrame(
-                    (u[:, :num_factors] * (s[:num_factors] #- s[num_factors] * shrink
+                    (u[:, :num_factors] * (s[:num_factors]
                         )) @ v[:num_factors],
                     columns = normalized.columns, index = normalized.index)
         else:
@@ -250,9 +256,6 @@ class HistoricalLowRankCovarianceSVD(Estimator):
                 raise SyntaxError(
                     'Currently only numpy svd is implemented')
         F = v[:num_factors].T * s[:num_factors] / np.sqrt(len(rets))
-        #if normalize:
-        #    F = pd.DataFrame(F.T * (normalizer.values + 1E-8), columns=normalizer.index)
-        #else:
         F = pd.DataFrame(F.T, columns=normalizer.index)
         idyosyncratic = normalizer**2 - (F**2).sum(0)
         if not np.all(idyosyncratic >= 0.):
@@ -265,7 +268,7 @@ class HistoricalLowRankCovarianceSVD(Estimator):
 
     @online_cache
     def values_in_time(self, past_returns, **kwargs):
-
+        """Current low-rank model, also cached."""
         return self.build_low_rank_model(past_returns.iloc[:, :-1],
             num_factors=self.num_factors,
             iters=self.svd_iters, svd=self.svd)
@@ -281,11 +284,11 @@ def project_on_psd_cone_and_factorize(covariance):
 class HistoricalFactorizedCovariance(BaseForecast):
     r"""Historical covariance matrix, sqrt factorized.
 
-    :param kelly: if ``True`` compute each 
+    :param kelly: if ``True`` compute each
         :math:`\Sigma_{i,j} = \overline{r^{i} r^{j}}`, else
         :math:`\overline{r^{i} r^{j}} - \overline{r^{i}}\overline{r^{j}}`.
-        The second case corresponds to the classic definition of covariance, 
-        while the first is what is obtained by Taylor approximation of 
+        The second case corresponds to the classic definition of covariance,
+        while the first is what is obtained by Taylor approximation of
         the Kelly gambling objective. (See page 28 of the book.)
         In the second case, the estimated covariance is the same
         as what is returned by ``pandas.DataFrame.cov(ddof=0)``, *i.e.*,
@@ -305,6 +308,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
         self._joint_mean = None
 
     def initialize_estimator(self, universe, trading_calendar):
+        """Re-initialize whenever universe changes."""
         self.__post_init__()
 
     @staticmethod
@@ -346,6 +350,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
 
     @online_cache
     def values_in_time(self, t, past_returns, **kwargs):
+        """Obtain current value of the covariance estimate."""
 
         self._agnostic_update(t=t, past_returns=past_returns)
         covariance = self._last_sum_matrix / self._last_counts_matrix
