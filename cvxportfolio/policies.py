@@ -25,7 +25,7 @@ from .errors import (ConvexityError, ConvexSpecificationError, DataError,
                      MissingTimesError, PortfolioOptimizationError)
 from .estimator import DataEstimator, Estimator
 from .returns import CashReturn
-from .utils import *
+from .utils import flatten_heterogeneous_list
 
 __all__ = [
     "AllCash",
@@ -221,7 +221,7 @@ class ProportionalTradeToTargets(Policy):
             raise ValueError(
                 "The target weights provided to %s at time %s"
                 + " do not sum to 1.", self.__class__.__name__, t)
-        if not len(next_targets):
+        if len(next_targets) == 0:
             return current_weights
         next_target = next_targets.iloc[0]
         next_target_day = next_targets.index[0]
@@ -410,8 +410,7 @@ class AdaptiveRebalance(Policy):
         if np.linalg.norm(current_weights - self.target.current_value) >\
                 self.tracking_error.current_value:
             return self.target.current_value
-        else:
-            return current_weights
+        return current_weights
 
 
 class MultiPeriodOptimization(Policy):
@@ -642,12 +641,12 @@ class MultiPeriodOptimization(Policy):
 
         if self.problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(
-                f"Policy %s at time %s  resulted in an unbounded problem.",
+                "Policy %s at time %s  resulted in an unbounded problem.",
                     self.__class__.__name__, t)
 
         if self.problem.status in ["infeasible", 'infeasible_inaccurate']:
             raise PortfolioOptimizationError(
-                f"Policy %s at time %s resulted in an infeasible problem.",
+                "Policy %s at time %s resulted in an infeasible problem.",
                     self.__class__.__name__, t)
 
         result = current_weights + pd.Series(
@@ -695,7 +694,7 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     :type kwargs: dics
     """
 
-    def __init__(self, objective, constraints=[],
+    def __init__(self, objective, constraints=(),
                 include_cash_return=True, benchmark=AllCash, **kwargs):
         super().__init__(
             [objective], [constraints],

@@ -21,14 +21,19 @@ import pandas as pd
 import cvxportfolio as cvx
 from cvxportfolio.errors import (DataError, MissingAssetsError,
                                  MissingTimesError, NaNError)
-from cvxportfolio.estimator import DataEstimator  # , ParameterEstimator
+from cvxportfolio.estimator import DataEstimator
 
 
 class PlaceholderCallable:
+    """Simple class with callback."""
+
+    # pylint: disable=[too-few-public-methods]
+
     def __init__(self, value):
         self.value = value
 
     def values_in_time(self, *args, **kwargs):
+        """Callback used when passing this to DataEstimator."""
         return self.value
 
 
@@ -308,12 +313,14 @@ class TestEstimator(unittest.TestCase):
             np.all(estimator.parameter.value == data.loc["2022-01-05"]))
 
     def test_repr_dataestimator(self):
+        """Test __repr__ magic method of DataEstimator."""
         print(DataEstimator(3))
         print(DataEstimator(np.array([1, 2, 3])))
         print(DataEstimator(pd.Series([1, 2, 3])))
         print(DataEstimator(pd.DataFrame([1, 2, 3])))
 
     def test_repr(self):
+        """Test other assorted __repr__ methods of derived objects."""
         print(cvx.FactorModelCovariance(num_factors=10))
         print(cvx.ReturnsForecast() - .5 * cvx.FullCovariance())
         print(cvx.SinglePeriodOptimization(cvx.ReturnsForecast(),

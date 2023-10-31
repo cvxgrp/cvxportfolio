@@ -132,8 +132,9 @@ class HistoricalVariance(BaseForecast):
 
     :param kelly: if ``True`` compute :math:`\mathbf{E}[r^2]`, else
         :math:`\mathbf{E}[r^2] - {\mathbf{E}[r]}^2`. The second corresponds
-        to the classic definition of variance, while the first is what is obtained
-        by Taylor approximation of the Kelly gambling objective. (See page 28 of the book.)
+        to the classic definition of variance, while the first is what is
+        obtained by Taylor approximation of the Kelly gambling objective.
+        (See page 28 of the book.)
     :type kelly: bool
     """
 

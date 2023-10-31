@@ -20,17 +20,8 @@ import numpy as np
 import pandas as pd
 
 import cvxportfolio as cvx
-from cvxportfolio.constraints import *
-from cvxportfolio.costs import *
-from cvxportfolio.errors import *
-from cvxportfolio.errors import (ConvexityError, ConvexSpecificationError,
-                                 DataError, MissingAssetsError,
-                                 MissingTimesError, PortfolioOptimizationError)
+from cvxportfolio.errors import DataError, PortfolioOptimizationError
 from cvxportfolio.forecast import HistoricalFactorizedCovariance
-from cvxportfolio.policies import *
-# from cvxportfolio.policies import SinglePeriodOptOLD, SinglePeriodOptNEW
-from cvxportfolio.returns import *
-from cvxportfolio.risks import *
 from cvxportfolio.tests import CvxportfolioTest
 
 
@@ -39,7 +30,7 @@ class TestPolicies(CvxportfolioTest):
 
     def test_hold(self):
         """Test hold policy."""
-        hold = Hold()
+        hold = cvx.Hold()
         w = pd.Series(0.5, ["AAPL", "CASH"])
         self.assertTrue(np.all(
             hold.values_in_time_recursive(current_weights=w).values
@@ -47,13 +38,12 @@ class TestPolicies(CvxportfolioTest):
 
     def test_rank_and_long_short(self):
         """Test rank-and-long-short policy."""
-        hold = Hold()
         w = pd.Series(0.25, ["AAPL", "TSLA", "GOOGL", "CASH"])
         signal = pd.Series([1, 2, 3], ["AAPL", "TSLA", "GOOGL"])
         num_long = 1
         num_short = 1
         target_leverage = 3.0
-        rls = RankAndLongShort(
+        rls = cvx.RankAndLongShort(
             signal=signal,
             num_long=num_long,
             num_short=num_short,
@@ -74,7 +64,7 @@ class TestPolicies(CvxportfolioTest):
                 "GOOGL": pd.Series([4, 4, 4], index),
             }
         )
-        rls = RankAndLongShort(
+        rls = cvx.RankAndLongShort(
             signal=signal,
             num_long=num_long,
             num_short=num_short,
@@ -110,7 +100,7 @@ class TestPolicies(CvxportfolioTest):
         targets = pd.DataFrame({self.returns.index[3]: a,
                                 self.returns.index[15]: b
                                 }).T
-        policy = ProportionalTradeToTargets(targets)
+        policy = cvx.ProportionalTradeToTargets(targets)
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
@@ -139,7 +129,7 @@ class TestPolicies(CvxportfolioTest):
             np.random.randn(
                 self.returns.shape[1]),
             self.returns.columns)
-        policy = SellAll()
+        policy = cvx.SellAll()
         t = pd.Timestamp('2022-01-01')
         wplus = policy.values_in_time_recursive(
             t=t, current_weights=start_portfolio)
@@ -157,7 +147,7 @@ class TestPolicies(CvxportfolioTest):
             index=self.returns.index,
             columns=self.returns.columns)
 
-        policy = FixedTrades(fixed_trades)
+        policy = cvx.FixedTrades(fixed_trades)
         t = self.returns.index[123]
         w = pd.Series(0., self.returns.columns)
         wplus = policy.values_in_time_recursive(t=t, current_weights=w)
@@ -176,7 +166,7 @@ class TestPolicies(CvxportfolioTest):
             index=self.returns.index,
             columns=self.returns.columns)
 
-        policy = FixedWeights(fixed_weights)
+        policy = cvx.FixedWeights(fixed_weights)
         t = self.returns.index[123]
         wplus = policy.values_in_time_recursive(t=t, current_weights=pd.Series(
             0., self.returns.columns))
@@ -200,7 +190,7 @@ class TestPolicies(CvxportfolioTest):
         rebalancing_times = pd.date_range(
             start=self.returns.index[0], end=self.returns.index[-1], freq='7d')
 
-        policy = PeriodicRebalance(target, rebalancing_times=rebalancing_times)
+        policy = cvx.PeriodicRebalance(target, rebalancing_times=rebalancing_times)
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
 
@@ -214,7 +204,7 @@ class TestPolicies(CvxportfolioTest):
 
     def test_uniform(self):
         """Test uniform allocation."""
-        pol = Uniform()
+        pol = cvx.Uniform()
         pol.initialize_estimator_recursive(
             self.returns.columns, self.returns.index)
 
@@ -234,7 +224,7 @@ class TestPolicies(CvxportfolioTest):
         target /= sum(target)
         target_matching_times = self.returns.index[::3]
 
-        policy = ProportionalRebalance(
+        policy = cvx.ProportionalRebalance(
             target, target_matching_times=target_matching_times)
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
@@ -267,13 +257,13 @@ class TestPolicies(CvxportfolioTest):
         init /= sum(init)
 
         for tracking_error in [0.01, .02, .05, .1]:
-            policy = AdaptiveRebalance(target, tracking_error=tracking_error)
+            policy = cvx.AdaptiveRebalance(target, tracking_error=tracking_error)
             wplus = policy.values_in_time_recursive(
                 t=self.returns.index[1], current_weights=init)
             self.assertTrue(np.allclose(wplus, target.iloc[0]))
 
         for tracking_error in [.2, .5]:
-            policy = AdaptiveRebalance(target, tracking_error=tracking_error)
+            policy = cvx.AdaptiveRebalance(target, tracking_error=tracking_error)
             wplus = policy.values_in_time_recursive(
                 t=self.returns.index[1], current_weights=init)
             self.assertTrue(np.allclose(wplus - init, 0.))
@@ -281,17 +271,19 @@ class TestPolicies(CvxportfolioTest):
     def test_single_period_optimization(self):
         """Test basic SPO."""
 
-        return_forecast = ReturnsForecast()
-        risk_forecast = FullCovariance(
+        return_forecast = cvx.ReturnsForecast()
+        risk_forecast = cvx.FullCovariance(
             HistoricalFactorizedCovariance(kelly=False))
-        tcost = TransactionCost(a=1E-3/2, pershare_cost=0., b=None, exponent=2)
+        tcost = cvx.TransactionCost(
+            a=1E-3/2, pershare_cost=0., b=None, exponent=2)
 
-        policy = SinglePeriodOptimization(
+        policy = cvx.SinglePeriodOptimization(
             return_forecast
             - 2 * risk_forecast
             # - TcostModel(half_spread=5 * 1E-4)  # , power=2)
             - tcost,
-            constraints=[LongOnly(applies_to_cash=False), LeverageLimit(1)],
+            constraints=[
+                cvx.LongOnly(applies_to_cash=False), cvx.LeverageLimit(1)],
             include_cash_return=False,
             # verbose=True,
             solver='ECOS')
@@ -322,11 +314,11 @@ class TestPolicies(CvxportfolioTest):
         # REPLICATE WITH CVXPY
 
         # + np.outer(self.returns.iloc[:121, :-1].mean(), self.returns.iloc[:121, :-1].mean())
-        COV = self.returns.iloc[:121, :-1].cov(ddof=0).values
+        covariance = self.returns.iloc[:121, :-1].cov(ddof=0).values
         w = cp.Variable(self.N)
         cp.Problem(
             cp.Maximize(w[:-1].T @ self.returns.iloc[:121, :-1].mean().values -
-            2 * cp.quad_form(w[:-1], COV) -
+            2 * cp.quad_form(w[:-1], covariance) -
             5 * 1E-4 * cp.sum(cp.abs(w - curw)[:-1])),
             [w >= 0, w <= 1, sum(w) == 1]).solve(solver='ECOS')
 
@@ -341,15 +333,14 @@ class TestPolicies(CvxportfolioTest):
     def test_single_period_optimization_solve_twice(self):
         """Test resolve of SPO policy with Cvxpy parameters."""
 
-        return_forecast = ReturnsForecast()
-        risk_forecast = FullCovariance()
+        return_forecast = cvx.ReturnsForecast()
+        risk_forecast = cvx.FullCovariance()
 
-        policy = SinglePeriodOptimization(
+        policy = cvx.SinglePeriodOptimization(
             return_forecast
             - 2 * risk_forecast
-            - TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
-            ,
-            constraints=[LongOnly(), LeverageLimit(1)],
+            - cvx.TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.),
+            constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
             # verbose=True,
             solver='ECOS')
 
@@ -372,8 +363,6 @@ class TestPolicies(CvxportfolioTest):
 
         self.assertFalse(np.allclose(result, 0.))
 
-        cvxportfolio_result = pd.Series(result, self.returns.columns)
-
         curw += result
 
         result2 = policy.values_in_time_recursive(
@@ -391,14 +380,14 @@ class TestPolicies(CvxportfolioTest):
     def test_single_period_optimization_infeasible(self):
         """Test SPO policy with infeasible result."""
 
-        return_forecast = ReturnsForecast()
-        risk_forecast = FullCovariance()
-        policy = SinglePeriodOptimization(
+        return_forecast = cvx.ReturnsForecast()
+        risk_forecast = cvx.FullCovariance()
+        policy = cvx.SinglePeriodOptimization(
             return_forecast
             - 2 * risk_forecast
-            - TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
-            ,
-            constraints=[LongOnly(), LeverageLimit(1), MaxWeights(-1)],
+            - cvx.TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.),
+            constraints=[cvx.LongOnly(), cvx.LeverageLimit(1),
+                cvx.MaxWeights(-1)],
             # verbose=True,
             solver='ECOS')
 
@@ -410,7 +399,7 @@ class TestPolicies(CvxportfolioTest):
         curw[-1] = 1.
 
         with self.assertRaises(PortfolioOptimizationError):
-            result = policy.values_in_time_recursive(
+            policy.values_in_time_recursive(
                 t=self.returns.index[134],
                 current_weights=pd.Series(
                     curw,
@@ -423,14 +412,10 @@ class TestPolicies(CvxportfolioTest):
     def test_single_period_optimization_unbounded(self):
         """Test SPO policy with unbounded result."""
 
-        return_forecast = ReturnsForecast()
-        risk_forecast = FullCovariance()
-        policy = SinglePeriodOptimization(
-            return_forecast            # - 2 * risk_forecast
-            # - TransactionCost(spreads=10 * 1E-4, pershare_cost=0., b=0.)  # , power=2)
-            ,
-            constraints=[LongOnly(applies_to_cash=False),  # LeverageLimit(1), MaxWeights(-1)
-                         ],
+        return_forecast = cvx.ReturnsForecast()
+        policy = cvx.SinglePeriodOptimization(
+            return_forecast,
+            constraints=[cvx.LongOnly(applies_to_cash=False)],
             # verbose=True,
             solver='ECOS')
 
@@ -442,7 +427,7 @@ class TestPolicies(CvxportfolioTest):
         curw[-1] = 1.
 
         with self.assertRaises(PortfolioOptimizationError):
-            result = policy.values_in_time_recursive(
+            policy.values_in_time_recursive(
                 t=self.returns.index[134],
                 current_weights=pd.Series(
                     curw,
@@ -460,13 +445,13 @@ class TestPolicies(CvxportfolioTest):
 
         results = []
         for planning_horizon in [1, 2, 5]:
-            return_forecast = ReturnsForecast()
-            risk_forecast = FullCovariance()
-            policy = MultiPeriodOptimization(
+            return_forecast = cvx.ReturnsForecast()
+            risk_forecast = cvx.FullCovariance()
+            policy = cvx.MultiPeriodOptimization(
                 return_forecast
                 # - TcostModel(half_spread=5 * 1E-4)  # , power=2)
                 - 10 * risk_forecast,
-                constraints=[LongOnly(), LeverageLimit(1)],
+                constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
                 # verbose=True,
                 planning_horizon=planning_horizon,
                 solver='ECOS')
@@ -497,14 +482,14 @@ class TestPolicies(CvxportfolioTest):
 
         results = []
         for planning_horizon in [1, 2, 5]:
-            return_forecast = ReturnsForecast()
-            risk_forecast = FullCovariance()
-            policy = MultiPeriodOptimization(
+            return_forecast = cvx.ReturnsForecast()
+            risk_forecast = cvx.FullCovariance()
+            policy = cvx.MultiPeriodOptimization(
                 return_forecast
                 - 10 * risk_forecast
                 # - TcostModel(half_spread=5 * 1E-4)  # , power=2)
-                - TransactionCost(a=25 * 1E-4, pershare_cost=0., b=0.),
-                constraints=[LongOnly(), LeverageLimit(1)],
+                - cvx.TransactionCost(a=25 * 1E-4, pershare_cost=0., b=0.),
+                constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
                 # verbose=True,
                 planning_horizon=planning_horizon,
                 solver='ECOS')
@@ -531,15 +516,16 @@ class TestPolicies(CvxportfolioTest):
         self.assertFalse(np.allclose(results[1], results[2], atol=1e-4))
 
     def test_multi_period_optimization_syntax(self):
+        """Test syntax error checks in MultiPeriodOptimization."""
         with self.assertRaises(SyntaxError):
-            MultiPeriodOptimization([ReturnsForecast()], [])
+            cvx.MultiPeriodOptimization([cvx.ReturnsForecast()], [])
         with self.assertRaises(SyntaxError):
-            MultiPeriodOptimization([ReturnsForecast()], [[], []])
+            cvx.MultiPeriodOptimization([cvx.ReturnsForecast()], [[], []])
         with self.assertRaises(SyntaxError):
-            MultiPeriodOptimization([ReturnsForecast()], None)
+            cvx.MultiPeriodOptimization([cvx.ReturnsForecast()], None)
         with self.assertRaises(SyntaxError):
-            MultiPeriodOptimization(ReturnsForecast())
-        MultiPeriodOptimization(ReturnsForecast(), planning_horizon=1)
+            cvx.MultiPeriodOptimization(cvx.ReturnsForecast())
+        cvx.MultiPeriodOptimization(cvx.ReturnsForecast(), planning_horizon=1)
 
     def test_multi_period_optimization3(self):
         """Check that terminal constraint brings closer to benchmark."""
@@ -552,14 +538,14 @@ class TestPolicies(CvxportfolioTest):
         diff_to_benchmarks = []
         for planning_horizon in [1, 2, 5]:
 
-            return_forecast = ReturnsForecast()
-            risk_forecast = FullCovariance()
-            policy = MultiPeriodOptimization(
+            return_forecast = cvx.ReturnsForecast()
+            risk_forecast = cvx.FullCovariance()
+            policy = cvx.MultiPeriodOptimization(
                 return_forecast
                 - 10 * risk_forecast
                 # , power=2)
-                - TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.),
-                constraints=[LongOnly(), LeverageLimit(1)],
+                - cvx.TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.),
+                constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
                 # verbose=True,
                 terminal_constraint=benchmark,
                 planning_horizon=planning_horizon,

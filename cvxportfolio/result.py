@@ -19,8 +19,8 @@ method, and also by the same method in derived classes of
 :class:`cvxportfolio.MarketSimulator`.
 It contains all relevant information from a back-test and implements the logic
 to compute various performance metrics, in addition to the
-:meth:BacktestResult.plot` method for producing plots
-and :meth:BacktestResult.__repr__` magic method, which is invoked when the user
+:meth:`BacktestResult.plot` method for producing plots
+and ``__repr__`` magic method, which is invoked when the user
 prints an instance.
 """
 
