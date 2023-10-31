@@ -59,6 +59,39 @@ class TestSimulator(CvxportfolioTest):
                 columns=['X', 'USDOLLAR']),
                 volumes=pd.DataFrame([[0.]]))
 
+    def test_backtest_with_ipos_and_delistings(self):
+        """Test back-test with assets that both enter and exit."""
+        rets = pd.DataFrame(self.returns.iloc[:, -10:], copy=True)
+        volumes = pd.DataFrame(self.volumes.iloc[:, -9:], copy=True)
+        prices = pd.DataFrame(self.prices.iloc[:, -9:], copy=True)
+        rets.iloc[14:25, 1:3] = np.nan
+        rets.iloc[9:17, 3:5] = np.nan
+        rets.iloc[8:15, 5:7] = np.nan
+        rets.iloc[16:29, 7:8] = np.nan
+        print(rets.iloc[10:20])
+        # raise Exception
+
+        modified_market_data = cvx.UserProvidedMarketData(
+            returns=rets, volumes=volumes, prices=prices,
+            cash_key='cash',
+            min_history=pd.Timedelta('0d'))
+
+        simulator = cvx.StockMarketSimulator(market_data=modified_market_data)
+
+        policy = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast() - 10 * cvx.FullCovariance(),
+            [cvx.LongOnly(), cvx.LeverageLimit(1)])
+
+        bt_result = simulator.backtest(policy, start_time = rets.index[10],
+            end_time = rets.index[20])
+
+        print(bt_result.w)
+
+        self.assertTrue(set(bt_result.w.columns) == set(rets.columns))
+        self.assertTrue(
+            np.all(bt_result.w.iloc[:-1].isnull() == rets.iloc[
+                10:20].isnull()))
+
     def test_backtest_with_difficult_universe_changes(self):
         """Test back-test with assets that both enter and exit at same time."""
         rets = pd.DataFrame(self.returns.iloc[:, -10:], copy=True)
