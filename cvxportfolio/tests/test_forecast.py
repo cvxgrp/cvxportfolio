@@ -103,6 +103,7 @@ class TestForecast(CvxportfolioTest):
         returns.iloc[:20, 3:10] = np.nan
         returns.iloc[10:15, 10:20] = np.nan
 
+        # pylint: disable=protected-access
         count_matrix = forecaster._get_count_matrix(returns)
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
@@ -116,6 +117,7 @@ class TestForecast(CvxportfolioTest):
                          * returns.iloc[:, indexes[1]]).dropna())))
 
     def test_sum_matrix(self):
+        """Test internal method(s) of HistoricalFactorizedCovariance."""
         forecaster = HistoricalFactorizedCovariance()  # kelly=True)
         returns = pd.DataFrame(self.returns, copy=True)
         returns.iloc[:20, 3:10] = np.nan
@@ -124,6 +126,7 @@ class TestForecast(CvxportfolioTest):
         forecaster.values_in_time_recursive(
             t=pd.Timestamp('2022-01-01'), past_returns=returns)
 
+        # pylint: disable=protected-access
         sum_matrix = forecaster._last_sum_matrix
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
@@ -148,7 +151,7 @@ class TestForecast(CvxportfolioTest):
         returns.iloc[10:30, 0] = np.nan
         returns.iloc[25:40, 2] = np.nan
 
-        def compute_Sigma(rets):
+        def compute_covariance(rets):
             res = np.zeros((3, 3))
             res[0, 0] = np.nanmean(rets.iloc[:, 0] * rets.iloc[:, 0])
             res[1, 1] = np.nanmean(rets.iloc[:, 1] * rets.iloc[:, 1])
@@ -167,7 +170,8 @@ class TestForecast(CvxportfolioTest):
             val = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
             Sigma = val @ val.T
-            self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
+            self.assertTrue(
+                np.allclose(Sigma, compute_covariance(past_returns)))
 
     def test_covariance_update_nokelly(self):
         """Test covariance forecast estimator.
@@ -200,7 +204,7 @@ class TestForecast(CvxportfolioTest):
                 ) - np.nanmean(rets.iloc[:, i] * j_nanmasker
                     ) * np.nanmean(rets.iloc[:, j] * i_nanmasker)
 
-        def compute_Sigma(rets):
+        def compute_covariance(rets):
             res = np.zeros((3, 3))
             res[0, 0] = cov_ij(0, 0, rets)
             res[1, 1] = cov_ij(1, 1, rets)
@@ -220,13 +224,14 @@ class TestForecast(CvxportfolioTest):
                 t=t, past_returns=past_returns)
             Sigma = val @ val.T
 
-            self.assertTrue(np.allclose(Sigma, compute_Sigma(past_returns)))
+            self.assertTrue(
+                np.allclose(Sigma, compute_covariance(past_returns)))
             # pandasSigma = past_returns.iloc[:,:-1].cov(ddof=0)
             # self.assertTrue(np.allclose(Sigma, pandasSigma))
             self.assertTrue(np.allclose(
                 np.diag(Sigma), past_returns.iloc[:, :-1].var(ddof=0)))
 
-    def test_SVD_forecaster(self):
+    def test_svd_forecaster(self):
         """Test the SVD forecaster. 
         
         In particular, we compare it with the other covariance forecaster.
@@ -269,8 +274,7 @@ class TestForecast(CvxportfolioTest):
                 svd='scipy')
 
             with self.assertRaises(SyntaxError):
-                val = forecaster3.values_in_time_recursive(
-                    t=t, past_returns=returns)
+                forecaster3.values_in_time_recursive(t=t, past_returns=returns)
 
             return np.linalg.norm(sigma_eigh-sigma_svd)
 
@@ -301,24 +305,23 @@ class TestForecast(CvxportfolioTest):
         print(returns.isnull().mean())
 
         with self.assertRaises(ForecastError):
-            sigma_fact = forecaster2.values_in_time_recursive(
-                t=t, past_returns=returns)
+            forecaster2.values_in_time_recursive(t=t, past_returns=returns)
 
         # this one is even more robust!
-        F, d = forecaster.values_in_time_recursive(
+        forecaster.values_in_time_recursive(
             t=t, past_returns=returns)
 
         returns.iloc[56:, 0] = np.nan
         print(returns.isnull().mean())
 
-        F, d = forecaster.values_in_time_recursive(
+        forecaster.values_in_time_recursive(
             t=t, past_returns=returns)
 
         returns.iloc[:70, 1] = np.nan
         print(returns.isnull().mean())
 
         with self.assertRaises(ForecastError):
-            F, d = forecaster.values_in_time_recursive(
+            forecaster.values_in_time_recursive(
                 t=t, past_returns=returns)
 
 
