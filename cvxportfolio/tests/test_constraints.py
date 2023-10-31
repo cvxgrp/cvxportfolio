@@ -281,6 +281,20 @@ class TestConstraints(CvxportfolioTest):
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
 
+    def test_factor_neutral(self):
+        """Test FactorNeutral constraint."""
+
+        model = cvx.FactorNeutral(np.ones((self.N - 1, 1)))
+        cons = self.build_constraint(model, self.returns.index[1])
+
+        self.w_plus.value = np.ones(self.N) / self.N
+        self.assertFalse(cons.value())
+        tmp = np.zeros(self.N)
+        tmp[0] = 4
+        tmp[1] = -4
+        self.w_plus.value = tmp
+        self.assertTrue(cons.value())
+
     def test_turnover_limit(self):
         """Test turnover limit constraint."""
         model = cvx.TurnoverLimit(0.1)

@@ -45,7 +45,7 @@ see equation :math:`(4.9)` at page 43 of
 import cvxpy as cp
 import numpy as np
 
-from .estimator import CvxpyExpressionEstimator, DataEstimator
+from .estimator import CvxpyExpressionEstimator, DataEstimator, Estimator
 from .forecast import HistoricalFactorizedCovariance
 
 __all__ = [
@@ -74,11 +74,19 @@ __all__ = [
 class Constraint(CvxpyExpressionEstimator):
     """Base cvxpy constraint class."""
 
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile constraint to cvxpy.
 
-class BaseTradeConstraint(Constraint):
-    """Base class for constraints that operate on trades."""
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
 
-    pass
+        :returns: some cvxpy.constraints object, or list of those
+        """
+        raise NotImplementedError # pragma: no cover
 
 
 class EqualityConstraint(Constraint):
@@ -100,11 +108,11 @@ class EqualityConstraint(Constraint):
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Cvxpy expression of the left-hand side of the constraint."""
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
     def _rhs(self):
         """Cvxpy expression of the right-hand side of the constraint."""
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
 
 class InequalityConstraint(Constraint):
@@ -126,11 +134,11 @@ class InequalityConstraint(Constraint):
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Cvxpy expression of the left-hand side of the constraint."""
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
     def _rhs(self):
         """Cvxpy expression of the right-hand side of the constraint."""
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
 
 class CostInequalityConstraint(InequalityConstraint):
@@ -157,14 +165,7 @@ class CostInequalityConstraint(InequalityConstraint):
         return self.cost.__repr__() + ' <= ' + self.value.__repr__()
 
 
-class BaseWeightConstraint(Constraint):
-    """Base class for constraints that operate on weights.
-
-    Here we can implement methods common to those.
-    """
-
-
-class NoCash(BaseWeightConstraint, EqualityConstraint):
+class NoCash(EqualityConstraint):
     """Require that the cash balance is zero at each period."""
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -176,7 +177,7 @@ class NoCash(BaseWeightConstraint, EqualityConstraint):
         return 0
 
 
-class MarketNeutral(BaseWeightConstraint, EqualityConstraint):
+class MarketNeutral(EqualityConstraint):
     """Simple implementation of β- (or market-) neutrality.
 
     See the equation at page 35 of
@@ -194,11 +195,14 @@ class MarketNeutral(BaseWeightConstraint, EqualityConstraint):
     def __init__(self, window=250):
         self.covarianceforecaster = HistoricalFactorizedCovariance()
         self.window = window
+        self.market_vector = None
 
     def initialize_estimator(self, universe, trading_calendar):
+        """Initialize parameter with size of universe."""
         self.market_vector = cp.Parameter(len(universe)-1)
 
-    def values_in_time(self, t, past_volumes, past_returns, **kwargs):
+    def values_in_time(self, past_volumes, **kwargs):
+        """Update parameter with current market weights and covariance."""
         tmp = past_volumes.iloc[-self.window:].mean()
         tmp /= sum(tmp)
 
@@ -216,7 +220,7 @@ class MarketNeutral(BaseWeightConstraint, EqualityConstraint):
         return 0
 
 
-class TurnoverLimit(BaseTradeConstraint, InequalityConstraint):
+class TurnoverLimit(InequalityConstraint):
     r"""Turnover limit as a fraction of the portfolio value.
 
     See the equation at page 37 of
@@ -248,7 +252,7 @@ class TurnoverLimit(BaseTradeConstraint, InequalityConstraint):
         return self.delta.parameter
 
 
-class ParticipationRateLimit(BaseTradeConstraint, InequalityConstraint):
+class ParticipationRateLimit(InequalityConstraint):
     """A limit on maximum trades size as a fraction of market volumes.
 
     :param volumes: per-stock and per-day market volume estimates, or
@@ -266,6 +270,7 @@ class ParticipationRateLimit(BaseTradeConstraint, InequalityConstraint):
         self.portfolio_value = cp.Parameter(nonneg=True)
 
     def values_in_time(self, current_portfolio_value, **kwargs):
+        """Update parameter with current portfolio value."""
         self.portfolio_value.value = current_portfolio_value
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -278,8 +283,8 @@ class ParticipationRateLimit(BaseTradeConstraint, InequalityConstraint):
                            self.max_participation_rate.parameter)
 
 
-class LongOnly(BaseWeightConstraint, InequalityConstraint):
-    """A long only constraint.
+class LongOnly(InequalityConstraint):
+    r"""A long only constraint.
 
     .. math::
 
@@ -308,20 +313,35 @@ class LongOnly(BaseWeightConstraint, InequalityConstraint):
         return 0
 
 
-class NoTrade(BaseTradeConstraint):
-    """No-trade condition on name on periods(s)."""
+class NoTrade(Constraint):
+    """No-trade condition on name on periods(s).
+
+    .. note::
+
+        This constraint object is experimental and its interface might change.
+
+    :param asset: Symbol which can't be traded on given day(s).
+    :type asset: str
+    :param periods: Timestamps at which the symbol can't be traded.
+    :type periods: iterable of pandas.Timestamp
+    """
 
     def __init__(self, asset, periods):
         self.asset = asset
         self.periods = periods
+        self._index = None
+        self._low = None
+        self._high = None
 
     def initialize_estimator(self, universe, trading_calendar):
+        """Initialize internal parameters."""
         self._index = (universe.get_loc if hasattr(
             universe, 'get_loc') else universe.index)(self.asset)
         self._low = cp.Parameter()
         self._high = cp.Parameter()
 
     def values_in_time(self, t, **kwargs):
+        """Update parameters, if necessary by imposing no-trade."""
         if t in self.periods:
             self._low.value = 0.
             self._high.value = 0.
@@ -330,11 +350,12 @@ class NoTrade(BaseTradeConstraint):
             self._high.value = +100.
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Return list of two constraints."""
         return [z[self._index] >= self._low,
                 z[self._index] <= self._high]
 
 
-class LeverageLimit(BaseWeightConstraint, InequalityConstraint):
+class LeverageLimit(InequalityConstraint):
     r"""Constraints on the leverage of the portfolio.
 
     In the notation of the book, this is
@@ -364,8 +385,8 @@ class LeverageLimit(BaseWeightConstraint, InequalityConstraint):
         return self.limit.parameter
 
 
-class MinCashBalance(BaseWeightConstraint, InequalityConstraint):
-    """Require that the cash balance is above a threshold.
+class MinCashBalance(InequalityConstraint):
+    r"""Require that the cash balance is above a threshold.
 
     In our notation this is
 
@@ -375,9 +396,9 @@ class MinCashBalance(BaseWeightConstraint, InequalityConstraint):
 
     where :math:`v_t` is the portfolio value at time :math:`t`.
 
-    :param c_min: The miminimum cash balance required,
-        either constant in time or varying. This is expressed
-        in dollars.
+    :param c_min: The miminimum cash balance required, either constant in time
+        or varying, expressed in units of cash (*e.g.*, US dollars),
+        not weight.
     :type c_min: float or pd.Series
     """
 
@@ -386,6 +407,7 @@ class MinCashBalance(BaseWeightConstraint, InequalityConstraint):
         self.rhs = cp.Parameter()
 
     def values_in_time(self, current_portfolio_value, **kwargs):
+        """Update internal parameter."""
         self.rhs.value = self.c_min.current_value/current_portfolio_value
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -404,8 +426,8 @@ class LongCash(MinCashBalance):
         super().__init__(0.)
 
 
-class DollarNeutral(BaseWeightConstraint, EqualityConstraint):
-    """Long-short dollar neutral strategy.
+class DollarNeutral(EqualityConstraint):
+    r"""Long-short dollar neutral strategy.
 
     In our notation, this is
 
@@ -426,7 +448,7 @@ class DollarNeutral(BaseWeightConstraint, EqualityConstraint):
         return 1
 
 
-class MaxWeights(BaseWeightConstraint, InequalityConstraint):
+class MaxWeights(InequalityConstraint):
     """A max limit on weights.
 
     :param limit: A series or number giving the weights limit.
@@ -445,7 +467,7 @@ class MaxWeights(BaseWeightConstraint, InequalityConstraint):
         return self.limit.parameter
 
 
-class MinWeights(BaseWeightConstraint, InequalityConstraint):
+class MinWeights(InequalityConstraint):
     """A min limit on weights.
 
     :param limit: A series or number giving the weights limit.
@@ -464,17 +486,34 @@ class MinWeights(BaseWeightConstraint, InequalityConstraint):
         return -self.limit.parameter
 
 
-class MinMaxWeightsAtTimes(BaseWeightConstraint):
+class MinMaxWeightsAtTimes(Estimator):
+    """This class abstracts functionalities used by the two below.
+
+    .. note::
+        This class is experimental and its interface may change, or we
+        may drop it.
+
+    :param base_limit: Limit of the constraint (either ``<=`` or ``>=``).
+    :type base_limit: float
+    :param times: Times at which the class is active.
+    :type times: iterable of pandas.Timestamp
+    """
+
+    sign = 0 # should be 1 or -1
 
     def __init__(self, limit, times):
         self.base_limit = limit
         self.times = times
+        self.limit = None
+        self.trading_calendar = None
 
     def initialize_estimator(self, universe, trading_calendar):
+        """Update trading calendar."""
         self.trading_calendar = trading_calendar
         self.limit = cp.Parameter()
 
     def values_in_time(self, t, mpo_step, **kwargs):
+        """If target period is in sight activate constraint."""
         tidx = self.trading_calendar.get_loc(t)
         nowtidx = tidx + mpo_step
         if (nowtidx < len(self.trading_calendar)) and\
@@ -485,6 +524,17 @@ class MinMaxWeightsAtTimes(BaseWeightConstraint):
 
 
 class MinWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
+    """Require that at certain times the weights are larger than a constant.
+
+    .. note::
+        This constraint is experimental and its interface may change, or we
+        may drop it.
+
+    :param base_limit: Minimum limit of the weights. 
+    :type base_limit: float
+    :param times: Times at which the constraint is active.
+    :type times: iterable of pandas.Timestamp
+    """
 
     sign = -1.  # used in values_in_time of parent class
 
@@ -498,7 +548,17 @@ class MinWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
 
 class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
+    """Require that at certain times the weights are smaller than a constant.
 
+    .. note::
+        This constraint is experimental and its interface may change, or we
+        may drop it.
+
+    :param base_limit: Maximum limit of the weights. 
+    :type base_limit: float
+    :param times: Times at which the constraint is active.
+    :type times: iterable of pandas.Timestamp
+    """
     sign = 1.  # used in values_in_time of parent class
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -510,7 +570,7 @@ class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
         return self.limit
 
 
-class FactorMaxLimit(BaseWeightConstraint, InequalityConstraint):
+class FactorMaxLimit(InequalityConstraint):
     r"""A max limit on portfolio-wide factor (e.g. beta) exposure.
 
     It models the term:
@@ -564,8 +624,8 @@ class FactorMaxLimit(BaseWeightConstraint, InequalityConstraint):
         return self.limit.parameter
 
 
-class FactorMinLimit(BaseWeightConstraint, InequalityConstraint):
-    """A min limit on portfolio-wide factor (e.g. beta) exposure.
+class FactorMinLimit(InequalityConstraint):
+    r"""A min limit on portfolio-wide factor (e.g. beta) exposure.
 
     It models the term:
 
@@ -618,7 +678,7 @@ class FactorMinLimit(BaseWeightConstraint, InequalityConstraint):
         return -self.limit.parameter
 
 
-class FactorGrossLimit(BaseWeightConstraint, InequalityConstraint):
+class FactorGrossLimit(InequalityConstraint):
     r"""A gross limit on portfolio-wide factor (e.g. beta) exposure.
 
     It models the term:
@@ -673,8 +733,8 @@ class FactorGrossLimit(BaseWeightConstraint, InequalityConstraint):
         return self.limit.parameter
 
 
-class FixedFactorLoading(BaseWeightConstraint, EqualityConstraint):
-    """A constraint to fix portfolio loadings to a set of factors.
+class FixedFactorLoading(EqualityConstraint):
+    r"""A constraint to fix portfolio loadings to a set of factors.
 
     This can be used to impose market neutrality,
     a certain portfolio-wide alpha, ....
@@ -766,4 +826,4 @@ class FactorNeutral(FixedFactorLoading):
     """
 
     def __init__(self, factor_exposure):
-        super().__init(self, factor_exposure, 0.)
+        super().__init__(factor_exposure=factor_exposure, target=0.)
