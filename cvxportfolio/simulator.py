@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module implements the MarketSimulator class, which strives to.
-
-simulate as accurately as possibly what would have been the realized
+"""This module implements :class:`cvxportfolio.MarketSimulator` and derived
+classes. These objects model the trading activity on a financial market. They
+simulate as accurately as possible what would have been the realized
 performance of a trading policy if it had been run in the market in the
-past. In financial jargon this is called *backtesting*.
+past. In financial jargon this is called *back-testing*.
 """
 
 import copy
@@ -40,21 +40,22 @@ __all__ = ['StockMarketSimulator', 'MarketSimulator']
 class MarketSimulator:
     """This class is a generic financial market simulator.
     
-    It can either be initialized with a :class:`MarketData` instance,
-    or we provide a selection of the arguments to
-    :class:`DownloadedMarketData` and :class:`UserProvidedMarketData`
-    to initialize either internally.
+    It can either be initialized with an instance of a class
+    derived from :class:`cvxportfolio.data.MarketData`, like the two defaults
+    :class:`cvxportfolio.DownloadedMarketData` and
+    :class:`cvxportfolio.UserProvidedMarketData`, or with a selection of the
+    arguments to the latter two.
 
     :param universe: List of names as understood by the data source 
-        used, *e.g.*, ``['AAPL', 'GOOG']`` if using the default
-        Yahoo Finance data source. If provided, a :class:`DownloadedMarketData` 
+        used, *e.g.*, ``['AAPL', 'GOOG']`` if using the default Yahoo Finance
+        data source. If provided, a :class:`cvxportfolio.DownloadedMarketData`
         will be initialized.
     :type universe: list
     :param returns: Historical open-to-open returns. The return
         at time :math:`t` is :math:`r_t = p_{t+1}/p_t -1` where
         :math:`p_t` is the (open) price at time :math:`t`. Must
         have datetime index. If provided, a 
-        :class:`UserProvidedMarketData` will be initialized. If
+        :class:`cvxportfolio.UserProvidedMarketData` will be initialized. If
         universe is specified it is ignored.
     :type returns: pandas.DataFrame
     
@@ -63,13 +64,14 @@ class MarketSimulator:
         universe is specified it is ignored.
     :type volumes: pandas.DataFrame or None
     :param prices: Historical open prices (*e.g.*, used for rounding
-        trades in the :class:`MarketSimulator`). If
+        trades in the :class:`cvxportfolio.MarketSimulator`). If
         universe is specified it is ignored.
     :type prices: pandas.DataFrame or None
     
     :param datasource: The data source used, if providing a universe
-        (for :class:`DownloadedMarketData`).
-    :type datasource: str or :class:`SymbolData` class
+        (for :class:`cvxportfolio.DownloadedMarketData`).
+    :type datasource: str or :class:`cvxportfolio.data.SymbolData` class
+        (not instance)
     
     :param cash_key: Name of the cash account. Its returns
         are the risk-free rate.
@@ -81,15 +83,16 @@ class MarketSimulator:
         ``'annual'``. By default (None) don't down-sample. 
     :type trading_frequency: str or None
     
-    :param market_data: An instance of a :class:`MarketData`. If provided,
-        all previous arguments are ignored.
-    :type market_data: :class:`MarketData` instance or None
+    :param market_data: An instance of a :class:`cvxportfolio.data.MarketData`
+        derived class. If provided, all previous arguments are ignored.
+    :type market_data: :class:`cvxportfolio.data.MarketData` instance or None
     :param base_location: The location of the storage. By default
         it's a directory named ``cvxportfolio_data`` in your home folder.
     :type base_location: pathlib.Path
     
     :param costs: List of costs that are applied at each time in a back-test.
-    :type costs: list of :class:`SimulatorCost` classes or instances
+    :type costs: list of :class:`cvxportfolio.costs.SimulatorCost` classes or
+        instances
     
     :param round_trades: If market prices are available, round trades to
         integer number of shares.
@@ -531,11 +534,11 @@ class MarketSimulator:
         :param policies: trading policies
         :type policy: list of cvx.BaseTradingPolicy:
         :param start_time: start time of the backtests; if market it close, the first trading day
-             after it is selected. Currently it is not possible to specify different start times
+            after it is selected. Currently it is not possible to specify different start times
             for different policies, so the same is used for all.
         :type start_time: str or datetime
         :param end_time: end time of the backtests; if market it close, the last trading day
-             before it is selected. Currently it is not possible to specify different end times
+            before it is selected. Currently it is not possible to specify different end times
             for different policies, so the same is used for all.
         :type end_time: str or datetime or None
         :param initial_value: initial value in dollar of the portfolio, if not specifying

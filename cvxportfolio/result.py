@@ -11,13 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module defines :class:`BacktestResult`.
+"""This module defines :class:`cvxportfolio.BacktestResult`.
 
-This is the object that is returned by a market simulator's 
-``backtest`` method. it contains all relevant information from
-a backtest and implements the logic to compute various performance metrics,
-in addition to a ``plot`` method and a rich ``__repr__`` magic method
-(which is called when the user prints the object).
+This is the object that is returned by the
+:meth:`cvxportfolio.MarketSimulator.backtest`
+method, and also by the same method in derived classes of
+:class:`cvxportfolio.MarketSimulator`.
+It contains all relevant information from a back-test and implements the logic
+to compute various performance metrics, in addition to the
+:meth:BacktestResult.plot` method for producing plots
+and :meth:BacktestResult.__repr__` magic method, which is invoked when the user
+prints an instance.
 """
 
 
@@ -44,10 +48,10 @@ __all__ = ['BacktestResult']
 
 
 class BacktestResult:
-    """Store the data from a Backtest and produce metrics and plots."""
+    """Store the data from a back-test and produce metrics and plots."""
 
     def __init__(self, universe, trading_calendar, costs):
-        """Initialization of backtest result."""
+        """Initialization of back-test result."""
         self._h = pd.DataFrame(index=trading_calendar,
                               columns=universe, dtype=float)
         self._u = pd.DataFrame(index=trading_calendar,

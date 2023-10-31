@@ -40,16 +40,16 @@ and can be extended with user-defined objects and methods to accommodate
 different data sources, custom cost models (both for simulation and optimization),
 constraints, and so on.
 
-The main abstractions used are the :class:`MarketSimulator`, which faithfully mimics
+The main abstractions used are the :class:`cvxportfolio.MarketSimulator`, which faithfully mimics
 the trading activity of a financial market, the collection of 
 :doc:`policies <policies>`, which include both simple policies such as
-:class:`RankAndLongShort`, and the optimization-based policies :class:`SinglePeriodOptimization`
-and :class:`MultiPeriodOptimization`.
+:class:`cvxportfolio.RankAndLongShort`, and the optimization-based policies :class:`cvxportfolio.SinglePeriodOptimization`
+and :class:`cvxportfolio.MultiPeriodOptimization`.
 For these two, the user specifies the objective function (which is maximized)
 and a list of constraints which apply to the optimization. All these types
 of objects can be customized in many ways, including by deriving or redefining them.
 
-Then, we provide the :class:`MarketData` abstraction, which both serves historical
+Then, we provide the :class:`cvxportfolio.data.MarketData` abstraction, which both serves historical
 data during a backtest and real-time data in online usage. We implement the interface
 to public data sources (`Yahoo finance <https://finance.yahoo.com>`_ 
 and `FRED <https://fred.stlouisfed.org/>`_), as well as user-provided data (which
@@ -60,7 +60,7 @@ or the same policy with different choices of hyperparameters, and cache on disk 
 historical data (for reproducibility) and various expensive calculations, such as
 estimates of covariance matrices. 
 
-We present the results of each backtest with a clear interface, :class:`BacktestResult`,
+We present the results of each backtest with a clear interface, :class:`cvxportfolio.BacktestResult`,
 which defines various metrics of backtest performance and the logic to both print
 and plot them.
 

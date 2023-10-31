@@ -1,6 +1,7 @@
 Simulator
 =========
 
+.. automodule:: cvxportfolio.simulator
 
 .. py:module:: cvxportfolio
      :noindex:

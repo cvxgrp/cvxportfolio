@@ -1,10 +1,10 @@
 Data Interfaces 
 ===============
 
+.. automodule:: cvxportfolio.data
+
 .. py:module:: cvxportfolio
      :noindex:
-	 
-.. automodule:: cvxportfolio.data
 
 .. autoclass:: YahooFinance
 
@@ -24,6 +24,9 @@ Data Interfaces
 
 Base classes (for using other data sources)
 -------------------------------------------
+
+.. py:module:: cvxportfolio.data
+     :noindex:
 
 .. autoclass:: SymbolData
 
