@@ -18,27 +18,25 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.costs import *
-from cvxportfolio.returns import *
-from cvxportfolio.risks import *
+import cvxportfolio as cvx
 from cvxportfolio.tests import CvxportfolioTest
-
-# from cvxportfolio.legacy import LegacyReturnsForecast #, MultipleReturnsForecasts
 
 
 class TestCosts(CvxportfolioTest):
     """Test base cost methods and tcost/hcost."""
 
     def test_cost_algebra(self):
+        """Test algebraic operations on objective term instances."""
         # n = len(self.returns.columns)
         # wplus = cvx.Variable(n)
         self.w_plus_minus_w_bm.value = np.random.uniform(size=self.N)
         self.w_plus_minus_w_bm.value /= sum(self.w_plus_minus_w_bm.value)
         t = self.returns.index[1]
 
-        cost1 = -.5 * DiagonalCovariance()
-        cost2 = -.5 * FullCovariance(
-            self.returns.iloc[:, :-1].T @ self.returns.iloc[:, :-1] / len(self.returns))
+        cost1 = -.5 * cvx.DiagonalCovariance()
+        cost2 = -.5 * cvx.FullCovariance(
+            self.returns.iloc[:, :-1].T @ self.returns.iloc[:, :-1]
+                / len(self.returns))
         cost3 = cost1 + cost2
 
         cost3.initialize_estimator_recursive(
@@ -85,7 +83,7 @@ class TestCosts(CvxportfolioTest):
         dividends = pd.Series(np.random.randn(self.N-1),
                               self.returns.columns[:-1])
         dividends *= 0.
-        hcost = HoldingCost(short_fees=5, dividends=dividends)
+        hcost = cvx.HoldingCost(short_fees=5, dividends=dividends)
 
         t = 100  # this is picked so that periods_per_year evaluates to 252
         hcost.initialize_estimator_recursive(
@@ -94,39 +92,33 @@ class TestCosts(CvxportfolioTest):
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         hcost.values_in_time_recursive(
             t=self.returns.index[t], past_returns=self.returns.iloc[:t])
-        cash_ret = self.returns.iloc[t-1].iloc[-1]
 
-        for i in range(10):
+        for _ in range(10):
             self.w_plus.value = np.random.randn(self.N)
             self.w_plus.value[-1] = 1 - np.sum(self.w_plus.value[:-1])
 
             print(expression.value)
 
-            # print(-np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (
-            #     cash_ret + 5/(100 * 252)))
-            # print(- self.w_plus.value[:-1].T @ dividends)
-            # print(-np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (cash_ret + 0.5/(100 * 252))
-            #       - self.w_plus.value[:-1].T @ dividends)
-
-            self.assertTrue(np.isclose(expression.value,
-                                       -np.sum(np.minimum(self.w_plus.value[:-1], 0.)) * (np.exp(np.log(1.05)/252) - 1)
-                                       # + np.abs(self.w_plus.value[-1])* 0.5/(100 * 252)
-                                       - self.w_plus.value[:-1].T @ dividends
-                                       ))
+            self.assertTrue(
+                np.isclose(expression.value, -np.sum(np.minimum(
+                    self.w_plus.value[:-1], 0.))
+                    * (np.exp(np.log(1.05)/252) - 1)
+                    - self.w_plus.value[:-1].T @ dividends))
 
     def test_tcost(self):
         """Test tcost model."""
         value = 1e6
 
-        pershare_cost = pd.Series([0., 0.005, 0.], [
-                                  self.returns.index[12], self.returns.index[23], self.returns.index[34]])
+        pershare_cost = pd.Series(
+            [0., 0.005, 0.],
+            [self.returns.index[12], self.returns.index[23],
+                self.returns.index[34]])
         b = pd.Series([0., 0., 1.], [self.returns.index[12],
                       self.returns.index[23], self.returns.index[34]])
 
-        tcost = StocksTransactionCost(
-            a=0.001/2, pershare_cost=pershare_cost, b=b, window_sigma_est=250, window_volume_est=250, exponent=1.5)
-
-        t = self.returns.index[12]
+        tcost = cvx.StocksTransactionCost(
+            a=0.001/2, pershare_cost=pershare_cost,
+            b=b, window_sigma_est=250, window_volume_est=250, exponent=1.5)
 
         tcost.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
@@ -135,11 +127,12 @@ class TestCosts(CvxportfolioTest):
 
         # only spread
 
-        tcost.values_in_time_recursive(t=self.returns.index[12],
-                                        current_portfolio_value=value,
-                                        past_returns=self.returns.iloc[:12],
-                                        past_volumes=self.volumes.iloc[:12],
-                                        current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]))
+        tcost.values_in_time_recursive(
+            t=self.returns.index[12], current_portfolio_value=value,
+            past_returns=self.returns.iloc[:12],
+            past_volumes=self.volumes.iloc[:12],
+            current_prices=pd.Series(np.ones(self.returns.shape[1]-1),
+                self.returns.columns[:-1]))
 
         self.z.value = np.random.randn(self.returns.shape[1])
         self.z.value[-1] = -np.sum(self.z.value[:-1])
@@ -171,11 +164,13 @@ class TestCosts(CvxportfolioTest):
 
         # spread and nonlin cost
 
-        tcost.values_in_time_recursive(t=self.returns.index[34],
-                                        current_portfolio_value=value,
-                                        past_returns=self.returns.iloc[:34],
-                                        past_volumes=self.volumes.iloc[:34],
-                                        current_prices=pd.Series(np.ones(self.returns.shape[1]-1), self.returns.columns[:-1]))
+        tcost.values_in_time_recursive(
+            t=self.returns.index[34],
+            current_portfolio_value=value,
+            past_returns=self.returns.iloc[:34],
+            past_volumes=self.volumes.iloc[:34],
+            current_prices=pd.Series(np.ones(self.returns.shape[1]-1),
+                self.returns.columns[:-1]))
 
         self.z.value = np.random.randn(self.returns.shape[1])
         self.z.value[-1] = -np.sum(self.z.value[:-1])
@@ -184,7 +179,8 @@ class TestCosts(CvxportfolioTest):
         volumes_est = self.volumes.iloc[:34].mean().values
         sigmas_est = np.sqrt((self.returns.iloc[:34, :-1]**2).mean()).values
         est_tcost_nonnlin = (
-            np.abs(self.z.value[:-1])**(3/2)) @ (sigmas_est * np.sqrt(value / volumes_est))
+            np.abs(self.z.value[:-1])**(3/2)) @ (
+                sigmas_est * np.sqrt(value / volumes_est))
         print(est_tcost_lin)
         print(est_tcost_nonnlin)
         print(expression.value)

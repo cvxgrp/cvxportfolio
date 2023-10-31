@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 import cvxportfolio as cvx
-from cvxportfolio.errors import *
+from cvxportfolio.errors import ConvexityError, ConvexSpecificationError
 from cvxportfolio.simulator import MarketSimulator, StockMarketSimulator
 from cvxportfolio.tests import CvxportfolioTest
 
@@ -33,28 +33,28 @@ class TestSimulator(CvxportfolioTest):
         """Test syntax checker of MarketSimulator."""
 
         with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator()
+            MarketSimulator()
 
         with self.assertRaises(SyntaxError):
-            simulator = StockMarketSimulator(returns=pd.DataFrame(
+            StockMarketSimulator(returns=pd.DataFrame(
                 [[0.]], index=[pd.Timestamp.today()], columns=['USDOLLAR']))
 
         with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator(volumes=pd.DataFrame(
+            MarketSimulator(volumes=pd.DataFrame(
                 [[0.]], index=[pd.Timestamp.today()]))
 
         with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator(returns=pd.DataFrame(
+            MarketSimulator(returns=pd.DataFrame(
                 [[0.]], columns=['USDOLLAR'], index=[pd.Timestamp.today()]),
                     volumes=pd.DataFrame([[0.]]))
 
         # not raises
-        simulator = MarketSimulator(returns=pd.DataFrame([[0., 0.]],
+        _ = MarketSimulator(returns=pd.DataFrame([[0., 0.]],
             columns=['A', 'USDOLLAR']), volumes=pd.DataFrame(
             [[0.]], columns=['A']), round_trades=False)
 
         with self.assertRaises(SyntaxError):
-            simulator = MarketSimulator(returns=pd.DataFrame(
+            MarketSimulator(returns=pd.DataFrame(
                 [[0., 0.]], index=[pd.Timestamp.today()],
                 columns=['X', 'USDOLLAR']),
                 volumes=pd.DataFrame([[0.]]))
@@ -125,6 +125,7 @@ class TestSimulator(CvxportfolioTest):
                 10:20].isnull()))
 
     def test_prepare_data(self):
+        """Test that (Downloaded)MarketData is created correctly."""
         simulator = MarketSimulator(['ZM', 'META'], base_location=self.datadir)
         self.assertTrue(simulator.market_data.returns.shape[1] == 3)
         self.assertTrue(simulator.market_data.prices.shape[1] == 2)
@@ -144,8 +145,6 @@ class TestSimulator(CvxportfolioTest):
         """Test the simulator interface of cvx.HoldingCost."""
 
         t = self.returns.index[-20]
-
-        cash_return = self.returns.loc[t, 'cash']
 
         # stock holding cost
         for i in range(10):
@@ -169,6 +168,7 @@ class TestSimulator(CvxportfolioTest):
             self.assertTrue(np.isclose(hcost, -sim_hcost))
 
     def test_transaction_cost_syntax(self):
+        """Test syntax checks of (Stocks)TransactionCost."""
 
         t = self.returns.index[-20]
 
@@ -210,6 +210,7 @@ class TestSimulator(CvxportfolioTest):
                         current_volumes=None)
 
     def test_transaction_cost(self):
+        """Test (Stock)TransactionCost simulator's interface."""
 
         t = self.returns.index[-5]
 
@@ -226,6 +227,8 @@ class TestSimulator(CvxportfolioTest):
             u = np.random.uniform(size=n+1)*1E4
             u[-1] = -sum(u[:-1])
             u = pd.Series(u, self.universe)
+
+            # pylint: disable=protected-access
             u = MarketSimulator._round_trade_vector(u, current_prices)
 
             tcost = cvx.StocksTransactionCost(a=spreads/2)
@@ -241,12 +244,9 @@ class TestSimulator(CvxportfolioTest):
             tcost = -0.005 * shares
             # print(tcost, sim_cost)
             tcost -= np.abs(u.iloc[:-1]) @ spreads / 2
-            # print(self.returns.loc[self.returns.index <= t].iloc[-252:, :-1].std())
             tcost -= sum((np.abs(u.iloc[:-1])**1.5
                 ) * self.returns.loc[self.returns.index <=
                 t].iloc[-252:, :-1].std(ddof=0) / np.sqrt(self.volumes.loc[t]))
-            # sim_tcost = simulator.transaction_costs(u)
-            #
             print(tcost, sim_cost)
             self.assertTrue(np.isclose(tcost, -sim_cost))
 
@@ -257,9 +257,7 @@ class TestSimulator(CvxportfolioTest):
 
         self.strip_tz_and_hour(simulator.market_data)
 
-        # , pd.Timestamp('2022-04-11')]: # can't because sigma requires 1000 days
         for t in [pd.Timestamp('2023-04-13')]:
-            # super(simulator.__class__, simulator).values_in_time_recursive(t=t)
 
             # round trade
 
@@ -268,6 +266,8 @@ class TestSimulator(CvxportfolioTest):
                 tmp = np.random.uniform(size=4)*1000
                 tmp[3] = -sum(tmp[:3])
                 u = pd.Series(tmp, simulator.market_data.full_universe)
+
+                # pylint: disable=protected-access
                 rounded = simulator._round_trade_vector(
                     u, simulator.market_data.prices.loc[t])
                 self.assertTrue(sum(rounded) == 0)
@@ -310,7 +310,7 @@ class TestSimulator(CvxportfolioTest):
                 oldcash = h.iloc[-1]
                 past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
-                h, z, u, costs, timer = simulator.simulate(
+                h, _, _, costs, _ = simulator.simulate(
                     t=t, h=h, policy=policy, t_next=t_next,
                     past_returns=past_returns, current_returns=current_returns,
                     past_volumes=past_volumes, current_volumes=current_volumes,
@@ -354,7 +354,7 @@ class TestSimulator(CvxportfolioTest):
                 oldcash = h.iloc[-1]
                 past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
-                h, z, u, costs, timer = simulator.simulate(
+                h, _, _, costs, _ = simulator.simulate(
                     t=t, h=h, policy=policy, t_next=t_next,
                     past_returns=past_returns, current_returns=current_returns,
                     past_volumes=past_volumes, current_volumes=current_volumes,
@@ -369,19 +369,21 @@ class TestSimulator(CvxportfolioTest):
                     < simulator.market_data.prices.loc[end_time]))
 
     def test_backtest(self):
+        """Test simple back-test."""
         pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
                                            cvx.ReturnsForecastError() -
                                            .5 * cvx.FullCovariance(),
                                            [  # cvx.LongOnly(),
             cvx.LeverageLimit(1)], verbose=True)
-        sim = cvx.MarketSimulator(['AAPL', 'MSFT'],  # ', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
-                                  base_location=self.datadir)
+        sim = cvx.MarketSimulator(
+            ['AAPL', 'MSFT'], base_location=self.datadir)
         result = sim.backtest(pol, pd.Timestamp(
             '2023-01-01'), pd.Timestamp('2023-04-20'))
 
         print(result)
 
-    def test_backtest_concatenation(self):
+    def test_backtest_changing_universe(self):
+        """Test back-test with changing universe"""
         sim = cvx.MarketSimulator(['AAPL', 'ZM'], base_location=self.datadir)
         pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
                                            cvx.ReturnsForecastError() -
@@ -390,7 +392,9 @@ class TestSimulator(CvxportfolioTest):
             cvx.LeverageLimit(1)], verbose=True)
 
         result = sim.backtest(pol, pd.Timestamp(
-            '2020-04-01'), pd.Timestamp('2020-05-01'))  # zoom enters in mid-april
+            # zoom enters in mid-april
+            '2020-04-01'), pd.Timestamp('2020-05-01'))
+
         ridx = result.w.index
         self.assertTrue(result.w['ZM'].isnull().sum() > 5)
         self.assertTrue(result.w['AAPL'].isnull().sum() < 2)
@@ -401,7 +405,7 @@ class TestSimulator(CvxportfolioTest):
         print(result)
 
     def test_multiple_backtest(self):
-
+        """Test multiple back-tests (in parallel)."""
         pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
                                            cvx.ReturnsForecastError() -
                                            .5 * cvx.FullCovariance(),
@@ -410,8 +414,8 @@ class TestSimulator(CvxportfolioTest):
 
         pol1 = cvx.Uniform()
 
-        sim = cvx.MarketSimulator(['AAPL', 'MSFT'],  # ', 'GE', 'CVX', 'XOM', 'AMZN', 'ORCL', 'WMT', 'HD', 'DIS', 'MCD', 'NKE']
-                                  base_location=self.datadir)
+        sim = cvx.MarketSimulator(
+            ['AAPL', 'MSFT'], base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
             result = sim.backtest_many([pol, pol1], pd.Timestamp(
@@ -420,8 +424,9 @@ class TestSimulator(CvxportfolioTest):
         result = sim.backtest(pol1, pd.Timestamp(
             '2023-01-01'), pd.Timestamp('2023-04-20'))
 
-        result2, result3 = sim.backtest_many(
-            [pol, pol1], pd.Timestamp('2023-01-01'), pd.Timestamp('2023-04-20'))
+        _, result3 = sim.backtest_many(
+            [pol, pol1], pd.Timestamp('2023-01-01'),
+            pd.Timestamp('2023-04-20'))
 
         self.assertTrue(np.all(result.h == result3.h))
 
@@ -470,10 +475,12 @@ class TestSimulator(CvxportfolioTest):
         time_first = 0.
         results_first = []
         for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
-            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
-                                      base_location=self.datadir, trading_frequency=downsampling)
+            sim = cvx.MarketSimulator(
+                ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+                base_location=self.datadir, trading_frequency=downsampling)
             pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast(
-            ) - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
+            ) - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5),
+            [cvx.LeverageLimit(1)])
             s = time.time()
             results_first.append(sim.backtest(pol, pd.Timestamp('2020-12-01')))
             print(results_first[-1])
@@ -482,10 +489,12 @@ class TestSimulator(CvxportfolioTest):
         time_second = 0.
         results_second = []
         for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
-            sim = cvx.MarketSimulator(['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
-                                      base_location=self.datadir, trading_frequency=downsampling)
+            sim = cvx.MarketSimulator(
+                ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+                base_location=self.datadir, trading_frequency=downsampling)
             pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast(
-            ) - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5), [cvx.LeverageLimit(1)])
+            ) - 1 * cvx.FullCovariance() - cvx.TransactionCost(exponent=1.5),
+            [cvx.LeverageLimit(1)])
             s = time.time()
             results_second.append(sim.backtest(
                 pol, pd.Timestamp('2020-12-01')))
@@ -496,8 +505,9 @@ class TestSimulator(CvxportfolioTest):
         # sadly we have to drop this test element
         # self.assertTrue(time_second < time_first)
         print(time_second, time_first)
-        [self.assertTrue(np.isclose(results_first[i].sharpe_ratio,
-                         results_second[i].sharpe_ratio)) for i in range(len(results_first))]
+        for i, _ in enumerate(results_first):
+            self.assertTrue(
+                np.isclose(_.sharpe_ratio, results_second[i].sharpe_ratio))
 
     def test_result(self):
         """Test methods and properties of result."""
@@ -514,7 +524,8 @@ class TestSimulator(CvxportfolioTest):
         """Test the effect of benchmark on SPO policies."""
 
         sim = cvx.MarketSimulator(
-            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'], trading_frequency='monthly', base_location=self.datadir)
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+            trading_frequency='monthly', base_location=self.datadir)
 
         objective = cvx.ReturnsForecast() - 10 * cvx.FullCovariance()
         constraints = [cvx.LongOnly(), cvx.LeverageLimit(1)]
@@ -522,12 +533,14 @@ class TestSimulator(CvxportfolioTest):
         myunif = pd.Series(0.2, ['AAPL', 'MSFT', 'GE', 'ZM', 'META'])
         myunif['USDOLLAR'] = 0.
 
-        policies = [cvx.SinglePeriodOptimization(objective, constraints, benchmark=bm)
-                    for bm in [cvx.AllCash(), cvx.Uniform(), cvx.MarketBenchmark(),
-                               myunif]]
+        policies = [
+            cvx.SinglePeriodOptimization(objective, constraints, benchmark=bm)
+            for bm in
+                [cvx.AllCash(), cvx.Uniform(), cvx.MarketBenchmark(), myunif]]
 
-        results = sim.backtest_many(policies, start_time='2023-01-01',
-                                    parallel=False)  # important for test coverage!!
+        results = sim.backtest_many(
+            policies, start_time='2023-01-01',
+            parallel=False)  # important for test coverage!!
 
         # check myunif is the same as uniform
         self.assertTrue(np.isclose(
@@ -539,9 +552,11 @@ class TestSimulator(CvxportfolioTest):
         self.assertTrue(results[0].w.USDOLLAR.mean() >=
                         results[2].w.USDOLLAR.mean())
 
-        # check that uniform bm sol is closer to uniform alloc than market bm sol
-        norm_smaller = ((results[1].w.iloc[:, :-1] - 0.2) **
-                        2).mean(1) < ((results[2].w.iloc[:, :-1] - 0.2)**2).mean(1)
+        # check that uniform bm sol is closer
+        # to uniform alloc than market bm sol
+        norm_smaller = (
+            (results[1].w.iloc[:, :-1] - 0.2)
+              ** 2).mean(1) < ((results[2].w.iloc[:, :-1] - 0.2)**2).mean(1)
         print(norm_smaller.describe())
         self.assertTrue(norm_smaller.mean() > .5)
 
@@ -557,8 +572,10 @@ class TestSimulator(CvxportfolioTest):
         policies = [cvx.SinglePeriodOptimization(objective, co) for co in [
             [], [cvx.MarketNeutral()], [cvx.DollarNeutral()]]]
 
-        results = sim.backtest_many(policies, start_time='2023-01-01',
-                                    parallel=False)  # important for test coverage
+        results = sim.backtest_many(
+            policies, start_time='2023-01-01',
+            parallel=False)  # important for test coverage
+
         print(results)
 
         # check that market neutral sol is closer to
@@ -624,8 +641,9 @@ class TestSimulator(CvxportfolioTest):
             for gamma in [.0001, .001, .01]]
         policies.append(cvx.SinglePeriodOptimization(
             objective, [cvx.DollarNeutral()]))
-        results = sim.backtest_many(policies, start_time='2023-01-01',
-                                    parallel=False)  # important for test coverage
+        results = sim.backtest_many(
+            policies, start_time='2023-01-01',
+            parallel=False)  # important for test coverage
         print(results)
         allcashpos = [((res.w.iloc[:, -1]-1)**2).mean() for res in results]
         print(allcashpos)
@@ -647,8 +665,9 @@ class TestSimulator(CvxportfolioTest):
             [cvx.MarketNeutral()]) for gamma in [.0001, .001, .01]]
         policies.append(cvx.SinglePeriodOptimization(
             objective, [cvx.LongOnly(), cvx.MarketNeutral()]))
-        results = sim.backtest_many(policies, start_time='2023-01-01',
-                                    parallel=False)  # important for test coverage
+        results = sim.backtest_many(
+            policies, start_time='2023-01-01',
+            parallel=False)  # important for test coverage
         print(results)
         allshorts = [np.minimum(res.w.iloc[:, :-1], 0.).sum().sum()
                      for res in results]
@@ -669,8 +688,10 @@ class TestSimulator(CvxportfolioTest):
                                          cvx.FullCovariance() <= el**2])
             for el in [0.01, .02, .05, .1]]
 
-        results = sim.backtest_many(policies, start_time='2023-01-01',
-                                    parallel=False)  # important for test coverage
+        results = sim.backtest_many(
+            policies, start_time='2023-01-01',
+            parallel=False)  # important for test coverage
+
         print(results)
 
         self.assertTrue(results[0].volatility < results[1].volatility)
@@ -678,7 +699,7 @@ class TestSimulator(CvxportfolioTest):
         self.assertTrue(results[2].volatility < results[3].volatility)
 
     def test_dcp_convex_raises(self):
-
+        """Test that some errors are thrown at wrong problem specifications."""
         sim = cvx.StockMarketSimulator(
             ['AAPL'], base_location=self.datadir)
 
@@ -697,10 +718,10 @@ class TestSimulator(CvxportfolioTest):
     def test_hyperparameters_optimize(self):
         """Test hyperparameter optimization."""
 
-        GAMMA_RISK = cvx.Gamma()
-        GAMMA_TRADE = cvx.Gamma()
-        objective = cvx.ReturnsForecast() - GAMMA_RISK * cvx.FullCovariance()\
-             - GAMMA_TRADE * cvx.StocksTransactionCost()
+        gamma_risk = cvx.Gamma()
+        gamma_trade = cvx.Gamma()
+        objective = cvx.ReturnsForecast() - gamma_risk * cvx.FullCovariance()\
+             - gamma_trade * cvx.StocksTransactionCost()
         policy = cvx.SinglePeriodOptimization(
             objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
 
@@ -709,14 +730,14 @@ class TestSimulator(CvxportfolioTest):
             trading_frequency='monthly',
             base_location=self.datadir)
 
-        self.assertTrue(GAMMA_RISK.current_value == 1.)
-        self.assertTrue(GAMMA_TRADE.current_value == 1.)
+        self.assertTrue(gamma_risk.current_value == 1.)
+        self.assertTrue(gamma_trade.current_value == 1.)
 
         simulator.optimize_hyperparameters(
             policy, start_time='2023-01-01', end_time='2023-10-01')
 
-        self.assertTrue(np.isclose(GAMMA_RISK.current_value, 1.4641))
-        self.assertTrue(np.isclose(GAMMA_TRADE.current_value, 0.385543289))
+        self.assertTrue(np.isclose(gamma_risk.current_value, 1.4641))
+        self.assertTrue(np.isclose(gamma_trade.current_value, 0.385543289))
 
     def test_cancel_trades(self):
         """Test trade cancellation."""

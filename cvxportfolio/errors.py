@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This module defines some Exceptions thrown by Cvxportfolio objects."""
 
 __all__ = ['DataError', 'MissingTimesError',
            'NaNError', 'MissingAssetsError', 'ForecastError',
@@ -47,6 +48,7 @@ class Bankruptcy(Exception):
 
 
 class ConvexSpecificationError(SyntaxError):
+    """Some custom term does not comply with disciplined convex programming."""
     def __init__(self, term):
         super().__init__(
             "The convex optimization term"
@@ -58,6 +60,7 @@ class ConvexSpecificationError(SyntaxError):
 
 
 class ConvexityError(SyntaxError):
+    """Some program term is not convex."""
     def __init__(self, cost):
         super().__init__(
             f"The cost term {cost}"

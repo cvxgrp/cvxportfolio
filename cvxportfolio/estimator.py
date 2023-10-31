@@ -220,10 +220,6 @@ class DataEstimator(Estimator):
             if np.any(np.isnan(result)) and not self._allow_nans:
                 message = f"{self.__class__.__name__}.values_in_time_recursive"
                 message += " result is an array with np.nan's."
-                # if hasattr(self.data, 'columns'
-                #     ) and len(self.data.columns) == len(result):
-                #     message += "Specifically, the problem is with symbol(s): "
-                #     message += str(self.data.columns[np.isnan(result)])
                 raise NaNError(message)
             # we pass a copy because it can be accidentally overwritten
             return np.array(result)

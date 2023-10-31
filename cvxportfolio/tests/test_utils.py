@@ -22,8 +22,10 @@ from cvxportfolio.utils import repr_numpy_pandas
 
 
 class TestUtils(unittest.TestCase):
+    """Test functions in the cvxportfolio.utils module."""
 
     def test_hasher(self):
+        """Test hashing function."""
         a = np.array([1, 2, 3])
         re = repr_numpy_pandas(a)
         print(re)
