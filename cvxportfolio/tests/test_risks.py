@@ -27,14 +27,6 @@ USED_RETURNS = 10
 class TestRisks(CvxportfolioTest):
     """Test risk objects."""
 
-    def boilerplate(self, model):
-        """Compile and initialize objective term."""
-        model.initialize_estimator_recursive(
-            universe=self.returns.columns,
-            trading_calendar=self.returns.index)
-        return model.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
-
     def test_full_sigma(self):
         """Test full covariance model."""
         historical_covariances = self.returns.iloc[

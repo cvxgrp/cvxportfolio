@@ -17,20 +17,13 @@ import unittest
 
 import numpy as np
 
-from cvxportfolio.returns import *
-from cvxportfolio.tests import *
+from cvxportfolio.returns import (CashReturn, ReturnsForecast,
+                                  ReturnsForecastError)
+from cvxportfolio.tests import CvxportfolioTest
 
 
 class TestReturns(CvxportfolioTest):
     """Test return objects."""
-
-    def boilerplate(self, model):
-        """Initialize objects, compile cvxpy expression."""
-        model.initialize_estimator_recursive(
-            universe=self.returns.columns,
-            trading_calendar=self.returns.index)
-        return model.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
 
     def test_cash_returns(self):
         """Test CashReturn object with last return as forecast."""
