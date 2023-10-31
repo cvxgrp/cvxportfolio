@@ -87,6 +87,10 @@ class BacktestResult:
             # this is the default situation with yfinance data
             if self._current_universe.isin(new_universe).all():
                 joined = new_universe
+                # preprend all all the assets from full that are not in joined
+                joined = joined.insert(0, sorted(
+                    set(self._current_full_universe[:-1])
+                    - set(joined)))
 
             # otherwise we lose the ordering :(
             else:
