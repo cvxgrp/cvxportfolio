@@ -34,42 +34,42 @@ def cache_name(signature, base_location):
 def _load_cache(signature, base_location):
     """Load cache from disk."""
     if signature is None:
-        logging.info(f'Market data has no signature!')
+        logging.info('Market data has no signature!')
         return {}
     name = cache_name(signature, base_location)
     if 'LOCK' in globals():
         logging.debug( # pragma: no cover
-            f'Acquiring cache lock from process {os.getpid()}')
+            'Acquiring cache lock from process %s', os.getpid())
         LOCK.acquire() # pragma: no cover
     try:
         with open(name, 'rb') as f:
             res = pickle.load(f)
-            logging.info(f'Loaded cache {name}')
+            logging.info('Loaded cache %s', name)
             return res
     except FileNotFoundError:
-        logging.info(f'Cache not found!')
+        logging.info('Cache not found!')
         return {}
     finally:
         if 'LOCK' in globals():
             logging.debug( # pragma: no cover
-                f'Releasing cache lock from process {os.getpid()}')
+                'Releasing cache lock from process %s', os.getpid())
             LOCK.release() # pragma: no cover
 
 def _store_cache(cache, signature, base_location):
     """Store cache to disk."""
     if signature is None:
-        logging.info(f'Market data has no signature!')
-        return {}
+        logging.info('Market data has no signature!')
+        return
     name = cache_name(signature, base_location)
     if 'LOCK' in globals():
         logging.debug( # pragma: no cover
-            f'Acquiring cache lock from process {os.getpid()}')
+            'Acquiring cache lock from process %s', os.getpid())
         LOCK.acquire() # pragma: no cover
     name.parent.mkdir(exist_ok=True)
     with open(name, 'wb') as f:
-        logging.info(f'Storing cache {name}')
+        logging.info('Storing cache %s', name)
         pickle.dump(cache, f)
     if 'LOCK' in globals():
         logging.debug( # pragma: no cover
-            f'Releasing cache lock from process {os.getpid()}')
+            'Releasing cache lock from process %s', os.getpid())
         LOCK.release() # pragma: no cover

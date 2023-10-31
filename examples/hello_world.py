@@ -29,3 +29,4 @@ print("\n# UNIFORM ALLOCATION:\n", results[1])
 
 # plot value and weights of the portfolio in time for MPO
 results[0].plot() 
+plt.show()

@@ -34,12 +34,10 @@ class TestData(CvxportfolioTest):
     def test_yfinance_download(self):
         """Test YfinanceBase."""
 
+        # pylint: disable=protected-access
         data = YahooFinance._download("AAPL", start="2023-04-01",
                                        end="2023-04-15")
-        # print(data)
-        # print(data.loc["2023-04-10 13:30:00+00:00"]["Return"])
-        # print(data.loc["2023-04-11 13:30:00+00:00", "Open"] /
-        #       data.loc["2023-04-10 13:30:00+00:00", "Open"] - 1)
+
         self.assertTrue(np.isclose(
             data.loc["2023-04-10 13:30:00+00:00", "return"],
             data.loc["2023-04-11 13:30:00+00:00", "open"] /
@@ -63,6 +61,7 @@ class TestData(CvxportfolioTest):
         # test update
         olddata = pd.Series(data.iloc[:-123], copy=True)
         olddata.index = olddata.index.tz_localize(None)
+        # pylint: disable=protected-access
         newdata = store._preload(store._download("DFF", olddata))
         self.assertTrue(np.all(store.data == newdata))
 
@@ -103,14 +102,14 @@ class TestData(CvxportfolioTest):
             symbol="CVX", storage_backend='pickle',
             base_location=self.datadir)
 
-    @unittest.skipIf(sys.version_info.major == 3 and sys.version_info.minor < 11,
-        "Issues with timezoned timestamps.")
+    @unittest.skipIf(sys.version_info.major == 3
+        and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
     def test_sqlite3_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
         self.base_test_series(_loader_sqlite, _storer_sqlite)
 
-    @unittest.skipIf(sys.version_info.major == 3 and sys.version_info.minor < 11,
-        "Issues with timezoned timestamps.")
+    @unittest.skipIf(sys.version_info.major == 3
+        and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
     def test_local_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
         self.base_test_series(_loader_csv, _storer_csv)
@@ -300,22 +299,23 @@ class TestMarketData(CvxportfolioTest):
                    idx[(idx >= '2023-05-01') & (idx < '2023-06-01')],
                    idx[(idx >= '2022-04-01') & (idx < '2022-07-01')]]
 
-        for i in range(len(freqs)):
+        for i, freq in enumerate(freqs):
 
             new_md = deepcopy(md)
 
-            new_md._downsample(freqs[i])
+            # pylint: disable=protected-access
+            new_md._downsample(freq)
             print(new_md.returns)
             self.assertTrue(np.isnan(new_md.returns.GOOG.iloc[0]))
             self.assertTrue(np.isnan(new_md.volumes.GOOG.iloc[0]))
             self.assertTrue(np.isnan(new_md.prices.GOOG.iloc[0]))
 
-            if freqs[i] == 'weekly':
+            if freq == 'weekly':
                 print((new_md.returns.index.weekday < 2).mean())
                 self.assertTrue(
                     (new_md.returns.index.weekday < 2).mean() > .95)
 
-            if freqs[i] == 'monthly':
+            if freq == 'monthly':
                 print((new_md.returns.index.day < 5).mean())
                 self.assertTrue((new_md.returns.index.day < 5).mean() > .95)
 
@@ -361,6 +361,7 @@ class TestMarketData(CvxportfolioTest):
             current_prices.iloc[-3] = 2.
 
         obj2 = deepcopy(self.market_data)
+        # pylint: disable=protected-access
         obj2._set_read_only()
 
         past_returns, _, past_volumes, _, current_prices = obj2.serve(t)
@@ -385,21 +386,21 @@ class TestMarketData(CvxportfolioTest):
         used_prices = pd.DataFrame(self.prices, copy=True)
         used_prices.index = used_prices.index.tz_localize('UTC')
 
-        with_download_fred = UserProvidedMarketData(
+        _ = UserProvidedMarketData(
             returns=used_returns, volumes=used_volumes, prices=used_prices,
             cash_key='USDOLLAR', base_location=self.datadir)
 
         without_prices = UserProvidedMarketData(
             returns=used_returns, volumes=used_prices, cash_key='USDOLLAR',
             base_location=self.datadir)
-        past_returns, _, past_volumes, _,  current_prices = \
+        _, _, past_volumes, _,  current_prices = \
             without_prices.serve(t)
         self.assertTrue(current_prices is None)
 
         without_volumes = UserProvidedMarketData(
             returns=used_returns, cash_key='USDOLLAR',
             base_location=self.datadir)
-        past_returns, current_returns, past_volumes, current_volumes, \
+        _, _, past_volumes, current_volumes, \
             current_prices = without_volumes.serve(t)
 
         self.assertTrue(past_volumes is None)
@@ -437,7 +438,7 @@ class TestMarketData(CvxportfolioTest):
 
         t = md.returns.index[-40]
 
-        past_returns, _, past_volumes, _, current_prices = md.serve(t)
+        _, _, past_volumes, _, current_prices = md.serve(t)
         self.assertFalse(past_volumes is None)
         self.assertFalse(current_prices is None)
 
@@ -503,8 +504,10 @@ class TestMarketData(CvxportfolioTest):
                 'GOOGL', base_location=self.datadir)
 
         class FredErroneous(Fred):
+            """Modified FRED SymbolData that gives a NaN in the last entry."""
 
             def _download(self, symbol, current, grace_period):
+                """Modified download method."""
                 res = super()._download(symbol, current,
                     grace_period=grace_period)
                 res.iloc[-1] = np.nan
