@@ -151,6 +151,14 @@ class SymbolData:
             + f" in {self.storage_location}")
         storer(self.symbol, data, self.storage_location)
 
+    def _print_difference(self, current, new):
+        """Helper method to print difference if update is not append-only.
+
+        This is temporary and will be re-factored.
+        """
+        print("TEMPORARY: Diff between overlap of downloaded and stored")
+        print((new - current).dropna(how='all').tail(5))
+
     def update(self, grace_period):
         """Update current stored data for symbol."""
         current = self._load_raw()
@@ -177,6 +185,7 @@ class SymbolData:
                         rtol=1e-08, atol=1e-08)):
                 logging.error(f"{self.__class__.__name__} update"
                     + f" of {self.symbol} is not append-only!")
+                self._print_difference(current, updated)
             if hasattr(current, 'columns'):
                 # the first column is open price
                 if not current.iloc[-1, 0] == updated.loc[
@@ -184,11 +193,13 @@ class SymbolData:
                     logging.error(
                         f"{self.__class__.__name__} update "
                         + f" of {self.symbol} changed last open price!")
+                    self._print_difference(current, updated)
             else:
                 if not current.iloc[-1] == updated.loc[current.index[-1]]:
                     logging.error(
                         f"{self.__class__.__name__} update"
                         + f" of {self.symbol} changed last value!")
+                    self._print_difference(current, updated)
         self._store(updated)
 
     def _download(self, symbol, current, **kwargs):
