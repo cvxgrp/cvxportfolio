@@ -21,6 +21,7 @@ market as well as possible.
 """
 
 import copy
+from numbers import Number
 
 import cvxpy as cp
 import numpy as np
@@ -47,11 +48,11 @@ class Cost(CvxpyExpressionEstimator):
 
     def __mul__(self, other):
         """Multiply by constant."""
-        if not (np.isscalar(other) or isinstance(other, HyperParameter)):
-            raise SyntaxError("You can only multiply cost by a scalar "
-                              + "or a HyperParameter instance. "
-                              + "(Have you instantiated it?)")
-        return CombinedCosts([self], [other])
+        if isinstance(other, Number) or isinstance(other, HyperParameter):
+            return CombinedCosts([self], [other])
+        raise SyntaxError(
+            "You can only multiply a cost instance by a scalar "
+            + "or a HyperParameter instance.")
 
     def __add__(self, other):
         """Add cost expression to another cost expression.
@@ -91,11 +92,19 @@ class Cost(CvxpyExpressionEstimator):
         to have CostInequalityConstraint's internal DataEstimator throw
         NotImplemented instead.
         """
-        if isinstance(other, float)\
-                or isinstance(other, int)\
-                or isinstance(other, pd.Series):
+        if isinstance(other, Number) or isinstance(other, pd.Series):
             return CostInequalityConstraint(self, other)
         return NotImplemented
+
+    def __lt__(self, other):
+        """Self < other."""
+        raise SyntaxError(
+            'Strict inequalities are not allowed in convex programs.')
+
+    def __gt__(self, other):
+        """Self > other."""
+        raise SyntaxError(
+            'Strict inequalities are not allowed in convex programs.')
 
     def __ge__(self, other):
         """Self >= other, return CostInequalityConstraint."""

@@ -78,12 +78,36 @@ class TestCosts(CvxportfolioTest):
         self.assertTrue(np.isclose(expr3.value, expr1.value +
                         5 * (expr2.value + expr1.value)))
 
+    def test_extra_cost_algebra(self):
+        """Test code of cost algebra that is not tested above."""
+
+        cost = cvx.ReturnsForecast()
+        with self.assertRaises(SyntaxError):
+            cost + 'hello'
+        with self.assertRaises(SyntaxError): # __radd__
+            'hello' + cost
+        with self.assertRaises(SyntaxError):
+            cost - 2
+        with self.assertRaises(TypeError): # __rsub__ , error thrown by - str
+            'hello' - cost
+        with self.assertRaises(SyntaxError):
+            'hello' * cost
+        with self.assertRaises(SyntaxError):
+             cost * 'hello'
+        with self.assertRaises(TypeError):
+            cost <= 'hello'
+        with self.assertRaises(TypeError):
+            cost >= 'hello'
+        with self.assertRaises(SyntaxError):
+            cost < 0
+        with self.assertRaises(SyntaxError):
+            cost > 0
+
     def test_hcost(self):
         """Test holding cost model."""
         dividends = pd.Series(np.random.randn(self.N-1),
                               self.returns.columns[:-1])
-        dividends *= 0.
-        hcost = cvx.HoldingCost(short_fees=5, dividends=dividends)
+        hcost = cvx.HoldingCost(short_fees=5, long_fees=3, dividends=dividends)
 
         t = 100  # this is picked so that periods_per_year evaluates to 252
         hcost.initialize_estimator_recursive(
@@ -100,10 +124,30 @@ class TestCosts(CvxportfolioTest):
             print(expression.value)
 
             self.assertTrue(
-                np.isclose(expression.value, -np.sum(np.minimum(
+                np.isclose(expression.value,
+                    # short fees
+                    - np.sum(np.minimum(
                     self.w_plus.value[:-1], 0.))
                     * (np.exp(np.log(1.05)/252) - 1)
+                    # long fees
+                    + np.sum(np.maximum(
+                    self.w_plus.value[:-1], 0.))
+                    * (np.exp(np.log(1.03)/252) - 1)
+                    # dividends
                     - self.w_plus.value[:-1].T @ dividends))
+
+    def test_softconstraint(self):
+        """Test code of SoftConstraints that is not covered elsewhere."""
+
+        bad_constraint = cvx.NoTrade(
+            asset='AAPL', periods=[pd.Timestamp.today()])
+        bad_soft_constraint = cvx.SoftConstraint(bad_constraint)
+        bad_soft_constraint.initialize_estimator_recursive(
+            universe=['AAPL'], trading_calendar=[pd.Timestamp.today()])
+
+        with self.assertRaises(SyntaxError):
+            bad_soft_constraint.compile_to_cvxpy(
+                self.w_plus, self.z, self.w_plus_minus_w_bm)
 
     def test_tcost(self):
         """Test tcost model."""
