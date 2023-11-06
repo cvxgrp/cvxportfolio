@@ -20,7 +20,6 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from contextdecorator import ContextDecorator
 
 import cvxportfolio as cvx
 from cvxportfolio.data import (DownloadedMarketData, Fred,
@@ -31,7 +30,7 @@ from cvxportfolio.errors import DataError
 from cvxportfolio.tests import CvxportfolioTest
 
 
-class NoInternet(ContextDecorator):
+class NoInternet():
     """Context with no internet.
 
     Adapted from: https://github.com/dvl/python-internet-sabotage
@@ -535,6 +534,7 @@ class TestMarketData(CvxportfolioTest):
             'AAPL', grace_period=self.data_grace_period, 
             base_location=self.datadir)
         with self.assertRaises(SyntaxError):
+            # pylint: disable=protected-access
             storer._download('AAPL', overlap=1)
 
         class YahooFinanceErroneous(YahooFinance):
