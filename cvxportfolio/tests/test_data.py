@@ -73,9 +73,10 @@ class TestData(CvxportfolioTest):
     def test_yfinance_download(self):
         """Test YfinanceBase."""
 
+        storer = YahooFinance('AAPL', base_location=self.datadir)
+
         # pylint: disable=protected-access
-        data = YahooFinance._download("AAPL", start="2023-04-01",
-                                       end="2023-04-15")
+        data = storer._download("AAPL", start="2023-04-01", end="2023-04-15")
 
         self.assertTrue(np.isclose(
             data.loc["2023-04-10 13:30:00+00:00", "return"],
@@ -515,7 +516,8 @@ class TestMarketData(CvxportfolioTest):
 
         class YahooFinanceErroneous(YahooFinance):
             """Modified YF that nans last open price."""
-            def _download(self, symbol, current, grace_period):
+            def _download(self, symbol, current=None,
+                    overlap=5, grace_period='5d', **kwargs):
                 """Modified download method."""
                 res = super()._download(symbol, current,
                     grace_period=grace_period)
@@ -529,7 +531,8 @@ class TestMarketData(CvxportfolioTest):
 
         class YahooFinanceErroneous2(YahooFinance):
             """Modified YF that nans some line."""
-            def _download(self, symbol, current, grace_period):
+            def _download(self, symbol, current=None,
+                    overlap=5, grace_period='5d', **kwargs):
                 """Modified download method."""
                 res = super()._download(symbol, current,
                     grace_period=grace_period)
@@ -560,7 +563,8 @@ class TestMarketData(CvxportfolioTest):
         class YahooFinanceErroneous3(YahooFinance):
             """Modified YF that is not append-only."""
             counter = 0
-            def _download(self, symbol, current, grace_period):
+            def _download(self, symbol, current=None,
+                    overlap=5, grace_period='5d', **kwargs):
                 """Modified download method."""
                 res = super()._download(symbol, current,
                     grace_period=grace_period)

@@ -170,11 +170,10 @@ class SymbolData:
 
         if np.any(updated.iloc[:-1].isnull()):
             logging.warning(
-              f" cvxportfolio.{self.__class__.__name__}('{self.symbol}').data"
-              + " contains NaNs."
+              " cvxportfolio.%s('%s').data contains NaNs."
               + " You may want to inspect it. If you want, you can delete the"
-              + f" data file in {self.storage_location} to force"
-              + " re-download from the start.")
+              + " data file in %s to force re-download from the start.",
+              self.__class__.__name__, self.symbol, self.storage_location)
 
         if current is not None:
             if not np.all(
@@ -311,7 +310,7 @@ class YahooFinance(SymbolData):
         # repeat as long as it helps (up to 1 year)
         for shifter in range(252):
             logging.info(
-                f"Filling opens with close from {shifter} days before")
+                "Filling opens with close from %s days before", shifter)
             orig_missing_opens = data['open'].isnull().sum()
             data['open'] = data['open'].fillna(data['close'].shift(
                 shifter+1))
@@ -377,9 +376,9 @@ class YahooFinance(SymbolData):
         the instrument.
         """
 
-        BASE_URL = 'https://query2.finance.yahoo.com'
+        base_url = 'https://query2.finance.yahoo.com'
 
-        HEADERS = {
+        headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)'
             ' AppleWebKit/537.36 (KHTML, like Gecko)'
             ' Chrome/39.0.2171.95 Safari/537.36'}
@@ -390,11 +389,12 @@ class YahooFinance(SymbolData):
 
         try:
             res = requests.get(
-                url=f"{BASE_URL}/v8/finance/chart/{ticker}",
+                url=f"{base_url}/v8/finance/chart/{ticker}",
                 params={'interval': '1d',
                     "period1": start,
                     "period2": end},
-                headers=HEADERS)
+                headers=headers,
+                timeout=10) # seconds
         except requests.ConnectionError as exc:
             raise DataError(
                 f"Download of {ticker} from YahooFinance failed."
@@ -408,7 +408,7 @@ class YahooFinance(SymbolData):
                 + 'Json output:', str(res.json()))
 
         if res.status_code != 200:
-            raise DataError(f'Yahoo finance data download failed. Json:',
+            raise DataError('Yahoo finance data download failed. Json:',
                 str(res.json())) # pragma: no cover
 
         data = res.json()['chart']['result'][0]
@@ -433,8 +433,7 @@ class YahooFinance(SymbolData):
         return df_result[
             ['open', 'low', 'high', 'close', 'adjclose', 'volume']]
 
-    @classmethod
-    def _download(cls, symbol, current=None,
+    def _download(self, symbol, current=None,
                 overlap=5, grace_period='5d', **kwargs):
         """Download single stock from Yahoo Finance.
 
@@ -453,12 +452,13 @@ class YahooFinance(SymbolData):
             updated (pandas.DataFrame): updated DataFrame for the symbol
         """
         if overlap < 2:
-            raise Exception(
-                'There could be issues with DST and Yahoo finance data.')
+            raise SyntaxError(
+                f'{self.__class__.__name__} with overlap smaller than 2'
+                + ' could have issues with DST.')
         if (current is None) or (len(current) < overlap):
-            updated = cls._get_data_yahoo(symbol, **kwargs)
+            updated = self._get_data_yahoo(symbol, **kwargs)
             logging.info('Downloading from the start.')
-            result = cls._clean(updated)
+            result = self._clean(updated)
             # we remove first row if it contains NaNs
             if np.any(result.iloc[0].isnull()):
                 result = result.iloc[1:]
@@ -469,16 +469,8 @@ class YahooFinance(SymbolData):
                 logging.info(
                     'Skipping download because stored data is recent enough.')
                 return current
-            new = cls._get_data_yahoo(symbol, start=current.index[-overlap])
-            new = cls._clean(new)
-            # if not np.all(new.columns == current.columns):
-            #     logging.warning(
-            #         f"{cls.__name__} is overwriting the data"
-            #         + f" already downloaded for {symbol}"
-            #         + f" because the storage format changed.")
-            #     new = cls._get_data_yahoo(symbol)
-            #     new = cls._internal_process(new)
-            #     return new
+            new = self._get_data_yahoo(symbol, start=current.index[-overlap])
+            new = self._clean(new)
             return pd.concat([current.iloc[:-overlap], new])
 
     def _preload(self, data):
@@ -608,7 +600,7 @@ def _loader_sqlite(symbol, storage_location):
                 multiindex.append(col)
             else:
                 break
-        if len(multiindex):
+        if len(multiindex) > 0:
             multiindex = [tmp.index.name] + multiindex
             tmp = tmp.reset_index().set_index(multiindex)
         return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
@@ -949,10 +941,11 @@ class MarketDataInMemory(MarketData):
     @property
     def _earliest_backtest_start(self):
         """Earliest date at which we can start a backtest."""
-        return self.returns.iloc[:, :-1].dropna(how='all').index[self.min_history]
+        return self.returns.iloc[:, :-1].dropna(how='all').index[
+            self.min_history]
 
-    sampling_intervals = {'weekly': 'W-MON',
-                          'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
+    sampling_intervals = {
+        'weekly': 'W-MON', 'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
 
     # @staticmethod
     # def _is_first_interval_small(datetimeindex):
@@ -1198,7 +1191,7 @@ class DownloadedMarketData(MarketDataInMemory):
 
         for stock in universe:
             logging.info(
-                f'Updating {stock} with {self.datasource.__name__}.')
+                'Updating %s with %s.', stock, self.datasource.__name__)
             print('.', end='')
             sys.stdout.flush()
             database_accesses[stock] = self.datasource(
@@ -1219,7 +1212,8 @@ class DownloadedMarketData(MarketDataInMemory):
         else:  # for now only Fred for indexes, we assume prices!
             assert isinstance(database_accesses[universe[0]].data, pd.Series)
             self.prices = pd.DataFrame(
-                {stock: database_accesses[stock].data for stock in universe})  # open prices
+                # open prices
+                {stock: database_accesses[stock].data for stock in universe})
             self.returns = 1 - self.prices / self.prices.shift(-1)
             self.volumes = None
 
@@ -1234,14 +1228,15 @@ class DownloadedMarketData(MarketDataInMemory):
             logging.debug(
                 'Removing some recent lines because there are missing values.')
             drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
-            logging.debug(f'Dropping at index {drop_at}')
+            logging.debug('Dropping at index %s', drop_at)
             self.returns = self.returns.loc[self.returns.index < drop_at]
             if self.prices is not None:
                 self.prices = self.prices.loc[self.prices.index < drop_at]
             if self.volumes is not None:
                 self.volumes = self.volumes.loc[self.volumes.index < drop_at]
 
-        # for consistency we must also nan-out the last row of returns and volumes
+        # for consistency we must also nan-out the last row
+        # of returns and volumes
         self.returns.iloc[-1] = np.nan
         if self.volumes is not None:
             self.volumes.iloc[-1] = np.nan

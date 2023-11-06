@@ -83,25 +83,25 @@ class TestCosts(CvxportfolioTest):
 
         cost = cvx.ReturnsForecast()
         with self.assertRaises(SyntaxError):
-            cost + 'hello'
+            _ = cost + 'hello'
         with self.assertRaises(SyntaxError): # __radd__
-            'hello' + cost
+            _ = 'hello' + cost
         with self.assertRaises(SyntaxError):
-            cost - 2
+            _ = cost - 2
         with self.assertRaises(TypeError): # __rsub__ , error thrown by - str
-            'hello' - cost
+            _ = 'hello' - cost
         with self.assertRaises(SyntaxError):
-            'hello' * cost
+            _ = 'hello' * cost
         with self.assertRaises(SyntaxError):
-             cost * 'hello'
+            _ = cost * 'hello'
         with self.assertRaises(TypeError):
-            cost <= 'hello'
+            _ = cost <= 'hello'
         with self.assertRaises(TypeError):
-            cost >= 'hello'
+            _ = cost >= 'hello'
         with self.assertRaises(SyntaxError):
-            cost < 0
+            _ = cost < 0
         with self.assertRaises(SyntaxError):
-            cost > 0
+            _ = cost > 0
 
     def test_hcost(self):
         """Test holding cost model."""
