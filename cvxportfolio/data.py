@@ -201,7 +201,7 @@ class SymbolData:
                     self._print_difference(current, updated)
         self._store(updated)
 
-    def _download(self, symbol, current, **kwargs):
+    def _download(self, symbol, current, grace_period, **kwargs):
         """Download data from external source given already downloaded data.
         
         This method must be redefined by derived classes.
@@ -463,15 +463,14 @@ class YahooFinance(SymbolData):
             if np.any(result.iloc[0].isnull()):
                 result = result.iloc[1:]
             return result
-        else:
-            if (now_timezoned() - current.index[-1]
-                    ) < pd.Timedelta(grace_period):
-                logging.info(
-                    'Skipping download because stored data is recent enough.')
-                return current
-            new = self._get_data_yahoo(symbol, start=current.index[-overlap])
-            new = self._clean(new)
-            return pd.concat([current.iloc[:-overlap], new])
+        if (now_timezoned() - current.index[-1]
+                ) < pd.Timedelta(grace_period):
+            logging.info(
+                'Skipping download because stored data is recent enough.')
+            return current
+        new = self._get_data_yahoo(symbol, start=current.index[-overlap])
+        new = self._clean(new)
+        return pd.concat([current.iloc[:-overlap], new])
 
     def _preload(self, data):
         """Prepare data for use by Cvxportfolio.
@@ -526,7 +525,8 @@ class Fred(SymbolData):
                 + f" from {self.__class__.__name__} failed."
                 + " Are you connected to the Internet?") from exc
 
-    def _download(self, symbol="DFF", current=None, grace_period='5d'):
+    def _download(
+        self, symbol="DFF", current=None, grace_period='5d', **kwargs):
         """Download or update pandas Series from Fred.
 
         If already downloaded don't change data stored locally and only
@@ -538,22 +538,21 @@ class Fred(SymbolData):
         """
         if current is None:
             return self._internal_download(symbol)
-        else:
-            if (pd.Timestamp.today() - current.index[-1]
-                ) < pd.Timedelta(grace_period):
-                logging.info(
-                    'Skipping download because stored data is recent enough.')
-                return current
+        if (pd.Timestamp.today() - current.index[-1]
+            ) < pd.Timedelta(grace_period):
+            logging.info(
+                'Skipping download because stored data is recent enough.')
+            return current
 
-            new = self._internal_download(symbol)
-            new = new.loc[new.index > current.index[-1]]
+        new = self._internal_download(symbol)
+        new = new.loc[new.index > current.index[-1]]
 
-            if new.empty:
-                logging.info('New downloaded data is empty!')
-                return current
+        if new.empty:
+            logging.info('New downloaded data is empty!')
+            return current
 
-            assert new.index[0] > current.index[-1]
-            return pd.concat([current, new])
+        assert new.index[0] > current.index[-1]
+        return pd.concat([current, new])
 
     def _preload(self, data):
         """Add UTC timezone."""
@@ -622,9 +621,8 @@ def _storer_sqlite(symbol, data, storage_location):
       connection)
 
     if len(exists):
-        res = connection.cursor().execute(f"DROP TABLE '{symbol}'")
-        res = connection.cursor().execute(
-            f"DROP TABLE '{symbol}___dtypes'")
+        _ = connection.cursor().execute(f"DROP TABLE '{symbol}'")
+        _ = connection.cursor().execute(f"DROP TABLE '{symbol}___dtypes'")
         connection.commit()
 
     if hasattr(data.index, "levels"):
@@ -757,6 +755,7 @@ class MarketData:
         """
         raise NotImplementedError # pragma: no cover
 
+    # pylint: disable=unused-argument
     def partial_universe_signature(self, partial_universe):
         """Unique signature of this instance with a partial universe.
         
@@ -777,8 +776,8 @@ class MarketData:
 class MarketDataInMemory(MarketData):
     """Market data that is stored in memory when initialized."""
 
-    def _post_init_(self, trading_frequency):
-        """Code called after derived classes' initializer."""
+    def __init__(self, trading_frequency):
+        """This must be called by the derived classes."""
         if trading_frequency:
             self._downsample(trading_frequency)
         self.trading_frequency = trading_frequency
@@ -825,7 +824,6 @@ class MarketDataInMemory(MarketData):
     def serve(self, t):
         """Serve data for policy and simulator at time :math:`t`."""
 
-        current_universe = self._universe_at_time(t)
         mask = self._universe_mask_at_time(t).values
         self._mask_dataframes(mask)
 
@@ -892,12 +890,6 @@ class MarketDataInMemory(MarketData):
         if not include_end:
             result = result[:-1]
         return result
-
-    def _universe_at_time(self, t):
-        """Return the valid universe at time t."""
-        past_returns = self.returns.loc[self.returns.index < t]
-        return self.full_universe[(past_returns.count() >= self.min_history) &
-            (~self.returns.loc[t].isnull())]
 
     def _universe_mask_at_time(self, t):
         """Return the valid universe at time t."""
@@ -1120,7 +1112,8 @@ class UserProvidedMarketData(MarketDataInMemory):
         if cash_key != returns.columns[-1]:
             self._add_cash_column(cash_key)
 
-        self._post_init_(trading_frequency=trading_frequency)
+        # this is mandatory
+        super().__init__(trading_frequency=trading_frequency)
 
 
 class DownloadedMarketData(MarketDataInMemory):
@@ -1181,7 +1174,8 @@ class DownloadedMarketData(MarketDataInMemory):
         self._add_cash_column(self.cash_key)
         self._remove_missing_recent()
 
-        self._post_init_(trading_frequency=trading_frequency)
+        # this is mandatory
+        super().__init__(trading_frequency=trading_frequency)
 
     def _get_market_data(self, universe, grace_period, storage_backend):
         """Download market data."""
