@@ -289,7 +289,7 @@ class TestPolicies(CvxportfolioTest):
                 cvx.LongOnly(applies_to_cash=False), cvx.LeverageLimit(1)],
             include_cash_return=False,
             # verbose=True,
-            solver='ECOS')
+            solver=self.default_socp_solver)
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
@@ -344,7 +344,7 @@ class TestPolicies(CvxportfolioTest):
             - cvx.TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.),
             constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
             # verbose=True,
-            solver='ECOS')
+            solver=self.default_socp_solver)
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
@@ -391,7 +391,7 @@ class TestPolicies(CvxportfolioTest):
             constraints=[cvx.LongOnly(), cvx.LeverageLimit(1),
                 cvx.MaxWeights(-1)],
             # verbose=True,
-            solver='ECOS')
+            solver=self.default_socp_solver)
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
@@ -419,7 +419,7 @@ class TestPolicies(CvxportfolioTest):
             return_forecast,
             constraints=[cvx.LongOnly(applies_to_cash=False)],
             # verbose=True,
-            solver='ECOS')
+            solver=self.default_socp_solver)
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
@@ -456,7 +456,7 @@ class TestPolicies(CvxportfolioTest):
                 constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
                 # verbose=True,
                 planning_horizon=planning_horizon,
-                solver='ECOS')
+                solver=self.default_socp_solver)
 
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
@@ -494,7 +494,7 @@ class TestPolicies(CvxportfolioTest):
                 constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
                 # verbose=True,
                 planning_horizon=planning_horizon,
-                solver='ECOS')
+                solver=self.default_socp_solver)
 
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
@@ -551,7 +551,7 @@ class TestPolicies(CvxportfolioTest):
                 # verbose=True,
                 terminal_constraint=benchmark,
                 planning_horizon=planning_horizon,
-                solver='ECOS')
+                solver=self.default_socp_solver)
 
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
@@ -592,7 +592,8 @@ class TestPolicies(CvxportfolioTest):
 
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast() - 5 * cvx.FullCovariance(),
-            [cvx.LongOnly(applies_to_cash=True)])
+            [cvx.LongOnly(applies_to_cash=True)],
+            solver=self.default_qp_solver)
 
         market_data = cvx.UserProvidedMarketData(
                     returns=self.returns, volumes=self.volumes,
@@ -613,4 +614,4 @@ class TestPolicies(CvxportfolioTest):
 
 if __name__ == '__main__':
 
-    unittest.main() # pragma: no cover
+    unittest.main(warnings='error') # pragma: no cover
