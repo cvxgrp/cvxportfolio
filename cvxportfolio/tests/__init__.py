@@ -15,6 +15,7 @@
 
 import shutil
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -56,11 +57,24 @@ class CvxportfolioTest(unittest.TestCase):
         cls.z = cp.Variable(cls.returns.shape[1])
         cls.N = cls.returns.shape[1]
 
+        # with this we make sure we don't keep asking YahooFinance and Fred
+        # for new data during the test execution
+        cls.data_grace_period = pd.Timedelta('10d')
+
+        # with this we suppress the warnings thrown in Cvxpy 1.4
+        cls.default_socp_solver = 'ECOS'
+
+        # not necessary for now, but good to control
+        cls.default_qp_solver = 'OSQP'
+        cls.timers = {}
+
     @classmethod
     def tearDownClass(cls):
         """Finalize test class."""
         print('removing', cls.datadir)
         shutil.rmtree(cls.datadir)
+        print('Timing report:')
+        print(pd.Series(cls.timers))
 
     @staticmethod
     def strip_tz_and_hour(market_data):
@@ -79,3 +93,12 @@ class CvxportfolioTest(unittest.TestCase):
             trading_calendar=self.returns.index)
         return model.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
+
+    def setUp(self):
+        """Timer for each test."""
+        self.startTime = time.time()
+
+    def tearDown(self):
+        """Save timer for each test."""
+        t = time.time() - self.startTime
+        self.timers[str(self.id())] = t

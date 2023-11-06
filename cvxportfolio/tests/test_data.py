@@ -105,6 +105,11 @@ class TestData(CvxportfolioTest):
         newdata = store._preload(store._download("DFF", olddata))
         self.assertTrue(np.all(store.data == newdata))
 
+        # test not re-downloading
+        _ = Fred(
+            symbol="DFF", grace_period=pd.Timedelta('10d'),
+            base_location=self.datadir)
+
     def test_yahoo_finance(self):
         """Test yahoo finance ability to store and retrieve."""
 
@@ -133,6 +138,11 @@ class TestData(CvxportfolioTest):
 
         self.assertTrue(np.allclose(
             data1.loc[data.index[:-1]]['return'], data.iloc[:-1]['return']))
+
+        # test not re-downloading
+        _ = YahooFinance(
+            symbol="ZM", grace_period=pd.Timedelta('10d'),
+            base_location=self.datadir)
 
     def test_yahoo_finance_removefirstline(self):
         """Test that the first line of OHLCV is removed if there are NaNs."""
@@ -322,9 +332,11 @@ class TestData(CvxportfolioTest):
 class TestMarketData(CvxportfolioTest):
     """Test MarketData methods and interface."""
 
-    def test_market_data__downsample(self):
+    def test_market_data_downsample(self):
         """Test downsampling of market data."""
-        md = DownloadedMarketData(['AAPL', 'GOOG'], base_location=self.datadir)
+        md = DownloadedMarketData(
+            ['AAPL', 'GOOG'], grace_period=self.data_grace_period,
+            base_location=self.datadir)
 
         # TODO: better to rewrite this test
         self.strip_tz_and_hour(md)
@@ -485,18 +497,22 @@ class TestMarketData(CvxportfolioTest):
     def test_signature(self):
         """Test partial-universe signature of MarketData."""
 
-        md = DownloadedMarketData(['AAPL', 'ZM'], base_location=self.datadir)
+        md = DownloadedMarketData(
+            ['AAPL', 'ZM'], grace_period=self.data_grace_period,
+            base_location=self.datadir)
 
         sig1 = md.partial_universe_signature(md.full_universe)
 
-        md = DownloadedMarketData(['AAPL', 'ZM'], trading_frequency='monthly',
-            base_location=self.datadir)
+        md = DownloadedMarketData(
+            ['AAPL', 'ZM'], grace_period=self.data_grace_period,
+            trading_frequency='monthly', base_location=self.datadir)
 
         sig2 = md.partial_universe_signature(md.full_universe)
 
         self.assertFalse(sig1 == sig2)
 
         md = DownloadedMarketData(['AAPL', 'ZM', 'GOOG'],
+            grace_period=self.data_grace_period,
             trading_frequency='monthly',
             base_location=self.datadir)
 
@@ -507,12 +523,19 @@ class TestMarketData(CvxportfolioTest):
 
         md = DownloadedMarketData(['WM2NS'],
             datasource='Fred',
+            grace_period=self.data_grace_period,
             base_location=self.datadir)
 
         print(md.partial_universe_signature(md.full_universe))
 
     def test_download_errors(self):
         """Test single-symbol download error."""
+
+        storer = YahooFinance(
+            'AAPL', grace_period=self.data_grace_period, 
+            base_location=self.datadir)
+        with self.assertRaises(SyntaxError):
+            storer._download('AAPL', overlap=1)
 
         class YahooFinanceErroneous(YahooFinance):
             """Modified YF that nans last open price."""
@@ -596,6 +619,7 @@ class TestMarketData(CvxportfolioTest):
     def test_yahoo_finance_cleaning(self):
         """Test our logic to clean Yahoo Finance data."""
 
+        # this stock was found to have NaN issues
         data = YahooFinance("ENI.MI", base_location=self.datadir).data
         self.assertTrue((data.valuevolume == 0).sum() > 0)
         self.assertTrue(data.iloc[:-1].isnull().sum().sum() == 0)
@@ -627,4 +651,4 @@ class TestMarketData(CvxportfolioTest):
 
 if __name__ == '__main__':
 
-    unittest.main() # pragma: no cover
+    unittest.main(warnings='error') # pragma: no cover

@@ -776,7 +776,11 @@ class MarketData:
 class MarketDataInMemory(MarketData):
     """Market data that is stored in memory when initialized."""
 
-    def __init__(self, trading_frequency):
+    # this is overwritten in the derived classes' initializers
+    returns = None
+
+    def __init__(
+        self, trading_frequency, base_location, cash_key, min_history):
         """This must be called by the derived classes."""
         if trading_frequency:
             self._downsample(trading_frequency)
@@ -788,6 +792,9 @@ class MarketDataInMemory(MarketData):
         self._masked_returns = None
         self._masked_volumes = None
         self._masked_prices = None
+        self.base_location = Path(base_location)
+        self.cash_key = cash_key
+        self._min_history_timedelta = min_history
 
     def _mask_dataframes(self, mask):
         """Mask internal dataframes if necessary."""
@@ -853,7 +860,7 @@ class MarketDataInMemory(MarketData):
         return (past_returns, current_returns, past_volumes, current_volumes,
                 current_prices)
 
-    def _add_cash_column(self, cash_key):
+    def _add_cash_column(self, cash_key, grace_period):
         """Add the cash column to an already formed returns dataframe.
 
         This assumes that the trading periods are about equally spaced.
@@ -866,7 +873,8 @@ class MarketDataInMemory(MarketData):
             raise NotImplementedError(
                 'Currently the only data pipeline built is for USDOLLAR cash')
 
-        data = Fred('DFF', base_location=self.base_location)
+        data = Fred(
+            'DFF', base_location=self.base_location, grace_period=grace_period)
         cash_returns_per_period = resample_returns(
             data.data/100, periods=self.periods_per_year)
 
@@ -1093,6 +1101,7 @@ class UserProvidedMarketData(MarketDataInMemory):
                  copy_dataframes=True, trading_frequency=None,
                  min_history=pd.Timedelta('365.24d'),
                  base_location=BASE_LOCATION,
+                 grace_period=pd.Timedelta('1d'),
                  cash_key='USDOLLAR'):
 
         if returns is None:
@@ -1100,7 +1109,6 @@ class UserProvidedMarketData(MarketDataInMemory):
                 "If you don't specify a universe you should pass `returns`.")
 
         self.base_location = Path(base_location)
-        self._min_history_timedelta = min_history
         self.cash_key = cash_key
 
         self.returns = pd.DataFrame(returns, copy=copy_dataframes)
@@ -1110,10 +1118,14 @@ class UserProvidedMarketData(MarketDataInMemory):
             pd.DataFrame(prices, copy=copy_dataframes)
 
         if cash_key != returns.columns[-1]:
-            self._add_cash_column(cash_key)
+            self._add_cash_column(cash_key, grace_period=grace_period)
 
         # this is mandatory
-        super().__init__(trading_frequency=trading_frequency)
+        super().__init__(
+            trading_frequency=trading_frequency,
+            base_location=base_location,
+            cash_key=cash_key,
+            min_history=min_history)
 
 
 class DownloadedMarketData(MarketDataInMemory):
@@ -1164,18 +1176,23 @@ class DownloadedMarketData(MarketDataInMemory):
         universe = sorted(set(universe))
 
         self.base_location = Path(base_location)
-        self._min_history_timedelta = min_history
         self.cash_key = cash_key
         if isinstance(datasource, type):
             self.datasource = datasource
         else: # try to load in current module
             self.datasource = globals()[datasource]
-        self._get_market_data(universe, grace_period, storage_backend)
-        self._add_cash_column(self.cash_key)
+        self._get_market_data(
+            universe, grace_period=grace_period,
+            storage_backend=storage_backend)
+        self._add_cash_column(self.cash_key, grace_period=grace_period)
         self._remove_missing_recent()
 
         # this is mandatory
-        super().__init__(trading_frequency=trading_frequency)
+        super().__init__(
+            trading_frequency=trading_frequency,
+            base_location=base_location,
+            cash_key=cash_key,
+            min_history=min_history)
 
     def _get_market_data(self, universe, grace_period, storage_backend):
         """Download market data."""
