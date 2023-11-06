@@ -395,7 +395,7 @@ class YahooFinance(SymbolData):
                     "period1": start,
                     "period2": end},
                 headers=HEADERS)
-        except requests.exceptions.ConnectionError as exc:
+        except requests.ConnectionError as exc:
             raise DataError(
                 f"Download of {ticker} from YahooFinance failed."
                 + " Are you connected to the Internet?") from exc
@@ -529,8 +529,8 @@ class Fred(SymbolData):
             return pd.read_csv(
                 self.URL + f'?id={symbol}',
                 index_col=0, parse_dates=[0])[symbol]
-        except URLError as exc: # pragma: no cover
-            raise DataError(f"Download of {symbol}" # pragma: no cover
+        except URLError as exc:
+            raise DataError(f"Download of {symbol}"
                 + f" from {self.__class__.__name__} failed."
                 + " Are you connected to the Internet?") from exc
 
@@ -862,11 +862,6 @@ class MarketDataInMemory(MarketData):
 
         return (past_returns, current_returns, past_volumes, current_volumes,
                 current_prices)
-
-    @staticmethod
-    def _resample_returns(returns, periods):
-        """Resample returns from number of periods to single period."""
-        return np.exp(np.log(1 + returns) / periods) - 1
 
     def _add_cash_column(self, cash_key):
         """Add the cash column to an already formed returns dataframe.

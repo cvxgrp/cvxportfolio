@@ -486,6 +486,11 @@ class TestSimulator(CvxportfolioTest):
             print(results_first[-1])
             time_first += time.time() - s
 
+        with self.assertRaises(SyntaxError):
+            sim = cvx.MarketSimulator(
+                ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+                base_location=self.datadir, trading_frequency='unsupported')
+
         time_second = 0.
         results_second = []
         for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
