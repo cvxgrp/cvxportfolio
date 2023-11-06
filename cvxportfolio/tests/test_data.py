@@ -13,19 +13,58 @@
 # limitations under the License.
 """Unit tests for the data interfaces."""
 
+import socket
 import sys
 import unittest
 from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from contextdecorator import ContextDecorator
 
+import cvxportfolio as cvx
 from cvxportfolio.data import (DownloadedMarketData, Fred,
                                UserProvidedMarketData, YahooFinance,
                                _loader_csv, _loader_pickle, _loader_sqlite,
                                _storer_csv, _storer_pickle, _storer_sqlite)
 from cvxportfolio.errors import DataError
 from cvxportfolio.tests import CvxportfolioTest
+
+
+class NoInternet(ContextDecorator):
+    """Context with no internet.
+
+    Adapted from: https://github.com/dvl/python-internet-sabotage
+    """
+    _module = sys.modules[__name__]
+
+    def __init__(self, exception=IOError):
+        self.exception = exception
+
+    def _enable_socket(self):
+        """Enable sockets in this module."""
+        setattr(self._module, '_socket_disabled', False)
+
+    def _disable_socket(self):
+        """Disable sockets in this module."""
+        setattr(self._module, '_socket_disabled', True)
+
+        def guarded(*args, **kwargs):
+            """Monkey-patch the socket module."""
+            if getattr(self._module, '_socket_disabled', False):
+                raise self.exception('Internet is disabled')
+
+            return socket.SocketType(*args, **kwargs)
+
+        socket.socket = guarded
+
+    def __enter__(self):
+        """Open context."""
+        self._disable_socket()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Close context, discard exceptions."""
+        self._enable_socket()
 
 
 class TestData(CvxportfolioTest):
@@ -518,6 +557,32 @@ class TestMarketData(CvxportfolioTest):
             _ = FredErroneous(
                 'DFF', base_location=self.datadir)
 
+        class YahooFinanceErroneous3(YahooFinance):
+            """Modified YF that is not append-only."""
+            counter = 0
+            def _download(self, symbol, current, grace_period):
+                """Modified download method."""
+                res = super()._download(symbol, current,
+                    grace_period=grace_period)
+                if self.counter > 0:
+                    res.iloc[-2] = 0.
+                self.counter += 1
+                return res
+        storer = YahooFinanceErroneous3('GOOGL', base_location=self.datadir)
+        with self.assertLogs(level='ERROR') as _:
+            storer.update(pd.Timedelta('0d'))
+
+    def test_no_internet(self):
+        """Test errors thrown when not connected to the internet."""
+
+        with NoInternet():
+            with self.assertRaises(DataError):
+                cvx.YahooFinance('BABA', base_location=self.datadir)
+
+        with NoInternet():
+            with self.assertRaises(DataError):
+                cvx.Fred('CES0500000003', base_location=self.datadir)
+
     def test_yahoo_finance_errors(self):
         """Test errors with Yahoo Finance."""
 
@@ -531,6 +596,30 @@ class TestMarketData(CvxportfolioTest):
         self.assertTrue((data.valuevolume == 0).sum() > 0)
         self.assertTrue(data.iloc[:-1].isnull().sum().sum() == 0)
 
+    # def test_yahoo_finance_wrong_last_time(self):
+    #     """Test that we correct last time if intraday."""
+    #
+    #     class YahooFinanceErroneous4(YahooFinance):
+    #         """Modified YF that sets last time wrong."""
+    #         counter = 0
+    #
+    #         @staticmethod
+    #         def _get_data_yahoo(
+    #             ticker, start='1900-01-01', end='2100-01-01'):
+    #             """Modified download method."""
+    #             res = YahooFinance._get_data_yahoo(
+    #                 ticker, start=start, end=end)
+    #             if self.counter > 0:
+    #                 res.index = list(res.index)[:-1] + [
+    #                     res.index[-1] - pd.Timedelta('3h')]
+    #             self.counter += 1
+    #             print(res)
+    #             return res
+    #
+    #     storer = YahooFinanceErroneous4('GOOGL', base_location=self.datadir)
+    #     print(storer.data)
+    #     #storer.update(pd.Timedelta('0d'))
+    #     #print(storer.data)
 
 if __name__ == '__main__':
 
