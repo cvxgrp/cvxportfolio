@@ -124,7 +124,9 @@ class Estimator:
     def collect_hyperparameters(self):
         """Collect (recursively) all hyperparameters defined in a policy.
 
-        :rtype: list of cvxportfolio.HyperParameter
+        :returns: List of :class:`cvxportfolio.hyperparameters.HyperParameter`
+            instances.
+        :rtype: list
         """
         result = []
         for _, subestimator in self.__dict__.items():
@@ -175,12 +177,12 @@ class CvxpyExpressionEstimator(Estimator):
         for costs and constraints at different look-ahead steps with the
         corresponding w_plus and z.
 
-        :param w_plus: post-trade weights
+        :param w_plus: Post-trade weights.
         :type w_plus: cvxpy.Variable
-        :param z: trade weights
+        :param z: Trade weights.
         :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: post-trade weights minus benchmark
-            weights
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
+            weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
         """
         raise NotImplementedError
@@ -231,7 +233,13 @@ class DataEstimator(Estimator):
         self.parameter = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Initialize with current universe."""
+        """Initialize with current universe.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
 
         self._universe_maybe_noncash = \
             universe if self._data_includes_cash else universe[:-1]
@@ -244,7 +252,18 @@ class DataEstimator(Estimator):
                 PSD=self._positive_semi_definite, nonneg=self._non_negative)
 
     def value_checker(self, result):
-        """Ensure that only scalars or arrays without np.nan are returned."""
+        """Ensure that only scalars or arrays without np.nan are returned.
+
+        :raises cvxportfolio.errors.NaNError: If NaNs are found.
+        :raises cvxportfolio.errors.DataError: If the value passed is not a
+            scalar or Numpy array.
+
+        :param result: Scalar or array that we check has no NaNs.
+        :type result: float or numpy.array
+
+        :returns: Input value; if array, a copy.
+        :rtype: float or numpy.array
+        """
 
         if isinstance(result, numbers.Number):
             if np.isnan(result) and not self._allow_nans:
@@ -381,8 +400,14 @@ class DataEstimator(Estimator):
     def values_in_time(self, **kwargs):
         """Obtain value of `self.data` at time t or right before.
 
-        :param t: Time of evaluation.
-        :type t: pandas.TimeStamp
+        :param kwargs: All parameters passed to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :raises cvxportfolio.errors.NaNError: The data provided contains
+            NaNs at current time.
+
+        :returns: The  value from this
+            :class:`cvxportfolio.estimator.DataEstimator` at current time.
         :rtype: int, float, numpy.ndarray
         """
         try:
@@ -395,7 +420,7 @@ class DataEstimator(Estimator):
         return result
 
     def __repr__(self):
-        "Pretty-print."
+        """Pretty-print."""
         if np.isscalar(self.data):
             return str(self.data)
         if hasattr(self.data, 'values_in_time_recursive'

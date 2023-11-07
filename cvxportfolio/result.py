@@ -51,7 +51,7 @@ class BacktestResult:
     """Store the data from a back-test and produce metrics and plots."""
 
     # maybe remove this, not sure if it makes sense to document all
-    # properties return values
+    # properties' return values
     # pylint: disable=missing-return-doc, missing-return-type-doc
 
     def __init__(self, universe, trading_calendar, costs):
@@ -102,7 +102,8 @@ class BacktestResult:
             # otherwise we lose the ordering :(
             else:
                 logging.info(
-                    f"{self.__class__.__name__} joining new universe with old")
+                    "%s joining new universe with old",
+                    self.__class__.__name__)
                 joined = pd.Index(
                     # need to join with full, not current!
                     sorted(set(self._current_full_universe[:-1]
@@ -214,7 +215,7 @@ class BacktestResult:
 
     @property
     def z_policy(self):
-        """The trade weights requested by the policy at each trading period.
+        r"""The trade weights requested by the policy at each trading period.
 
         This is different from the trade weights :math:`z` because the
         :class:`MarketSimulator` instance may change it by enforcing

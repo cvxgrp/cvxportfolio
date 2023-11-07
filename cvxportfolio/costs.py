@@ -33,7 +33,7 @@ from .errors import ConvexityError, ConvexSpecificationError
 from .estimator import CvxpyExpressionEstimator, DataEstimator
 from .hyperparameters import HyperParameter
 from .utils import (average_periods_per_year,
-                    periods_per_year_from_datetime_index)
+                    periods_per_year_from_datetime_index, resample_returns)
 
 __all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
            "StocksTransactionCost", "StocksHoldingCost"]
@@ -48,7 +48,7 @@ class Cost(CvxpyExpressionEstimator):
 
     def __mul__(self, other):
         """Multiply by constant."""
-        if isinstance(other, Number) or isinstance(other, HyperParameter):
+        if isinstance(other, (Number, HyperParameter)):
             return CombinedCosts([self], [other])
         raise SyntaxError(
             "You can only multiply a cost instance by a scalar "
@@ -92,7 +92,7 @@ class Cost(CvxpyExpressionEstimator):
         to have CostInequalityConstraint's internal DataEstimator throw
         NotImplemented instead.
         """
-        if isinstance(other, Number) or isinstance(other, pd.Series):
+        if isinstance(other, (Number, pd.Series)):
             return CostInequalityConstraint(self, other)
         return NotImplemented
 
@@ -133,38 +133,64 @@ class CombinedCosts(Cost):
         if isinstance(other, CombinedCosts):
             return CombinedCosts(self.costs + other.costs,
                                  self.multipliers + other.multipliers)
-        else:
-            return CombinedCosts(self.costs + [other],
-                                 self.multipliers + [1.0])
+        return CombinedCosts(self.costs + [other], self.multipliers + [1.0])
 
     def __mul__(self, other):
         """Multiply by constant."""
         return CombinedCosts(self.costs,
                              [el * other for el in self.multipliers])
 
-    def initialize_estimator_recursive(self, *args, **kwargs):
+    def initialize_estimator_recursive(self, universe, trading_calendar):
         """Iterate over constituent costs."""
-        [el.initialize_estimator_recursive(*args, **kwargs) for el in self.costs]
+        _ = [el.initialize_estimator_recursive(universe, trading_calendar)
+            for el in self.costs]
 
     def values_in_time_recursive(self, **kwargs):
-        """Iterate over constituent costs."""
-        [el.values_in_time_recursive(**kwargs) for el in self.costs]
+        """Iterate over constituent costs.
 
-    def compile_to_cvxpy(self, w_plus, z, portfolio_value):
-        """Iterate over constituent costs."""
-        self.expression = 0
+        :param kwargs: All parameters passed to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
+        _ = [el.values_in_time_recursive(**kwargs) for el in self.costs]
+
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Iterate over constituent costs.
+
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+
+        :raises cvxportfolio.errors.ConvexSpecificationError: If the compiled
+            Cvxpy expression doesn't follow the disciplined convex programming
+            rules.
+        :raises cvxportfolio.errors.ConvexityError: If the compiled Cvxpy
+            expression is not concave (since we maximize it).
+
+        :returns: Cvxpy expression of the combined cost.
+        :rtype: cvxpy.Expression
+        """
+        expression = 0
         for multiplier, cost in zip(self.multipliers, self.costs):
             add = (multiplier.current_value
                 if hasattr(multiplier, 'current_value') else multiplier) *\
-                    cost.compile_to_cvxpy(w_plus, z, portfolio_value)
+                    cost.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
             if not add.is_dcp():
                 raise ConvexSpecificationError(cost * multiplier)
             if not add.is_concave():
                 raise ConvexityError(cost * multiplier)
-            self.expression += add
-        return self.expression
+            expression += add
+        return expression
 
     def collect_hyperparameters(self):
+        """Collect hyper-parameters in the combined cost.
+
+        :returns: List of :class:`cvxportfolio.hyperparameters.HyperParameter`
+            instances.
+        :rtype: list
+        """
         return sum([el.collect_hyperparameters() for el in self.costs], []) +\
             sum([el.collect_hyperparameters() for el in self.multipliers if
                 hasattr(el, 'collect_hyperparameters')], [])
@@ -191,6 +217,8 @@ class CombinedCosts(Cost):
 
         We want to deepcopy the constituent cost objects, but not the
         multipliers (which can be symbolic HPs).
+
+        We will probably re-factor this, or make it public.
         """
         return CombinedCosts(
             costs = [el._copy_keeping_multipliers()
@@ -203,23 +231,44 @@ class CombinedCosts(Cost):
 class SoftConstraint(Cost):
     """Soft constraint cost.
 
-    :param constraint: cvxportfolio constraint instance whose violation
-        we penalize
-    :type constraint: cvx.Constraint
+    :param constraint: Cvxportfolio constraint instance whose violation
+        we penalize.
+    :type constraint: cvxportfolio.constraints.EqualityConstraint or
+        cvxportfolio.constraints.InequalityConstraint
     """
 
     def __init__(self, constraint):
         self.constraint = constraint
 
+    # pylint: disable=inconsistent-return-statements
+    # because we catch the exception
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile cost to cvxpy expression."""
+        """Compile cost to cvxpy expression.
+
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+
+        :raises SyntaxError: If the constraint is not a EqualityConstraint or
+             InequalityConstraint.
+
+        :return: Cvxpy expression of the soft constraint.
+        :rtype: cvxpy.Expression
+        """
+
         try:
             expr = (self.constraint._compile_constr_to_cvxpy(
                 w_plus, z, w_plus_minus_w_bm) - self.constraint._rhs())
-        except AttributeError:
+
+        except AttributeError as exc:
             raise SyntaxError(
                 f"{self.__class__.__name__} can only be used with"
-                " EqualityConstraint or InequalityConstraint instances.")
+                " EqualityConstraint or InequalityConstraint instances."
+                    ) from exc
+
         if isinstance(self.constraint, EqualityConstraint):
             return cp.sum(cp.abs(expr))
         if isinstance(self.constraint, InequalityConstraint):
@@ -227,8 +276,17 @@ class SoftConstraint(Cost):
 
 
 def _annual_percent_to_per_period(value, ppy):
-    """Transform annual percent to per-period return."""
-    return np.exp(np.log(1 + value / 100) / ppy) - 1
+    """Transform annual percent to per-period return.
+
+    :param value: Annual percent return.
+    :type value: float
+    :param ppy: Periods per year.
+    :type ppy: int
+
+    :returns: Per-period return.
+    :rtype: float
+    """
+    return resample_returns(returns=value/100, periods=ppy)
 
 
 class SimulatorCost:
@@ -242,6 +300,11 @@ class SimulatorCost:
 
         Cost classes that are meant to be used in the simulator
         should implement this.
+
+        :param args: Positional arguments.
+        :type args: tuple
+        :param kwargs: Keyword arguments.
+        :type kwargs: dict
         """
         raise NotImplementedError # pragma: no cover
 
@@ -361,6 +424,13 @@ class HoldingCost(Cost, SimulatorCost):
         (if not provided by the user) and populate the cvxpy parameters
         with the current values of the user-provided data, transformed
         to per-period.
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param past_returns: Past market returns (includes cash).
+        :type past_returns: pandas.DataFrame
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
         """
 
         if not ((self.short_fees is None)
