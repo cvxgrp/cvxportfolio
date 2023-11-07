@@ -63,6 +63,7 @@ class CashReturn(BaseReturnsModel):
         self._cash_return_parameter = None
 
     def initialize_estimator(self, **kwargs):
+        """Initialize estimator whenever universe changes."""
         self._cash_return_parameter = (cp.Parameter()
             if self.cash_returns is None else self.cash_returns.parameter)
 

@@ -48,14 +48,14 @@ class NoInternet():
         """Disable sockets in this module."""
         setattr(self._module, '_socket_disabled', True)
 
-        def guarded(*args, **kwargs):
+        def _guarded(*args, **kwargs):
             """Monkey-patch the socket module."""
             if getattr(self._module, '_socket_disabled', False):
                 raise self.exception('Internet is disabled')
 
             return socket.SocketType(*args, **kwargs)
 
-        socket.socket = guarded
+        socket.socket = _guarded
 
     def __enter__(self):
         """Open context."""
@@ -155,43 +155,43 @@ class TestData(CvxportfolioTest):
         and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
     def test_sqlite3_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        self.base_test_series(_loader_sqlite, _storer_sqlite)
+        self._base_test_series(_loader_sqlite, _storer_sqlite)
 
     @unittest.skipIf(sys.version_info.major == 3
         and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
     def test_local_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        self.base_test_series(_loader_csv, _storer_csv)
+        self._base_test_series(_loader_csv, _storer_csv)
 
     def test_pickle_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        self.base_test_series(_loader_pickle, _storer_pickle)
+        self._base_test_series(_loader_pickle, _storer_pickle)
 
     def test_sqlite3_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self.base_test_dataframe(_loader_sqlite, _storer_sqlite)
+        self._base_test_dataframe(_loader_sqlite, _storer_sqlite)
 
     def test_local_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self.base_test_dataframe(_loader_csv, _storer_csv)
+        self._base_test_dataframe(_loader_csv, _storer_csv)
 
     def test_pickle_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self.base_test_dataframe(_loader_pickle, _storer_pickle)
+        self._base_test_dataframe(_loader_pickle, _storer_pickle)
 
     def test_local_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self.base_test_multiindex(_loader_csv, _storer_csv)
+        self._base_test_multiindex(_loader_csv, _storer_csv)
 
     def test_sqlite3_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self.base_test_multiindex(_loader_sqlite, _storer_sqlite)
+        self._base_test_multiindex(_loader_sqlite, _storer_sqlite)
 
     def test_pickle_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self.base_test_multiindex(_loader_pickle, _storer_pickle)
+        self._base_test_multiindex(_loader_pickle, _storer_pickle)
 
-    def base_test_series(self, loader, storer):
+    def _base_test_series(self, loader, storer):
         """Test storing and retrieving of a Series with datetime index."""
 
         for data in [
@@ -245,7 +245,7 @@ class TestData(CvxportfolioTest):
         except FileNotFoundError:
             pass
 
-    def base_test_dataframe(self, loader, storer):
+    def _base_test_dataframe(self, loader, storer):
         """Test storing and retrieving of a DataFrame with datetime index."""
 
         index = pd.date_range("2020-01-01", "2020-01-02", freq="H", tz='UTC')
@@ -272,7 +272,7 @@ class TestData(CvxportfolioTest):
         self.assertTrue(all(data.index == data1.index))
         self.assertTrue(all(data.dtypes == data1.dtypes))
 
-    def base_test_multiindex(self, loader, storer):
+    def _base_test_multiindex(self, loader, storer):
         """Test storing and retrieving of a Series or DataFrame with multi-.
 
         index.

@@ -78,7 +78,11 @@ class CvxportfolioTest(unittest.TestCase):
 
     @staticmethod
     def strip_tz_and_hour(market_data):
-        """Transform DFs indexes from datetime with tz to date without tz."""
+        """Transform DFs indexes from datetime with tz to date without tz.
+
+        :param market_data: Market data object whose dataframes get modified.
+        :type market_data: :class:`cvxportfolio.data.MarketData`
+        """
         market_data.returns.index = \
             market_data.returns.index.tz_localize(None).floor("D")
         market_data.volumes.index = \
@@ -87,7 +91,14 @@ class CvxportfolioTest(unittest.TestCase):
             market_data.prices.index.tz_localize(None).floor("D")
 
     def boilerplate(self, model):
-        """Initialize objects, compile cvxpy expression."""
+        """Initialize objects, compile cvxpy expression.
+
+        :param model: Model to compile (constraint, objective term, ...).
+        :type model: :class:`cvxportfolio.CvxpyEstimator`
+
+        :returns: Compiled Cvxpy object.
+        :rtype: Expression, constraint, or list of constraints.
+        """
         model.initialize_estimator_recursive(
             universe=self.returns.columns,
             trading_calendar=self.returns.index)
@@ -96,9 +107,9 @@ class CvxportfolioTest(unittest.TestCase):
 
     def setUp(self):
         """Timer for each test."""
-        self.startTime = time.time()
+        self.start_time = time.time()
 
     def tearDown(self):
         """Save timer for each test."""
-        t = time.time() - self.startTime
+        t = time.time() - self.start_time
         self.timers[str(self.id())] = t

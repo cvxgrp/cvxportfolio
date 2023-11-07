@@ -43,7 +43,11 @@ __all__ = ["YahooFinance", "Fred",
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
 
 def now_timezoned():
-    """Return current timestamp with local timezone."""
+    """Return current timestamp with local timezone.
+
+    :returns: Current timestamp with local timezone.
+    :rtype: pandas.Timestamp
+    """
     return pd.Timestamp(
         datetime.datetime.now(datetime.timezone.utc).astimezone())
 
@@ -137,11 +141,19 @@ class SymbolData:
             return None
 
     def load(self):
-        """Load data from database using `self.preload` function to process."""
+        """Load data from database using `self.preload` function to process.
+
+        :returns: Loaded time-series data for the symbol.
+        :rtype: pandas.Series or pandas.DataFrame
+        """
         return self._preload(self._load_raw())
 
     def _store(self, data):
-        """Store data in database."""
+        """Store data in database.
+
+        :param data: Time-series data to store.
+        :type data: pandas.Series or pandas.DataFrame
+        """
         # we could implement multiprocess safety here
         storer = globals()['_storer_' + self._storage_backend]
         logging.info(
@@ -159,7 +171,12 @@ class SymbolData:
         print((new - current).dropna(how='all').tail(5))
 
     def update(self, grace_period):
-        """Update current stored data for symbol."""
+        """Update current stored data for symbol.
+
+        :param grace_period: If the time between now and the last value stored
+            is less than this, we don't update the data already stored.
+        :type grace_period: pandas.Timedelta
+        """
         current = self._load_raw()
         logging.info(
             f"Downloading {self.symbol}"
@@ -718,8 +735,9 @@ class MarketData:
         """
         raise NotImplementedError # pragma: no cover
 
-    def trading_calendar(self, start_time=None,
-                         end_time=None, include_end=True):
+    # pylint: disable=redundant-returns-doc
+    def trading_calendar(
+        self, start_time=None, end_time=None, include_end=True):
         """Get trading calendar between times.
 
         :param start_time: Initial time of the trading calendar. Always
@@ -730,6 +748,8 @@ class MarketData:
         :type end_time: pandas.Timestamp
         :param include_end: Include end time.
         :type include_end: bool
+
+        :returns: Trading calendar.
         :rtype: pandas.DatetimeIndex
         """
         raise NotImplementedError # pragma: no cover
@@ -743,14 +763,15 @@ class MarketData:
         raise NotImplementedError # pragma: no cover
 
     @property
-    def full_universe(self):
+    def full_universe(self): # pylint: disable=redundant-returns-doc
         """Full universe, which might not be available for trading.
 
+        :returns: Full universe.
         :rtype: pandas.Index
         """
         raise NotImplementedError # pragma: no cover
 
-    # pylint: disable=unused-argument
+    # pylint: disable=unused-argument, redundant-returns-doc
     def partial_universe_signature(self, partial_universe):
         """Unique signature of this instance with a partial universe.
 
@@ -763,6 +784,8 @@ class MarketData:
 
         :param partial_universe: A subset of the full universe.
         :type partial_universe: pandas.Index
+
+        :returns: Signature.
         :rtype: str
         """
         return None
@@ -820,10 +843,24 @@ class MarketDataInMemory(MarketData):
 
     @property
     def full_universe(self):
+        """Full universe, which might not be available for trading.
+
+        :returns: Full universe.
+        :rtype: pandas.Index
+        """
         return self.returns.columns
 
     def serve(self, t):
-        """Serve data for policy and simulator at time :math:`t`."""
+        """Serve data for policy and simulator at time :math:`t`.
+
+        :param t: Time of execution, *e.g.*, stock market open of a given day.
+        :type t: pandas.Timestamp
+
+        :returns: (past_returns, current_returns, past_volumes,
+            current_volumes, current_prices)
+        :rtype: (pandas.DataFrame, pandas.Series, pandas.DataFrame or None,
+            pandas.Series or None, pandas.Series or None)
+        """
 
         mask = self._universe_mask_at_time(t).values
         self._mask_dataframes(mask)
@@ -880,9 +917,22 @@ class MarketDataInMemory(MarketData):
         tmp[cash_key] = tmp[cash_key].ffill()
         self.returns = tmp.loc[original_returns_index]
 
-    def trading_calendar(self, start_time=None,
-                         end_time=None, include_end=True):
-        """Get trading calendar from market data."""
+    def trading_calendar(
+        self, start_time=None, end_time=None, include_end=True):
+        """Get trading calendar from market data.
+
+        :param start_time: Initial time of the trading calendar. Always
+            inclusive if present. If None, use the first available time.
+        :type start_time: pandas.Timestamp
+        :param end_time: Final time of the trading calendar. If None,
+            use the last available time.
+        :type end_time: pandas.Timestamp
+        :param include_end: Include end time.
+        :type include_end: bool
+
+        :returns: Trading calendar.
+        :rtype: pandas.DatetimeIndex
+        """
         result = self.returns.index
         result = result[result >= self._earliest_backtest_start]
         if start_time:
@@ -1048,12 +1098,21 @@ class MarketDataInMemory(MarketData):
 
     @property
     def periods_per_year(self):
-        """Average trading periods per year inferred from the data."""
+        """Average trading periods per year inferred from the data.
+
+        :returns: Average periods per year.
+        :rtype: int
+        """
         return periods_per_year_from_datetime_index(self.returns.index)
 
     @property
     def min_history(self):
-        """Min history expressed in periods."""
+        """Min history expressed in periods.
+
+        :returns: How many non-null elements of the past returns for a given
+            name are required to include it.
+        :rtype: int
+        """
         return int(np.round(self.periods_per_year * (
             self._min_history_timedelta / pd.Timedelta('365.24d'))))
 
@@ -1246,7 +1305,21 @@ class DownloadedMarketData(MarketDataInMemory):
             self.volumes.iloc[-1] = np.nan
 
     def partial_universe_signature(self, partial_universe):
-        """Unique signature of this instance with a partial universe."""
+        """Unique signature of this instance with a partial universe.
+
+        A partial universe is a subset of the full universe that is
+        available at some time for trading.
+
+        This is used in cvxportfolio.cache to sign back-test caches that
+        are saved on disk. See its implementation below for details. If
+        not redefined it returns None which disables on-disk caching.
+
+        :param partial_universe: A subset of the full universe.
+        :type partial_universe: pandas.Index
+
+        :returns: Signature.
+        :rtype: str
+        """
         assert isinstance(partial_universe, pd.Index)
         assert np.all(partial_universe.isin(self.full_universe))
         result = f'{self.__class__.__name__}('

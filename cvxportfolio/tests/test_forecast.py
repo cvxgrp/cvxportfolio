@@ -151,7 +151,7 @@ class TestForecast(CvxportfolioTest):
         returns.iloc[10:30, 0] = np.nan
         returns.iloc[25:40, 2] = np.nan
 
-        def compute_covariance(rets):
+        def _compute_covariance(rets):
             res = np.zeros((3, 3))
             res[0, 0] = np.nanmean(rets.iloc[:, 0] * rets.iloc[:, 0])
             res[1, 1] = np.nanmean(rets.iloc[:, 1] * rets.iloc[:, 1])
@@ -171,7 +171,7 @@ class TestForecast(CvxportfolioTest):
                 t=t, past_returns=past_returns)
             Sigma = val @ val.T
             self.assertTrue(
-                np.allclose(Sigma, compute_covariance(past_returns)))
+                np.allclose(Sigma, _compute_covariance(past_returns)))
 
     def test_covariance_update_nokelly(self):
         """Test covariance forecast estimator.
@@ -192,7 +192,7 @@ class TestForecast(CvxportfolioTest):
         returns.iloc[10:30, 0] = np.nan
         returns.iloc[25:40, 2] = np.nan
 
-        def cov_ij(i, j, rets):
+        def _cov_ij(i, j, rets):
             i_nanmasker = np.zeros(len(rets))
             i_nanmasker[rets.iloc[:, i].isnull()] = np.nan
             i_nanmasker[~(rets.iloc[:, i].isnull())] = 1.
@@ -204,14 +204,14 @@ class TestForecast(CvxportfolioTest):
                 ) - np.nanmean(rets.iloc[:, i] * j_nanmasker
                     ) * np.nanmean(rets.iloc[:, j] * i_nanmasker)
 
-        def compute_covariance(rets):
+        def _compute_covariance(rets):
             res = np.zeros((3, 3))
-            res[0, 0] = cov_ij(0, 0, rets)
-            res[1, 1] = cov_ij(1, 1, rets)
-            res[2, 2] = cov_ij(2, 2, rets)
-            res[0, 1] = cov_ij(0, 1, rets)
-            res[0, 2] = cov_ij(0, 2, rets)
-            res[1, 2] = cov_ij(1, 2, rets)
+            res[0, 0] = _cov_ij(0, 0, rets)
+            res[1, 1] = _cov_ij(1, 1, rets)
+            res[2, 2] = _cov_ij(2, 2, rets)
+            res[0, 1] = _cov_ij(0, 1, rets)
+            res[0, 2] = _cov_ij(0, 2, rets)
+            res[1, 2] = _cov_ij(1, 2, rets)
             res[1, 0] = res[0, 1]
             res[2, 0] = res[0, 2]
             res[2, 1] = res[1, 2]
@@ -225,7 +225,7 @@ class TestForecast(CvxportfolioTest):
             Sigma = val @ val.T
 
             self.assertTrue(
-                np.allclose(Sigma, compute_covariance(past_returns)))
+                np.allclose(Sigma, _compute_covariance(past_returns)))
             # pandasSigma = past_returns.iloc[:,:-1].cov(ddof=0)
             # self.assertTrue(np.allclose(Sigma, pandasSigma))
             self.assertTrue(np.allclose(
@@ -253,7 +253,7 @@ class TestForecast(CvxportfolioTest):
             num_factors=num_factors)
         forecaster2 = HistoricalFactorizedCovariance(kelly=True)
 
-        def compare_with_eigh(returns):
+        def _compare_with_eigh(returns):
 
             F, d = forecaster.values_in_time_recursive(
                 t=t, past_returns=returns)
@@ -280,26 +280,26 @@ class TestForecast(CvxportfolioTest):
 
             return np.linalg.norm(sigma_eigh-sigma_svd)
 
-        self.assertTrue(np.isclose(compare_with_eigh(returns), 0.))
+        self.assertTrue(np.isclose(_compare_with_eigh(returns), 0.))
 
         returns.iloc[:20, 1] = np.nan
 
-        diff1 = compare_with_eigh(returns)
+        diff1 = _compare_with_eigh(returns)
         self.assertTrue(0 < diff1)
 
         returns.iloc[10:30, 0] = np.nan
 
-        diff2 = compare_with_eigh(returns)
+        diff2 = _compare_with_eigh(returns)
         self.assertTrue(diff1 < diff2)
 
         returns.iloc[25:40, 2] = np.nan
-        diff3 = compare_with_eigh(returns)
+        diff3 = _compare_with_eigh(returns)
         self.assertTrue(diff2 < diff3)
 
         print(returns.isnull().mean())
         returns.iloc[4:-3, -2] = np.nan
         print(returns.isnull().mean())
-        diff4 = compare_with_eigh(returns)
+        diff4 = _compare_with_eigh(returns)
         self.assertTrue(diff3 < diff4)
 
         returns.iloc[:50, 0] = np.nan
