@@ -176,11 +176,11 @@ class TestForecast(CvxportfolioTest):
     def test_covariance_update_nokelly(self):
         """Test covariance forecast estimator.
 
-        NOTE: due to a bug in pandas we can't test against 
+        NOTE: due to a bug in pandas we can't test against
         pandas.DataFrame.cov,
-        see https://github.com/pandas-dev/pandas/issues/45814 . 
+        see https://github.com/pandas-dev/pandas/issues/45814 .
         In fact with the current bug in pandas
-        ``past_returns.iloc[:,:-1].cov(ddof=0)`` returns 
+        ``past_returns.iloc[:,:-1].cov(ddof=0)`` returns
         ``past_returns.iloc[:,:-1].cov(ddof=1)``
         whenever there are missing values.
         """
@@ -232,14 +232,16 @@ class TestForecast(CvxportfolioTest):
                 np.diag(Sigma), past_returns.iloc[:, :-1].var(ddof=0)))
 
     def test_svd_forecaster(self):
-        """Test the SVD forecaster. 
-        
-        In particular, we compare it with the other covariance forecaster.
-        
+        """Test the SVD forecaster.
+
+        In particular, we compare it with the other covariance
+        forecaster.
+
         We check that their forecasts are the same if there are no
-        missing values in the past returns, and they diverge more
-        as more missing values are introduced. Additionally, we check
-        that it breaks when there are too many (more than 90%!) missing values.
+        missing values in the past returns, and they diverge more as
+        more missing values are introduced. Additionally, we check that
+        it breaks when there are too many (more than 90%!) missing
+        values.
         """
 
         returns = pd.DataFrame(self.returns.iloc[:, :4], copy=True)

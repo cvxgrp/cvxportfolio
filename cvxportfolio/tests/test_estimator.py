@@ -233,7 +233,7 @@ class TestEstimator(unittest.TestCase):
 
     def test_dataframe_multindex(self):
         """Test DataEstimator with a multi-indexed dataframe.
-        
+
         We also check that _universe_subselect works fine.
         """
         timeindex = pd.date_range("2022-01-01", "2022-01-30")

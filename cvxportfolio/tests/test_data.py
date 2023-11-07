@@ -531,7 +531,7 @@ class TestMarketData(CvxportfolioTest):
         """Test single-symbol download error."""
 
         storer = YahooFinance(
-            'AAPL', grace_period=self.data_grace_period, 
+            'AAPL', grace_period=self.data_grace_period,
             base_location=self.datadir)
         with self.assertRaises(SyntaxError):
             # pylint: disable=protected-access

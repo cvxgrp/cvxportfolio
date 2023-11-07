@@ -26,6 +26,7 @@ include-package-data = true
 fail-under = 9.0
 jobs = 0 # multiprocessing pylint
 max-line-length = 79 # PEP8 default
+load-plugins =["pylint.extensions.docparams", "pylint.extensions.docstyle"]
 
 [tool.pylint.basic]
 # These variable names are defined in the paper.
@@ -35,6 +36,13 @@ good-names = ["t", "u", "v", "w", "h", "z", "F", "d", "Sigma"]
 # These are sometimes ignored, we might instead use dataclasses for
 # sharing data between elements of a policy's DAG
 ignored-argument-names = "args|kwargs|universe|trading_calendar"
+
+[tool.pylint.parameter_documentation]
+# activate these when ready
+# accept-no-param-doc = false
+# accept-no-raise-doc = false
+# accept-no-return-doc = false
+# accept-no-yields-doc = false
 
 [tool.coverage.report]
 fail_under = 98

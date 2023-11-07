@@ -436,7 +436,7 @@ class TestSimulator(CvxportfolioTest):
         print(result)
 
     def test_backtest_changing_universe(self):
-        """Test back-test with changing universe"""
+        """Test back-test with changing universe."""
         sim = cvx.MarketSimulator(
             market_data=self.market_data_5, base_location=self.datadir)
         pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
@@ -879,7 +879,7 @@ class TestSimulator(CvxportfolioTest):
         print(result_eig)
 
     def test_bankruptcy(self):
-        """Test policy bankruptcy"""
+        """Test policy bankruptcy."""
 
         market_data = cvx.DownloadedMarketData(
             ['SPY', 'QQQ'],

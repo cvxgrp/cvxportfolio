@@ -19,3 +19,4 @@ isort
 autopep8
 diff_cover
 multiprocess
+docformatter
