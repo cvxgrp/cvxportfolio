@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module implements :class:`cvxportfolio.MarketSimulator` and derived
-classes. These objects model the trading activity on a financial market. They
+classes.
+
+These objects model the trading activity on a financial market. They
 simulate as accurately as possible what would have been the realized
 performance of a trading policy if it had been run in the market in the
 past. In financial jargon this is called *back-testing*.
@@ -39,14 +41,14 @@ __all__ = ['StockMarketSimulator', 'MarketSimulator']
 
 class MarketSimulator:
     """This class is a generic financial market simulator.
-    
+
     It can either be initialized with an instance of a class
     derived from :class:`cvxportfolio.data.MarketData`, like the two defaults
     :class:`cvxportfolio.DownloadedMarketData` and
     :class:`cvxportfolio.UserProvidedMarketData`, or with a selection of the
     arguments to the latter two.
 
-    :param universe: List of names as understood by the data source 
+    :param universe: List of names as understood by the data source
         used, *e.g.*, ``['AAPL', 'GOOG']`` if using the default Yahoo Finance
         data source. If provided, a :class:`cvxportfolio.DownloadedMarketData`
         will be initialized.
@@ -54,11 +56,11 @@ class MarketSimulator:
     :param returns: Historical open-to-open returns. The return
         at time :math:`t` is :math:`r_t = p_{t+1}/p_t -1` where
         :math:`p_t` is the (open) price at time :math:`t`. Must
-        have datetime index. If provided, a 
+        have datetime index. If provided, a
         :class:`cvxportfolio.UserProvidedMarketData` will be initialized. If
         universe is specified it is ignored.
     :type returns: pandas.DataFrame
-    
+
     :param volumes: Historical market volumes, expressed in units
         of value (*e.g.*, US dollars). If
         universe is specified it is ignored.
@@ -67,12 +69,12 @@ class MarketSimulator:
         trades in the :class:`cvxportfolio.MarketSimulator`). If
         universe is specified it is ignored.
     :type prices: pandas.DataFrame or None
-    
+
     :param datasource: The data source used, if providing a universe
         (for :class:`cvxportfolio.DownloadedMarketData`).
     :type datasource: str or :class:`cvxportfolio.data.SymbolData` class
         (not instance)
-    
+
     :param cash_key: Name of the cash account. Its returns
         are the risk-free rate.
     :type cash_key: str
@@ -80,25 +82,23 @@ class MarketSimulator:
     :param trading_frequency: Instead of using frequency implied by
         the index of the returns, down-sample all dataframes.
         We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
-        ``'annual'``. By default (None) don't down-sample. 
+        ``'annual'``. By default (None) don't down-sample.
     :type trading_frequency: str or None
-    
+
     :param market_data: An instance of a :class:`cvxportfolio.data.MarketData`
         derived class. If provided, all previous arguments are ignored.
     :type market_data: :class:`cvxportfolio.data.MarketData` instance or None
     :param base_location: The location of the storage. By default
         it's a directory named ``cvxportfolio_data`` in your home folder.
     :type base_location: pathlib.Path
-    
+
     :param costs: List of costs that are applied at each time in a back-test.
     :type costs: list of :class:`cvxportfolio.costs.SimulatorCost` classes or
         instances
-    
+
     :param round_trades: If market prices are available, round trades to
         integer number of shares.
     :type round_trades: bool
-    
- 
     """
 
     def __init__(self, universe=(), returns=None, volumes=None,
@@ -357,21 +357,21 @@ class MarketSimulator:
 
     def _adjust_h_new_universe(self, h, new_universe):
         """Adjust holdings vector for change in universe.
-        
+
         :param h: (Pre-trade) holdings vector in value units (e.g., USDOLLAR).
             Its index is the trading universe in the period before the present one.
         :type h: pd.Series
         :param new_universe: New trading universe for the current trading period.
         :type new_universe: pd.Index
-        
+
         :returns: new pre-trade holdings vector with index is ``new_universe``
         :rtype: pd.Series
-        
+
         For any new asset that is present in ``new_universe`` but not in ``h.index``
-        we set the corrensponding value of ``h`` to 0. Any removed asset that is present in 
+        we set the corrensponding value of ``h`` to 0. Any removed asset that is present in
         ``h.index`` instead is removed from h and its value is added to the cash account.
-        
-        Note that we ignore the transaction cost involved in liquidating the position. 
+
+        Note that we ignore the transaction cost involved in liquidating the position.
         You can redefine this method in a derived class to change this behavior.
         """
 
@@ -403,14 +403,15 @@ class MarketSimulator:
 
     def optimize_hyperparameters(self, policy, start_time=None, end_time=None,
         initial_value=1E6, h=None, objective='sharpe_ratio', parallel=True):
-        """Optimize hyperparameters of a policy to maximize back-test objective.
+        """Optimize hyperparameters of a policy to maximize back-test
+        objective.
 
         :param policy: Trading policy with symbolic hyperparameters.
         :type policy: cvx.BaseTradingPolicy
-        :param start_time: start time of the back-test on which we optimize; 
+        :param start_time: start time of the back-test on which we optimize;
             if market it close, the first trading day after it is selected.
         :type start_time: str or datetime
-        :param end_time: End time of the back-test on which we optimize;  
+        :param end_time: End time of the back-test on which we optimize;
             if market it closed, the last trading day before it is selected
         :type end_time: str or datetime or None
         :param initial_value: Initial value in dollar of the portfolio, if not specifying
@@ -420,7 +421,7 @@ class MarketSimulator:
         :param h: Initial portfolio ``h`` expressed in dollar positions. If ``None``
             an initial portfolio of ``initial_value`` in cash is used.
         :type h: pd.Series or None
-        
+
         :param objective: Attribute of :class:`BacktestResult` that is maximized.
         :type objective: str
 
@@ -609,13 +610,12 @@ class MarketSimulator:
 
 
 class StockMarketSimulator(MarketSimulator):
-    """This class implements a simulator of the stock market.
-    It simplifies the interface of :class:`MarketSimulator` and
-    has (realistic) default costs.
+    """This class implements a simulator of the stock market. It simplifies the
+    interface of :class:`MarketSimulator` and has (realistic) default costs.
 
     :param universe: List of Yahoo Finance stock names.
     :type universe: list
-    
+
     :param cash_key: Name of the cash account. Its returns
         are the risk-free rate.
     :type cash_key: str
@@ -623,22 +623,22 @@ class StockMarketSimulator(MarketSimulator):
     :param trading_frequency: Instead of using frequency implied by
         the index of the returns, down-sample all dataframes.
         We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
-        ``'annual'``. By default (None) don't down-sample. 
+        ``'annual'``. By default (None) don't down-sample.
     :type trading_frequency: str or None
-    
+
     :param base_location: The location of the storage. By default
         it's a directory named ``cvxportfolio_data`` in your home folder.
     :type base_location: pathlib.Path
-    
+
     :param costs: List of costs that are applied at each time in a back-test.
-        By default we add :class:`StocksTransactionCost` 
+        By default we add :class:`StocksTransactionCost`
         and :class:`StocksHoldingCost`.
     :type costs: list of :class:`SimulatorCost` classes or instances
-    
+
     :param round_trades: Round trades to integer number of shares. By default, True.
     :type round_trades: bool
-    
-    :param kwargs: You can add any other argument to pass to 
+
+    :param kwargs: You can add any other argument to pass to
         :class:`MarketSimulator`'s initializer.
     :type kwargs: dict
     """

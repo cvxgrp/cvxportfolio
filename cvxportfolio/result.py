@@ -194,8 +194,8 @@ class BacktestResult:
 
     @property
     def h(self):
-        """The portfolio (holdings) at each trading period (including the end).
-        """
+        """The portfolio (holdings) at each trading period (including the
+        end)."""
         return pd.DataFrame(self._h)
 
     @property
@@ -345,8 +345,8 @@ class BacktestResult:
 
     @property
     def volatility(self):
-        """Realized volatility (standard deviation of the portfolio returns).
-        """
+        """Realized volatility (standard deviation of the portfolio
+        returns)."""
         return np.std(self.returns)
 
     @property
@@ -455,9 +455,9 @@ class BacktestResult:
     @property
     def excess_growth_rates(self):
         r"""The growth rate of the portfolio, relative to cash.
-        
+
         This is defined as:
-        
+
         .. math::
 
             G^\text{e}_t = \log(1 + R^\text{e}_t)
@@ -469,9 +469,9 @@ class BacktestResult:
     @property
     def active_growth_rates(self):
         r"""The growth rate of the portfolio, relative to benchmark.
-        
+
         This is defined as:
-        
+
         .. math::
 
             G^\text{a}_t = \log(1 + R^\text{a}_t)

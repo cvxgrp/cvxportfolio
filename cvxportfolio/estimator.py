@@ -34,7 +34,7 @@ class Estimator:
     (if you want a class that uses our recursive execution model) is to
     put any sub-estimators at the class attribute level, like we do
     throughout the library. That ensures that the sub-estimators will
-    be evaluated before the class itself by both 
+    be evaluated before the class itself by both
     :method:`initialize_estimator_recursive` and
     :method:`values_in_time_recursive`.
     """
@@ -44,8 +44,8 @@ class Estimator:
 
         :param universe: Names of assets to be traded.
         :type universe: pandas.Index
-        :param trading_calendar: Times at which the estimator is expected
-            to be evaluated.
+        :param trading_calendar: Times at which the estimator is
+            expected to be evaluated.
         :type trading_calendar: pandas.DatetimeIndex
         """
         for _, subestimator in self.__dict__.items():
@@ -86,7 +86,7 @@ class Estimator:
 
     def collect_hyperparameters(self):
         """Collect (recursively) all hyperparameters defined in a policy.
-        
+
         :rtype: list of cvxportfolio.HyperParameter
         """
         result = []
@@ -158,15 +158,15 @@ class DataEstimator(Estimator):
 
     :param data: Data expressed preferably as pandas Series or DataFrame
         where the first index is a pandas.DateTimeIndex. Otherwise you can
-        pass a callable object which implements the values_in_time_recursive 
-        method (with the standard signature) and returns the corresponding 
-        value in time, or a constant float, numpy.array, or even pandas Series 
-        or DataFrame not indexed by time (e.g., a covariance matrix where both 
+        pass a callable object which implements the values_in_time_recursive
+        method (with the standard signature) and returns the corresponding
+        value in time, or a constant float, numpy.array, or even pandas Series
+        or DataFrame not indexed by time (e.g., a covariance matrix where both
         index and columns are the stock symbols).
     :type data: object, pandas.Series, pandas.DataFrame
     :param use_last_available_time: if the pandas index exists
-        and is a pandas.DateTimeIndex you can instruct 
-        :method:`values_in_time_recursive` to retrieve the last available value 
+        and is a pandas.DateTimeIndex you can instruct
+        :method:`values_in_time_recursive` to retrieve the last available value
         at time t by setting this to True. Default is False.
     :type use_last_available_time: bool
 
@@ -242,8 +242,8 @@ class DataEstimator(Estimator):
         we check that at least one dimension is the same as the
         universe's. If the universe is None we skip all checks. (We may
         revisit this choice.) This only happens if the DataEstimator
-        instance is not part of a Estimator tree (a usecase which
-        we will probably drop).
+        instance is not part of a Estimator tree (a usecase which we
+        will probably drop).
         """
 
         if (self._universe_maybe_noncash is None) or self._ignore_shape_check:
@@ -346,7 +346,6 @@ class DataEstimator(Estimator):
 
         :param t: Time of evaluation.
         :type t: pandas.TimeStamp
-
         :rtype: int, float, numpy.ndarray
         """
         try:

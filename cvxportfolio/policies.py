@@ -49,12 +49,12 @@ class Policy(Estimator):
 
     def execute(self, h, market_data, t=None):
         """Execute trading policy at current or user-specified time.
-        
+
         Return the (*e.g.*, dollar) trade vector :math:`u`, the timestamp
         of execution (for double check in case you don't pass it), and a Pandas
         Series of the number of shares to trade, if you pass a Market
         Data server which provides open prices (or None).
-        
+
         :param h: Holdings vector, in dollars, including the cash account
             (the last element).
         :type h: pandas.Series
@@ -62,15 +62,14 @@ class Policy(Estimator):
             data to the policy
         :type market_data: cvxportfolio.MarketData instance
         :param t: Time at which we execute. If None (the default), the
-            last timestamp in the trading calendar provided by the 
+            last timestamp in the trading calendar provided by the
             :class:`MarketData` instance is used.
         :type t: pandas.Timestamp or None
 
         :raises: cvxportfolio.DataError
-        
+
         :returns: u, t, shares_traded
-        :rtype: pandas.Series, pandas.Timestamp, pandas.Series      
-                
+        :rtype: pandas.Series, pandas.Timestamp, pandas.Series
         """
 
         trading_calendar = market_data.trading_calendar()
@@ -146,21 +145,21 @@ class RankAndLongShort(Policy):
     """Rank assets by signal; long highest and short lowest.
 
     :param signal: time-indexed DataFrame of signal for all symbols
-            excluding cash. At each point in time the num_long assets with
-            highest signal will have equal positive weight, and the num_short 
-            assets with lower signal will have equal negative weight. 
-            If two or more assets have the same signal value and they are on 
-            the boundary of either the top or bottom set, alphanumerical 
-            ranking will prevail.
+        excluding cash. At each point in time the num_long assets with
+        highest signal will have equal positive weight, and the
+        num_short assets with lower signal will have equal negative
+        weight. If two or more assets have the same signal value and
+        they are on the boundary of either the top or bottom set,
+        alphanumerical ranking will prevail.
     :type signal: pd.DataFrame
-    :param num_long: number of assets to long, default 1; if specified as 
-        Series it must be indexed by time.
+    :param num_long: number of assets to long, default 1; if specified
+        as Series it must be indexed by time.
     :type num_long: int or pd.Series
-    :param num_short: Number of assets to short, default 1; 
-            if specified as Series it must be indexed by time.
+    :param num_short: Number of assets to short, default 1; if specified
+        as Series it must be indexed by time.
     :type num_short: int or pd.Series)
-    :param target_leverage: leverage of the resulting portfolio, default 1; 
-        if specified as Series it must be indexed by time.
+    :param target_leverage: leverage of the resulting portfolio, default
+        1; if specified as Series it must be indexed by time.
     :type target_leverage: float or pd.Series
     """
 
@@ -196,13 +195,12 @@ class RankAndLongShort(Policy):
 class ProportionalTradeToTargets(Policy):
     """Trade in equal proportion to match target weights in time.
 
-    Initially, it loads the list of trading days and so at each day it knows
-    how many are missing before the next target's day, 
-    and trades in equal proportions
-    to reach those targets. If there are no targets remaining it defaults to
-    not trading.
+    Initially, it loads the list of trading days and so at each day it
+    knows how many are missing before the next target's day, and trades
+    in equal proportions to reach those targets. If there are no targets
+    remaining it defaults to not trading.
 
-    :param targets:  time-indexed DataFrame of target weight vectors at
+    :param targets: time-indexed DataFrame of target weight vectors at
         given points in time (e.g., start of each month).
     :type targets: pandas.DataFrame
     """
@@ -252,7 +250,7 @@ class FixedTrades(Policy):
     If there are no weights defined for the given day, default to no
     trades.
 
-    :param trades_weights: target trade weights :math:`z_t` to trade at each 
+    :param trades_weights: target trade weights :math:`z_t` to trade at each
         period. If constant in time use a pandas Series indexed by the assets'
         names, including the cash account name (``cash_key`` option to
         :class:`MarketSimulator`). If varying in time, use a pandas DataFrame
@@ -269,8 +267,9 @@ class FixedTrades(Policy):
 
     def values_in_time_recursive(self, t, current_weights, **kwargs):
         """Evaluate policy at time :math:`t`.
-        
-        We need to override the recursion because we catch an exception."""
+
+        We need to override the recursion because we catch an exception.
+        """
         try:
             super().values_in_time_recursive(
                 t=t, current_weights=current_weights, **kwargs)
@@ -292,7 +291,7 @@ class FixedWeights(Policy):
     If there are no weights defined for the given day, default to no
     trades.
 
-    :param target_weights: target weights :math:`w_t^+` to trade to at each 
+    :param target_weights: target weights :math:`w_t^+` to trade to at each
         period. If constant in time use a pandas Series indexed by the assets'
         names, including the cash account name (``cash_key`` option
         to the simulator). If varying in time, use a pandas DataFrame
@@ -309,8 +308,9 @@ class FixedWeights(Policy):
 
     def values_in_time_recursive(self, t, current_weights, **kwargs):
         """Evaluate policy at time :math:`t`.
-        
-        We need to override the recursion because we catch an exception."""
+
+        We need to override the recursion because we catch an exception.
+        """
         try:
             super().values_in_time_recursive(
                 t=t, current_weights=current_weights, **kwargs)
@@ -329,7 +329,7 @@ class FixedWeights(Policy):
 
 class Uniform(FixedWeights):
     """Uniform allocation on non-cash assets.
-    
+
     :param leverage: Leverage of the allocation.
     :type leverage: float
     """
@@ -356,7 +356,7 @@ class PeriodicRebalance(FixedWeights):
     :param target: Allocation weights to rebalance to.
     :type target: pandas.Series
     :param rebalancing_times: Times at which we rebalance.
-    :type rebalancing_times: pandas.DateTimeIndex): 
+    :type rebalancing_times: pandas.DateTimeIndex):
     """
 
     def __init__(self, target, rebalancing_times):
@@ -367,10 +367,10 @@ class PeriodicRebalance(FixedWeights):
 
 class ProportionalRebalance(ProportionalTradeToTargets):
     """Trade proportionally in time to track fixed target weights at times.
-    
-    This calls `ProportionalTradeToTargets`. If you want to change 
+
+    This calls `ProportionalTradeToTargets`. If you want to change
     the target in time use that policy directly.
-    
+
     :param target: Allocation weights to rebalance to.
     :type target: pandas.Series
     :param rebalancing_times: Times at which we rebalance.
@@ -436,8 +436,8 @@ class MultiPeriodOptimization(Policy):
         if you pass a single expression of Cost it is understood as the
         same for all steps; if it's a list you must also pass a list of lists
         for `constraints`, each term represents the cost for each step of the
-        optimization (starting from the first, i.e., today) and the length of 
-        the list is used as planning_horizon (the value you pass there will be 
+        optimization (starting from the first, i.e., today) and the length of
+        the list is used as planning_horizon (the value you pass there will be
         ignored)
     :type objective: algebra of Cost or list of
     :param constraints: These will be
@@ -453,18 +453,18 @@ class MultiPeriodOptimization(Policy):
         (default is None) it will impose that at the last step of the multi
         period optimization the post-trade weights are equal to this.
     :type terminal_constraint: pd.Series or None
-    :param include_cash_return: Whether to automatically include the 
-        ``CashReturn`` term in the objective, with default parameters. 
+    :param include_cash_return: Whether to automatically include the
+        ``CashReturn`` term in the objective, with default parameters.
         Default is ``True``.
     :type include_cash_return: bool
-    :param benchmark: Benchmark weights to use in the risk model and 
+    :param benchmark: Benchmark weights to use in the risk model and
         other terms that need it. You can use any policy here. Suggested ones
-        ones are ``AllCash``, the default, ``Uniform`` 
+        ones are ``AllCash``, the default, ``Uniform``
         (uniform allocation on non-cash assets),
-        and ``MarketBenchmark``, which approximates the market-weighted 
+        and ``MarketBenchmark``, which approximates the market-weighted
         portfolio.
     :type benchmark: :class:`Policy` class or instance
-    :param kwargs: Any extra argument will be passed to cvxpy.Problem.solve, 
+    :param kwargs: Any extra argument will be passed to cvxpy.Problem.solve,
         so you can choose a solver and pass parameters to it.
     :type kwargs: dics
     """
@@ -673,23 +673,23 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     multiplied by its multiplier. You also specify a list
     of constraints.
 
-    :param objective: This algebraic combination of cvxportfolio cost objects 
+    :param objective: This algebraic combination of cvxportfolio cost objects
         will be maximized
     :type objective: CombinedCost
     :param constraints: These will be imposed on the optimization. Default [].
     :type constraints: list of Constraints
-    :param include_cash_return: Whether to automatically include the 
-        ``CashReturn`` term in the objective, with default parameters. 
+    :param include_cash_return: Whether to automatically include the
+        ``CashReturn`` term in the objective, with default parameters.
         Default is ``True``.
     :type include_cash_return: bool
-    :param benchmark: Benchmark weights to use in the risk model and 
+    :param benchmark: Benchmark weights to use in the risk model and
         other terms that need it. You can use any policy here. Suggested ones
-        ones are ``AllCash``, the default, ``Uniform`` 
+        ones are ``AllCash``, the default, ``Uniform``
         (uniform allocation on non-cash assets),
-        and ``MarketBenchmark``, which approximates the market-weighted 
+        and ``MarketBenchmark``, which approximates the market-weighted
         portfolio.
     :type benchmark: :class:`Policy` class or instance
-    :param kwargs: Any extra argument will be passed to cvxpy.Problem.solve, 
+    :param kwargs: Any extra argument will be passed to cvxpy.Problem.solve,
         so you can choose a solver and pass parameters to it.
     :type kwargs: dics
     """

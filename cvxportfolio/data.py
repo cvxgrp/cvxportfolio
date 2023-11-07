@@ -49,41 +49,41 @@ def now_timezoned():
 
 class SymbolData:
     """Base class for a single symbol time series data.
-    
+
     The data is either in the form of a Pandas Series or DataFrame
     and has datetime index.
-    
+
     This class needs to be derived. At a minimum,
     one should redefine the ``_download`` method, which
-    implements the downloading of the symbol's time series 
+    implements the downloading of the symbol's time series
     from an external source. The method takes the current (already
     downloaded and stored) data and is supposed to **only append** to it.
     In this way we only store new data and don't modify already downloaded
     data.
-    
+
     Additionally one can redefine the ``_preload`` method, which prepares
     data to serve to the user (so the data is stored in a different format
     than what the user sees.) We found that this separation can be useful.
-    
+
     This class interacts with module-level functions named ``_loader_BACKEND``
     and ``_storer_BACKEND``, where ``BACKEND`` is the name of the storage
-    system used. We define ``pickle``, ``csv``, and ``sqlite`` backends. 
+    system used. We define ``pickle``, ``csv``, and ``sqlite`` backends.
     These may have limitations. See their docstrings for more information.
-    
-    
+
+
     :param symbol: The symbol that we downloaded.
     :type symbol: str
     :param storage_backend: The storage backend, implemented ones are
         ``'pickle'``, ``'csv'``, and ``'sqlite'``. By default ``'pickle'``.
     :type storage_backend: str
-    :param base_location: The location of the storage. We store in a 
+    :param base_location: The location of the storage. We store in a
         subdirectory named after the class which derives from this. By default
         it's a directory named ``cvxportfolio_data`` in your home folder.
     :type base_location: pathlib.Path
-    :param grace_period: If the most recent observation in the data is less 
+    :param grace_period: If the most recent observation in the data is less
         old than this we do not download new data. By default it's one day.
     :type grace_period: pandas.Timedelta
-    
+
     :attribute data: The downloaded data for the symbol.
     """
 
@@ -100,7 +100,7 @@ class SymbolData:
     @property
     def storage_location(self):
         """Storage location. Directory is created if not existent.
-        
+
         :rtype: pathlib.Path
         """
         loc = self._base_location / f"{self.__class__.__name__}"
@@ -110,7 +110,7 @@ class SymbolData:
     @property
     def symbol(self):
         """The symbol whose data this instance contains.
-        
+
         :rtype: str
         """
         return self._symbol
@@ -118,7 +118,7 @@ class SymbolData:
     @property
     def data(self):
         """Time series data, updated to the most recent observation.
-        
+
         :rtype: pandas.Series or pandas.DataFrame
         """
         return self._data
@@ -137,8 +137,7 @@ class SymbolData:
             return None
 
     def load(self):
-        """Load data from database using `self.preload` function to process.
-        """
+        """Load data from database using `self.preload` function to process."""
         return self._preload(self._load_raw())
 
     def _store(self, data):
@@ -203,28 +202,25 @@ class SymbolData:
 
     def _download(self, symbol, current, grace_period, **kwargs):
         """Download data from external source given already downloaded data.
-        
+
         This method must be redefined by derived classes.
-        
+
         :param symbol: The symbol we download.
         :type symbol: str
         :param current: The data already downloaded. We are supposed to
-             **only append** to it. If None, no data is present.
+            **only append** to it. If None, no data is present.
         :type current: pandas.Series or pandas.DataFrame or None
-        
         :rtype: pandas.Series or pandas.DataFrame
-        
         """
         raise NotImplementedError #pragma: no cover
 
     def _preload(self, data):
         """Prepare data to serve to the user.
-        
+
         This method can be redefined by derived classes.
-        
+
         :param data: The data returned by the storage backend.
         :type data: pandas.Series or pandas.DataFrame
-        
         :rtype: pandas.Series or pandas.DataFrame
         """
         return data
@@ -240,20 +236,20 @@ def _timestamp_convert(unix_seconds_ts):
 
 
 class YahooFinance(SymbolData):
-    """Yahoo Finance symbol data.    
-    
+    """Yahoo Finance symbol data.
+
     :param symbol: The symbol that we downloaded.
     :type symbol: str
     :param storage_backend: The storage backend, implemented ones are
         ``'pickle'``, ``'csv'``, and ``'sqlite'``.
     :type storage_backend: str
-    :param base_storage_location: The location of the storage. We store in a 
+    :param base_storage_location: The location of the storage. We store in a
         subdirectory named after the class which derives from this.
     :type base_storage_location: pathlib.Path
-    :param grace_period: If the most recent observation in the data is less 
+    :param grace_period: If the most recent observation in the data is less
         old than this we do not download new data.
     :type grace_period: pandas.Timedelta
-    
+
     :attribute data: The downloaded, and cleaned, data for the symbol.
     :type data: pandas.DataFrame
     """
@@ -370,10 +366,10 @@ class YahooFinance(SymbolData):
 
     @staticmethod
     def _get_data_yahoo(ticker, start='1900-01-01', end='2100-01-01'):
-        """Get 1 day OHLC from Yahoo finance. 
-    
-        Result is timestamped with the open time (time-zoned) of
-        the instrument.
+        """Get 1 day OHLC from Yahoo finance.
+
+        Result is timestamped with the open time (time-zoned) of the
+        instrument.
         """
 
         base_url = 'https://query2.finance.yahoo.com'
@@ -490,20 +486,20 @@ class YahooFinance(SymbolData):
 
 class Fred(SymbolData):
     """Fred single-symbol data.
-    
+
     :param symbol: The symbol that we downloaded.
     :type symbol: str
     :param storage_backend: The storage backend, implemented ones are
         ``'pickle'``, ``'csv'``, and ``'sqlite'``. By default ``'pickle'``.
     :type storage_backend: str
-    :param base_storage_location: The location of the storage. We store in a 
+    :param base_storage_location: The location of the storage. We store in a
         subdirectory named after the class which derives from this. By default
         it's a directory named ``cvxportfolio_data`` in your home folder.
     :type base_storage_location: pathlib.Path
-    :param grace_period: If the most recent observation in the data is less 
+    :param grace_period: If the most recent observation in the data is less
         old than this we do not download new data. By default it's one day.
     :type grace_period: pandas.Timedelta
-    
+
     :attribute data: The downloaded data for the symbol.
     """
 
@@ -571,7 +567,7 @@ def _close_sqlite(connection):
 
 def _loader_sqlite(symbol, storage_location):
     """Load data in sqlite format.
-    
+
     We separately store dtypes for data consistency and safety.
 
     .. note:: If your pandas object's index has a name it will be lost,
@@ -704,7 +700,7 @@ def _storer_csv(symbol, data, storage_location):
 
 class MarketData:
     """Prepare, hold, and serve market data.
-    
+
     :method serve: Serve data for policy and simulator at time :math:`t`.
     """
 
@@ -725,16 +721,15 @@ class MarketData:
     def trading_calendar(self, start_time=None,
                          end_time=None, include_end=True):
         """Get trading calendar between times.
-                         
-        :param start_time: Initial time of the trading calendar. Always 
+
+        :param start_time: Initial time of the trading calendar. Always
             inclusive if present. If None, use the first available time.
         :type start_time: pandas.Timestamp
-        :param end_time: Final time of the trading calendar. If None, use the 
-            last available time.
+        :param end_time: Final time of the trading calendar. If None,
+            use the last available time.
         :type end_time: pandas.Timestamp
         :param include_end: Include end time.
         :type include_end: bool
-        
         :rtype: pandas.DatetimeIndex
         """
         raise NotImplementedError # pragma: no cover
@@ -742,7 +737,7 @@ class MarketData:
     @property
     def periods_per_year(self):
         """Average trading periods per year.
-        
+
         :rtype: int
         """
         raise NotImplementedError # pragma: no cover
@@ -750,7 +745,7 @@ class MarketData:
     @property
     def full_universe(self):
         """Full universe, which might not be available for trading.
-        
+
         :rtype: pandas.Index
         """
         raise NotImplementedError # pragma: no cover
@@ -758,17 +753,16 @@ class MarketData:
     # pylint: disable=unused-argument
     def partial_universe_signature(self, partial_universe):
         """Unique signature of this instance with a partial universe.
-        
+
         A partial universe is a subset of the full universe that is
         available at some time for trading.
-        
-        This is used in cvxportfolio.cache to sign back-test caches
-        that are saved on disk. See its implementation below for details.
-        If not redefined it returns None which disables on-disk caching.
-        
+
+        This is used in cvxportfolio.cache to sign back-test caches that
+        are saved on disk. See its implementation below for details. If
+        not redefined it returns None which disables on-disk caching.
+
         :param partial_universe: A subset of the full universe.
         :type partial_universe: pandas.Index
-        
         :rtype: str
         """
         return None
@@ -908,11 +902,11 @@ class MarketDataInMemory(MarketData):
     @staticmethod
     def _df_or_ser_set_read_only(df_or_ser):
         """Set numpy array contained in dataframe to read only.
-        
-        This is done on data store internally before it is served to
-        the policy or the simulator to ensure data consistency in case
-        some element of the pipeline accidentally corrupts the data.
-        
+
+        This is done on data store internally before it is served to the
+        policy or the simulator to ensure data consistency in case some
+        element of the pipeline accidentally corrupts the data.
+
         This is enough to prevent direct assignement to the resulting
         dataframe. However it could still be accidentally corrupted by
         assigning to columns or indices that are not present in the
@@ -1066,7 +1060,7 @@ class MarketDataInMemory(MarketData):
 
 class UserProvidedMarketData(MarketDataInMemory):
     """User-provided market data.
-    
+
     :param returns: Historical open-to-open returns. The return
         at time :math:`t` is :math:`r_t = p_{t+1}/p_t -1` where
         :math:`p_t` is the (open) price at time :math:`t`. Must
@@ -1081,7 +1075,7 @@ class UserProvidedMarketData(MarketDataInMemory):
     :param trading_frequency: Instead of using frequency implied by
         the index of the returns, down-sample all dataframes.
         We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
-        ``'annual'``. By default (None) don't down-sample. 
+        ``'annual'``. By default (None) don't down-sample.
     :type trading_frequency: str or None
     :param min_history: Minimum amount of time for which the returns
          are not ``np.nan`` before each assets enters in a back-test.
@@ -1094,7 +1088,6 @@ class UserProvidedMarketData(MarketDataInMemory):
         of the provided returns, it will be downloaded. Its returns
         are the risk-free rate.
     :type cash_key: str
-    
     """
 
     def __init__(self, returns, volumes=None, prices=None,
@@ -1130,15 +1123,15 @@ class UserProvidedMarketData(MarketDataInMemory):
 
 class DownloadedMarketData(MarketDataInMemory):
     """Market data that is downloaded.
-    
-    :param universe: List of names as understood by the data source 
+
+    :param universe: List of names as understood by the data source
         used, *e.g.*, ``['AAPL', 'GOOG']`` if using the default
         Yahoo Finance data source.
     :type universe: list
-    :param datasource: The data source used. 
+    :param datasource: The data source used.
     :type datasource: str or :class:`SymbolData` class
     :param cash_key: Name of the cash account, its rates will be downloaded
-        and added as last columns of the returns. Its returns are the 
+        and added as last columns of the returns. Its returns are the
         risk-free rate.
     :type cash_key: str
     :param base_location: The location of the storage. By default
@@ -1151,13 +1144,13 @@ class DownloadedMarketData(MarketDataInMemory):
          are not ``np.nan`` before each assets enters in a back-test.
     :type min_history: pandas.Timedelta
     :param grace_period: If the most recent observation of each symbol's
-        data is less old than this we do not download new data. 
+        data is less old than this we do not download new data.
         By default it's one day.
     :type grace_period: pandas.Timedelta
     :param trading_frequency: Instead of using frequency implied by
         the index of the returns, down-sample all dataframes.
         We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
-        ``'annual'``. By default (None) don't down-sample. 
+        ``'annual'``. By default (None) don't down-sample.
     :type trading_frequency: str or None
     """
 
@@ -1231,8 +1224,8 @@ class DownloadedMarketData(MarketDataInMemory):
     def _remove_missing_recent(self):
         """Clean recent data.
 
-        Yahoo Finance may has issues with most recent data; we remove recent
-        days if there are NaNs.
+        Yahoo Finance may has issues with most recent data; we remove
+        recent days if there are NaNs.
         """
 
         if self.prices.iloc[-5:].isnull().any().any():

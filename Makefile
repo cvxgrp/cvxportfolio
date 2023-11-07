@@ -8,7 +8,8 @@ TESTS         = $(PROJECT)/tests
 BUILDDIR      = build
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
-
+EXTRA_SCRIPTS = bumpversion.py run_examples.py
+EXAMPLES      = examples/*.py
 
 ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
@@ -53,6 +54,8 @@ fix:
 	# selected among many code auto-fixers, tweaked in pyproject.toml
 	$(BINDIR)/autopep8 -i $(PROJECT)/*.py $(TESTS)/*.py
 	$(BINDIR)/isort $(PROJECT)/*.py $(TESTS)/*.py
+	# this is the best found for the purpose
+	$(BINDIR)/docformatter --in-place $(PROJECT)/*.py $(TESTS)/*.py
 
 release: update lint test
 	$(BINDIR)/python bumpversion.py

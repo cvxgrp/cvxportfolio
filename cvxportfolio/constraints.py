@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Here we define many realistic constraints that apply to
-:ref:`portfolio optimization trading policies <optimization-policies-page>`.
+"""Here we define many realistic constraints that apply to :ref:`portfolio
+optimization trading policies <optimization-policies-page>`.
 
 Some of them, like :class:`LongOnly`, are
 very simple to use. Some others are more advanced,
@@ -81,9 +81,9 @@ class Constraint(CvxpyExpressionEstimator):
         :type w_plus: cvxpy.Variable
         :param z: Trade weights.
         :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
+            weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
-
         :returns: some cvxpy.constraints object, or list of those
         """
         raise NotImplementedError # pragma: no cover
@@ -530,7 +530,7 @@ class MinWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
         This constraint is experimental and its interface may change, or we
         may drop it.
 
-    :param base_limit: Minimum limit of the weights. 
+    :param base_limit: Minimum limit of the weights.
     :type base_limit: float
     :param times: Times at which the constraint is active.
     :type times: iterable of pandas.Timestamp
@@ -554,7 +554,7 @@ class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
         This constraint is experimental and its interface may change, or we
         may drop it.
 
-    :param base_limit: Maximum limit of the weights. 
+    :param base_limit: Maximum limit of the weights.
     :type base_limit: float
     :param times: Times at which the constraint is active.
     :type times: iterable of pandas.Timestamp
