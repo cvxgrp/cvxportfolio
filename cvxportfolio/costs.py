@@ -595,7 +595,18 @@ class TransactionCost(Cost):
         self.window_volume_est = window_volume_est
         self.exponent = exponent
 
+        # these are overwritten by parameters defined below
+        self.first_term_multiplier = None
+        self.second_term_multiplier = None
+
     def initialize_estimator(self, universe, trading_calendar):
+        """Initialize cvxpy parameters.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         if self.a is not None or self.pershare_cost is not None:
             self.first_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
@@ -663,6 +674,9 @@ class TransactionCost(Cost):
                   current_prices, **kwargs):
         """Simulate transaction cost in cash units.
 
+        :raises SyntaxError: If the market returns are not available in the
+            market data.
+
         :param t: Current timestamp.
         :type t: pandas.Timestamp
         :param u: Trades vector.
@@ -726,7 +740,19 @@ class TransactionCost(Cost):
         return result
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile cost to cvxpy expression.
 
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
+            weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+
+        :returns: Cvxpy expression.
+        :rtype: cvxpy.expression
+        """
         expression = 0
         if self.a is not None or self.pershare_cost is not None:
             expression += cp.abs(z[:-1]).T @ self.first_term_multiplier
