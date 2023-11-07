@@ -557,7 +557,10 @@ class MultiPeriodOptimization(Policy):
     :type benchmark: :class:`Policy` class or instance
     :param kwargs: Any extra argument will be passed to cvxpy.Problem.solve,
         so you can choose a solver and pass parameters to it.
-    :type kwargs: dics
+    :type kwargs: dict
+    
+    :raises SyntaxError: If the format of provided objective and constraints
+        is not right.
     """
 
     def __init__(
@@ -600,6 +603,17 @@ class MultiPeriodOptimization(Policy):
 
         self.cvxpy_kwargs = kwargs
 
+        # redefined below, maybe they all should be private attributes
+        self.cvxpy_objective = 0
+        self.cvxpy_constraints = []
+        self.problem = None
+        self.w_bm = None
+        self.w_current = None
+        self.z_at_lags = None
+        self.w_plus_at_lags = None
+        self.w_plus_minus_w_bm_at_lags = None
+        self._cache = {}
+
     def _compile_to_cvxpy(self):  # , w_plus, z, value):
         """Compile all cvxpy expressions and the problem."""
         self.cvxpy_objective = [
@@ -614,7 +628,7 @@ class MultiPeriodOptimization(Policy):
                 raise ConvexityError(el)
         self.cvxpy_objective = sum(self.cvxpy_objective)
 
-        def compile_and_check_constraint(constr, i):
+        def _compile_and_check_constraint(constr, i):
             result = constr.compile_to_cvxpy(
                 self.w_plus_at_lags[i], self.z_at_lags[i],
                 self.w_plus_minus_w_bm_at_lags[i])
@@ -625,7 +639,7 @@ class MultiPeriodOptimization(Policy):
 
         self.cvxpy_constraints = [
             flatten_heterogeneous_list([
-                compile_and_check_constraint(constr, i) for constr in el])
+                _compile_and_check_constraint(constr, i) for constr in el])
             for i, el in enumerate(self.constraints)]
 
         self.cvxpy_constraints = sum(self.cvxpy_constraints, [])
@@ -650,8 +664,18 @@ class MultiPeriodOptimization(Policy):
                 + " cvxportfolio terms and is probably due to a"
                 + " mis-specified custom term.", self.__class__.__name__)
 
+    # pylint: disable=useless-type-doc,useless-param-doc
     def initialize_estimator_recursive(self, universe, trading_calendar):
-        """No point in using recursive super() method."""
+        """Initialize the policy object with the trading universe.
+
+        We redefine the recursive version of :meth:`initialize_estimator`
+        because we initialize all objective and constraint objects.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
 
         for obj in self.objective:
             obj.initialize_estimator_recursive(
@@ -682,12 +706,41 @@ class MultiPeriodOptimization(Policy):
         self, t, current_weights,
         current_portfolio_value, past_returns, past_volumes,
         current_prices, **kwargs):
-        """Update all cvxpy parameters and solve."""
+        """Update all cvxpy parameters, solve, and return allocation weights.
+
+        We redefine the recursive version of :meth:`values_in_time`
+        because we evaluate all objective and constraint objects.
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
+        :param current_portfolio_value: Current total value of the portfolio.
+        :type current_portfolio_value: float
+        :param past_returns: Past market returns (includes cash).
+        :type past_returns: pandas.DataFrame
+        :param past_volumes: Past market volumes, or None if not provided.
+        :type past_volumes: pandas.DataFrame or None
+        :param current_prices: Current open prices, or None if not provided.
+        :type current_prices: pandas.Series or None
+        :param kwargs: Unused arguments to :meth:`values_in_time_recursive`.
+        :type kwargs: dict
+
+        :raises cvxportfolio.errors.DataError: Current portfolio value is
+            negative.
+        :raises cvxportfolio.errors.PortfolioOptimizationError: The portfolio
+            optimization failed: either the problem was infeasible on
+            unbounded, or a numerical error occurred. In the latter case the
+            original Cvxpy exception is re-raised.
+
+        :returns: Allocation weights.
+        :rtype: pandas.Series
+        """
 
         if not current_portfolio_value > 0:
             raise DataError(
-                "Policy %s was evaluated at %s with negative portfolio value.",
-                self.__class__.__name__, t)
+                f"Policy {self.__class__.__name__} was evaluated at "
+                + "{t} with negative portfolio value.")
         assert np.isclose(sum(current_weights), 1)
 
         for i, obj in enumerate(self.objective):
@@ -731,13 +784,13 @@ class MultiPeriodOptimization(Policy):
 
         if self.problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(
-                "Policy %s at time %s  resulted in an unbounded problem.",
-                    self.__class__.__name__, t)
+                f"Policy {self.__class__.__name__} at time "
+                + f"{t} resulted in an unbounded problem.")
 
         if self.problem.status in ["infeasible", 'infeasible_inaccurate']:
             raise PortfolioOptimizationError(
-                "Policy %s at time %s resulted in an infeasible problem.",
-                    self.__class__.__name__, t)
+                f"Policy {self.__class__.__name__} at time "
+                + f"{t} resulted in an infeasible problem.")
 
         result = current_weights + pd.Series(
             self.z_at_lags[0].value, current_weights.index)
@@ -745,6 +798,12 @@ class MultiPeriodOptimization(Policy):
         return result
 
     def collect_hyperparameters(self):
+        """Collect hyper-parameters in the policy definition.
+
+        :returns: List of :class:`cvxportfolio.hyperparameters.HyperParameter`
+            instances.
+        :rtype: list
+        """
         result = []
         for el in self.objective:
             result += el.collect_hyperparameters()
@@ -781,7 +840,7 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     :type benchmark: :class:`Policy` class or instance
     :param kwargs: Any extra argument will be passed to cvxpy.Problem.solve,
         so you can choose a solver and pass parameters to it.
-    :type kwargs: dics
+    :type kwargs: dict
     """
 
     def __init__(self, objective, constraints=(),
