@@ -85,6 +85,7 @@ class Constraint(CvxpyExpressionEstimator):
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
         :returns: some cvxpy.constraints object, or list of those
+        :rtype: cvxpy.constraints, list
         """
         raise NotImplementedError # pragma: no cover
 
@@ -102,7 +103,18 @@ class EqualityConstraint(Constraint):
     """
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy."""
+        """Compile constraint to cvxpy.
+
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
+            weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+        :returns: Cvxpy constraints object.
+        :rtype: cvxpy.constraints
+        """
         return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) ==\
             self._rhs()
 
@@ -128,7 +140,18 @@ class InequalityConstraint(Constraint):
     """
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy."""
+        """Compile constraint to cvxpy.
+
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
+            weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+        :returns: Cvxpy constraints object.
+        :rtype: cvxpy.constraints
+        """
         return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) <=\
             self._rhs()
 
@@ -202,7 +225,13 @@ class MarketNeutral(EqualityConstraint):
         self.market_vector = cp.Parameter(len(universe)-1)
 
     def values_in_time(self, past_volumes, **kwargs):
-        """Update parameter with current market weights and covariance."""
+        """Update parameter with current market weights and covariance.
+
+        :param past_volumes: Past market volumes, in units of value.
+        :type past_volumes: pandas.DataFrame
+        :param kwargs: Unused arguments passed to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         tmp = past_volumes.iloc[-self.window:].mean()
         tmp /= sum(tmp)
 
@@ -270,7 +299,13 @@ class ParticipationRateLimit(InequalityConstraint):
         self.portfolio_value = cp.Parameter(nonneg=True)
 
     def values_in_time(self, current_portfolio_value, **kwargs):
-        """Update parameter with current portfolio value."""
+        """Update parameter with current portfolio value.
+
+        :param current_portfolio_value: Current total value of the portfolio.
+        :type current_portfolio_value: float
+        :param kwargs: Unused arguments passed to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         self.portfolio_value.value = current_portfolio_value
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -341,7 +376,13 @@ class NoTrade(Constraint):
         self._high = cp.Parameter()
 
     def values_in_time(self, t, **kwargs):
-        """Update parameters, if necessary by imposing no-trade."""
+        """Update parameters, if necessary by imposing no-trade.
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param kwargs: Unused arguments passed to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         if t in self.periods:
             self._low.value = 0.
             self._high.value = 0.
@@ -350,7 +391,17 @@ class NoTrade(Constraint):
             self._high.value = +100.
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Return list of two constraints."""
+        """Compile constraint to cvxpy, return list of two.
+
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+        :returns: Two constraints.
+        :rtype: list of cvxpy.constraints
+        """
         return [z[self._index] >= self._low,
                 z[self._index] <= self._high]
 
@@ -407,7 +458,13 @@ class MinCashBalance(InequalityConstraint):
         self.rhs = cp.Parameter()
 
     def values_in_time(self, current_portfolio_value, **kwargs):
-        """Update internal parameter."""
+        """Update parameter with current portfolio value.
+
+        :param current_portfolio_value: Current total value of the portfolio.
+        :type current_portfolio_value: float
+        :param kwargs: Unused arguments passed to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         self.rhs.value = self.c_min.current_value/current_portfolio_value
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -508,7 +565,13 @@ class MinMaxWeightsAtTimes(Estimator):
         self.trading_calendar = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Update trading calendar."""
+        """Initialize estimator instance with updated trading_calendar.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self.trading_calendar = trading_calendar
         self.limit = cp.Parameter()
 

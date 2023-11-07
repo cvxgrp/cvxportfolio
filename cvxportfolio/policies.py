@@ -66,7 +66,8 @@ class Policy(Estimator):
             :class:`MarketData` instance is used.
         :type t: pandas.Timestamp or None
 
-        :raises: cvxportfolio.DataError
+        :raises cvxportfolio.errors.DataError: Holdings vector sum to a
+            negative value.
 
         :returns: u, t, shares_traded
         :rtype: pandas.Series, pandas.Timestamp, pandas.Series
@@ -114,14 +115,36 @@ class Hold(Policy):
     """Hold initial portfolio, don't trade."""
 
     def values_in_time(self, current_weights, **kwargs):
-        """Return current_weights."""
+        """Return current_weights.
+
+        :param current_weights: Current weights.
+        :type current_weights: pandas.Series
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Same current weights.
+        :rtype: pandas.Series
+        """
         return current_weights
 
 class AllCash(Policy):
-    """Allocate all weight to cash."""
+    """Allocate all weight to cash.
+
+    This is the default benchmark used in :class:`SinglePeriodOptimization` and
+    :class:`MultiPeriodOptimization` policies.
+    """
 
     def values_in_time(self, past_returns, **kwargs):
-        """All cash weights."""
+        """Return all cash weights.
+
+        :param past_returns: Past market returns (used to infer universe).
+        :type past_returns: pandas.DataFrame
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: All cash weights.
+        :rtype: pandas.Series
+        """
         result = pd.Series(0., past_returns.columns)
         result.iloc[-1] = 1.
         return result
@@ -130,7 +153,23 @@ class MarketBenchmark(Policy):
     """Allocation weighted by last year's total market volumes."""
 
     def values_in_time(self, past_returns, past_volumes, **kwargs):
-        """Update current_value using past year's volumes."""
+        """Return market benchmark weights.
+
+        :param past_returns: Past market returns (used to infer universe with
+            cash).
+        :type past_returns: pandas.DataFrame
+        :param past_volumes: Past market volumes.
+        :type past_volumes: pandas.DataFrame
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :raises cvxportfolio.errors.DataError: Market data does not include
+            market volumes.
+
+        :returns: Market benchmark weights.
+        :rtype: pandas.Series
+        """
+
         if past_volumes is None:
             raise DataError(
                 f"{self.__class__.__name__} can only be used if MarketData"
@@ -170,8 +209,17 @@ class RankAndLongShort(Policy):
         self.signal = DataEstimator(signal)
         self.target_leverage = DataEstimator(target_leverage)
 
-    def values_in_time(self, t, current_weights, **kwargs):
-        """Update sub-estimators and produce current estimate."""
+    def values_in_time(self, current_weights, **kwargs):
+        """Get allocation weights.
+
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Rank and long-short weights.
+        :rtype: pandas.Series
+        """
 
         sorted_ret = pd.Series(
             self.signal.current_value, current_weights.index[:-1]
@@ -207,13 +255,28 @@ class ProportionalTradeToTargets(Policy):
 
     def __init__(self, targets):
         self.targets = targets
+        self.trading_days = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Get list of trading days."""
+        """Initialize policy instance with updated trading_calendar."""
         self.trading_days = trading_calendar
 
     def values_in_time(self, t, current_weights, **kwargs):
-        """Get current trade weights."""
+        """Get current allocation weights.
+
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :raises ValueError: Some target weights provided do not sum to 1.
+
+        :returns: Allocation weights.
+        :rtype: pandas.Series
+        """
+
         next_targets = self.targets.loc[self.targets.index >= t]
         if not np.allclose(next_targets.sum(1), 1.):
             raise ValueError(
@@ -231,17 +294,11 @@ class ProportionalTradeToTargets(Policy):
             next_target - current_weights) / trading_days_to_target
 
 
-class SellAll(Policy):
+class SellAll(AllCash):
     """Sell all assets to cash.
 
-    This is useful to check the tcost model in the simulator.
+    This is useful to check the transaction cost model in the simulator.
     """
-
-    def values_in_time(self, t, current_weights, **kwargs):
-        """Get current trade weights."""
-        target = np.zeros(len(current_weights))
-        target[-1] = 1.
-        return pd.Series(target, index=current_weights.index)
 
 
 class FixedTrades(Policy):

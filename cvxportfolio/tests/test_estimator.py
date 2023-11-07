@@ -27,7 +27,10 @@ from cvxportfolio.estimator import DataEstimator
 class PlaceholderCallable:
     """Simple class with callback."""
 
-    # pylint: disable=[too-few-public-methods]
+    # pylint: disable=too-few-public-methods
+    # pylint: disable=missing-return-doc
+    # pylint: disable=missing-return-type-doc
+    # pylint: disable=missing-param-doc
 
     def __init__(self, value):
         self.value = value

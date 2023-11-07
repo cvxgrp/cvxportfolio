@@ -39,6 +39,28 @@ class Estimator:
     :method:`values_in_time_recursive`.
     """
 
+    def initialize_estimator(self, universe, trading_calendar):
+        """Initialize estimator instance with universe and trading times.
+
+        This function is called whenever the trading universe changes.
+        It provides the instance with the current trading universe and a
+        :class:`pandas.DatetimeIndex` representing the current and future
+        trading calendar, *i.e.*, the times at which the estimator will be
+        evaluated. The instance uses these to appropriately initialize any
+        internal object, such as Cvxpy parameters, to the right size (as
+        implied by the universe). Also, especially for multi-period
+        optimization and similar policies, awareness of the future trading
+        calendar is essential to, *e.g.*, plan in advance.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
+
+        # we don't raise NotImplementedError because this is called
+        # on classes that don't re-define it
+
     def initialize_estimator_recursive(self, universe, trading_calendar):
         """Recursively initialize all estimators in a policy.
 
