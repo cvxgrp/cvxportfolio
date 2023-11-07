@@ -323,9 +323,20 @@ class FixedTrades(Policy):
             trades_weights, data_includes_cash=True)
 
     def values_in_time_recursive(self, t, current_weights, **kwargs):
-        """Evaluate policy at time :math:`t`.
+        """Get current allocation weights.
 
-        We need to override the recursion because we catch an exception.
+        We redefine the recursive version of :meth:`values_in_time` because
+        we catch an exception thrown by a sub-estimator.
+
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param kwargs: Unused arguments to :meth:`values_in_time_recursive`.
+        :type kwargs: dict
+
+        :returns: Allocation weights.
+        :rtype: pandas.Series
         """
         try:
             super().values_in_time_recursive(
@@ -337,9 +348,8 @@ class FixedTrades(Policy):
                 + " trade weights among the provided ones.",
                 self.__class__.__name__, t)
             result = current_weights
-        finally:
-            self._current_value = result
-            return result
+        self._current_value = result
+        return result
 
 
 class FixedWeights(Policy):
@@ -364,9 +374,20 @@ class FixedWeights(Policy):
             target_weights, data_includes_cash=True)
 
     def values_in_time_recursive(self, t, current_weights, **kwargs):
-        """Evaluate policy at time :math:`t`.
+        """Get current allocation weights.
 
-        We need to override the recursion because we catch an exception.
+        We redefine the recursive version of :meth:`values_in_time` because
+        we catch an exception thrown by a sub-estimator.
+
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param kwargs: Unused arguments to :meth:`values_in_time_recursive`.
+        :type kwargs: dict
+
+        :returns: Allocation weights.
+        :rtype: pandas.Series
         """
         try:
             super().values_in_time_recursive(
@@ -379,9 +400,8 @@ class FixedWeights(Policy):
                 + " target weights among the provided ones.",
                 self.__class__.__name__, t)
             result = current_weights
-        finally:
-            self._current_value = result
-            return result
+        self._current_value = result
+        return result
 
 
 class Uniform(FixedWeights):
@@ -391,8 +411,13 @@ class Uniform(FixedWeights):
     :type leverage: float
     """
 
+    # pylint: disable=super-init-not-called
     def __init__(self, leverage=1.):
         self.leverage = leverage
+        # then we re-define the target weights for each universe in the method
+        # below, so we provide the same interface to the parent class'
+        # values_in_time_recursive
+        self.target_weights = None
 
     def initialize_estimator(self, universe, trading_calendar):
         """Initialize this estimator."""
@@ -462,8 +487,17 @@ class AdaptiveRebalance(Policy):
         self.target = DataEstimator(target)
         self.tracking_error = DataEstimator(tracking_error)
 
-    def values_in_time(self, t, current_weights, **kwargs):
-        """Return target allocation."""
+    def values_in_time(self, current_weights, **kwargs):
+        """Get target allocation weights.
+
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Allocation weights.
+        :rtype: pandas.Series
+        """
         if np.linalg.norm(current_weights - self.target.current_value) >\
                 self.tracking_error.current_value:
             return self.target.current_value
@@ -527,7 +561,7 @@ class MultiPeriodOptimization(Policy):
     """
 
     def __init__(
-        self, objective, constraints=[], include_cash_return=True,
+        self, objective, constraints=(), include_cash_return=True,
         planning_horizon=None, terminal_constraint=None,
         benchmark=AllCash, **kwargs):
         if hasattr(objective, '__iter__'):
@@ -558,8 +592,7 @@ class MultiPeriodOptimization(Policy):
             self.objective = [el + CashReturn() for el in self.objective]
         self.terminal_constraint = terminal_constraint
 
-        if isinstance(benchmark, pd.Series) or isinstance(
-                benchmark, pd.DataFrame):
+        if isinstance(benchmark, (pd.DataFrame, pd.Series)):
             self.benchmark = DataEstimator(benchmark, data_includes_cash=True)
         else:
             self.benchmark = benchmark() if isinstance(benchmark, type

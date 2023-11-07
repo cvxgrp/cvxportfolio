@@ -70,6 +70,7 @@ class Estimator:
             expected to be evaluated.
         :type trading_calendar: pandas.DatetimeIndex
         """
+        # pylint: disable=arguments-differ
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "initialize_estimator_recursive"):
                 subestimator.initialize_estimator_recursive(

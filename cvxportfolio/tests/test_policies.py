@@ -132,7 +132,7 @@ class TestPolicies(CvxportfolioTest):
         policy = cvx.SellAll()
         t = pd.Timestamp('2022-01-01')
         wplus = policy.values_in_time_recursive(
-            t=t, current_weights=start_portfolio)
+            t=t, past_returns=self.returns)
         allcash = np.zeros(len(start_portfolio))
         allcash[-1] = 1
         assert isinstance(wplus, pd.Series)
