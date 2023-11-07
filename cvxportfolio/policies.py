@@ -258,7 +258,13 @@ class ProportionalTradeToTargets(Policy):
         self.trading_days = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Initialize policy instance with updated trading_calendar."""
+        """Initialize policy instance with updated trading_calendar.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self.trading_days = trading_calendar
 
     def values_in_time(self, t, current_weights, **kwargs):
@@ -420,7 +426,13 @@ class Uniform(FixedWeights):
         self.target_weights = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Initialize this estimator."""
+        """Initialize this estimator.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         target_weights = pd.Series(1., universe)
         target_weights.iloc[-1] = 0
         target_weights /= sum(target_weights)

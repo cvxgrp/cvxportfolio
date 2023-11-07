@@ -35,7 +35,7 @@ good-names = ["t", "u", "v", "w", "h", "z", "F", "d", "Sigma"]
 [tool.pylint.variables]
 # These are sometimes ignored, we might instead use dataclasses for
 # sharing data between elements of a policy's DAG
-ignored-argument-names = "args|kwargs|universe|trading_calendar"
+ignored-argument-names = "args|kwargs"
 
 [tool.pylint.parameter_documentation]
 # we require docstrings of public methods to document everything

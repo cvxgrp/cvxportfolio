@@ -221,7 +221,13 @@ class MarketNeutral(EqualityConstraint):
         self.market_vector = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Initialize parameter with size of universe."""
+        """Initialize parameter with size of universe.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self.market_vector = cp.Parameter(len(universe)-1)
 
     def values_in_time(self, past_volumes, **kwargs):
@@ -369,7 +375,13 @@ class NoTrade(Constraint):
         self._high = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Initialize internal parameters."""
+        """Initialize internal parameters.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self._index = (universe.get_loc if hasattr(
             universe, 'get_loc') else universe.index)(self.asset)
         self._low = cp.Parameter()
@@ -576,7 +588,17 @@ class MinMaxWeightsAtTimes(Estimator):
         self.limit = cp.Parameter()
 
     def values_in_time(self, t, mpo_step, **kwargs):
-        """If target period is in sight activate constraint."""
+        """If target period is in sight activate constraint.
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param mpo_step: Which step of a
+            :class:`cvxportfolio.MultiPeriodOptimization` policy we're at.
+        :type mpo_step: int
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
+
         tidx = self.trading_calendar.get_loc(t)
         nowtidx = tidx + mpo_step
         if (nowtidx < len(self.trading_calendar)) and\

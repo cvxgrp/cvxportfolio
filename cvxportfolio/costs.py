@@ -141,7 +141,13 @@ class CombinedCosts(Cost):
                              [el * other for el in self.multipliers])
 
     def initialize_estimator_recursive(self, universe, trading_calendar):
-        """Iterate over constituent costs."""
+        """Iterate over constituent costs.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         _ = [el.initialize_estimator_recursive(universe, trading_calendar)
             for el in self.costs]
 
@@ -402,8 +408,14 @@ class HoldingCost(Cost, SimulatorCost):
     def initialize_estimator(self, universe, trading_calendar):
         """Initialize cvxpy parameters.
 
-        We don't use the parameter from DataEstimator because we need to
+        We don't use the parameter from
+        :class:`cvxportfolio.estimator.DataEstimator` because we need to
         divide the value by periods_per_year.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
         """
 
         if self.short_fees is not None:
@@ -417,7 +429,7 @@ class HoldingCost(Cost, SimulatorCost):
         if self.dividends is not None:
             self._dividends_parameter = cp.Parameter(len(universe) - 1)
 
-    def values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time(self, past_returns, **kwargs):
         """Update cvxpy parameters.
 
         We compute the estimate of periods per year from past returns
@@ -425,8 +437,6 @@ class HoldingCost(Cost, SimulatorCost):
         with the current values of the user-provided data, transformed
         to per-period.
 
-        :param t: Current time.
-        :type t: pandas.Timestamp
         :param past_returns: Past market returns (includes cash).
         :type past_returns: pandas.DataFrame
         :param kwargs: Other unused arguments to :meth:`values_in_time`.
@@ -455,7 +465,19 @@ class HoldingCost(Cost, SimulatorCost):
                 np.ones(past_returns.shape[1]-1) * self.dividends.current_value
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile cost to cvxpy expression."""
+        """Compile cost to cvxpy expression.
+
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
+            weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+
+        :returns: Cvxpy expression.
+        :rtype: cvxpy.expression
+        """
 
         expression = 0.
 
@@ -481,6 +503,20 @@ class HoldingCost(Cost, SimulatorCost):
         TODO: make sure DataEstimator returns np.array of correct size! ~OK
         TODO: make sure simulator cost estimators are recursively evaluated!
             ~OK
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param h_plus: Post-trade holdings.
+        :type h_plus: numpy.array or pandas.Series
+        :param t_next: Next period's time.
+        :type t_next: pandas.Timestamp
+        :param kwargs: Unused arguments to
+            :meth:`cvxportfolio.costs.SimulatorCost.simulate`.
+        :type kwargs: dict
+
+        :returns: Cost in units of value, positive (is subtracted from cash
+            account).
+        :rtype: float
         """
 
         year_divided_by_period = pd.Timedelta('365.24d') / (t_next - t)
@@ -567,8 +603,24 @@ class TransactionCost(Cost):
             self.second_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
 
-    def values_in_time(self, t,  current_portfolio_value, past_returns,
-                        past_volumes, current_prices, **kwargs):
+    def values_in_time(
+        self, current_portfolio_value, past_returns, past_volumes,
+        current_prices, **kwargs):
+        """Update cvxpy parameters.
+
+        :raises SyntaxError: If the prices are missing from the market data.
+
+        :param current_portfolio_value: Current total value of the portfolio.
+        :type current_portfolio_value: float
+        :param past_returns: Past market returns (includes cash).
+        :type past_returns: pandas.DataFrame
+        :param past_volumes: Past market volumes.
+        :type past_volumes: pandas.DataFrame
+        :param current_prices: Current open prices.
+        :type current_prices: pandas.Series
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
 
         tmp = 0.
 
