@@ -4,7 +4,8 @@
 build
 setuptools
 twine
-sphinx<7.0.0
+sphinx
+furo
 numpy
 pandas
 cvxpy
