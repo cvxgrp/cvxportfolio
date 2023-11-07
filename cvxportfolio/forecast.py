@@ -460,8 +460,8 @@ class HistoricalFactorizedCovariance(BaseForecast):
         :type past_returns: pandas.DataFrame
         :param kwargs: Extra arguments passed to :meth:`values_in_time`.
         :type kwargs: dict
-        
-        :raises cvxportfolio.errors.ForecastError: The procedure failed, 
+
+        :raises cvxportfolio.errors.ForecastError: The procedure failed,
             typically because there are too many missing values (*e.g.*, some
             asset has only missing values).
 

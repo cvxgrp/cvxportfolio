@@ -50,6 +50,10 @@ __all__ = ['BacktestResult']
 class BacktestResult:
     """Store the data from a back-test and produce metrics and plots."""
 
+    # maybe remove this, not sure if it makes sense to document all
+    # properties return values
+    # pylint: disable=missing-return-doc, missing-return-type-doc
+
     def __init__(self, universe, trading_calendar, costs):
         """Initialization of back-test result."""
         self._h = pd.DataFrame(index=trading_calendar,

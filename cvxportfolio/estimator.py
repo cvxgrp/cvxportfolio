@@ -39,6 +39,7 @@ class Estimator:
     :method:`values_in_time_recursive`.
     """
 
+    # pylint: disable=useless-type-doc,useless-param-doc
     def initialize_estimator(self, universe, trading_calendar):
         """Initialize estimator instance with universe and trading times.
 
@@ -83,7 +84,11 @@ class Estimator:
 
     @property
     def current_value(self):
-        """Current value of this instance."""
+        """Current value of this instance.
+
+        :returns: Current value, which can be any object.
+        :rtype: numpy.array, pandas.Series, pandas.DataFrame, ...
+        """
         return self._current_value
 
     def values_in_time_recursive(self, **kwargs):
@@ -98,6 +103,15 @@ class Estimator:
 
         Once we finalize the interface all parameters will be listed
         here.
+
+        :param kwargs: Various parameters that are passed to all elements
+            contained in a policy object.
+        :type kwargs: dict
+
+        :returns: The current value evaluated by this instance, if it
+            implements the :meth:`values_in_time` method and it returns
+            something there.
+        :rtype: numpy.array, pandas.Series, pandas.DataFrame, ...
         """
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "values_in_time_recursive"):
