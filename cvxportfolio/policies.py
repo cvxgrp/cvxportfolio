@@ -558,7 +558,7 @@ class MultiPeriodOptimization(Policy):
     :param kwargs: Any extra argument will be passed to cvxpy.Problem.solve,
         so you can choose a solver and pass parameters to it.
     :type kwargs: dict
-    
+
     :raises SyntaxError: If the format of provided objective and constraints
         is not right.
     """

@@ -41,9 +41,31 @@ def online_cache(values_in_time):
 
     The instance it is used on needs to be hashable (we currently use
     the hash of its __repr__ via dataclass).
+
+    :param values_in_time: :meth:`values_in_time` method to decorate.
+    :type values_in_time: function
+
+    :returns: Decorated method, which saves and retrieves (if available) from
+        cache the result.
+    :rtype: function
     """
 
     def wrapped(self, t, cache=None, **kwargs):
+        """Cached :meth:`values_in_time` method.
+
+        :param self: Class instance.
+        :type self: cvxportfolio.Estimator
+        :param t: Current time, used as in the key for caching.
+        :type t: pandas.Timestamp
+        :param cache: Cache dictionary; if None (the default) caching is
+            disabled.
+        :type cache: dict or None
+        :param kwargs: Extra arguments that are passed through.
+        :type kwargs: dict
+
+        :returns: The returned value, maybe retrieved from cache.
+        :rtype: float or numpy.array
+        """
 
         if cache is None:  # temporary to not change tests
             cache = {}
@@ -111,7 +133,18 @@ class HistoricalMeanReturn(BaseForecast):
         self.__post_init__()
 
     def values_in_time(self, t, past_returns, **kwargs):
-        """Obtain current value of the mean returns."""
+        """Obtain current value of the mean returns.
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param past_returns: Past market returns, including cash.
+        :type past_returns: pandas.DataFrame
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Means of past returns (excluding cash).
+        :rtype: numpy.array
+        """
         self._agnostic_update(t=t, past_returns=past_returns)
         return (self._last_sum / self._last_counts).values
 
@@ -154,7 +187,18 @@ class HistoricalVariance(BaseForecast):
         self.__post_init__()
 
     def values_in_time(self, t, past_returns, **kwargs):
-        """Obtain current value either by update or from scratch."""
+        """Obtain current value either by update or from scratch.
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param past_returns: Past market returns, including cash.
+        :type past_returns: pandas.DataFrame
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Variances of past returns (excluding cash).
+        :rtype: numpy.array
+        """
         self._agnostic_update(t=t, past_returns=past_returns)
         result = (self._last_sum / self._last_counts).values
         if not self.kelly:
@@ -181,7 +225,18 @@ class HistoricalStandardDeviation(HistoricalVariance):
     kelly: bool = True
 
     def values_in_time(self, t, past_returns, **kwargs):
-        """Compute value at time t."""
+        """Obtain current value either by update or from scratch.
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param past_returns: Past market returns, including cash.
+        :type past_returns: pandas.DataFrame
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Standard deviations of past returns (excluding cash).
+        :rtype: numpy.array
+        """
         variances = \
             super().values_in_time(t=t, past_returns=past_returns, **kwargs)
         return np.sqrt(variances)
@@ -199,7 +254,19 @@ class HistoricalMeanError(HistoricalVariance):
         super().__init__(kelly=False)
 
     def values_in_time(self, t, past_returns, **kwargs):
-        """Current value of the forecast."""
+        """Obtain current value either by update or from scratch.
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param past_returns: Past market returns, including cash.
+        :type past_returns: pandas.DataFrame
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Standard deviation of the mean of past returns (excluding
+            cash).
+        :rtype: numpy.array
+        """
         variance = super().values_in_time(
             t=t, past_returns=past_returns, **kwargs)
         return np.sqrt(variance / self._last_counts.values)
@@ -230,6 +297,23 @@ class HistoricalLowRankCovarianceSVD(Estimator):
         returns matrices with few NaN values (say, below 20% of the
         total entries). If there are (many) NaNs, one should probably
         also use a rather large risk forecast error.
+
+        :param rets: Past returns, excluding cash.
+        :type rets: pandas.DataFrame
+        :param num_factors: How many factors in the fitted model.
+        :type num_factors: int
+        :param iters: How many iterations of SVD are performed.
+        :type iters: int
+        :param svd: Which singular value decomposition routine is used,
+            default (and currently the only one supported) is ``'numpy'``.
+        :type svd: str
+
+        :raises SyntaxError: If wrong ``svd`` parameter is supplied.
+        :raises cvxportfolio.errors.ForecastError: If the procedure fails;
+             you may try with lower ``num_factors`` or ``iters``.
+
+        :returns: (F, d)
+        :rtype: (numpy.array, numpy.array)
         """
         nan_fraction = rets.isnull().sum().sum() / np.prod(rets.shape)
         normalizer = np.sqrt((rets**2).mean())
@@ -268,14 +352,32 @@ class HistoricalLowRankCovarianceSVD(Estimator):
 
     @online_cache
     def values_in_time(self, past_returns, **kwargs):
-        """Current low-rank model, also cached."""
+        """Current low-rank model, also cached.
+
+        :param past_returns: Past market returns (including cash).
+        :type past_returns: pandas.DataFrame
+        :param kwargs: Extra arguments passed to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Low-rank plus diagonal covariance model: (F, d); excludes
+             cash.
+        :rtype: (numpy.array, numpy.array)
+        """
         return self.build_low_rank_model(past_returns.iloc[:, :-1],
             num_factors=self.num_factors,
             iters=self.svd_iters, svd=self.svd)
 
 
 def project_on_psd_cone_and_factorize(covariance):
-    """Factorize matrix and remove negative eigenvalues."""
+    """Factorize matrix and remove negative eigenvalues.
+
+    :param covariance: Square (symmetric) approximate covariance matrix, can
+         have negative eigenvalues.
+    :type covariance: numpy.array
+
+    :returns: Square root factorization with negative eigenvalues removed.
+    :rtype: numpy.array
+    """
     eigval, eigvec = np.linalg.eigh(covariance)
     eigval = np.maximum(eigval, 0.)
     return eigvec @ np.diag(np.sqrt(eigval))
@@ -350,7 +452,22 @@ class HistoricalFactorizedCovariance(BaseForecast):
 
     @online_cache
     def values_in_time(self, t, past_returns, **kwargs):
-        """Obtain current value of the covariance estimate."""
+        """Obtain current value of the covariance estimate.
+
+        :param t: Current time.
+        :type t: pandas.Timestamp
+        :param past_returns: Past market returns (including cash).
+        :type past_returns: pandas.DataFrame
+        :param kwargs: Extra arguments passed to :meth:`values_in_time`.
+        :type kwargs: dict
+        
+        :raises cvxportfolio.errors.ForecastError: The procedure failed, 
+            typically because there are too many missing values (*e.g.*, some
+            asset has only missing values).
+
+        :returns: Square root factorized covariance matrix (excludes cash).
+        :rtype: numpy.array
+        """
 
         self._agnostic_update(t=t, past_returns=past_returns)
         covariance = self._last_sum_matrix / self._last_counts_matrix

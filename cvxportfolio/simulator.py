@@ -403,8 +403,7 @@ class MarketSimulator:
 
     def optimize_hyperparameters(self, policy, start_time=None, end_time=None,
         initial_value=1E6, h=None, objective='sharpe_ratio', parallel=True):
-        """Optimize hyperparameters of a policy to maximize back-test
-        objective.
+        """Optimize hyperparameters to maximize back-test objective.
 
         :param policy: Trading policy with symbolic hyperparameters.
         :type policy: cvx.BaseTradingPolicy
@@ -414,18 +413,20 @@ class MarketSimulator:
         :param end_time: End time of the back-test on which we optimize;
             if market it closed, the last trading day before it is selected
         :type end_time: str or datetime or None
-        :param initial_value: Initial value in dollar of the portfolio, if not specifying
-            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified
-            this is ignored.
+        :param initial_value: Initial value in dollar of the portfolio, if not
+            specifying ``h`` it is assumed the initial portfolio is all cash;
+            if ``h`` is specified this is ignored.
         :type initial_value: float
-        :param h: Initial portfolio ``h`` expressed in dollar positions. If ``None``
-            an initial portfolio of ``initial_value`` in cash is used.
+        :param h: Initial portfolio ``h`` expressed in dollar positions. If
+            ``None`` an initial portfolio of ``initial_value`` in cash is used.
         :type h: pd.Series or None
 
-        :param objective: Attribute of :class:`BacktestResult` that is maximized.
+        :param objective: Attribute of :class:`BacktestResult` that is
+            maximized.
         :type objective: str
 
-        :returns: The provided policy, whose hyperparameters have optimal values.
+        :returns: The policy whose hyperparameters now have optimal values.
+            (The same object that was passed by the user.)
         :rtype: cvxportfolio.Policy
         """
 
@@ -496,6 +497,8 @@ class MarketSimulator:
             # policy = test_policies[np.argmax(objectives_partial)]
             modify_orig_policy(test_policies[np.argmax(objectives_partial)])
             current_result = results_partial[np.argmax(objectives_partial)]
+
+        return policy
 
     def backtest(self, policy, start_time=None, end_time=None, initial_value=1E6, h=None):
         """Backtest trading policy.
