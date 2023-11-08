@@ -6,9 +6,15 @@ Data Interfaces
 .. py:module:: cvxportfolio
      :noindex:
 
+Single-symbol data download and storage
+---------------------------------------
+
 .. autoclass:: YahooFinance
 
 .. autoclass:: Fred
+
+Market data servers
+-------------------
 
 .. autoclass:: UserProvidedMarketData
 

@@ -113,6 +113,7 @@ Table of Contents
    :maxdepth: 2
    
    hello_world
+   manual
    policies
    simulator
    objective_terms

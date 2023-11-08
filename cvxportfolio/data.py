@@ -191,30 +191,35 @@ class SymbolData:
               + " data file in %s to force re-download from the start.",
               self.__class__.__name__, self.symbol, self.storage_location)
 
-        if current is not None:
-            if not np.all(
-                    # we use numpy.isclose because returns may be computed
-                    # via logreturns and numerical errors can sift through
-                    np.isclose(updated.loc[current.index[:-1]],
-                        current.iloc[:-1], equal_nan=True,
-                        rtol=1e-08, atol=1e-08)):
-                logging.error(f"{self.__class__.__name__} update"
-                    + f" of {self.symbol} is not append-only!")
-                self._print_difference(current, updated)
-            if hasattr(current, 'columns'):
-                # the first column is open price
-                if not current.iloc[-1, 0] == updated.loc[
-                        current.index[-1]].iloc[0]:
-                    logging.error(
-                        f"{self.__class__.__name__} update "
-                        + f" of {self.symbol} changed last open price!")
+        try:
+            if current is not None:
+                if not np.all(
+                        # we use numpy.isclose because returns may be computed
+                        # via logreturns and numerical errors can sift through
+                        np.isclose(updated.loc[current.index[:-1]],
+                            current.iloc[:-1], equal_nan=True,
+                            rtol=1e-08, atol=1e-08)):
+                    logging.error(f"{self.__class__.__name__} update"
+                        + f" of {self.symbol} is not append-only!")
                     self._print_difference(current, updated)
-            else:
-                if not current.iloc[-1] == updated.loc[current.index[-1]]:
-                    logging.error(
-                        f"{self.__class__.__name__} update"
-                        + f" of {self.symbol} changed last value!")
-                    self._print_difference(current, updated)
+                if hasattr(current, 'columns'):
+                    # the first column is open price
+                    if not current.iloc[-1, 0] == updated.loc[
+                            current.index[-1]].iloc[0]:
+                        logging.error(
+                            f"{self.__class__.__name__} update "
+                            + f" of {self.symbol} changed last open price!")
+                        self._print_difference(current, updated)
+                else:
+                    if not current.iloc[-1] == updated.loc[current.index[-1]]:
+                        logging.error(
+                            f"{self.__class__.__name__} update"
+                            + f" of {self.symbol} changed last value!")
+                        self._print_difference(current, updated)
+        except KeyError:
+            logging.error(f"{self.__class__.__name__} update"
+                + f" of {self.symbol} could not be checked for append-only"
+                + " edits. Was there a DST change?")
         self._store(updated)
 
     def _download(self, symbol, current, grace_period, **kwargs):
