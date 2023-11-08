@@ -58,7 +58,9 @@ class MarketSimulator:
         :math:`p_t` is the (open) price at time :math:`t`. Must
         have datetime index. If provided, a
         :class:`cvxportfolio.UserProvidedMarketData` will be initialized. If
-        universe is specified it is ignored.
+        universe is specified it is ignored. You can also include cash
+        returns as its last column, and set ``cash_key`` below to the last
+        column's name.
     :type returns: pandas.DataFrame
 
     :param volumes: Historical market volumes, expressed in units
@@ -75,8 +77,12 @@ class MarketSimulator:
     :type datasource: str or :class:`cvxportfolio.data.SymbolData` class
         (not instance)
 
-    :param cash_key: Name of the cash account. Its returns
-        are the risk-free rate.
+    :param cash_key: Name of the cash account. Its returns are the risk-free
+        rate. If it is the name of the last column of the provided returns,
+        that will be used. Otherwise, the last column of the returns' will be
+        added by downloading the risk-free returns. In that case you should
+        make sure your provided dataframes have a time-zone aware datetime
+        index.
     :type cash_key: str
 
     :param trading_frequency: Instead of using frequency implied by

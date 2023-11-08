@@ -909,6 +909,19 @@ class MarketDataInMemory(MarketData):
             raise NotImplementedError(
                 'Currently the only data pipeline built is for USDOLLAR cash')
 
+        if self.returns.index.tz is None:
+            raise DataError(
+                'Your provided dataframes are not timezone aware.'
+                + " This is not recommended, and doesn't allow to add the cash"
+                + " returns' column internally."
+                + " You can fix this by adding a timezone manually "
+                + "using pandas.DataFrame.tz_localize to the dataframes before"
+                + " you pass them, or you can provide"
+                + " the cash returns' column as the last column of the returns"
+                + " dataframe (so it has one more column than volumes and"
+                + " prices, if provided), and set the cash_key parameter to"
+                + " its name.")
+
         data = Fred(
             'DFF', base_location=self.base_location, grace_period=grace_period)
         cash_returns_per_period = resample_returns(
@@ -1128,7 +1141,9 @@ class UserProvidedMarketData(MarketDataInMemory):
     :param returns: Historical open-to-open returns. The return
         at time :math:`t` is :math:`r_t = p_{t+1}/p_t -1` where
         :math:`p_t` is the (open) price at time :math:`t`. Must
-        have datetime index.
+        have datetime index. You can also include cash
+        returns as its last column, and set ``cash_key`` below to the last
+        column's name.
     :type returns: pandas.DataFrame
     :param volumes: Historical market volumes, expressed in units
         of value (*e.g.*, US dollars).
@@ -1148,9 +1163,10 @@ class UserProvidedMarketData(MarketDataInMemory):
         in case it downloads the cash returns. By default
         it's a directory named ``cvxportfolio_data`` in your home folder.
     :type base_location: pathlib.Path
-    :param cash_key: Name of the cash account. If not in the columns
-        of the provided returns, it will be downloaded. Its returns
-        are the risk-free rate.
+    :param cash_key: Name of the cash account. If not the last column
+        of the provided returns, it will be downloaded. In that case you should
+        make sure your provided dataframes have a timezone aware datetime
+        index. Its returns are the risk-free rate.
     :type cash_key: str
     """
 

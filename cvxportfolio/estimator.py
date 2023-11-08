@@ -388,7 +388,10 @@ class DataEstimator(Estimator):
             except (KeyError, IndexError) as exc:
                 raise MissingTimesError(
                     "%s.values_in_time_recursive could not find data"
-                    + " for time %s.", self, t) from exc
+                    + " for time %s. This could be due to wrong timezone"
+                    + " setting: in general Cvxportfolio objects are timezone"
+                    + " aware, the data you pass should be as well",
+                     self, t) from exc
 
         # if data is pandas but no datetime index (constant in time)
         if hasattr(self.data, "values"):
