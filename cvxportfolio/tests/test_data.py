@@ -443,14 +443,14 @@ class TestMarketData(CvxportfolioTest):
 
         without_prices = UserProvidedMarketData(
             returns=used_returns, volumes=used_prices, cash_key='USDOLLAR',
-            base_location=self.datadir)
+            base_location=self.datadir, min_history=pd.Timedelta('0d'))
         _, _, past_volumes, _,  current_prices = \
             without_prices.serve(t)
         self.assertTrue(current_prices is None)
 
         without_volumes = UserProvidedMarketData(
             returns=used_returns, cash_key='USDOLLAR',
-            base_location=self.datadir)
+            base_location=self.datadir, min_history=pd.Timedelta('0d'))
         _, _, past_volumes, current_volumes, \
             current_prices = without_volumes.serve(t)
 

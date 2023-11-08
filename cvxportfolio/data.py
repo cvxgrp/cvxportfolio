@@ -966,7 +966,7 @@ class MarketDataInMemory(MarketData):
         past_returns = self.returns.loc[self.returns.index < t]
         valid_universe_mask = ((past_returns.count() >= self.min_history) &
             (~self.returns.loc[t].isnull()))
-        if len(sum(valid_universe_mask)) <= 1:
+        if sum(valid_universe_mask) <= 1:
             raise DataError(
                 f'The trading universe at time {t} has size less or equal'
                 + ' than one, i.e., only the cash account. There are probably '

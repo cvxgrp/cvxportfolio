@@ -213,5 +213,5 @@ Many Cvxportfolio internal variables, such as the weights and holdings vectors
 that you can access in a :class:`cvxportfolio.BacktestResult` object, include
 the cash account as their last element. In most cases used-provided data is not
 concerned with the cash account (such as all examples above) and so it can be
-ignored.
+ignored. Exceptions are noted in the documentation of each object.
 
