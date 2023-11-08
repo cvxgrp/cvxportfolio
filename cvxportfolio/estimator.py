@@ -390,7 +390,7 @@ class DataEstimator(Estimator):
                     "%s.values_in_time_recursive could not find data"
                     + " for time %s. This could be due to wrong timezone"
                     + " setting: in general Cvxportfolio objects are timezone"
-                    + " aware, the data you pass should be as well",
+                    + " aware, the data you pass should be as well.",
                      self, t) from exc
 
         # if data is pandas but no datetime index (constant in time)

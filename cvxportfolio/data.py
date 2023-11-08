@@ -962,10 +962,16 @@ class MarketDataInMemory(MarketData):
         return result
 
     def _universe_mask_at_time(self, t):
-        """Return the valid universe at time t."""
+        """Return the valid universe mask at time t."""
         past_returns = self.returns.loc[self.returns.index < t]
-        return ((past_returns.count() >= self.min_history) &
+        valid_universe_mask = ((past_returns.count() >= self.min_history) &
             (~self.returns.loc[t].isnull()))
+        if len(sum(valid_universe_mask)) <= 1:
+            raise DataError(
+                f'The trading universe at time {t} has size less or equal'
+                + ' than one, i.e., only the cash account. There are probably '
+                + ' issues with missing data in the provided market returns.')
+        return valid_universe_mask
 
     @staticmethod
     def _df_or_ser_set_read_only(df_or_ser):
