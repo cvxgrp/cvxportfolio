@@ -15,7 +15,7 @@ ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
 endif
 
-.PHONY: env clean update test lint docs opendocs coverage fix release
+.PHONY: env clean update test lint docs opendocs coverage fix release examples
 
 env:
 	$(PYTHON) -m venv $(ENVDIR)
@@ -63,3 +63,9 @@ release: update lint test
 	$(BINDIR)/python -m build
 	$(BINDIR)/twine check dist/*
 	$(BINDIR)/twine upload --skip-existing dist/*
+
+examples:
+	for example in hello_world case_shiller; \
+		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python examples/"$$example".py > docs/_static/"$$example"_output.txt; \
+	done
+	mv *.png docs/_static/

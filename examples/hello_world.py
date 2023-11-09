@@ -1,3 +1,5 @@
+import os
+
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 
@@ -28,5 +30,16 @@ print("\n# MULTI-PERIOD OPTIMIZATION\n", results[0])
 print("\n# UNIFORM ALLOCATION:\n", results[1])
 
 # plot value and weights of the portfolio in time for MPO
-results[0].plot() 
-plt.show()
+results[0].plot()
+
+# we use this to save the plots for the documentation
+if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+    plt.savefig('hello_world.png')
+
+# plot value and weights of the portfolio in time for uniform
+results[1].plot()
+
+if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+    plt.savefig('hello_world_uniform.png')
+else:
+    plt.show()

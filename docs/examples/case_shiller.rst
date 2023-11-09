@@ -1,0 +1,47 @@
+Case-Shiller Example
+====================
+
+This is a simple example that showcases the main usage of the library.
+We define a market simulator with some stocks, two trading policies
+(one simple, and one optimization-based), backtest them in parallel,
+and show the results. This example script is 
+`available in the repository <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/hello_world.py>`_.
+
+.. literalinclude:: ../../examples/case_shiller.py
+   :language: python
+
+This is the output printed to screen when executing this script. You can see
+many statistics of the back-tests.
+
+.. include:: ../_static/case_shiller_output.txt
+   :literal:
+
+And these are the figure that are plotted. 
+The result of the :class:`cvxportfolio.Uniform` policy, which allocates equal
+weight to all non-cash assets:
+
+.. figure:: ../_static/case_shiller_uniform.png
+   :scale: 100 %
+   :alt: case_shiller.py result figure
+
+   This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
+
+And result of the :class:`cvxportfolio.MultiPeriodOptimization` policy, selected
+among the efficient frontier below as the one with highest back-tested profit:
+
+.. figure:: ../_static/case_shiller_highest_profit.png
+   :scale: 100 %
+   :alt: case_shiller.py result figure
+
+   This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
+
+And finally, the efficient frontier, which shows that the 
+:class:`cvxportfolio.MultiPeriodOptimization` policies out-perform the
+:class:`cvxportfolio.Uniform` allocation in both risk and reward, including
+the transaction costs.
+
+  .. figure:: ../_static/case_shiller_frontier.png
+     :scale: 100 %
+     :alt: hello_world.py result figure
+
+     Efficient frontier of back-test results, which include transaction costs.

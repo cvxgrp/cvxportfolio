@@ -1,0 +1,77 @@
+Updating data....................
+BACK-TEST RESULT OF UNIFORM (1/N) ALLOCATION
+
+#################################################################
+Universe size                                                  21
+Initial timestamp                       1988-01-01 00:00:00+00:00
+Final timestamp                         2023-08-01 00:00:00+00:00
+Number of periods                                             428
+Initial value (USDOLLAR)                                1.000e+06
+Final value (USDOLLAR)                                  3.880e+06
+Profit (USDOLLAR)                                       2.880e+06
+                                                                 
+Avg. return (annualized)                                     3.8%
+Volatility (annualized)                                      2.5%
+Avg. excess return (annualized)                              0.8%
+Excess volatility (annualized)                               2.7%
+                                                                 
+Avg. growth rate (annualized)                                3.8%
+Avg. excess growth rate (annualized)                         0.8%
+                                                                 
+Avg. TransactionCost                                          4bp
+Max. TransactionCost                                        500bp
+                                                                 
+Sharpe ratio                                                 0.30
+                                                                 
+Avg. drawdown                                               -6.8%
+Min. drawdown                                              -36.1%
+Avg. leverage                                               99.8%
+Max. leverage                                              105.3%
+Avg. turnover                                                0.4%
+Max. turnover                                               50.0%
+                                                                 
+Avg. policy time                                           0.000s
+Avg. simulator time                                        0.002s
+Total time                                                 0.682s
+#################################################################
+
+BACK-TEST RESULT OF MPO WITH HIGHEST (OUT-OF-SAMPLE) PROFIT
+
+#################################################################
+Universe size                                                  21
+Initial timestamp                       1988-01-01 00:00:00+00:00
+Final timestamp                         2023-08-01 00:00:00+00:00
+Number of periods                                             428
+Initial value (USDOLLAR)                                1.000e+06
+Final value (USDOLLAR)                                  4.865e+06
+Profit (USDOLLAR)                                       3.865e+06
+                                                                 
+Avg. return (annualized)                                     4.5%
+Volatility (annualized)                                      3.6%
+Avg. excess return (annualized)                              1.5%
+Avg. active return (annualized)                              1.5%
+Excess volatility (annualized)                               3.8%
+Active volatility (annualized)                               3.8%
+                                                                 
+Avg. growth rate (annualized)                                4.4%
+Avg. excess growth rate (annualized)                         1.4%
+Avg. active growth rate (annualized)                         1.4%
+                                                                 
+Avg. TransactionCost                                          1bp
+Max. TransactionCost                                        300bp
+                                                                 
+Sharpe ratio                                                 0.40
+Information ratio                                            0.40
+                                                                 
+Avg. drawdown                                              -12.2%
+Min. drawdown                                              -42.2%
+Avg. leverage                                               97.8%
+Max. leverage                                              100.1%
+Avg. turnover                                                0.1%
+Max. turnover                                               30.0%
+                                                                 
+Avg. policy time                                           0.010s
+Avg. simulator time                                        0.003s
+Total time                                                 5.403s
+#################################################################
+

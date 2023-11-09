@@ -1,91 +1,83 @@
-Updating data
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
+Updating data..........
 
 # MULTI-PERIOD OPTIMIZATION
  
-###################################################
-Universe size                                    11
-Initial timestamp               2020-01-02 00:00:00
-Final timestamp                 2023-09-12 00:00:00
-Number of periods                               933
-                                                   
-Initial value (USDOLLAR)                  1.000e+06
-Final value (USDOLLAR)                    3.240e+06
-Profit (USDOLLAR)                         2.240e+06
-                                                   
-Absolute return (annualized)                  38.2%
-Absolute risk (annualized)                    35.6%
-Excess return (annualized)                    37.2%
-Excess risk (annualized)                      35.6%
-                                                   
-Avg. growth rate (absolute)                    12bp
-Avg. growth rate (excess)                      12bp
-                                                   
-Avg. StocksTransactionCost                      0bp
-Max. StocksTransactionCost                      2bp
-Avg. StocksHoldingCost                          1bp
-Max. StocksHoldingCost                          3bp
-                                                   
-Sharpe ratio                                   1.05
-                                                   
-Avg. drawdown                                -13.4%
-Min. drawdown                                -43.5%
-Avg. leverage                                155.7%
-Max. leverage                                239.2%
-Avg. turnover                                  0.7%
-Max. turnover                                 31.1%
-                                                   
-Avg. policy time                             0.013s
-Avg. simulator time                          0.005s
-Total time                                  16.765s
-###################################################
+#################################################################
+Universe size                                                  11
+Initial timestamp                       2020-01-02 14:30:00+00:00
+Final timestamp                         2023-11-08 14:30:00+00:00
+Number of periods                                             971
+Initial value (USDOLLAR)                                1.000e+06
+Final value (USDOLLAR)                                  3.149e+06
+Profit (USDOLLAR)                                       2.149e+06
+                                                                 
+Avg. return (annualized)                                    35.9%
+Volatility (annualized)                                     35.1%
+Avg. excess return (annualized)                             34.3%
+Avg. active return (annualized)                             34.3%
+Excess volatility (annualized)                              35.1%
+Active volatility (annualized)                              35.1%
+                                                                 
+Avg. growth rate (annualized)                               29.8%
+Avg. excess growth rate (annualized)                        28.2%
+Avg. active growth rate (annualized)                        28.2%
+                                                                 
+Avg. StocksTransactionCost                                    0bp
+Max. StocksTransactionCost                                    2bp
+Avg. StocksHoldingCost                                        1bp
+Max. StocksHoldingCost                                        3bp
+                                                                 
+Sharpe ratio                                                 0.98
+Information ratio                                            0.98
+                                                                 
+Avg. drawdown                                              -13.9%
+Min. drawdown                                              -43.7%
+Avg. leverage                                              153.7%
+Max. leverage                                              240.0%
+Avg. turnover                                                0.7%
+Max. turnover                                               31.0%
+                                                                 
+Avg. policy time                                           0.005s
+Avg. simulator time                                        0.003s
+Total time                                                 7.390s
+#################################################################
 
 
 # UNIFORM ALLOCATION:
  
-###################################################
-Universe size                                    11
-Initial timestamp               2020-01-02 00:00:00
-Final timestamp                 2023-09-12 00:00:00
-Number of periods                               933
-                                                   
-Initial value (USDOLLAR)                  1.000e+06
-Final value (USDOLLAR)                    2.194e+06
-Profit (USDOLLAR)                         1.194e+06
-                                                   
-Absolute return (annualized)                  26.7%
-Absolute risk (annualized)                    32.7%
-Excess return (annualized)                    25.0%
-Excess risk (annualized)                      32.7%
-                                                   
-Avg. growth rate (absolute)                     8bp
-Avg. growth rate (excess)                       7bp
-                                                   
-Avg. StocksTransactionCost                      0bp
-Max. StocksTransactionCost                      3bp
-Avg. StocksHoldingCost                          0bp
-Max. StocksHoldingCost                          0bp
-                                                   
-Sharpe ratio                                   0.76
-                                                   
-Avg. drawdown                                -13.1%
-Min. drawdown                                -39.7%
-Avg. leverage                                 99.9%
-Max. leverage                                100.0%
-Avg. turnover                                  0.9%
-Max. turnover                                 50.0%
-                                                   
-Avg. policy time                             0.000s
-Avg. simulator time                          0.004s
-Total time                                   4.159s
-###################################################
+#################################################################
+Universe size                                                  11
+Initial timestamp                       2020-01-02 14:30:00+00:00
+Final timestamp                         2023-11-08 14:30:00+00:00
+Number of periods                                             971
+Initial value (USDOLLAR)                                1.000e+06
+Final value (USDOLLAR)                                  2.048e+06
+Profit (USDOLLAR)                                       1.048e+06
+                                                                 
+Avg. return (annualized)                                    23.9%
+Volatility (annualized)                                     32.3%
+Avg. excess return (annualized)                             22.2%
+Excess volatility (annualized)                              32.3%
+                                                                 
+Avg. growth rate (annualized)                               18.6%
+Avg. excess growth rate (annualized)                        17.0%
+                                                                 
+Avg. StocksTransactionCost                                    0bp
+Max. StocksTransactionCost                                    3bp
+Avg. StocksHoldingCost                                        0bp
+Max. StocksHoldingCost                                        0bp
+                                                                 
+Sharpe ratio                                                 0.69
+                                                                 
+Avg. drawdown                                              -13.2%
+Min. drawdown                                              -39.7%
+Avg. leverage                                               99.9%
+Max. leverage                                              100.0%
+Avg. turnover                                                0.9%
+Max. turnover                                               50.0%
+                                                                 
+Avg. policy time                                           0.000s
+Avg. simulator time                                        0.003s
+Total time                                                 2.555s
+#################################################################
 

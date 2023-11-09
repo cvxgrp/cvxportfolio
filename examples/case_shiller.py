@@ -1,3 +1,5 @@
+import os
+
 import cvxportfolio as cvx
 import numpy as np
 import pandas as pd
@@ -56,6 +58,10 @@ result_uniform = simulator.backtest(cvx.Uniform())
 print('BACK-TEST RESULT OF UNIFORM (1/N) ALLOCATION')
 print(result_uniform)
 
+result_uniform.plot()
+if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+    plt.savefig('case_shiller_uniform.png')
+
 # These are risk model coefficients. They don't seem to have
 # a strong effect on this example.
 NUM_FACTORS = 5
@@ -84,7 +90,12 @@ results = simulator.backtest_many(policies)
 print('BACK-TEST RESULT OF MPO WITH HIGHEST (OUT-OF-SAMPLE) PROFIT')
 print(results[np.argmax([el.profit for el in results])])
 
+results[np.argmax([el.profit for el in results])].plot()
+if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+    plt.savefig('case_shiller_highest_profit.png')
+
 # Plot
+fig = plt.figure()
 plt.plot(
     [result.excess_returns.std() * np.sqrt(12) for result in results],
     [result.excess_returns.mean() * 12 for result in results],
@@ -99,5 +110,9 @@ plt.legend()
 plt.title('Back-Test Result (Out-Of-Sample) for Real Estate Portfolio')
 plt.xlabel('Excess risk (annualized)')
 plt.ylabel('Excess return (annualized)')
-plt.show()
+
+if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+    fig.savefig('case_shiller_frontier.png')
+else:
+    plt.show()
 

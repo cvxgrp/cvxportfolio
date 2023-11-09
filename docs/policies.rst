@@ -45,6 +45,10 @@ Simple policies
 
     .. automethod:: execute
 
+.. autoclass:: MarketBenchmark
+
+    .. automethod:: execute
+
 .. autoclass:: PeriodicRebalance
 
     .. automethod:: execute
@@ -64,10 +68,11 @@ Simple policies
 .. autoclass:: SellAll
 
     .. automethod:: execute
-    
-.. autoclass:: MarketBenchmark
+
+.. autoclass:: Uniform
 
     .. automethod:: execute
+
 
 Base policy class (for defining your own policy)
 ------------------------------------------------
