@@ -499,7 +499,7 @@ class MinCashBalance(InequalityConstraint):
 
 
 class LongCash(MinCashBalance):
-    """Require that post-trade cash account is non-negative.
+    r"""Require that post-trade cash account is non-negative.
 
     In our notation, this is
 
