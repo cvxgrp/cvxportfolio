@@ -193,7 +193,8 @@ class DataEstimator(Estimator):
 
     It also implements logic to check that no `np.nan` are returned
     by its `values_in_time_recursive` method, which is the way `cvxportfolio`
-    objects use this class to get data.
+    objects use this class to get data, to compile and update a Cvxpy
+    parameter, and to slice the data with the current trading universe.
 
     :param data: Data expressed preferably as pandas Series or DataFrame
         where the first index is a pandas.DateTimeIndex. Otherwise you can
@@ -208,6 +209,27 @@ class DataEstimator(Estimator):
         :method:`values_in_time_recursive` to retrieve the last available value
         at time t by setting this to True. Default is False.
     :type use_last_available_time: bool
+    :param allow_nans: If True, allow data returned to contain `numpy.nan`s.
+        Default False.
+    :type allow_nans: bool
+    :param compile_parameter: If True, compile a Cvxpy parameter that gets
+        updated with the current value of the instance at each point in a
+        backtest. Default False.
+    :type compile_parameter: bool
+    :param non_negative: If True, the compiled Cvxpy parameter is non-negative
+        (this affects certain Cvxpy operations). Default False
+    :type non_negative: bool
+    :param positive_semi_definite: If True, the compiled Cvxpy parameter is
+        market as a positive semi-definite matrix (this affects certain Cvxpy
+        operations). Default False.
+    :type positive_semi_definite: bool
+    :param data_includes_cash: If True, when the data is sliced with the
+        current trading universe we also look for the values corresponding to
+        the cash account. Default False.
+    :type data_includes_cash: bool
+    :param ignore_shape_check: If True, we don't do any slicing of the data
+        according to the current trading universe. Default False
+    :type ignore_shape_check: bool
 
     :raises cvxportfolio.NaNError: If np.nan's are present in result.
     :raises cvxportfolio.MissingTimesError: If some times are missing.
@@ -215,12 +237,11 @@ class DataEstimator(Estimator):
     :raises cvxportfolio.DataError: If data is not in the right form.
     """
 
-    def __init__(self, data, use_last_available_time=False, allow_nans=False,
-                 compile_parameter=False, non_negative=False,
-                 positive_semi_definite=False,
-                 data_includes_cash=False, # affects _universe_subselect
-                 ignore_shape_check=False # affects _universe_subselect
-                 ):
+    def __init__(
+            self, data, use_last_available_time=False, allow_nans=False,
+            compile_parameter=False, non_negative=False,
+            positive_semi_definite=False, data_includes_cash=False,
+            ignore_shape_check=False):
         self.data = data
         self._use_last_available_time = use_last_available_time
         self._allow_nans = allow_nans
