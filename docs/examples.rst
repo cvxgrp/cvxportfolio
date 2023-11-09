@@ -13,3 +13,4 @@ We show some of them, along with their results, in the following pages:
 
    hello_world
    examples/case_shiller
+   examples/dow30

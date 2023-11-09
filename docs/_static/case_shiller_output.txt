@@ -32,7 +32,7 @@ Max. turnover                                               50.0%
                                                                  
 Avg. policy time                                           0.000s
 Avg. simulator time                                        0.002s
-Total time                                                 0.682s
+Total time                                                 0.686s
 #################################################################
 
 BACK-TEST RESULT OF MPO WITH HIGHEST (OUT-OF-SAMPLE) PROFIT
@@ -72,6 +72,6 @@ Max. turnover                                               30.0%
                                                                  
 Avg. policy time                                           0.010s
 Avg. simulator time                                        0.003s
-Total time                                                 5.403s
+Total time                                                 5.375s
 #################################################################
 

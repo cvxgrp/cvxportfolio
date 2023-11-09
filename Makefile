@@ -65,7 +65,7 @@ release: update lint test
 	$(BINDIR)/twine upload --skip-existing dist/*
 
 examples:
-	for example in hello_world case_shiller; \
+	for example in hello_world case_shiller dow30_example; \
 		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python examples/"$$example".py > docs/_static/"$$example"_output.txt; \
 	done
 	mv *.png docs/_static/

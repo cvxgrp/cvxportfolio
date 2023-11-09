@@ -39,7 +39,7 @@ Max. turnover                                               31.0%
                                                                  
 Avg. policy time                                           0.005s
 Avg. simulator time                                        0.003s
-Total time                                                 7.390s
+Total time                                                 7.404s
 #################################################################
 
 
@@ -78,6 +78,6 @@ Max. turnover                                               50.0%
                                                                  
 Avg. policy time                                           0.000s
 Avg. simulator time                                        0.003s
-Total time                                                 2.555s
+Total time                                                 2.542s
 #################################################################
 

@@ -12,6 +12,11 @@ holding cost term because the portfolio is long-only.)
 All result objects are collected, and then the one with 
 largest Sharpe ratio, and the one with largest growth rate,
 are shown. 
+
+Finally, we show the effect of using symbolic hyper-parameters,
+:class:`cvxportfolio.Gamma`, as multipliers of the risk and transaction
+cost terms. We can optimize on those explicitely, by finding the values
+that maximize some back-test metric (in this case, profit).
 """
 
 # Uncomment the logging lines to get online information 
@@ -20,6 +25,8 @@ are shown.
 # import logging
 # logging.basicConfig(level=logging.INFO)
 # log=logging.getLogger('=>')
+
+import os
 
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
@@ -54,6 +61,9 @@ print('result')
 print(ress[idx])
 
 ress[idx].plot()
+# we use this to save plots for the documentation
+if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+    plt.savefig('dow30_largest_sharpe_ratio.png')
 
 print('\n\nLARGEST GROWTH RATE')
 idx = np.argmax([el.growth_rates.mean() for el in ress])
@@ -64,6 +74,10 @@ print(keys[idx])
 print('result')
 print(ress[idx])
 
+ress[idx].plot()
+if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+    plt.savefig('dow30_largest_growth_rate.png')
+
 print('\n\nUNIFORM (1/N) ALLOCATION FOR COMPARISON')
 result_uniform = sim.backtest(cvx.Uniform())
 
@@ -71,8 +85,10 @@ print('result_uniform')
 print(result_uniform)
 
 result_uniform.plot()
+if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+    plt.savefig('dow30_uniform.png')
 
-print('\n\nHYPERPARAMETER OPTIMIZATION')
+print('\n\nHYPER-PARAMETER OPTIMIZATION')
 policy = cvx.MultiPeriodOptimization(cvx.ReturnsForecast() 
         - cvx.Gamma() * cvx.FactorModelCovariance(num_factors=10) 
         - cvx.Gamma() * cvx.StocksTransactionCost(), 
@@ -86,4 +102,7 @@ print(result_hyperparameter_optimized)
 
 result_hyperparameter_optimized.plot()
 
-plt.show()
+if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+    plt.savefig('dow30_hyperparameter_optimized.png')
+else:
+    plt.show()

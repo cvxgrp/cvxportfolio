@@ -1,11 +1,15 @@
 Case-Shiller Example
 ====================
 
-This is a simple example that showcases the main usage of the library.
-We define a market simulator with some stocks, two trading policies
-(one simple, and one optimization-based), backtest them in parallel,
-and show the results. This example script is 
-`available in the repository <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/hello_world.py>`_.
+This is an example that shows that Cvxportfolio can work as well with
+different asset classes, in this case a real estate portfolio. We use
+the Case-Shiller index as proxy for the price of housing units in various
+metropolitan areas in the USA. We impose realistic transaction costs, which
+are comparable to the annual return on the asset, and we show
+that multi-period optimization is useful to correctly balance transaction cost
+and expected risk-adjusted return.
+This example script is
+`available in the repository <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/case_shiller.py>`_.
 
 .. literalinclude:: ../../examples/case_shiller.py
    :language: python
