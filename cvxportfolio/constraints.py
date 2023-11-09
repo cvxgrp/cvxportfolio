@@ -41,7 +41,6 @@ see equation :math:`(4.9)` at page 43 of
 `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
 """
 
-
 import cvxpy as cp
 import numpy as np
 
@@ -201,23 +200,35 @@ class NoCash(EqualityConstraint):
 
 
 class MarketNeutral(EqualityConstraint):
-    """Simple implementation of β- (or market-) neutrality.
+    r"""Simple implementation of β- (or market-) neutrality.
 
-    See the equation at page 35 of
-    `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+    In our notation, this is
+
+    .. math::
+        {(w_t^\text{b})}^T \Sigma_t (w_t + z_t) = 0
 
     The benchmark portfolio weights are computed here, and are
     proportional to the rolling averages of the market volumes over the
-    recent past
+    recent past.
+
+    .. note::
+
+        This constraint's interface will improve; you will be able
+        to pass any Cvxportfolio policy object as benchmark weights.
 
     :param window: How many past observations of the volumes are used to
         estimate the market benchmark.
     :type window: int
     """
-
-    def __init__(self, window=250):
+    # TODO: refactor code to import MarketBenchmark, now it causes circular
+    # imports
+    def __init__(self, window=250, #benchmark=MarketBenchmark
+        ):
         self.covarianceforecaster = HistoricalFactorizedCovariance()
         self.window = window
+        # if type(benchmark) is type:
+        #     benchmark = benchmark()
+        # self.benchmark = benchmark
         self.market_vector = None
 
     def initialize_estimator(self, universe, trading_calendar):
@@ -240,6 +251,7 @@ class MarketNeutral(EqualityConstraint):
         """
         tmp = past_volumes.iloc[-self.window:].mean()
         tmp /= sum(tmp)
+        # tmp = self.benchmark.current_value.iloc[:-1]
 
         tmp2 = self.covarianceforecaster.current_value @ (
             self.covarianceforecaster.current_value.T @ tmp)
@@ -257,9 +269,6 @@ class MarketNeutral(EqualityConstraint):
 
 class TurnoverLimit(InequalityConstraint):
     r"""Turnover limit as a fraction of the portfolio value.
-
-    See the equation at page 37 of
-    `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
 
     The turnover is defined as half the :math:`\ell_1`-norm of
     the trade weight vector, without cash. Here we ask that it is smaller
@@ -461,7 +470,8 @@ class MinCashBalance(InequalityConstraint):
 
     :param c_min: The miminimum cash balance required, either constant in time
         or varying, expressed in units of cash (*e.g.*, US dollars),
-        not weight.
+        not weight. Use a float if you want a constant limit, or a time-indexed
+        Pandas series if you want a limit that changes in time.
     :type c_min: float or pd.Series
     """
 
@@ -489,7 +499,18 @@ class MinCashBalance(InequalityConstraint):
 
 
 class LongCash(MinCashBalance):
-    """Require that cash be non-negative."""
+    """Require that post-trade cash account is non-negative.
+
+    In our notation, this is
+
+    .. math::
+
+        {(w_t + z_t)}_{n+1} \geq 0.
+
+    Be mindful that trading costs (if present) are deducted from the cash
+    account after trading, and so the next period's cash account value
+    may be negative.
+    """
 
     def __init__(self):
         super().__init__(0.)
@@ -535,12 +556,12 @@ class MaxWeights(InequalityConstraint):
         for all assets at all times, a Pandas series indexed by time if you
         want a limit constant for all assets but varying in time, a Pandas
         series indexed by the assets' names if you have limits constant in time
-        but different for each asset, and a  Pandas dataframe indexed by time
+        but different for each asset, and a Pandas dataframe indexed by time
         and with assets as columns if you have a different limit for each point
-        in time and each asset. If the value change for each asset, you should
-        provide a value for each name that ever appear in a back-test, and the
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
         data will be sliced according to the current trading universe during a
-        back-test. It is fine to have np.nan values at certain times on assets'
+        back-test. It is fine to have missing values at certain times on assets
         that are not traded then.
     :type limit: float, pandas.Series, pandas.DataFrame
     """
@@ -575,12 +596,12 @@ class MinWeights(InequalityConstraint):
         for all assets at all times, a Pandas series indexed by time if you
         want a limit constant for all assets but varying in time, a Pandas
         series indexed by the assets' names if you have limits constant in time
-        but different for each asset, and a  Pandas dataframe indexed by time
+        but different for each asset, and a Pandas dataframe indexed by time
         and with assets as columns if you have a different limit for each point
-        in time and each asset. If the value change for each asset, you should
-        provide a value for each name that ever appear in a back-test, and the
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
         data will be sliced according to the current trading universe during a
-        back-test. It is fine to have np.nan values at certain times on assets'
+        back-test. It is fine to have missing values at certain times on assets
         that are not traded then.
     :type limit: float, pandas.Series, pandas.DataFrame
     """

@@ -787,6 +787,9 @@ class MultiPeriodOptimization(Policy):
             with warnings.catch_warnings():
                 warnings.filterwarnings(
                     "ignore", message='Solution may be inaccurate')
+                # suppress cvxpy 1.4 ECOS deprecation warnings
+                if cp.__version__[:3] == '1.4':
+                    warnings.filterwarnings("ignore", category=FutureWarning)
                 self.problem.solve(**self.cvxpy_kwargs)
         except cp.SolverError as exc:
             raise PortfolioOptimizationError(
