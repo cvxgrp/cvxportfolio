@@ -200,7 +200,7 @@ class MarketSimulator:
             u = self._round_trade_vector(u, current_prices)
 
         # recompute cash
-        u.iloc[-1] = sum(u.iloc[:-1])
+        u.iloc[-1] = -sum(u.iloc[:-1])
         assert sum(u) == 0.
 
         # compute post-trade holdings (including cash balance)
