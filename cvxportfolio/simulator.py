@@ -180,8 +180,8 @@ class MarketSimulator:
         policy_time = time.time() - s
 
         # for safety recompute cash
-        z.iloc[-1] = -np.sum(z.iloc[:-1])
-        assert np.isclose(np.sum(z), 0.)
+        z.iloc[-1] = -sum(z.iloc[:-1])
+        assert sum(z) == 0.
 
         # trades in dollars
         u = z * current_portfolio_value
@@ -200,8 +200,8 @@ class MarketSimulator:
             u = self._round_trade_vector(u, current_prices)
 
         # recompute cash
-        u.iloc[-1] = -np.sum(u.iloc[:-1])
-        assert np.isclose(np.sum(u), 0.)
+        u.iloc[-1] = sum(u.iloc[:-1])
+        assert sum(u) == 0.
 
         # compute post-trade holdings (including cash balance)
         h_plus = h + u
