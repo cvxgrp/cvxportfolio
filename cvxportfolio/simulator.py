@@ -22,6 +22,7 @@ past. In financial jargon this is called *back-testing*.
 
 import copy
 import logging
+import sys
 import time
 from itertools import starmap
 from pathlib import Path
@@ -181,7 +182,10 @@ class MarketSimulator:
 
         # for safety recompute cash
         z.iloc[-1] = -sum(z.iloc[:-1])
-        assert sum(z) == 0.
+
+        # bug in cPython 3.12, https://github.com/python/cpython/issues/111933
+        if sys.version.split(' ')[0] < '3.12':
+            assert sum(z) == 0.
 
         # trades in dollars
         u = z * current_portfolio_value
@@ -201,7 +205,10 @@ class MarketSimulator:
 
         # recompute cash
         u.iloc[-1] = -sum(u.iloc[:-1])
-        assert sum(u) == 0.
+
+        # bug in cPython 3.12, https://github.com/python/cpython/issues/111933
+        if sys.version.split(' ')[0] < '3.12':
+            assert sum(u) == 0.
 
         # compute post-trade holdings (including cash balance)
         h_plus = h + u
