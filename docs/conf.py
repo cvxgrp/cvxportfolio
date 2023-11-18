@@ -85,6 +85,12 @@ master_doc = 'index'
 #
 html_theme = 'furo'
 
+html_theme_options = {
+    "source_repository": "https://github.com/cvxgrp/cvxportfolio/",
+    "source_branch": "master",
+    "source_directory": "docs/",
+}
+
 # html_sidebars = {
 #    '**': [
 #        'about.html', 'navigation.html', 'searchbox.html',
