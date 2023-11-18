@@ -63,7 +63,7 @@ jobs:
 
       - name: If running on python 3.8 install some old dependencies
         if: ${{ matrix.python-version == '3.8'}}
-        run: python -m pip install numpy==1.19.1 scipy==1.5.3 cvxpy==1.1.5 pandas==1.1.2 osqp==0.6.1 ecos==2.0.7.post1 scs==2.1.2 matplotlib==3.3.2
+        run: python -m pip install numpy==1.19.1 scipy==1.5.3 cvxpy==1.1.5 pandas==1.1.2 osqp==0.6.1 ecos==2.0.7.post1 scs==2.1.2 matplotlib==3.3.2 Pillow==8.0.1
 
       - name: If running on python 3.9 install some old dependencies
         if: ${{ matrix.python-version == '3.9'}}
