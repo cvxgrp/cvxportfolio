@@ -113,6 +113,7 @@ Table of Contents
    :maxdepth: 2
    
    hello_world
+   quickstart
    manual
    policies
    simulator
@@ -120,5 +121,6 @@ Table of Contents
    constraints
    result
    data
+   forecasts
    examples
 

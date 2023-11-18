@@ -8,7 +8,7 @@ TESTS         = $(PROJECT)/tests
 BUILDDIR      = build
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
-EXTRA_SCRIPTS = bumpversion.py run_examples.py
+EXTRA_SCRIPTS = bumpversion.py
 EXAMPLES      = examples/*.py
 
 ifeq ($(OS), Windows_NT)

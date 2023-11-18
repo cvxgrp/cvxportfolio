@@ -10,6 +10,8 @@ to know. The code blocks in this document assume the following imports
     import numpy as np
     import pandas as pd
 
+.. _passing-data:
+
 Passing Data
 ------------
 
