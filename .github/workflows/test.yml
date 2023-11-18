@@ -55,15 +55,14 @@ jobs:
       # ~ Q4 2023 for python 3.11
       # ~ Q4 2022 for python 3.10
       # ~ Q4 2021 for python 3.9
-      # ~ Q4 2020 for python 3.8
-      # we find those by browsing release histories on https://pypi.org/
-      # we skip packages releases that were current for short times
+      # for Python 3.8 it is more problematic with more incompatibilities, it
+      # is nearing its EOL so we simply test against an old Pandas
       # we only install the base packages here,
       # then pip below figures out the others
 
       - name: If running on python 3.8 install some old dependencies
         if: ${{ matrix.python-version == '3.8'}}
-        run: python -m pip install pandas==1.1.2
+        run: python -m pip install pandas==1.4.0
 
       - name: If running on python 3.9 install some old dependencies
         if: ${{ matrix.python-version == '3.9'}}
