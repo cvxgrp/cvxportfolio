@@ -426,16 +426,22 @@ class YahooFinance(SymbolData):
                 + 'Json output:', str(res.json()))
 
         if res.status_code != 200:
-            raise DataError('Yahoo finance data download failed. Json:',
+            raise DataError(f'Yahoo finance download of {ticker} failed. Json:',
                 str(res.json())) # pragma: no cover
 
         data = res.json()['chart']['result'][0]
 
-        index = pd.DatetimeIndex(
-            [_timestamp_convert(el) for el in data['timestamp']])
+        try:
+            index = pd.DatetimeIndex(
+                [_timestamp_convert(el) for el in data['timestamp']])
 
-        df_result = pd.DataFrame(data['indicators']['quote'][0], index=index)
-        df_result['adjclose'] = data['indicators']['adjclose'][0]['adjclose']
+            df_result = pd.DataFrame(
+                data['indicators']['quote'][0], index=index)
+            df_result['adjclose'] = data[
+                'indicators']['adjclose'][0]['adjclose']
+        except KeyError:
+            raise DataError(f'Yahoo finance download of {ticker} failed.'
+                + ' Json:', str(res.json())) # pragma: no cover
 
         # last timestamp is probably broken (not timed to market open)
         # we set its time to same as the day before, but this is wrong
