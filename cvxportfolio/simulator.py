@@ -542,6 +542,9 @@ class MarketSimulator:
         return self.backtest_many([policy], start_time=start_time, end_time=end_time,
                                   initial_value=initial_value, h=None if h is None else [h], parallel=False)[0]
 
+    # Alias to match original syntax
+    run_backtest = backtest
+
     def backtest_many(self, policies, start_time=None, end_time=None, initial_value=1E6, h=None, parallel=True):
         """Backtest many trading policies.
 
@@ -623,6 +626,9 @@ class MarketSimulator:
                 result = p.starmap(self._worker, zip_args)
 
         return [el for el in result]
+
+    # Alias to match original syntax
+    run_multiple_backtest = backtest_many
 
 
 class StockMarketSimulator(MarketSimulator):

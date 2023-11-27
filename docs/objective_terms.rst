@@ -42,6 +42,10 @@ Cost models
 
 .. autoclass:: SoftConstraint
 
+.. autoclass:: TcostModel
+
+.. autoclass:: HcostModel
+
 .. _risks-page:
 
 Risk models
@@ -59,6 +63,10 @@ Risk models
 .. autoclass:: FactorModelCovariance
 
 .. autoclass:: WorstCaseRisk
+
+.. autoclass:: FullSigma
+
+.. autoclass:: FactorModel
 
 
 Forecast error models

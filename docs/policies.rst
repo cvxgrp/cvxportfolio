@@ -20,6 +20,10 @@ Optimization-based policies
 .. autoclass:: MultiPeriodOptimization
 
     .. automethod:: execute
+    
+.. autoclass:: SinglePeriodOpt
+
+.. autoclass:: MultiPeriodOpt
 
 
 Simple policies
@@ -65,13 +69,11 @@ Simple policies
 
     .. automethod:: execute
 
-.. autoclass:: SellAll
-
-    .. automethod:: execute
-
 .. autoclass:: Uniform
 
     .. automethod:: execute
+    
+.. autoclass:: SellAll
 
 
 Base policy class (for defining your own policy)

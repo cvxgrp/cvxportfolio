@@ -51,8 +51,14 @@ extensions = ['sphinx.ext.autodoc',
               #'sphinx.ext.githubpages',
 	          #'sphinx.ext.napoleon',
               'sphinx.ext.autosectionlabel',
-              'myst_parser'
+              'myst_parser',
+              'sphinx.ext.extlinks',
           ]
+
+# External links
+extlinks = {
+    'paper': (
+        'https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf#%s', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

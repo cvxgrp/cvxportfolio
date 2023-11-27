@@ -36,7 +36,8 @@ from .utils import (average_periods_per_year,
                     periods_per_year_from_datetime_index, resample_returns)
 
 __all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
-           "StocksTransactionCost", "StocksHoldingCost"]
+           "StocksTransactionCost", "StocksHoldingCost", "TcostModel",
+           "HcostModel"]
 
 
 class Cost(CvxpyExpressionEstimator):
@@ -810,3 +811,19 @@ class StocksTransactionCost(TransactionCost):
                          window_sigma_est=window_sigma_est,
                          window_volume_est=window_volume_est,
                          exponent=exponent)
+
+# Aliases
+
+class TcostModel(TransactionCost):
+    """Alias of :class:`TransactionCost`.
+
+    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the
+    paper.
+    """
+
+class HcostModel(HoldingCost):
+    """Alias of :class:`HoldingCost`.
+
+    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the
+    paper.
+    """

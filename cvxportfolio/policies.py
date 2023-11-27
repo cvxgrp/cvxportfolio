@@ -42,6 +42,8 @@ __all__ = [
     "RankAndLongShort",
     "FixedWeights",
     "Uniform",
+    "SinglePeriodOpt",
+    "MultiPeriodOpt",
 ]
 
 class Policy(Estimator):
@@ -303,7 +305,7 @@ class ProportionalTradeToTargets(Policy):
 class SellAll(AllCash):
     """Sell all assets to cash.
 
-    This is useful to check the transaction cost model in the simulator.
+    Alias of :class:`AllCash`.
     """
 
 
@@ -871,3 +873,20 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     #         + ', constraints=' + str(self.constraints[0])
     #         + ', benchmark=' + str(self.constraints[0])
     #         + ', cvxpy_kwargs=' + str(self.cvxpy_kwargs)
+
+# Aliases
+
+
+class SinglePeriodOpt(SinglePeriodOptimization):
+    """Alias of :class:`SinglePeriodOptimization`.
+
+    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the
+    paper.
+    """
+
+class MultiPeriodOpt(MultiPeriodOptimization):
+    """Alias of :class:`MultiPeriodOptimization`.
+
+    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the
+    paper.
+    """

@@ -159,11 +159,11 @@ class TestSimulator(CvxportfolioTest):
         simulator = cvx.StockMarketSimulator(market_data=modified_market_data)
 
         policy = cvx.SinglePeriodOptimization(
-            cvx.ReturnsForecast() - 10 * cvx.FullCovariance(),
+            cvx.ReturnsForecast() - 10 * cvx.FullSigma(),
             [cvx.LongOnly(), cvx.LeverageLimit(1)],
             solver=self.default_qp_solver)
 
-        bt_result = simulator.backtest(policy, start_time = rets.index[10],
+        bt_result = simulator.run_backtest(policy, start_time = rets.index[10],
             end_time = rets.index[20])
 
         print(bt_result.w)
@@ -472,7 +472,7 @@ class TestSimulator(CvxportfolioTest):
             market_data=self.market_data_4, base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
-            result = sim.backtest_many([pol, pol1], pd.Timestamp(
+            result = sim.run_multiple_backtest([pol, pol1], pd.Timestamp(
                 '2023-01-01'), pd.Timestamp('2023-04-20'), h=['hello'])
 
         result = sim.backtest(pol1, pd.Timestamp(
@@ -693,7 +693,7 @@ class TestSimulator(CvxportfolioTest):
             self.assertTrue(np.isclose(result.z['AAPL'].loc[t], 0., atol=1E-3))
 
         # cvx.MinWeightsAtTimes, cvx.MaxWeightsAtTimes
-        policies = [cvx.MultiPeriodOptimization(
+        policies = [cvx.MultiPeriodOpt(
             objective - cvx.StocksTransactionCost(),
             [cvx.MinWeightsAtTimes(0., no_trade_ts),
             cvx.MaxWeightsAtTimes(0., no_trade_ts)],
@@ -855,9 +855,9 @@ class TestSimulator(CvxportfolioTest):
         sim = cvx.StockMarketSimulator(
             market_data=market_data, base_location=self.datadir)
 
-        objective = cvx.ReturnsForecast() - 5 * cvx.FactorModelCovariance(
+        objective = cvx.ReturnsForecast() - 5 * cvx.FactorModel(
             num_factors=2, Sigma=None)
-        policy = cvx.SinglePeriodOptimization(
+        policy = cvx.SinglePeriodOpt(
             objective, [cvx.LongOnly(), cvx.LeverageLimit(1)],
             solver=self.default_qp_solver)
 

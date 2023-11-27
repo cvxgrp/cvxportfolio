@@ -32,6 +32,8 @@ __all__ = [
     "FactorModelCovariance",
     "RiskForecastError",
     "WorstCaseRisk",
+    "FullSigma",
+    "FactorModel",
 ]
 
 
@@ -438,3 +440,19 @@ class WorstCaseRisk(BaseRiskModel):
         risks = [risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
                  for risk in self.riskmodels]
         return cp.max(cp.hstack(risks))
+
+# Aliases
+
+class FullSigma(FullCovariance):
+    """Alias of :class:`FullCovariance`.
+
+    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the
+    paper.
+    """
+
+class FactorModel(FactorModelCovariance):
+    """Alias of :class:`FactorModelCovariance`.
+
+    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the
+    paper.
+    """
