@@ -35,8 +35,8 @@ class Estimator:
     put any sub-estimators at the class attribute level, like we do
     throughout the library. That ensures that the sub-estimators will
     be evaluated before the class itself by both
-    :method:`initialize_estimator_recursive` and
-    :method:`values_in_time_recursive`.
+    :meth:`initialize_estimator_recursive` and
+    :meth:`values_in_time_recursive`.
     """
 
     # pylint: disable=useless-type-doc,useless-param-doc
@@ -189,27 +189,28 @@ class CvxpyExpressionEstimator(Estimator):
 
 
 class DataEstimator(Estimator):
-    """Estimator of point-in-time values from internal `self.data`.
+    """Estimator of point-in-time values from internal data.
 
-    It also implements logic to check that no `np.nan` are returned
-    by its `values_in_time_recursive` method, which is the way `cvxportfolio`
+    It also implements logic to check that no ``nan`` are returned
+    by its ``values_in_time_recursive`` method, which is the way Cvxportfolio
     objects use this class to get data, to compile and update a Cvxpy
     parameter, and to slice the data with the current trading universe.
 
     :param data: Data expressed preferably as pandas Series or DataFrame
-        where the first index is a pandas.DateTimeIndex. Otherwise you can
-        pass a callable object which implements the values_in_time_recursive
-        method (with the standard signature) and returns the corresponding
-        value in time, or a constant float, numpy.array, or even pandas Series
-        or DataFrame not indexed by time (e.g., a covariance matrix where both
-        index and columns are the stock symbols).
+        where the first index is a ``pandas.DateTimeIndex``. Otherwise you can
+        pass a callable object which implements the
+        :meth:`values_in_time_recursive` method (with the standard signature)
+        and returns the corresponding value in time, or a constant float,
+        numpy.array, or even pandas Series or DataFrame not indexed by time
+        (e.g., a covariance matrix where both index and columns are the stock
+        symbols).
     :type data: object, pandas.Series, pandas.DataFrame
     :param use_last_available_time: if the pandas index exists
-        and is a pandas.DateTimeIndex you can instruct
-        :method:`values_in_time_recursive` to retrieve the last available value
+        and is a ``pandas.DateTimeIndex`` you can instruct
+        :meth:`values_in_time_recursive` to retrieve the last available value
         at time t by setting this to True. Default is False.
     :type use_last_available_time: bool
-    :param allow_nans: If True, allow data returned to contain `numpy.nan`s.
+    :param allow_nans: If True, allow data returned to contain ``nan``.
         Default False.
     :type allow_nans: bool
     :param compile_parameter: If True, compile a Cvxpy parameter that gets
@@ -217,7 +218,7 @@ class DataEstimator(Estimator):
         backtest. Default False.
     :type compile_parameter: bool
     :param non_negative: If True, the compiled Cvxpy parameter is non-negative
-        (this affects certain Cvxpy operations). Default False
+        (this affects certain Cvxpy operations). Default False.
     :type non_negative: bool
     :param positive_semi_definite: If True, the compiled Cvxpy parameter is
         market as a positive semi-definite matrix (this affects certain Cvxpy
@@ -228,10 +229,10 @@ class DataEstimator(Estimator):
         the cash account. Default False.
     :type data_includes_cash: bool
     :param ignore_shape_check: If True, we don't do any slicing of the data
-        according to the current trading universe. Default False
+        according to the current trading universe. Default False.
     :type ignore_shape_check: bool
 
-    :raises cvxportfolio.NaNError: If np.nan's are present in result.
+    :raises cvxportfolio.NaNError: If ``nan`` are present in result.
     :raises cvxportfolio.MissingTimesError: If some times are missing.
     :raises cvxportfolio.MissingAssetsError: If some assets are missing.
     :raises cvxportfolio.DataError: If data is not in the right form.
@@ -375,7 +376,7 @@ class DataEstimator(Estimator):
         return data
 
     def _internal_values_in_time(self, t, **kwargs):
-        """Internal method called by :method:`values_in_time`."""
+        """Internal method called by :meth:`values_in_time`."""
 
         # here we trust the result (change?)
         if hasattr(self.data, "values_in_time_recursive"):
