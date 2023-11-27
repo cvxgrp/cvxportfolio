@@ -80,7 +80,7 @@ in your local environment with:
 
 We test against recent python versions (3.9, 3.10, 3.11) and recent versions of the main
 dependencies (from pandas 1.4, cvxpy 1.1, ..., up to the current versions) on all major 
-operating systems. So, cvxportfolio doesn't require any specific version of
+operating systems. So, Cvxportfolio doesn't require any specific version of
 any dependency, and should work in any pre--existing environment.
 	
 Licensing
