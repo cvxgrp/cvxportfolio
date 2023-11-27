@@ -1,7 +1,7 @@
 Cvxportfolio Documentation
 ==========================
 
-**Cvxportfolio** is a Python library for portfolio optimization. It enables users
+Cvxportfolio is a Python library for portfolio optimization. It enables users
 to quickly try optimization :doc:`policies <policies>` for asset management
 by back-testing their past performance with a sophisticated :doc:`market simulator <simulator>`.
 
@@ -54,17 +54,17 @@ and a list of constraints which apply to the optimization. All these types
 of objects can be customized in many ways, including by deriving or redefining them.
 
 Then, we provide the :class:`cvxportfolio.data.MarketData` abstraction, which both serves historical
-data during a backtest and real-time data in online usage. We implement the interface
+data during a back-test and real time data in online usage. We implement the interface
 to public data sources (`Yahoo finance <https://finance.yahoo.com>`_ 
-and `FRED <https://fred.stlouisfed.org/>`_), as well as user-provided data (which
-can also be passed to all other objects).
+and `FRED <https://fred.stlouisfed.org/>`_), as well as user-provided data, which
+can also be passed to all other objects (see :ref:`passing-data`).
 
-In addition, we provide logic to easily parallelize backtesting of many different policies,
+In addition, we provide logic to easily parallelize back-testing of many different policies,
 or the same policy with different choices of hyperparameters, and cache on disk both
 historical data (for reproducibility) and various expensive calculations, such as
 estimates of covariance matrices. 
 
-We present the results of each backtest with a clear interface, :class:`cvxportfolio.BacktestResult`,
+We present the results of each back-test with a clear interface, :class:`cvxportfolio.BacktestResult`,
 which defines various metrics of backtest performance and the logic to both print
 and plot them.
 
@@ -81,7 +81,7 @@ in your local environment with:
 We test against recent python versions (3.9, 3.10, 3.11) and recent versions of the main
 dependencies (from pandas 1.4, cvxpy 1.1, ..., up to the current versions) on all major 
 operating systems. So, Cvxportfolio doesn't require any specific version of
-any dependency, and should work in any pre--existing environment.
+any dependency, and should work in any pre-existing environment.
 	
 Licensing
 ---------
@@ -93,17 +93,17 @@ open source license.
 Citing
 ------------
 
-If you use `cvxportfolio` in work that leads to publication, you can cite the following:
+If you use Cvxportfolio in work that leads to publication, you can cite the following:
 
 .. code-block:: latex
 
     @misc{busseti2017cvx,
-        author    = "Busseti, Enzo and Diamond, Steven and Boyd, Stephen",
-        title     = "CVXPortfolio",
+        author    = {Busseti, Enzo and Diamond, Steven and Boyd, Stephen},
+        title     = {Cvxportfolio},
         howpublished = {\url{https://github.com/cvxgrp/cvxportfolio}},
-        year     = "2017",
-        month    = "January",
-        note     = "Portfolio Optimization and Back--{T}esting",
+        year     = {2017},
+        month    = {January},
+        note     = {Portfolio Optimization and Back--{T}esting},
     }
 
     @article{boyd2017multi,

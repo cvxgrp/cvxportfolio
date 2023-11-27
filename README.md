@@ -153,12 +153,12 @@ If you use Cvxportfolio in work that leads to publication, you can cite the foll
 ``` latex
 
 @misc{busseti2017cvx,
-    author    = "Busseti, Enzo and Diamond, Steven and Boyd, Stephen",
-    title     = "CVXPortfolio",
+    author    = {Busseti, Enzo and Diamond, Steven and Boyd, Stephen},
+    title     = {Cvxportfolio},
     howpublished = {\url{https://github.com/cvxgrp/cvxportfolio}},
-    year     = "2017",
-    month    = "January",
-    note     = "Portfolio Optimization and Back--{T}esting",
+    year     = {2017},
+    month    = {January},
+    note     = {Portfolio Optimization and Back--{T}esting},
 }
 
 @article{boyd2017multi,
