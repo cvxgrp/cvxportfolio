@@ -23,7 +23,7 @@ packages = ["cvxportfolio", "cvxportfolio.tests"]
 include-package-data = true
 
 [tool.pylint.main]
-fail-under = 9.0
+fail-under = 9.5
 jobs = 0 # multiprocessing pylint
 max-line-length = 79 # PEP8 default
 load-plugins =["pylint.extensions.docparams", "pylint.extensions.docstyle"]

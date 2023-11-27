@@ -121,13 +121,13 @@ class MarketSimulator:
             self.market_data = market_data
         else:
 
-            if not len(universe) and prices is None:
+            if (len(universe) == 0) and prices is None:
                 if round_trades:
                     raise SyntaxError(
                         "If you don't specify prices you can't request "
                         + "`round_trades`.")
 
-            if not len(universe):
+            if len(universe) == 0:
                 self.market_data = UserProvidedMarketData(
                     returns=returns,
                     volumes=volumes, prices=prices,
@@ -155,13 +155,36 @@ class MarketSimulator:
         result.iloc[-1] = -sum(result.iloc[:-1])
         return result
 
-    def simulate(self, t, t_next, h, policy, past_returns, current_returns,
-                past_volumes, current_volumes, current_prices):
+    def simulate(
+            self, t, t_next, h, policy, past_returns, current_returns,
+            past_volumes, current_volumes, current_prices):
         """Get next portfolio and statistics used by Backtest for reporting.
 
         The signature of this method differs from other estimators
         because we pass the policy directly to it, and the past returns
         and past volumes are computed by it.
+
+        :param t: Current timestamp.
+        :type t: pandas.Timestamp
+        :param t_next: Next period's timestamp.
+        :type t_next: pandas.Timestamp
+        :param h: Current holdings.
+        :type h: pandas.Series
+        :param policy: Trading policy.
+        :type policy: :class:`cvxportfolio.policies.Policy`
+        :param past_returns: Past market returns.
+        :type past_returns: pandas.DataFrame
+        :param current_returns: Current market returns.
+        :type current_returns: pandas.Series
+        :param past_volumes: Past market volumes if known, or None.
+        :type past_volumes: pandas.DataFrame or None
+        :param current_volumes: Current market volumes if known, or None.
+        :type current_volumes: pandas.Series or None
+        :param current_prices: Current market prices if known, or None.
+        :type current_prices: pandas.Series or None
+
+        :returns: h_next, z, u, realized_costs, policy_time
+        :rtype: pandas.Series, pandas.Series, pandas.Series, dict, float
         """
 
         # translate to weights
@@ -183,20 +206,21 @@ class MarketSimulator:
         # for safety recompute cash
         z.iloc[-1] = -sum(z.iloc[:-1])
 
-        # bug in cPython 3.12, https://github.com/python/cpython/issues/111933
-        if sys.version.split(' ')[0] < '3.12':
+        # only in Python < 3.12 https://github.com/python/cpython/issues/111933
+        if sys.version.split(' ', maxsplit=1)[0] < '3.12':
             assert sum(z) == 0.
 
         # trades in dollars
         u = z * current_portfolio_value
 
         # zero out trades on stock that weren't trading on that day
-        if not (current_volumes is None):
+        if not current_volumes is None:
             non_tradable_stocks = current_volumes[current_volumes <= 0].index
             if len(non_tradable_stocks):
                 logging.info(
-                    f"At time {t} the simulator canceled trades on assets {non_tradable_stocks}"
-                    " because their market volumes for the period are zero.")
+                    "At time %s the simulator canceled trades on assets %s"
+                    + " because their market volumes for the period are zero.",
+                    t, non_tradable_stocks)
             u[non_tradable_stocks] = 0.
 
         # round trades
@@ -206,8 +230,8 @@ class MarketSimulator:
         # recompute cash
         u.iloc[-1] = -sum(u.iloc[:-1])
 
-        # bug in cPython 3.12, https://github.com/python/cpython/issues/111933
-        if sys.version.split(' ')[0] < '3.12':
+        # only in Python < 3.12 https://github.com/python/cpython/issues/111933
+        if sys.version.split(' ', maxsplit=1)[0] < '3.12':
             assert sum(u) == 0.
 
         # compute post-trade holdings (including cash balance)
@@ -327,7 +351,7 @@ class MarketSimulator:
             h = h_next
 
             if sum(h) <= 0.: # bankruptcy
-                logging.warning(f'Back-test ended in bankruptcy at time {t}!')
+                logging.warning('Back-test ended in bankruptcy at time %s!', t)
                 break
 
         self._finalize_policy(used_policy, h.index)
@@ -337,55 +361,34 @@ class MarketSimulator:
 
         return result
 
-    # def _single_backtest(self, policy, start_time, end_time, h, universe=None):
-    #     if universe is None:
-    #         universe = self.market_data.universe
-    #     trading_calendar = self.market_data._get_trading_calendar(
-    #         start_time, end_time, include_end=True)
-    #
-    #     if hasattr(policy, 'compile_to_cvxpy'):
-    #         policy.compile_to_cvxpy()
-    #
-    #     result = BacktestResult(universe, trading_calendar, self.costs)
-    #
-    #     # this is the main loop of a backtest
-    #     for t, t_next in zip(trading_calendar[:-1], trading_calendar[1:]):
-    #         # s = time.time()
-    #         result.h.loc[t] = h
-    #         h, result.z.loc[t], result.u.loc[t], realized_costs, \
-    #             result.policy_times.loc[t] = self.simulate(
-    #                 t=t, h=h, policy=policy, t_next=t_next)
-    #         for cost in realized_costs:
-    #             result.costs[cost].loc[t] = realized_costs[cost]
-    #         result.simulator_times.loc[t] = time.time(
-    #         ) - self.simulator_timer - result.policy_times.loc[t]
-    #         self.simulator_timer = time.time()
-    #
-    #     result.h.loc[pd.Timestamp(end_time)] = h
-    #
-    #     result.cash_returns =\
-    #         self.market_data.returns.iloc[:, -1].loc[result.u.index]
-    #
-    #     return result
-
     def _adjust_h_new_universe(self, h, new_universe):
         """Adjust holdings vector for change in universe.
 
         :param h: (Pre-trade) holdings vector in value units (e.g., USDOLLAR).
-            Its index is the trading universe in the period before the present one.
+            Its index is the trading universe in the period before the present
+            one.
         :type h: pd.Series
-        :param new_universe: New trading universe for the current trading period.
+        :param new_universe: New trading universe for the current trading
+            period.
         :type new_universe: pd.Index
 
         :returns: new pre-trade holdings vector with index is ``new_universe``
         :rtype: pd.Series
 
-        For any new asset that is present in ``new_universe`` but not in ``h.index``
-        we set the corrensponding value of ``h`` to 0. Any removed asset that is present in
-        ``h.index`` instead is removed from h and its value is added to the cash account.
+        For any new asset that is present in ``new_universe`` but not in
+        ``h.index`` we set the corrensponding value of ``h`` to 0. Any removed
+        asset that is present in ``h.index`` instead is removed from h and its
+        value is added to the cash account.
 
-        Note that we ignore the transaction cost involved in liquidating the position.
-        You can redefine this method in a derived class to change this behavior.
+        Note that we ignore the transaction cost involved in liquidating the
+        position. You can redefine this method in a derived class to change
+        this behavior.
+
+        .. note::
+
+            This method will become public in the future and will be more
+            clearly documented, to enable custom usecases (see
+            https://github.com/cvxgrp/cvxportfolio/issues/116).
         """
 
         # check that cash key didn't change
@@ -397,15 +400,15 @@ class MarketSimulator:
 
         new_assets = pd.Index(set(new_universe).difference(h.index))
         if len(new_assets):
-            logging.info(f'Adjusting h vector by adding assets {new_assets}')
+            logging.info("Adjusting h vector by adding assets %s", new_assets)
 
         remove_assets = pd.Index(set(h.index).difference(new_universe))
         if len(remove_assets):
             total_liquidation = h[remove_assets].sum()
             logging.info(
-                f"Adjusting h vector by removing assets {remove_assets}."
-                " Their current market value of {total_liquidation} is added"
-                " to the cash account.")
+                "Adjusting h vector by removing assets %s."
+                + " Their current market value of %s is added"
+                + " to the cash account.", remove_assets, total_liquidation)
             new_h.iloc[-1] += total_liquidation
 
         return new_h
@@ -420,27 +423,31 @@ class MarketSimulator:
 
         :param policy: Trading policy with symbolic hyperparameters.
         :type policy: cvx.BaseTradingPolicy
-        :param start_time: start time of the back-test on which we optimize;
-            if market it close, the first trading day after it is selected.
-        :type start_time: str or datetime
+        :param start_time: Start time of the back-test on which we optimize;
+            if market is closed, the first trading day after it is selected.
+        :type start_time: str or pandas.Timestamp
         :param end_time: End time of the back-test on which we optimize;
-            if market it closed, the last trading day before it is selected
+            if market is closed, the last trading day before it is selected.
         :type end_time: str or datetime or None
-        :param initial_value: Initial value in dollar of the portfolio, if not
-            specifying ``h`` it is assumed the initial portfolio is all cash;
-            if ``h`` is specified this is ignored.
+        :param initial_value: Initial value in cash units of the portfolio, if
+            not specifying ``h`` it is assumed the initial portfolio is all
+            cash; if ``h`` is specified this is ignored. Default one million.
         :type initial_value: float
-        :param h: Initial portfolio ``h`` expressed in dollar positions. If
+        :param h: Initial portfolio ``h`` expressed in cash units. If
             ``None`` an initial portfolio of ``initial_value`` in cash is used.
-        :type h: pd.Series or None
-
-        :param objective: Attribute of :class:`BacktestResult` that is
-            maximized.
+        :type h: pandas.Series or None
+        :param objective: Attribute of :class:`cvxportfolio.BacktestResult`
+            that is maximized. Default ``'sharpe_ratio'``.
         :type objective: str
+        :param parallel: Whether to run in parallel. If running in parallel
+            you should must be careful at how you use this method.
+            It is good practice to define the market simulator and execute this
+            inside a ``if __name__ == '__main__:'`` clause, if in a script.
+        :type parallel: bool
 
-        :returns: The policy whose hyperparameters now have optimal values.
+        :returns: The policy whose hyper-parameters now have optimal values.
             (The same object that was passed by the user.)
-        :rtype: cvxportfolio.Policy
+        :rtype: :class:`cvxportfolio.Policy`
         """
 
         def modify_orig_policy(target_policy):
@@ -474,20 +481,20 @@ class MarketSimulator:
             for hp in policy.collect_hyperparameters():
                 try:
                     hp._increment()
-                    if not (str(policy) in results):
+                    if str(policy) not in results:
                         test_policies.append(copy.deepcopy(policy))
                     hp._decrement()
                 except IndexError:
                     pass
                 try:
                     hp._decrement()
-                    if not (str(policy) in results):
+                    if str(policy) not in results:
                         test_policies.append(copy.deepcopy(policy))
                     hp._increment()
                 except IndexError:
                     pass
 
-            if not len(test_policies):
+            if len(test_policies) == 0:
                 break
 
             results_partial = self.backtest_many(test_policies,
@@ -513,70 +520,86 @@ class MarketSimulator:
 
         return policy
 
-    def backtest(self, policy, start_time=None, end_time=None, initial_value=1E6, h=None):
-        """Backtest trading policy.
+    def backtest(
+            self, policy, start_time=None, end_time=None, initial_value=1E6,
+            h=None):
+        """Back-test a trading policy.
 
-        The default initial portfolio is all cash, or you can pass any portfolio with
-        the `h` argument.
+        The default initial portfolio is all cash, or you can pass any
+        portfolio with the ``h`` argument.
 
-        :param policy: trading policy
-        :type policy: cvx.BaseTradingPolicy
-        :param start_time: start time of the backtest; if market it close, the first trading day
-             after it is selected
-        :type start_time: str or datetime
-        :param end_time: end time of the backtest; if market it close, the last trading day
-             before it is selected
-        :type end_time: str or datetime or None
-        :param initial_value: initial value in dollar of the portfolio, if not specifying
-            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified
-            this is ignored
+        :param policy: Trading policy, see the :doc:`policies` documentation
+            page.
+        :type policy: :class:`cvxportfolio.policies.Policy`
+        :param start_time: Start time of the back-test; if market is closed,
+            the first trading day after it is selected.
+        :type start_time: str or pandas.Timestamp
+        :param end_time: End time of the back-test, if market is closed the
+            last trading day before it is selected.
+        :type end_time: str or pandas.Timestamp or None
+        :param initial_value: Initial value in dollar of the portfolio, if not
+            specifying ``h`` it is assumed the initial portfolio is all cash;
+            if ``h`` is specified this is ignored. Default value one million.
         :type initial_value: float
-        :param h: initial portfolio ``h`` expressed in dollar positions. If ``None``
+        :param h: Initial portfolio ``h`` expressed in cash units. If ``None``
             an initial portfolio of ``initial_value`` in cash is used.
-        :type h: pd.Series or None
+        :type h: pandas.Series or None
 
-        :returns result: instance of :class:`BacktestResult` which has all relevant backtest
-            data and logic to compute metrics, generate plots, ...
-        :rtype result: cvx.BacktestResult
+        :returns: Back-test result with all relevant data and metrics, logic to
+            generate plots, ....
+        :rtype: :class:`cvxportfolio.BacktestResult`
         """
-        return self.backtest_many([policy], start_time=start_time, end_time=end_time,
-                                  initial_value=initial_value, h=None if h is None else [h], parallel=False)[0]
+        return self.backtest_many(
+            [policy], start_time=start_time, end_time=end_time,
+            initial_value=initial_value, h=None if h is None else [h],
+            parallel=False)[0]
 
     # Alias to match original syntax
     run_backtest = backtest
 
-    def backtest_many(self, policies, start_time=None, end_time=None, initial_value=1E6, h=None, parallel=True):
-        """Backtest many trading policies.
+    def backtest_many(
+            self, policies, start_time=None, end_time=None, initial_value=1E6,
+            h=None, parallel=True):
+        """Back-test many trading policies.
 
-        The default initial portfolio is all cash, or you can pass any portfolio with
-        the `h` argument, or a list of those.
+        The default initial portfolio is all cash, or you can pass any
+        portfolio with the ``h`` argument, or a list of those.
 
-        :param policies: trading policies
-        :type policy: list of cvx.BaseTradingPolicy:
-        :param start_time: start time of the backtests; if market it close, the first trading day
-            after it is selected. Currently it is not possible to specify different start times
-            for different policies, so the same is used for all.
-        :type start_time: str or datetime
-        :param end_time: end time of the backtests; if market it close, the last trading day
-            before it is selected. Currently it is not possible to specify different end times
-            for different policies, so the same is used for all.
-        :type end_time: str or datetime or None
-        :param initial_value: initial value in dollar of the portfolio, if not specifying
-            ``h`` it is assumed the initial portfolio is all cash; if ``h`` is specified
-            this is ignored
-        :param h: initial portfolio `h` expressed in dollar positions, or list of those. If
-            passing a list it must have the same lenght as the policies. If this argument
-            is specified, ``initial_value`` is ignored, otherwise the same portfolio of
-            ``initial_value`` all in cash is used as starting point for all backtests.
-        :type h: list or pd.Series or None
-        :param parallel: whether to run in parallel. If runnning in parallel you **must be careful
-            at how you use this method**. If you use this in a script, you *should* define the MarketSimulator
-            *in* the `if __name__ == '__main__:'` clause, and call this method there as well.
+        :param policies: List of :class:`cvxportfolio.policies.Policy` trading
+            policies, see the :doc:`policies` documentation page.
+        :type policies: list
+        :param start_time: Start time of the backtests. If market is closed the
+            first trading day after it is selected. Currently it is not
+            possible to specify different start times for different policies,
+            so the same is used for all.
+        :type start_time: str or pandas.Timestamp
+        :param end_time: End time of the backtests. If market is closed the
+            last trading day before it is selected. Currently it is not
+            possible to specify different end times for different policies, so
+            the same is used for all.
+        :type end_time: str or pandas.Timestamp or None
+        :param initial_value: Initial value in dollar of the portfolio, if not
+            specifying ``h`` it is assumed the initial portfolio is all cash;
+            if ``h`` is specified this is ignored. Default value one million.
+        :type initial_value: float
+        :param h: Initial portfolio `h` expressed in dollar positions, or list
+            of those. If passing a list it must have the same lenght as the
+            policies. If this argument is specified, ``initial_value`` is
+            ignored, otherwise the same portfolio of ``initial_value`` all in
+            cash is used as starting point for all backtests.
+        :type h: list of pandas.Series or None
+        :param parallel: Whether to run in parallel. If running in parallel
+            you should must be careful at how you use this method.
+            It is good practice to define the market simulator and execute this
+            inside a ``if __name__ == '__main__:'`` clause, if in a script.
         :type parallel: bool
 
-        :returns result: list of instances of :class:`BacktestResult` which have all relevant backtest
-            data and logic to compute metrics, generate plots, ...
-        :rtype result: list of cvx.BacktestResult
+        :raises SyntaxError: If the lenghts of objects passed don't match, ....
+
+        :returns: List of :class:`cvxportfolio.BacktestResult` which have all
+            relevant backtest data and logic to compute metrics, generate
+            plots, ....
+        :rtype: list
         """
 
         if not hasattr(policies, '__len__'):
@@ -585,9 +608,10 @@ class MarketSimulator:
         if not hasattr(h, '__len__'):
             h = [h] * len(policies)
 
-        if not (len(policies) == len(h)):
+        if not len(policies) == len(h):
             raise SyntaxError(
-                'If passing lists of policies and initial portfolios they must have the same length.')
+                'If passing lists of policies and initial portfolios'
+                + 'they must have the same length.')
 
         if start_time is not None:
             start_time = pd.Timestamp(start_time)
@@ -625,7 +649,7 @@ class MarketSimulator:
             with Pool(initializer=_mp_init, initargs=(Lock(),)) as p:
                 result = p.starmap(self._worker, zip_args)
 
-        return [el for el in result]
+        return list(result)
 
     # Alias to match original syntax
     run_multiple_backtest = backtest_many
@@ -638,26 +662,27 @@ class StockMarketSimulator(MarketSimulator):
     :param universe: List of Yahoo Finance stock names.
     :type universe: list
 
-    :param cash_key: Name of the cash account. Its returns
-        are the risk-free rate.
+    :param cash_key: Name of the cash account. Its returns are the risk-free
+        rate. Default ``'USDOLLAR'`` (currently the only one supported).
     :type cash_key: str
 
-    :param trading_frequency: Instead of using frequency implied by
-        the index of the returns, down-sample all dataframes.
-        We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
-        ``'annual'``. By default (None) don't down-sample.
+    :param trading_frequency: Instead of using frequency implied by the index
+        of the returns, down-sample all dataframes.  We implement ``'weekly'``,
+        ``'monthly'``, ``'quarterly'`` and ``'annual'``. By default (None)
+        don't down-sample.
     :type trading_frequency: str or None
 
     :param base_location: The location of the storage. By default
         it's a directory named ``cvxportfolio_data`` in your home folder.
     :type base_location: pathlib.Path
-
     :param costs: List of costs that are applied at each time in a back-test.
-        By default we add :class:`StocksTransactionCost`
-        and :class:`StocksHoldingCost`.
-    :type costs: list of :class:`SimulatorCost` classes or instances
+        By default we add :class:`cvxportfolio.StocksTransactionCost`
+        and :class:`cvxportfolio.StocksHoldingCost`.
+    :type costs: list of :class:`cvxportfolio.costs.SimulatorCost` classes or
+        instances
 
-    :param round_trades: Round trades to integer number of shares. By default, True.
+    :param round_trades: Round trades to integer number of shares. By default,
+        True.
     :type round_trades: bool
 
     :param kwargs: You can add any other argument to pass to

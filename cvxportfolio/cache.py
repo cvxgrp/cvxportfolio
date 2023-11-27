@@ -28,7 +28,16 @@ def _mp_init(l):
 #     return hashlib.sha256(bytes(str(tuple(universe)), 'utf-8')).hexdigest()
 
 def cache_name(signature, base_location):
-    """Cache name."""
+    """Cache name.
+
+    :param signature: Signature of the market data server.
+    :type signature: str
+    :param base_location: Base storage location.
+    :type base_location: pathlib.Path
+
+    :returns: Storage location.
+    :rtype: pathlib.Path
+    """
     return (base_location / 'backtest_cache') / (signature + '.pkl')
 
 def _load_cache(signature, base_location):
