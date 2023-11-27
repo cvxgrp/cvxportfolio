@@ -48,11 +48,15 @@ __all__ = ['BacktestResult']
 
 
 class BacktestResult:
-    """Store the data from a back-test and produce metrics and plots."""
+    """Store the data from a back-test and produce metrics and plots.
 
-    # maybe remove this, not sure if it makes sense to document all
-    # properties' return values
-    # pylint: disable=missing-return-doc, missing-return-type-doc
+    :param universe: Best initial guess of the trading universe.
+    :type universe: pandas.Index
+    :param trading_calendar:  Best initial guess of the trading calendar.
+    :type trading_calendar: pandas.DatetimeIndex
+    :param costs: Simulator cost objects whose value is logged.
+    :type costs: list
+    """
 
     def __init__(self, universe, trading_calendar, costs):
         """Initialization of back-test result."""
@@ -74,7 +78,12 @@ class BacktestResult:
 
     @property
     def _current_full_universe(self):
-        """Helper property used by _change_universe."""
+        """Helper property used by _change_universe.
+
+        :returns: Current full universe (including assets that were seen
+            in the past but have been dropped).
+        :rtype: pandas.Index
+        """
         return self._h.columns
 
     def _change_universe(self, new_universe):
@@ -165,32 +174,56 @@ class BacktestResult:
 
     @property
     def policy_times(self):
-        """The computation time of the policy object at each period."""
+        """The computation time of the policy object at each period.
+
+        :returns: Policy time in seconds at each period.
+        :rtype: pandas.Series
+        """
         return pd.Series(self._policy_times)
 
     @property
     def simulator_times(self):
-        """The computation time of the simulator object at each period."""
+        """The computation time of the simulator object at each period.
+
+        :returns: Simulator time in seconds at each period.
+        :rtype: pandas.Series
+        """
         return pd.Series(self._simulator_times)
 
     @property
     def cash_returns(self):
-        """Per-period returns on cash (*i.e.*, the risk-free rate)."""
+        """Per-period returns on cash (*i.e.*, the risk-free rate).
+
+        :returns: All cash returns.
+        :rtype: pandas.Series
+        """
         return pd.Series(self._cash_returns)
 
     @property
     def benchmark_returns(self):
-        """Benchmark returns per period (if the policy has a benchmark)."""
+        """Benchmark returns per period (if the policy has a benchmark).
+
+        :returns: All benchmark returns, if defined, else ``nan``.
+        :rtype: pandas.Series
+        """
         return pd.Series(self._benchmark_returns)
 
     @property
     def cash_key(self):
-        """The name of the cash unit used (e.g., USDOLLAR)."""
+        """The name of the cash unit used (e.g., USDOLLAR).
+
+        :returns: Name of the cash accounting unit.
+        :rtype: str
+        """
         return self._h.columns[-1]
 
     @property
     def periods_per_year(self):
-        """Average trading periods per year in this backtest (rounded)."""
+        """Average trading periods per year in this backtest (rounded).
+
+        :returns: Average periods per year.
+        :rtype: int
+        """
         return periods_per_year_from_datetime_index(self._h.index)
 
     #
@@ -199,18 +232,29 @@ class BacktestResult:
 
     @property
     def h(self):
-        """The portfolio (holdings) at each trading period (including the
-        end)."""
+        """The portfolio (holdings) at each trading period (including the end).
+
+        :returns: Holdings at each period, includes cash account.
+        :rtype: pandas.DataFrame
+        """
         return pd.DataFrame(self._h)
 
     @property
     def u(self):
-        """The portfolio trade vector at each trading period."""
+        """The portfolio trade vector at each trading period.
+
+        :returns: Trades at each period.
+        :rtype: pandas.DataFrame
+        """
         return pd.DataFrame(self._u)
 
     @property
     def z(self):
-        """The portfolio trade weights at each trading period."""
+        """The portfolio trade weights at each trading period.
+
+        :returns: Trades weights at each period.
+        :rtype: pandas.DataFrame
+        """
         return (self.u.T / self.v).T
 
     @property
@@ -222,42 +266,73 @@ class BacktestResult:
         the self-financing condition (recalculates cash value), rounding
         trades to integer number of shares, canceling trades on assets whose
         volume is zero for the day, :math:`\ldots`.
+
+        :returns: Trades weights requested by the policy at each period.
+        :rtype: pandas.DataFrame
         """
         return pd.DataFrame(self._z)
 
     @property
     def v(self):
-        """The total value (or NAV) of the portfolio at each period."""
+        """The total value (or NAV) of the portfolio at each period.
+
+        :returns: Total value at each period.
+        :rtype: pandas.Series
+        """
         return self.h.sum(axis=1)
 
     @property
     def initial_value(self):
-        """The initial value (or NAV) of the portfolio."""
+        """The initial value (or NAV) of the portfolio.
+
+        :returns: Value at the start of the back-test.
+        :rtype: float
+        """
         return self.v.iloc[0]
 
     @property
     def final_value(self):
-        """The portfolio value (or NAV) at the end of the back-test."""
+        """The portfolio value (or NAV) at the end of the back-test.
+
+        :returns: Final value of the portfolio.
+        :rtype: float
+        """
         return self.v.iloc[-1]
 
     @property
     def profit(self):
-        """The total profit (PnL) in this backtest."""
+        """The total profit (PnL) in this backtest.
+
+        :returns: Total profit.
+        :rtype: float
+        """
         return self.v.iloc[-1] - self.v.iloc[0]
 
     @property
     def w(self):
-        """The weights of the portfolio at each period."""
+        """The weights of the portfolio at each period.
+
+        :returns: Portfolio weights at each period.
+        :rtype: pandas.DataFrame
+        """
         return (self.h.T / self.v).T
 
     @property
     def h_plus(self):
-        """The post-trade portfolio (holdings) at each period."""
+        """The post-trade portfolio (holdings) at each period.
+
+        :returns: Post-trade holdings at each period.
+        :rtype: pandas.DataFrame
+        """
         return self.h.loc[self.u.index] + self.u
 
     @property
     def w_plus(self):
-        """The post-trade weights of the portfolio at each period."""
+        """The post-trade weights of the portfolio at each period.
+
+        :returns: Post-trade weights at each period.
+        :rtype: pandas.DataFrame
+        """
         return (self.h_plus.T / self.v).T
 
     @property
@@ -274,6 +349,9 @@ class BacktestResult:
         we exclude the cash account from the :math:`\ell_1` norm,
         and :math:`v_t` is the total value (NAV) of the portfolio
         at time :math:`t`.
+
+        :returns: Leverage at each period.
+        :rtype: pandas.Series
         """
         return np.abs(self.w.iloc[:, :-1]).sum(1)
 
@@ -291,6 +369,9 @@ class BacktestResult:
         we exclude the cash account from the :math:`\ell_1` norm,
         and :math:`v_t` is the total value (NAV) of the portfolio
         at time :math:`t`.
+
+        :returns: Turnover at each period.
+        :rtype: pandas.Series
         """
         return np.abs(self.u.iloc[:, :-1]).sum(axis=1) / (
             2*self.v.loc[self.u.index])
@@ -306,6 +387,9 @@ class BacktestResult:
             R_t^\text{p} = \frac{v_{t+1} - v_t}{v_t}
 
         in terms of the portfolio value (NAV).
+
+        :returns: Portfolio returns at each period.
+        :rtype: pandas.Series
         """
         val = self.v
         return pd.Series(
@@ -318,12 +402,20 @@ class BacktestResult:
 
     @property
     def average_return(self):
-        r"""The average realized return :math:`\overline{R^\text{p}}`."""
+        r"""The average realized return :math:`\overline{R^\text{p}}`.
+
+        :returns: Average portfolio return.
+        :rtype: float
+        """
         return np.mean(self.returns)
 
     @property
     def annualized_average_return(self):
-        r"""The average realized return, annualized."""
+        r"""The average realized return, annualized.
+
+        :returns: Average portfolio return, annualized.
+        :rtype: float
+        """
         return self.average_return * self.periods_per_year
 
     @property
@@ -335,38 +427,64 @@ class BacktestResult:
         .. math::
 
             G^\text{p}_t = \log (v_{t+1} / v_t) = \log(1 + R^\text{p}_t).
+
+        :returns: Growth rate of the portfolio value at each period.
+        :rtype: pandas.Series
         """
         return np.log(self.returns + 1)
 
     @property
     def average_growth_rate(self):
-        r"""The average portfolio growth rate :math:`\overline{G^\text{p}}`."""
+        r"""The average portfolio growth rate :math:`\overline{G^\text{p}}`.
+
+        :returns: Average growth rate.
+        :rtype: float
+        """
         return np.mean(self.growth_rates)
 
     @property
     def annualized_average_growth_rate(self):
-        r"""The average portfolio growth rate, annualized."""
+        r"""The average portfolio growth rate, annualized.
+
+        :returns: Average growth rate, annualized.
+        :rtype: float
+        """
         return self.average_growth_rate * self.periods_per_year
 
     @property
     def volatility(self):
-        """Realized volatility (standard deviation of the portfolio
-        returns)."""
+        """Realized volatility (standard deviation of the portfolio returns).
+
+        :returns: Volatility.
+        :rtype: float
+        """
         return np.std(self.returns)
 
     @property
     def annualized_volatility(self):
-        """Realized volatility, annualized."""
+        """Realized volatility, annualized.
+
+        :returns: Volatility, annualized.
+        :rtype: float
+        """
         return self.volatility * np.sqrt(self.periods_per_year)
 
     @property
     def quadratic_risk(self):
-        """Quadratic risk, square of the realized volatility."""
+        """Quadratic risk, square of the realized volatility.
+
+        :returns: Quadratic risk.
+        :rtype: float
+        """
         return self.volatility ** 2
 
     @property
     def annualized_quadratic_risk(self):
-        """Quadratic risk, annualized."""
+        """Quadratic risk, annualized.
+
+        :returns: Quadratic risk, annualized.
+        :rtype: float
+        """
         return self.quadratic_risk * self.periods_per_year
 
     #
@@ -375,52 +493,97 @@ class BacktestResult:
 
     @property
     def active_returns(self):
-        """Portfolio returns minus benchmark returns (if defined by policy)."""
+        """Portfolio returns minus benchmark returns (if defined by policy).
+
+        :returns: Active returns at each period if benchmark is defined,
+            else ``nan``.
+        :rtype: pandas.Series
+        """
         return self.returns - self.benchmark_returns
 
     @property
     def average_active_return(self):
-        r"""The average active return :math:`\overline{R^\text{a}}`."""
+        r"""The average active return :math:`\overline{R^\text{a}}`.
+
+        :returns: Average active portfolio return if benchmark is defined,
+            else ``nan``.
+        :rtype: float
+        """
         return np.mean(self.active_returns)
 
     @property
     def annualized_average_active_return(self):
-        """The average active return, annualized."""
+        """The average active return, annualized.
+
+        :returns: Average active portfolio return, annualized. If benchmark is
+            not defined, ``nan``.
+        :rtype: float
+        """
         return self.average_active_return * self.periods_per_year
 
     @property
     def active_volatility(self):
-        """Active volatility (standard deviation of the active returns)."""
+        """Active volatility (standard deviation of the active returns).
+
+        :returns: Average active volatility if benchmark is defined,
+            else ``nan``.
+        :rtype: float
+        """
         return np.std(self.active_returns)
 
     @property
     def annualized_active_volatility(self):
-        """Annualized active volatility."""
+        """Annualized active volatility.
+
+        :returns: Average active volatility, annualized. If benchmark is
+            not defined, ``nan``.
+        :rtype: float
+        """
         return self.active_volatility * np.sqrt(self.periods_per_year)
 
     @property
     def excess_returns(self):
-        """Excess portfolio returns with respect to the cash returns."""
+        """Excess portfolio returns with respect to the cash returns.
+
+        :returns: Excess returns at each period.
+        :rtype: pandas.Series
+        """
         return self.returns - self.cash_returns
 
     @property
     def average_excess_return(self):
-        r"""The average excess return :math:`\overline{R^\text{e}}`."""
+        r"""The average excess return :math:`\overline{R^\text{e}}`.
+
+        :returns: Average excess portfolio return.
+        :rtype: float
+        """
         return np.mean(self.excess_returns)
 
     @property
     def annualized_average_excess_return(self):
-        """The average excess return, annualized."""
+        """The average excess return, annualized.
+
+        :returns: Average excess portfolio return, annualized.
+        :rtype: float
+        """
         return self.average_excess_return * self.periods_per_year
 
     @property
     def excess_volatility(self):
-        """Excess volatility (standard deviation of the excess returns)."""
+        """Excess volatility (standard deviation of the excess returns).
+
+        :returns: Average excess volatility.
+        :rtype: float
+        """
         return np.std(self.excess_returns)
 
     @property
     def annualized_excess_volatility(self):
-        """Annualized excess volatility."""
+        """Annualized excess volatility.
+
+        :returns: Average excess volatility, annualized.
+        :rtype: float
+        """
         return self.excess_volatility * np.sqrt(self.periods_per_year)
 
     @property
@@ -436,6 +599,9 @@ class BacktestResult:
         where :math:`\overline{R^\text{e}}` is the average excess portfolio
         return and :math:`\sigma^\text{e}` its standard deviation. Both are
         annualized.
+
+        :returns: Sharpe Ratio.
+        :rtype: float
         """
         return self.annualized_average_excess_return / (
             self.annualized_excess_volatility + 1E-8)
@@ -453,6 +619,9 @@ class BacktestResult:
         where :math:`\overline{R^\text{a}}` is the average active portfolio
         return and :math:`\sigma^\text{a}` its standard deviation. Both are
         annualized.
+
+        :returns: Information Ratio, ``nan`` if benchmark is not defined.
+        :rtype: float
         """
         return self.annualized_average_active_return / (
             self.annualized_active_volatility + 1E-8)
@@ -468,6 +637,9 @@ class BacktestResult:
             G^\text{e}_t = \log(1 + R^\text{e}_t)
 
         where :math:`R^\text{e}_t` are the excess portfolio returns.
+
+        :returns: Excess growth rates at each period.
+        :rtype: pandas.Series
         """
         return np.log(self.excess_returns + 1)
 
@@ -482,32 +654,58 @@ class BacktestResult:
             G^\text{a}_t = \log(1 + R^\text{a}_t)
 
         where :math:`R^\text{a}_t` are the active portfolio returns.
+
+        :returns: Active growth rates at each period. If benchmark is
+            not defined, ``nan``.
+        :rtype: pandas.Series
         """
         return np.log(self.active_returns + 1)
 
     @property
     def average_excess_growth_rate(self):
-        r"""The average excess growth rate :math:`\overline{G^\text{e}}`."""
+        r"""The average excess growth rate :math:`\overline{G^\text{e}}`.
+
+        :returns: Average excess portfolio growth rates.
+        :rtype: float
+        """
         return np.mean(self.excess_growth_rates)
 
     @property
     def annualized_average_excess_growth_rate(self):
-        """The average excess growth rate, annualized."""
+        """The average excess growth rate, annualized.
+
+        :returns: Average excess portfolio growth rates, annualized.
+        :rtype: float
+        """
         return self.average_excess_growth_rate * self.periods_per_year
 
     @property
     def average_active_growth_rate(self):
-        r"""The average active growth rate :math:`\overline{G^\text{a}}`."""
+        r"""The average active growth rate :math:`\overline{G^\text{a}}`.
+
+        :returns: Average active portfolio growth rates. If benchmark is not
+            defined, ``nan``.
+        :rtype: float
+        """
         return np.mean(self.active_growth_rates)
 
     @property
     def annualized_average_active_growth_rate(self):
-        """The average active growth rate, annualized."""
+        """The average active growth rate, annualized.
+
+        :returns: Average active portfolio growth rates, annualized. If
+            benchmark is not defined, ``nan``.
+        :rtype: float
+        """
         return self.average_active_growth_rate * self.periods_per_year
 
     @property
     def drawdown(self):
-        """The drawdown of the portfolio value over time."""
+        """The drawdown of the portfolio value over time.
+
+        :returns: Drawdown of portfolio value at each period.
+        :rtype: pandas.Series
+        """
         return -(1 - (self.v / self.v.cummax()))
 
     # TODO: decide if keeping any of these or throw

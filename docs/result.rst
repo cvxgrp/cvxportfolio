@@ -83,6 +83,10 @@ Back-test result
     .. autoproperty:: annualized_average_active_growth_rate
     
     .. autoproperty:: drawdown
+    
+    .. autoproperty:: policy_times
+    
+    .. autoproperty:: simulator_times
 
     .. automethod:: plot
 
