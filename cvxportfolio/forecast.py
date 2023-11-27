@@ -129,7 +129,13 @@ class HistoricalMeanReturn(BaseForecast):
         self._last_sum = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Re-initialize whenever universe changes."""
+        """Re-initialize whenever universe changes.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self.__post_init__()
 
     def values_in_time(self, t, past_returns, **kwargs):
@@ -183,7 +189,13 @@ class HistoricalVariance(BaseForecast):
         self._last_sum = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Re-initialize whenever universe changes."""
+        """Re-initialize whenever universe changes.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self.__post_init__()
 
     def values_in_time(self, t, past_returns, **kwargs):
@@ -410,7 +422,13 @@ class HistoricalFactorizedCovariance(BaseForecast):
         self._joint_mean = None
 
     def initialize_estimator(self, universe, trading_calendar):
-        """Re-initialize whenever universe changes."""
+        """Re-initialize whenever universe changes.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self.__post_init__()
 
     @staticmethod

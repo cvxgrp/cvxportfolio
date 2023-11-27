@@ -68,8 +68,25 @@ class HyperParameter:
         return self * (-1)
 
     def collect_hyperparameters(self):
+        """Collect hyper-parameters.
+
+        :returns: Hyperparameters found (self).
+        :rtype: list
+        """
         return [self]
 
+    @property
+    def current_value(self):
+        """Current value of the hyper-parameter.
+
+        :returns: Current value.
+        :rtype: int or float
+        """
+        raise NotImplementedError # pragma: no cover
+
+    def __repr__(self):
+        return self.__class__.__name__\
+            + f'(current_value={self.current_value})'
 
 class CombinedHyperParameter(HyperParameter):
     """Algebraic combination of HyperParameters."""
@@ -80,13 +97,22 @@ class CombinedHyperParameter(HyperParameter):
 
     @property
     def current_value(self):
-        return sum([
+        """Current value of the hyper-parameter.
+
+        :returns: Current value.
+        :rtype: int or float
+        """
+        return sum((
             (le.current_value if hasattr(le, 'current_value') else le)
             * (ri.current_value if hasattr(ri, 'current_value') else ri)
-            for le, ri in zip(self.left, self.right)])
+            for le, ri in zip(self.left, self.right)))
 
     def collect_hyperparameters(self):
-        """Collect (not combined) hyperparameters."""
+        """Collect (not combined) hyper-parameters.
+
+        :returns: List of found hyper-parameters.
+        :rtype: list
+        """
         result = []
         for el in self.left + self.right:
             if hasattr(el, 'collect_hyperparameters'):
@@ -108,13 +134,18 @@ class RangeHyperParameter(HyperParameter):
     """
 
     def __init__(self, values_range, current_value):
-        if not (current_value in values_range):
+        if not current_value in values_range:
             raise SyntaxError('Initial value must be in the provided range')
         self.values_range = list(values_range)
         self._index = self.values_range.index(current_value)
 
     @property
     def current_value(self):
+        """Current value of the hyper-parameter.
+
+        :returns: Current value.
+        :rtype: int or float
+        """
         return self.values_range[self._index]
 
     def __repr__(self):
@@ -133,7 +164,7 @@ class RangeHyperParameter(HyperParameter):
         self._index -= 1
 
 
-class Gamma(RangeHyperParameter):
+class Gamma(HyperParameter):
     """Generic multiplier."""
 
     def __init__(self, initial_value = 1., increment = 1.1):
@@ -143,6 +174,11 @@ class Gamma(RangeHyperParameter):
 
     @property
     def current_value(self):
+        """Current value of the hyper-parameter.
+
+        :returns: Current value.
+        :rtype: int or float
+        """
         return self._initial_value * (self._spacing ** self._index)
 
     def _increment(self):

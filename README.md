@@ -7,7 +7,7 @@
 
 
 
-Cvxportfolio is an object--oriented library for portfolio optimization and back--testing. It implements models described in the
+Cvxportfolio is an object-oriented library for portfolio optimization and back-testing. It implements models described in the
 [accompanying paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
 
 The documentation of the library is at [www.cvxportfolio.com](https://www.cvxportfolio.com).
@@ -60,7 +60,7 @@ print(result)
 result.plot()
 ```
 
-At each point in the back--test,
+At each point in the back-test,
 the policy object only operates on **past data**, and thus the result you 
 get is a realistic simulation of what the strategy would have performed in 
 the market.
