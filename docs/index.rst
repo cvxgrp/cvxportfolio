@@ -149,7 +149,7 @@ Table of Contents
    constraints
    result
    data
-   forecasts
+   internals
    examples
    
 .. _paper: https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf
