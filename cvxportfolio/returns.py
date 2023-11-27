@@ -19,7 +19,6 @@ import cvxpy as cp
 from .costs import Cost
 from .estimator import DataEstimator  # , ParameterEstimator
 from .forecast import HistoricalMeanError, HistoricalMeanReturn
-from .risks import BaseRiskModel
 
 __all__ = [
     "ReturnsForecast",
@@ -197,7 +196,7 @@ class ReturnsForecast(Cost):
         return w_plus[:-1].T @ self._r_hat_parameter
 
 
-class ReturnsForecastError(BaseRiskModel):
+class ReturnsForecastError(Cost):
     r"""Simple return forecast error risk with values provided by the user.
 
     It represents the objective term:

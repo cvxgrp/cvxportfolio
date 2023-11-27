@@ -41,3 +41,9 @@ Base classes (for using other data sources)
     .. automethod:: serve
     
     .. automethod:: trading_calendar
+    
+    .. autoproperty:: periods_per_year
+    
+    .. autoproperty:: full_universe
+    
+    .. automethod:: partial_universe_signature

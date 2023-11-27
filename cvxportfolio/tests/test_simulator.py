@@ -93,18 +93,23 @@ class TestSimulator(CvxportfolioTest):
         with self.assertRaises(SyntaxError):
             MarketSimulator(returns=pd.DataFrame(
                 [[0.]], columns=['USDOLLAR'], index=[pd.Timestamp.today()]),
-                    volumes=pd.DataFrame([[0.]]))
+                volumes=pd.DataFrame([[0.]]),
+                min_history=pd.Timedelta('0d'))
 
         # not raises
-        _ = MarketSimulator(returns=pd.DataFrame([[0., 0.]],
-            columns=['A', 'USDOLLAR']), volumes=pd.DataFrame(
-            [[0.]], columns=['A']), round_trades=False)
+        _ = MarketSimulator(
+            returns=pd.DataFrame([[0., 0.]], columns=['A', 'USDOLLAR'],
+              index=[pd.Timestamp('2020-01-01'), pd.Timestamp('2021-01-01')]),
+            volumes=pd.DataFrame(
+            [[0.]], columns=['A']), round_trades=False,
+            min_history = pd.Timedelta('0d'))
 
         with self.assertRaises(SyntaxError):
             MarketSimulator(returns=pd.DataFrame(
                 [[0., 0.]], index=[pd.Timestamp.today()],
                 columns=['X', 'USDOLLAR']),
-                volumes=pd.DataFrame([[0.]]))
+                volumes=pd.DataFrame([[0.]]),
+                min_history = pd.Timedelta('0d'))
 
     def test_backtest_with_ipos_and_delistings(self):
         """Test back-test with assets that both enter and exit."""
@@ -473,6 +478,10 @@ class TestSimulator(CvxportfolioTest):
 
         with self.assertRaises(SyntaxError):
             result = sim.run_multiple_backtest([pol, pol1], pd.Timestamp(
+                '2023-01-01'), pd.Timestamp('2023-04-20'), h=['hello'])
+
+        with self.assertRaises(SyntaxError):
+            result = sim.run_multiple_backtest(pol, pd.Timestamp(
                 '2023-01-01'), pd.Timestamp('2023-04-20'), h=['hello'])
 
         result = sim.backtest(pol1, pd.Timestamp(

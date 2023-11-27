@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This module implements risk models, which are objective terms that are
+used to penalize allocations which might incur in losses."""
 
 import logging
 
@@ -37,11 +39,7 @@ __all__ = [
 ]
 
 
-class BaseRiskModel(Cost):
-    pass
-
-
-class FullCovariance(BaseRiskModel):
+class FullCovariance(Cost):
     r"""Quadratic risk model with full covariance matrix.
 
     It represents the objective term:
@@ -70,6 +68,7 @@ class FullCovariance(BaseRiskModel):
             and Sigma.FACTORIZED
 
         self.Sigma = DataEstimator(Sigma)
+        self._sigma_sqrt = None
 
     def initialize_estimator(self, universe, trading_calendar):
         """Initialize risk model with universe and trading times.
@@ -79,7 +78,7 @@ class FullCovariance(BaseRiskModel):
         :param trading_calendar: Future (including current) trading calendar.
         :type trading_calendar: pandas.DatetimeIndex
         """
-        self.Sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
+        self._sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
     def values_in_time(self, **kwargs):
         """Update parameters of risk model.
@@ -88,9 +87,9 @@ class FullCovariance(BaseRiskModel):
         :type kwargs: dict
         """
         if self._alreadyfactorized:
-            self.Sigma_sqrt.value = self.Sigma.current_value
+            self._sigma_sqrt.value = self.Sigma.current_value
         else:
-            self.Sigma_sqrt.value = project_on_psd_cone_and_factorize(
+            self._sigma_sqrt.value = project_on_psd_cone_and_factorize(
                 self.Sigma.current_value)
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
@@ -108,11 +107,11 @@ class FullCovariance(BaseRiskModel):
         :rtype: cvxpy.expression
         """
         self.cvxpy_expression = cp.sum_squares(
-            self.Sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
+            self._sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
         return self.cvxpy_expression
 
 
-class RiskForecastError(BaseRiskModel):
+class RiskForecastError(Cost):
     """Risk forecast error.
 
     Implements the model defined in :paper:`chapter 4, page 32 <section.4.3>`
@@ -166,10 +165,11 @@ class RiskForecastError(BaseRiskModel):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        return cp.square(cp.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
+        return cp.square(
+            cp.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
 
 
-class DiagonalCovariance(BaseRiskModel):
+class DiagonalCovariance(Cost):
     """Diagonal covariance matrix, user-provided or fit from data.
 
     :param sigma_squares: per-stock variances, indexed by time if
@@ -221,7 +221,7 @@ class DiagonalCovariance(BaseRiskModel):
             self.sigmas_parameter))
 
 
-class FactorModelCovariance(BaseRiskModel):
+class FactorModelCovariance(Cost):
     r"""Factor model covariance, either user-provided or fitted from the data.
 
     It represents the objective term:
@@ -312,6 +312,7 @@ class FactorModelCovariance(BaseRiskModel):
             self.num_factors = num_factors
         else:
             self._fit = False
+        self.idyosync_sqrt_parameter = None
 
     def initialize_estimator(self, universe, trading_calendar):
         """Initialize risk model with universe and trading times.
@@ -324,14 +325,15 @@ class FactorModelCovariance(BaseRiskModel):
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         if self._fit:
             effective_num_factors = min(self.num_factors, len(universe)-1)
-            self.F_parameter = cp.Parameter(
+            self.factor_exposures_parameter = cp.Parameter(
                 (effective_num_factors, len(universe)-1))
         else:
             if self.Sigma_F is None:
-                self.F_parameter = self.F.parameter
+                self.factor_exposures_parameter = self.F.parameter
             else:
                 # we could refactor the code here so we don't create duplicate parameters
-                self.F_parameter = cp.Parameter(self.F.parameter.shape)
+                self.factor_exposures_parameter = cp.Parameter(
+                    self.F.parameter.shape)
 
     def values_in_time(self, **kwargs):
         """Update internal parameters.
@@ -341,20 +343,21 @@ class FactorModelCovariance(BaseRiskModel):
         """
         if self._fit:
             if hasattr(self, 'F_and_d_Forecaster'):
-                self.F_parameter.value, d = \
+                self.factor_exposures_parameter.value, d = \
                     self.F_and_d_Forecaster.current_value
             else:
-                Sigmasqrt = self.Sigma.current_value \
+                sigma_sqrt = self.Sigma.current_value \
                     if self._alreadyfactorized \
                     else project_on_psd_cone_and_factorize(
                         self.Sigma.current_value)
                 # numpy eigendecomposition has largest eigenvalues last
-                self.F_parameter.value = Sigmasqrt[:, -self.num_factors:].T
-                d = np.sum(Sigmasqrt[:, :-self.num_factors]**2, axis=1)
+                self.factor_exposures_parameter.value = sigma_sqrt[
+                    :, -self.num_factors:].T
+                d = np.sum(sigma_sqrt[:, :-self.num_factors]**2, axis=1)
         else:
             d = self.d.current_value
-            if not (self.Sigma_F is None):
-                self.F_parameter.value = (
+            if not self.Sigma_F is None:
+                self.factor_exposures_parameter.value = (
                     self.F.parameter.value.T @ np.linalg.cholesky(
                         self.Sigma_F.current_value)).T
 
@@ -378,14 +381,14 @@ class FactorModelCovariance(BaseRiskModel):
             self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
         assert self.expression.is_dcp(dpp=True)
 
-        self.expression += cp.sum_squares(self.F_parameter @
+        self.expression += cp.sum_squares(self.factor_exposures_parameter @
                                           w_plus_minus_w_bm[:-1])
         assert self.expression.is_dcp(dpp=True)
 
         return self.expression
 
 
-class WorstCaseRisk(BaseRiskModel):
+class WorstCaseRisk(Cost):
     """Select the most restrictive risk model for each value of the allocation.
 
     vector.

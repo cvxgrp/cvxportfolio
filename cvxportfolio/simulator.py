@@ -92,6 +92,11 @@ class MarketSimulator:
         ``'annual'``. By default (None) don't down-sample.
     :type trading_frequency: str or None
 
+    :param min_history: Minimum amount of time for which an asset must have
+        returns that are not ``nan`` before it is included in a back-test.
+        Default one year.
+    :type min_history: pandas.Timedelta
+
     :param market_data: An instance of a :class:`cvxportfolio.data.MarketData`
         derived class. If provided, all previous arguments are ignored.
     :type market_data: :class:`cvxportfolio.data.MarketData` instance or None
@@ -113,6 +118,7 @@ class MarketSimulator:
                  datasource='YahooFinance',
                  cash_key="USDOLLAR",
                  base_location=BASE_LOCATION,
+                 min_history=pd.Timedelta('365.24d'),
                  trading_frequency=None):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
@@ -133,12 +139,14 @@ class MarketSimulator:
                     volumes=volumes, prices=prices,
                     cash_key=cash_key,
                     base_location=base_location,
+                    min_history=min_history,
                     trading_frequency=trading_frequency)
             else:
                 self.market_data = DownloadedMarketData(
                     universe=universe,
                     cash_key=cash_key,
                     base_location=base_location,
+                    min_history=min_history,
                     trading_frequency=trading_frequency,
                     datasource=datasource)
 

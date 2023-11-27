@@ -439,7 +439,8 @@ class TestMarketData(CvxportfolioTest):
 
         _ = UserProvidedMarketData(
             returns=used_returns, volumes=used_volumes, prices=used_prices,
-            cash_key='USDOLLAR', base_location=self.datadir)
+            cash_key='USDOLLAR', base_location=self.datadir,
+            min_history=pd.Timedelta('0d'))
 
         without_prices = UserProvidedMarketData(
             returns=used_returns, volumes=used_prices, cash_key='USDOLLAR',
@@ -459,27 +460,35 @@ class TestMarketData(CvxportfolioTest):
 
         with self.assertRaises(SyntaxError):
             UserProvidedMarketData(returns=self.returns, volumes=self.volumes,
-                       prices=self.prices.iloc[:, :-1], cash_key='cash')
+                       prices=self.prices.iloc[:, :-1], cash_key='cash',
+                       min_history=pd.Timedelta('0d'))
+
+        with self.assertRaises(DataError):
+            UserProvidedMarketData(returns=self.returns.iloc[:10],
+            cash_key='cash', min_history=pd.Timedelta('50d'))
 
         with self.assertRaises(SyntaxError):
             UserProvidedMarketData(
                 returns=self.returns,
                 volumes=self.volumes.iloc[:, :-3],
-                prices=self.prices, cash_key='cash')
+                prices=self.prices, cash_key='cash',
+                min_history=pd.Timedelta('0d'))
 
         with self.assertRaises(SyntaxError):
             used_prices = pd.DataFrame(
                 self.prices, index=self.prices.index,
                 columns=self.prices.columns[::-1])
             UserProvidedMarketData(returns=self.returns, volumes=self.volumes,
-                       prices=used_prices, cash_key='cash')
+                       prices=used_prices, cash_key='cash',
+                       min_history=pd.Timedelta('0d'))
 
         with self.assertRaises(SyntaxError):
             used_volumes = pd.DataFrame(
                 self.volumes, index=self.volumes.index,
                 columns=self.volumes.columns[::-1])
             UserProvidedMarketData(returns=self.returns, volumes=used_volumes,
-                       prices=self.prices, cash_key='cash')
+                       prices=self.prices, cash_key='cash',
+                       min_history=pd.Timedelta('0d'))
 
     def test_market_data_full(self):
         """Test serve method of DownloadedMarketData."""

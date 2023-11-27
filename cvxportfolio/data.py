@@ -217,9 +217,9 @@ class SymbolData:
                             + f" of {self.symbol} changed last value!")
                         self._print_difference(current, updated)
         except KeyError:
-            logging.error(f"{self.__class__.__name__} update"
-                + f" of {self.symbol} could not be checked for append-only"
-                + " edits. Was there a DST change?")
+            logging.error("%s update of %s could not be checked for"
+                + " append-only edits. Was there a DST change?",
+                self.__class__.__name__, self.symbol)
         self._store(updated)
 
     def _download(self, symbol, current, grace_period, **kwargs):
@@ -790,8 +790,8 @@ class MarketData:
         available at some time for trading.
 
         This is used in cvxportfolio.cache to sign back-test caches that
-        are saved on disk. See its implementation below for details. If
-        not redefined it returns None which disables on-disk caching.
+        are saved on disk. If not redefined it returns None which disables
+        on-disk caching.
 
         :param partial_universe: A subset of the full universe.
         :type partial_universe: pandas.Index
@@ -810,6 +810,10 @@ class MarketDataInMemory(MarketData):
     def __init__(
         self, trading_frequency, base_location, cash_key, min_history):
         """This must be called by the derived classes."""
+        if (self.returns.index[-1] - self.returns.index[0]) < min_history:
+            raise DataError(
+                "The provided returns have less history "
+                + f"than the min_history {min_history}")
         if trading_frequency:
             self._downsample(trading_frequency)
         self.trading_frequency = trading_frequency
