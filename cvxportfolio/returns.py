@@ -11,10 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains classes that define return models for.
-
-portfolio optimization policies, and related objects.
-"""
+"""This module contains classes that define return models for portfolio
+optimization policies and related objects."""
 
 import cvxpy as cp
 
@@ -30,30 +28,24 @@ __all__ = [
 ]
 
 
-class BaseReturnsModel(Cost):
-    """Base class for return models.
-
-    Use this to define any logic common to return models.
-    """
-
-
-class CashReturn(BaseReturnsModel):
+class CashReturn(Cost):
     r"""Objective term representing cash return.
 
     By default, the forecast of cash return :math:`{\left(\hat{r}_t\right)}_n`
     is the observed value from last period :math:`{\left({r}_{t-1}\right)}_n`.
 
-    This object is included automatically in :class:`SinglePeriodOptimization`
-    and :class:`MultiPeriodOptimization` policies. You can change
-    this behavior by setting their ``include_cash_return`` to False. If you do
-    so, you may include this cost explicitely in the objective. You need
-    to do so (only) if you provide your own cash return forecast.
+    This object is included automatically in
+    :class:`cvxportfolio.SinglePeriodOptimization` and
+    :class:`cvxportfolio.MultiPeriodOptimization` policies. You can change
+    this behavior by setting their ``include_cash_return`` argument to False.
+    If you do so, you may include this cost explicitely in the objective. You
+    need to do so (only) if you provide your own cash return forecast.
 
     :param cash_returns: if you have your forecast for the cash return, you
         should pass it here, either as a float (if constant) or as pd.Series
         with datetime index (if it changes in time). If you leave the default,
         None, the cash return forecast at time t is the observed cash return
-        at time t-1. (As is suggested in the book.)
+        at time t-1.
     :type cash_returns: float or pd.Series or None
     """
 
@@ -62,69 +54,86 @@ class CashReturn(BaseReturnsModel):
             cash_returns, compile_parameter=True)
         self._cash_return_parameter = None
 
-    def initialize_estimator(self, **kwargs):
-        """Initialize estimator whenever universe changes."""
+    def initialize_estimator(self, universe, trading_calendar):
+        """Initialize model.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self._cash_return_parameter = (cp.Parameter()
             if self.cash_returns is None else self.cash_returns.parameter)
 
     def values_in_time(self, past_returns, **kwargs):
-        """Update cash return parameter as last cash return."""
+        """Update cash return parameter as last cash return.
+
+        :param past_returns: Past market returns.
+        :type past_returns: pandas.DataFrame
+        :param kwargs: All other parameters to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         if self.cash_returns is None:
             self._cash_return_parameter.value = past_returns.iloc[-1, -1]
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Apply cash return to cash position."""
+        """Compile to cvxpy expression.
+
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
+            weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+
+        :returns: Cvxpy expression representing the risk model.
+        :rtype: cvxpy.expression
+        """
         return w_plus[-1] * self._cash_return_parameter
 
 
-class ReturnsForecast(BaseReturnsModel):
+class ReturnsForecast(Cost):
     r"""Returns forecast for non-cash assets, provided by the user or computed
     from the data.
 
-    This class represents the term :math:`\hat{r}_t`,
-    the forecast of non-cash assets' returns at time :math:`t`.
+    It represents the objective term:
+
+    .. math::
+
+        \hat{r}_t^T z_t.
+
     :ref:`Optimization-based policies` use this, typically as the first
-    element of their objectives.
-    See Chapters 4 and 5 of the `book <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
-    for more details.
+    element of their objectives. See chapters 4 and 5 of the paper, for example
+    :paper:`page 25 <section.4.1>` for more details.
 
-    It can either get return forecasts from the user, for example
+    This class can either get return forecasts from the user, for example
     computed with some machine learning technique, or it can estimate them
-    automatically from the data.
+    automatically from the data. The returns' forecast provided by the user 
+    must be supplied for all assets excluding cash. See the :ref:`passing-data`
+    manual page for more information on how these are passed.
 
-    In the first case ``r_hat`` is specified as
-
-    * :class:`float`, if :math:`\hat{r}_t` is the same for all times and non-cash assets
-    * :class:`pandas.Series` with :class:`pandas.DatetimeIndex`, if :math:`\hat{r}_t` is the same for all assets but changes in time
-    * :class:`pandas.Series` indexed by assets' names, if :math:`\hat{r}_t` is constant in time and changes across assets
-    * :class:`pandas.DataFrame` with :class:`pandas.DatetimeIndex`, if :math:`\hat{r}_t` changes across time and assets.
-
-    The returns' forecast provided by the user must be supplied for all assets
-    excluding cash.
-
-    If instead ``r_hat`` is not speficied it defaults to None. This instructs
-    this class to compute :math:`\hat{r}_t` instead. It is
-    done, at each step of a :class:`BackTest`, by evaluating the full average of the
-    past returns (*i.e.,* the real returns :math:`{r}_{t-1}, {r}_{t-2}, \ldots`,
-    where :math:`t` is the current time),  skipping :class:`numpy.nan` values.
-    This is the default mode if no parameters are passed.
-
-    :param r_hat: constant or time varying returns estimates, provided in the form of
-        a pandas DataFrame indexed by timestamps of trading period and whose columns
-        are all non-cash assets. Alternatively it can be a pandas Series indexed by the
-        assets' names (so it is constant in time), a pandas Series indexed by time (so it is 
-        constant across assets), or a float (constant for all times and assets). 
-        If it is None, the default, the return forecasts are fitted from the data as historical means.
-    :type r_hat: pd.Series or pd.DataFrame or float or None
-    :param decay: decay factor used in :class:`MultiPeriodOptimization` policies.
-        It is as a number in :math:`[0,1]`. At step :math:`\tau` of the MPO policy, where 
-        :math:`\tau=t` is the initial one, the return predictions are multiplied by 
-        :math:`\texttt{decay}^{\tau-t}`. So, ``decay`` close to zero models a `fast` signal
-        while ``decay`` close to one a `slow` signal. The default value is 1.    
+    :param r_hat: constant or time varying returns estimates, provided in the
+        form of a pandas DataFrame indexed by timestamps of trading period and
+        whose columns are all non-cash assets. Alternatively it can be a pandas
+        Series indexed by the assets' names (so it is constant in time), a
+        pandas Series indexed by time (so it is constant across assets), or a 
+        float (constant for all times and assets). Alternatively you can
+        provide a :class:`cvxportfolio.estimator.Estimator` subclass that 
+        implements the logic to compute the returns forecast given the past
+        market data, like the default 
+        :class:`cvxportfolio.forecast.HistoricalMeanReturn` which computes the
+        historical means of the past returns, at each point in the back-test.
+    :type r_hat: pd.Series or pd.DataFrame or float or 
+        :class:`cvxportfolio.estimator.Estimator`
+    :param decay: decay factor used in 
+        :class:`cvxportfolio.MultiPeriodOptimization` policies. It is as a 
+        number in :math:`[0,1]`. At step :math:`\tau` of the MPO policy, where 
+        :math:`\tau=0` is the initial one, the return predictions are
+        multiplied by :math:`\texttt{decay}^{\tau}`. So, ``decay`` close to
+        zero models a `fast` signal while ``decay`` close to one a `slow`
+        signal. The default value is 1.    
     :type decay: float
-
-    :raises cvxportfolio.MissingTimesError: If the class accesses
-        user-provided elements of ``r_hat`` that are :class:`numpy.nan`.
 
     :Example:
 
@@ -134,8 +143,9 @@ class ReturnsForecast(BaseReturnsModel):
     >>> cvx.MarketSimulator(['AAPL', 'MSFT', 'GOOG']).backtest(policy).plot()
 
     Defines a single period optimization policy where the returns' forecasts
-    :math:`\hat{r}_t` are the full average of past returns at each point in time
-    and the risk model is the full covariance, also computed from the past returns.
+    :math:`\hat{r}_t` are the full average of past returns at each point in 
+    time and the risk model is the full covariance, also computed from the past 
+    returns.
     """
 
     def __init__(self, r_hat=HistoricalMeanReturn, decay=1.):
@@ -149,32 +159,66 @@ class ReturnsForecast(BaseReturnsModel):
         self.decay = decay
         self._r_hat_parameter = None
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator(self, universe, trading_calendar):
+        """Initialize model with universe size.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self._r_hat_parameter = cp.Parameter(len(universe)-1)
 
     def values_in_time(self, mpo_step=0, **kwargs):
+        """Update returns parameter knowing which MPO step we're at.
+
+        :param mpo_step: MPO step, 0 is current.
+        :type mpo_step: int
+        :param kwargs: All other parameters to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         self._r_hat_parameter.value = self.r_hat.current_value *\
             self.decay**(mpo_step)
 
     def compile_to_cvxpy(self,  w_plus, z, w_plus_minus_w_bm):
-        """Cvxpy expression acts on non-cash assets."""
+        """Compile to cvxpy expression.
+
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
+            weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+
+        :returns: Cvxpy expression representing the risk model.
+        :rtype: cvxpy.expression
+        """
         return w_plus[:-1].T @ self._r_hat_parameter
 
 
 class ReturnsForecastError(BaseRiskModel):
-    """Simple return forecast error risk with values provided by the user.
+    r"""Simple return forecast error risk with values provided by the user.
+
+    It represents the objective term:
+
+    .. math::
+
+        \delta^T |w^+_t - w^\text{b}_t |
 
     Implements the model described in :paper:`chapter 4, page 31 <section.4.3>`
-    of the paper. You must
-    pass the delta Series (if constant) or DataFrame (if time-varying)
-    of the forecast errors. Multiply this object by an external multiplier
-    and calibrate for the right amount of penalization.
+    of the paper. You can pass the penalization parameters (see
+    the :ref:`passing-data` manual page) or rely on a forecaster to do so.
+    The default is :class:`cvxportfolio.forecast.HistoricalMeanError`, which
+    computes the standard deviation of the mean for each asset's past returns,
+    iteratively during a back-test.
 
-    :param deltas_errors: constant per-symbol errors on the returns
+    :param deltas_errors: Constant per-symbol errors on the returns
         forecasts (if Series), or varying in time (if DataFrame), or
         fitted from the data as the standard deviation of the historical
-        mean estimator
-    :type deltas_errors: pd.DataFrame or pd.Series or None
+        mean estimator.
+    :type deltas_errors: pd.DataFrame or pd.Series
+        or :class:`cvxportfolio.estimator.Estimator`:
     """
 
     def __init__(self, deltas=HistoricalMeanError):
@@ -184,12 +228,36 @@ class ReturnsForecastError(BaseRiskModel):
         self.deltas = DataEstimator(deltas)
         self._deltas_parameter = None
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator(self, universe, trading_calendar):
+        """Initialize model with universe size.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param trading_calendar: Future (including current) trading calendar.
+        :type trading_calendar: pandas.DatetimeIndex
+        """
         self._deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
 
     def values_in_time(self, **kwargs):
+        """Update returns forecast error parameters.
+
+        :param kwargs: All parameters to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         self._deltas_parameter.value = self.deltas.current_value
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile to cvxpy expression."""
+        """Compile to cvxpy expression.
+
+        :param w_plus: Post-trade weights.
+        :type w_plus: cvxpy.Variable
+        :param z: Trade weights.
+        :type z: cvxpy.Variable
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
+            weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+
+        :returns: Cvxpy expression representing the risk model.
+        :rtype: cvxpy.expression
+        """
         return cp.abs(w_plus_minus_w_bm[:-1]).T @ self._deltas_parameter
