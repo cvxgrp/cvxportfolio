@@ -115,8 +115,8 @@ class FullCovariance(BaseRiskModel):
 class RiskForecastError(BaseRiskModel):
     """Risk forecast error.
 
-    Implements the model defined in page 31 of the book. Takes same arguments
-    as :class:`DiagonalCovariance`.
+    Implements the model defined in :paper:`chapter 4, page 32 <section.4.3>`
+    of the paper. Takes same arguments as :class:`DiagonalCovariance`.
 
     :param sigma_squares: per-stock variances, indexed by time if DataFrame.
         Default is to use historical variances, using

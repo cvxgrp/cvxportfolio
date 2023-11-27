@@ -521,8 +521,9 @@ class AdaptiveRebalance(Policy):
 class MultiPeriodOptimization(Policy):
     r"""Multi Period Optimization policy.
 
-    Implements the model developed in Chapter 5, in particular
-    at page 49, of the book. You specify the objective terms
+    Implements the model developed in :paper:`chapter 5, page 49 <section.5.2>`
+    of the paper.
+    You specify the objective terms
     using classes such as ReturnsForecast and TcostModel, each
     multiplied by its multiplier. You also specify lists
     of constraints. There are two ways to do it. You either
@@ -833,10 +834,11 @@ class MultiPeriodOptimization(Policy):
 class SinglePeriodOptimization(MultiPeriodOptimization):
     r"""Single Period Optimization policy.
 
-    Implements the model developed in Chapter 4, in particular
-    at page 43, of the book. You specify the objective term
+    Implements the model developed in :paper:`chapter 4, page 43 <section.4.8>`
+    of the paper.
+    You specify the objective terms
     using classes such as ReturnsForecast and TcostModel, each
-    multiplied by its multiplier. You also specify a list
+    multiplied by its multiplier. You also specify lists
     of constraints.
 
     :param objective: This algebraic combination of cvxportfolio cost objects

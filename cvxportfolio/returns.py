@@ -164,12 +164,11 @@ class ReturnsForecast(BaseReturnsModel):
 class ReturnsForecastError(BaseRiskModel):
     """Simple return forecast error risk with values provided by the user.
 
-    Implements the model described in pages 31-32 of the paper. You must
+    Implements the model described in :paper:`chapter 4, page 31 <section.4.3>`
+    of the paper. You must
     pass the delta Series (if constant) or DataFrame (if time-varying)
-    of the forecast errors. Or, use one of the classes below to compute
-    it automatically. Multiply this object by an external multiplier
-    (which can itself be a ParameterEstimator) and calibrate for the
-    right amount of penalization.
+    of the forecast errors. Multiply this object by an external multiplier
+    and calibrate for the right amount of penalization.
 
     :param deltas_errors: constant per-symbol errors on the returns
         forecasts (if Series), or varying in time (if DataFrame), or
