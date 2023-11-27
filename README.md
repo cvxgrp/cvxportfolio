@@ -150,28 +150,41 @@ Citing
 
 If you use Cvxportfolio in work that leads to publication, you can cite the following:
 
-``` latex
-
+```
 @misc{busseti2017cvx,
-    author    = {Busseti, Enzo and Diamond, Steven and Boyd, Stephen},
-    title     = {Cvxportfolio},
+    author    = "Busseti, Enzo and Diamond, Steven and Boyd, Stephen",
+    title     = "Cvxportfolio",
+    month    = "January",
+    year     = "2017",
+    note     = "Portfolio Optimization and Back--{T}esting",
     howpublished = {\url{https://github.com/cvxgrp/cvxportfolio}},
-    year     = {2017},
-    month    = {January},
-    note     = {Portfolio Optimization and Back--{T}esting},
 }
 
 @article{boyd2017multi,
-  author  = {Boyd, Stephen and Busseti, Enzo and Diamond, Steven and Kahn, Ron and Nystrup, Peter and Speth, Jan},
-  journal = {Foundations and Trends in Optimization},
-  title   = {Multi--{P}eriod Trading via Convex Optimization},
-  month   = {August},
-  year    = {2017},
-  number  = {1},
-  pages   = {1--76},
-  volume  = {3},
+  author  = "Boyd, Stephen and Busseti, Enzo and Diamond, Steven and Kahn, Ron and Nystrup, Peter and Speth, Jan",
+  journal = "Foundations and Trends in Optimization",
+  title   = "Multi--{P}eriod Trading via Convex Optimization",
+  month   = "August",
+  year    = "2017",
+  number  = "1",
+  pages   = "1--76",
+  volume  = "3",
+  url     = {\url{https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf}},
 }
+```
 
+The latter is also the first chapter of this thesis:
+
+```
+@phdthesis{busseti2018portfolio,
+    author    = "Busseti, Enzo",
+    title     = "Portfolio Management and Optimal Execution via Convex Optimization",
+    school    = "Stanford University",
+    address   = "Stanford, California, USA",
+    month    = "May",
+    year     = "2018",
+    url     = {\url{https://stacks.stanford.edu/file/druid:wm743bj5020/thesis-augmented.pdf}},
+}
 ```
 
 License

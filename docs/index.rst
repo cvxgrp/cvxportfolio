@@ -8,7 +8,7 @@ by back-testing their past performance with a sophisticated :doc:`market simulat
 
 Most models implemented by Cvxportfolio, including the accounting methods,
 naming conventions, and assumptions, are described
-in the `accompanying paper <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+in the accompanying `paper`_.
 This was written as a collaborative work by Stanford University researchers and
 BlackRock Inc. investment professionals.
    
@@ -39,7 +39,7 @@ Introduction
 
 Cvxportfolio is an object-oriented library for portfolio optimization and back-testing
 which focuses on ease of use. It implements the models described 
-in the `accompanying paper <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
+in the accompanying `paper`_.
 and can be extended with user-defined objects and methods to accommodate
 different data sources, custom cost models (both for simulation and optimization),
 constraints, and so on.
@@ -55,8 +55,8 @@ of objects can be customized in many ways, including by deriving or redefining t
 
 Then, we provide the :class:`cvxportfolio.data.MarketData` abstraction, which both serves historical
 data during a back-test and real time data in online usage. We implement the interface
-to public data sources (`Yahoo finance <https://finance.yahoo.com>`_ 
-and `FRED <https://fred.stlouisfed.org/>`_), as well as user-provided data, which
+to public data sources (`Yahoo Finance`_ 
+and `FRED`_), as well as user-provided data, which
 can also be passed to all other objects (see :ref:`passing-data`).
 
 In addition, we provide logic to easily parallelize back-testing of many different policies,
@@ -98,26 +98,42 @@ If you use Cvxportfolio in work that leads to publication, you can cite the foll
 .. code-block:: latex
 
     @misc{busseti2017cvx,
-        author    = {Busseti, Enzo and Diamond, Steven and Boyd, Stephen},
-        title     = {Cvxportfolio},
+        author    = "Busseti, Enzo and Diamond, Steven and Boyd, Stephen",
+        title     = "Cvxportfolio",
+        month    = "January",
+        year     = "2017",
+        note     = "Portfolio Optimization and Back--{T}esting",
         howpublished = {\url{https://github.com/cvxgrp/cvxportfolio}},
-        year     = {2017},
-        month    = {January},
-        note     = {Portfolio Optimization and Back--{T}esting},
     }
 
     @article{boyd2017multi,
-      author  = {Boyd, Stephen and Busseti, Enzo and Diamond, Steven and Kahn, Ron and Nystrup, Peter and Speth, Jan},
-      journal = {Foundations and Trends in Optimization},
-      title   = {Multi--{P}eriod Trading via Convex Optimization},
-      month   = {August},
-      year    = {2017},
-      number  = {1},
-      pages   = {1--76},
-      volume  = {3},
+      author  = "Boyd, Stephen and Busseti, Enzo and Diamond, Steven and Kahn, Ron and Nystrup, Peter and Speth, Jan",
+      journal = "Foundations and Trends in Optimization",
+      title   = "Multi--{P}eriod Trading via Convex Optimization",
+      month   = "August",
+      year    = "2017",
+      number  = "1",
+      pages   = "1--76",
+      volume  = "3",
+      url     = {\url{https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf}},
     }
 
-   
+
+The latter is also the first chapter of this PhD thesis:
+
+.. code-block:: latex
+
+    @phdthesis{busseti2018portfolio,
+        author    = "Busseti, Enzo",
+        title     = "Portfolio Management and Optimal Execution via Convex Optimization",
+        school    = "Stanford University",
+        address   = "Stanford, California, USA",
+        month    = "May",
+        year     = "2018",
+        url     = {\url{https://stacks.stanford.edu/file/druid:wm743bj5020/thesis-augmented.pdf}},
+    }
+
+
 Table of Contents
 -----------------
 
@@ -135,4 +151,7 @@ Table of Contents
    data
    forecasts
    examples
-
+   
+.. _paper: https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf
+.. _FRED: https://fred.stlouisfed.org/
+.. _Yahoo Finance: https://finance.yahoo.com
