@@ -2,19 +2,20 @@ Cvxportfolio Documentation
 ==========================
 
 **Cvxportfolio** is a Python library for portfolio optimization. It enables users
-to quickly try optimization :doc:`policies <policies>` for financial portfolios
-by testing their past performance with a sophisticated :doc:`market simulator <simulator>`.
+to quickly try optimization :doc:`policies <policies>` for asset management
+by back-testing their past performance with a sophisticated :doc:`market simulator <simulator>`.
 
 
-Cvxportfolio is based on the book `Multi-Period Trading via Convex Optimization <https://www.amazon.com/Multi-Period-Trading-Convex-Optimization-Foundations/dp/1680833286>`_
-(also `available in PDF <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_).
-
-
+Most models implemented by Cvxportfolio, including the accounting methods,
+naming conventions, and assumptions, are described
+in the `accompanying paper <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+This was written as a collaborative work by Stanford University researchers and
+BlackRock Inc. investment professionals.
    
 Installation
 ------------
 
-Cvxportolio is written in pure Python and can be easily installed in your favorite environment by simple:
+Cvxportolio is written in Python and can be easily installed in any environment by simple:
 
 .. code-block:: console
 
@@ -22,20 +23,23 @@ Cvxportolio is written in pure Python and can be easily installed in your favori
 	
 
 We show how this is done on our `Installation and Hello World <https://youtu.be/1ThOKEu371M>`_ youtube video.
+Its main dependencies are `Cvxpy <https://www.cvxpy.org>`_ for interfacing
+with numerical solvers and `Pandas <https://pandas.pydata.org/>`_
+for interfacing with databases.
 
 
-Example
--------
+Hello World Example
+-------------------
 
-Have a look at the :doc:`hello_world` to see Cvxportfolio in action.
+We show in :doc:`hello_world` a minimal example.
 
 
 Introduction
 ------------
 
-Cvxportfolio is an object-oriented library for portfolio optimization and backtesting
+Cvxportfolio is an object-oriented library for portfolio optimization and back-testing
 which focuses on ease of use. It implements the models described 
-in the `accompanying book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
+in the `accompanying paper <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_
 and can be extended with user-defined objects and methods to accommodate
 different data sources, custom cost models (both for simulation and optimization),
 constraints, and so on.
@@ -67,7 +71,7 @@ and plot them.
 	
 Testing locally
 ---------------
-We ship our unit test suite with the software package, so after installing you can test 
+We ship our unit test suite with the software library, so after installing you can test 
 in your local environment with:
 
 .. code-block:: console
@@ -76,7 +80,8 @@ in your local environment with:
 
 We test against recent python versions (3.9, 3.10, 3.11) and recent versions of the main
 dependencies (from pandas 1.4, cvxpy 1.1, ..., up to the current versions) on all major 
-operating systems.
+operating systems. So, cvxportfolio doesn't require any specific version of
+any dependency, and should work in any pre--existing environment.
 	
 Licensing
 ---------
@@ -85,25 +90,32 @@ Cvxportfolio is licensed under the `Apache 2.0 <http://www.apache.org/licenses/>
 open source license.
 
  
-Academic
---------
+Citing
+------------
 
-If you use cvxportfolio for academic work you can cite the book it is based on:
+If you use `cvxportfolio` in work that leads to publication, you can cite the following:
 
 .. code-block:: latex
 
-	@book{BBDKKNS:17,
-	    author       = {S. Boyd and E. Busseti and S. Diamond and R. Kahn and K. Koh and P. Nystrup and J. Speth},
-	    title        = {Multi-Period Trading via Convex Optimization},
-	    journal      = {Foundations and Trends in Optimization},
-	    year         = {2017},
-	    month        = {August},
-	    volume       = {3},
-	    number       = {1},
-	    pages        = {1--76},
-	    publisher    = {Now Publishers},
-	    url          = {http://stanford.edu/~boyd/papers/cvx_portfolio.html},
-	}
+    @misc{busseti2017cvx,
+        author    = "Busseti, Enzo and Diamond, Steven and Boyd, Stephen",
+        title     = "CVXPortfolio",
+        howpublished = {\url{https://github.com/cvxgrp/cvxportfolio}},
+        year     = "2017",
+        month    = "January",
+        note     = "Portfolio Optimization and Back--{T}esting",
+    }
+
+    @article{boyd2017multi,
+      author  = {Boyd, Stephen and Busseti, Enzo and Diamond, Steven and Kahn, Ron and Nystrup, Peter and Speth, Jan},
+      journal = {Foundations and Trends in Optimization},
+      title   = {Multi--{P}eriod Trading via Convex Optimization},
+      month   = {August},
+      year    = {2017},
+      number  = {1},
+      pages   = {1--76},
+      volume  = {3},
+    }
 
    
 Table of Contents
