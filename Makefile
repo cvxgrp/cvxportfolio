@@ -15,21 +15,21 @@ ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
 endif
 
-.PHONY: env clean update test lint docs opendocs coverage fix dist publish examples
+.PHONY: env clean update test lint docs opendocs coverage fix release examples
 
-env:
+env:  ## create environment
 	$(PYTHON) -m venv $(ENVDIR)
 	$(BINDIR)/python -m pip install --editable .
 	$(BINDIR)/python -m pip install -r requirements.txt
 	
-clean:
+clean:  ## clean environment
 	-rm -rf $(BUILDDIR)/*
 	-rm -rf $(PROJECT).egg*
 	-rm -rf $(ENVDIR)/*
 
-update: clean env
+update: clean env  ## update environment
 	
-test:
+test:  ## run tests w/ cov report
 	$(BINDIR)/coverage run -m $(PROJECT).tests
 	$(BINDIR)/coverage report
 	$(BINDIR)/coverage xml
@@ -37,36 +37,34 @@ test:
 	# disabled for now, we need to change pickle as default on-disk cache
 	# $(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
-lint:
+lint:  ## run linter
 	$(BINDIR)/pylint $(PROJECT)
 
-docs:
+docs:  ## build docs
 	$(BINDIR)/sphinx-build -E docs $(BUILDDIR)
 
-opendocs: docs
+opendocs: docs  ## open html docs
 	open build/index.html
 
-coverage:
+coverage:  ## open html cov report
 	$(BINDIR)/coverage html --fail-under=0 # overwrite pyproject.toml default
 	open htmlcov/index.html
 
-fix:
+fix:  ## auto-fix code
 	# selected among many code auto-fixers, tweaked in pyproject.toml
 	$(BINDIR)/autopep8 -i $(PROJECT)/*.py $(TESTS)/*.py
 	$(BINDIR)/isort $(PROJECT)/*.py $(TESTS)/*.py
 	# this is the best found for the purpose
 	$(BINDIR)/docformatter --in-place $(PROJECT)/*.py $(TESTS)/*.py
 
-dist: update lint test
+release: update lint test  ## update version, publish to pypi
 	$(BINDIR)/python bumpversion.py
 	git push --no-verify
 	$(BINDIR)/python -m build
 	$(BINDIR)/twine check dist/*
-
-publish: dist  ## dist to pypi
 	$(BINDIR)/twine upload --skip-existing dist/*
 
-examples:
+examples:  ## run examples for docs
 	for example in hello_world case_shiller dow30_example; \
 		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python examples/"$$example".py > docs/_static/"$$example"_output.txt; \
 	done
