@@ -4,8 +4,8 @@
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 [![Coverage Status](https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master)](https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/cvxportfolio/badge/?version=latest)](https://cvxportfolio.readthedocs.io/en/latest/?badge=latest)
-
-
+[![Apache 2.0 License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/cvxportfolio/badges/version.svg)](https://anaconda.org/conda-forge/cvxportfolio)
 
 Cvxportfolio is an object-oriented library for portfolio optimization and back-testing. It implements models described in the
 [accompanying paper](https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf).
