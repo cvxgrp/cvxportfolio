@@ -15,7 +15,7 @@ ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
 endif
 
-.PHONY: env clean update test lint docs opendocs coverage fix release examples
+.PHONY: env clean update test lint docs opendocs coverage fix dist publish examples
 
 env:
 	$(PYTHON) -m venv $(ENVDIR)
@@ -57,11 +57,13 @@ fix:
 	# this is the best found for the purpose
 	$(BINDIR)/docformatter --in-place $(PROJECT)/*.py $(TESTS)/*.py
 
-release: update lint test
+dist: update lint test
 	$(BINDIR)/python bumpversion.py
 	git push --no-verify
 	$(BINDIR)/python -m build
 	$(BINDIR)/twine check dist/*
+
+publish: dist  ## dist to pypi
 	$(BINDIR)/twine upload --skip-existing dist/*
 
 examples:
@@ -69,3 +71,11 @@ examples:
 		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python examples/"$$example".py > docs/_static/"$$example"_output.txt; \
 	done
 	mv *.png docs/_static/
+
+# Thanks to Francoise at marmelab.com for this
+.DEFAULT_GOAL := help
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+print-%:
+	@echo '$*=$($*)'
