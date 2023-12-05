@@ -19,8 +19,7 @@ endif
 
 env:
 	$(PYTHON) -m venv $(ENVDIR)
-	$(BINDIR)/python -m pip install --editable .
-	$(BINDIR)/python -m pip install -r requirements.txt
+	$(BINDIR)/python -m pip install --editable .[docs,dev]
 	
 clean:
 	-rm -rf $(BUILDDIR)/*

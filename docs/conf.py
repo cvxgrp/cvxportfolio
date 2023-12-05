@@ -51,9 +51,14 @@ extensions = ['sphinx.ext.autodoc',
               #'sphinx.ext.githubpages',
 	          #'sphinx.ext.napoleon',
               'sphinx.ext.autosectionlabel',
-              'myst_parser',
+              # 'myst_parser',
               'sphinx.ext.extlinks',
           ]
+
+# # Autoapi test: nice as first step, but
+# # current approach is better
+# extensions.append('autoapi.extension')
+# autoapi_dirs = ['../cvxportfolio']
 
 # External links
 extlinks = {
