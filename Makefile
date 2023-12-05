@@ -17,18 +17,18 @@ endif
 
 .PHONY: env clean update test lint docs opendocs coverage fix release examples
 
-env:
+env:  ## create environment
 	$(PYTHON) -m venv $(ENVDIR)
 	$(BINDIR)/python -m pip install --editable .[docs,dev]
 	
-clean:
+clean:  ## clean environment
 	-rm -rf $(BUILDDIR)/*
 	-rm -rf $(PROJECT).egg*
 	-rm -rf $(ENVDIR)/*
 
-update: clean env
+update: clean env  ## update environment
 	
-test:
+test:  ## run tests w/ cov report
 	$(BINDIR)/coverage run -m $(PROJECT).tests
 	$(BINDIR)/coverage report
 	$(BINDIR)/coverage xml
@@ -36,35 +36,43 @@ test:
 	# disabled for now, we need to change pickle as default on-disk cache
 	# $(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
 
-lint:
+lint:  ## run linter
 	$(BINDIR)/pylint $(PROJECT)
 
-docs:
+docs:  ## build docs
 	$(BINDIR)/sphinx-build -E docs $(BUILDDIR)
 
-opendocs: docs
+opendocs: docs  ## open html docs
 	open build/index.html
 
-coverage:
+coverage:  ## open html cov report
 	$(BINDIR)/coverage html --fail-under=0 # overwrite pyproject.toml default
 	open htmlcov/index.html
 
-fix:
+fix:  ## auto-fix code
 	# selected among many code auto-fixers, tweaked in pyproject.toml
 	$(BINDIR)/autopep8 -i $(PROJECT)/*.py $(TESTS)/*.py
 	$(BINDIR)/isort $(PROJECT)/*.py $(TESTS)/*.py
 	# this is the best found for the purpose
 	$(BINDIR)/docformatter --in-place $(PROJECT)/*.py $(TESTS)/*.py
 
-release: update lint test
+release: update lint test  ## update version, publish to pypi
 	$(BINDIR)/python bumpversion.py
 	git push --no-verify
 	$(BINDIR)/python -m build
 	$(BINDIR)/twine check dist/*
 	$(BINDIR)/twine upload --skip-existing dist/*
 
-examples:
+examples:  ## run examples for docs
 	for example in hello_world case_shiller dow30_example; \
 		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python examples/"$$example".py > docs/_static/"$$example"_output.txt; \
 	done
 	mv *.png docs/_static/
+
+# Thanks to Francoise at marmelab.com for this
+.DEFAULT_GOAL := help
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+print-%:
+	@echo '$*=$($*)'
