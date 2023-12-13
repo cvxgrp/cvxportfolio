@@ -95,7 +95,7 @@ Citing
 
 If you use Cvxportfolio in work that leads to publication, you can cite the following:
 
-.. code-block:: latex
+.. code-block:: bibtex
 
     @misc{busseti2017cvx,
         author    = "Busseti, Enzo and Diamond, Steven and Boyd, Stephen",
@@ -121,7 +121,7 @@ If you use Cvxportfolio in work that leads to publication, you can cite the foll
 
 The latter is also the first chapter of this PhD thesis:
 
-.. code-block:: latex
+.. code-block:: bibtex
 
     @phdthesis{busseti2018portfolio,
         author    = "Busseti, Enzo",
