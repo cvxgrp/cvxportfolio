@@ -1,18 +1,8 @@
 `Cvxportfolio <https://www.cvxportfolio.com>`__
 ===============================================
 
-.. image:: https://img.shields.io/pypi/v/cvxportfolio.svg
-  :target: https://pypi.org/project/cvxportfolio/
-.. image:: https://img.shields.io/badge/linting-pylint-yellowgreen
-  :target: https://github.com/pylint-dev/pylint
-.. image:: https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master
-  :target: https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master
-.. image:: https://readthedocs.org/projects/cvxportfolio/badge/?version=latest
-  :target: https://cvxportfolio.readthedocs.io/en/latest/?badge=latest
-.. image:: https://img.shields.io/badge/License-Apache%202.0-green.svg
-  :target: https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE
-.. image:: https://anaconda.org/conda-forge/cvxportfolio/badges/version.svg
-  :target: https://anaconda.org/conda-forge/cvxportfolio
+|CVXportfolio on PyPI| |linting: pylint| |Coverage Status|
+|Documentation Status| |Apache 2.0 License| |Anaconda-Server Badge|
 
 
 Cvxportfolio is an object-oriented library for portfolio optimization
@@ -212,3 +202,16 @@ Licensing
 
 Cvxportfolio is licensed under the `Apache 2.0 <http://www.apache.org/licenses/>`_ permissive
 open source license.
+
+.. |CVXportfolio on PyPI| image:: https://img.shields.io/pypi/v/cvxportfolio.svg
+   :target: https://pypi.org/project/cvxportfolio/
+.. |linting: pylint| image:: https://img.shields.io/badge/linting-pylint-yellowgreen
+   :target: https://github.com/pylint-dev/pylint
+.. |Coverage Status| image:: https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master
+   :target: https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master
+.. |Documentation Status| image:: https://readthedocs.org/projects/cvxportfolio/badge/?version=latest
+   :target: https://cvxportfolio.readthedocs.io/en/latest/?badge=latest
+.. |Apache 2.0 License| image:: https://img.shields.io/badge/License-Apache%202.0-green.svg
+   :target: https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE
+.. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/cvxportfolio/badges/version.svg
+   :target: https://anaconda.org/conda-forge/cvxportfolio
