@@ -14,22 +14,23 @@
 """Find __version__ in __init__.py in file tree (BFS) and upgrade.
 
 Additionally, look for version string in any setup.py, pyproject.toml,
-and conf.py and do the same. Version is in the format X.Y.Z, 
+and conf.py and do the same. Version is in the format X.Y.Z,
 where X, Y, and Z are integers. Take argument revision (Z -> Z+1),
 minor (Y -> Y+1, Z -> 0), or major (X -> X+1, Y -> 0, Z -> 0).
 
-Add the modifications to git staging, commit with version number and 
+Add the modifications to git staging, commit with version number and
 editable message (opens git configured text editor), tag with version number,
-push everything to origin."""
+push everything to origin.
+"""
 
-from ast import literal_eval
 import subprocess
+from ast import literal_eval
 from pathlib import Path
 
 
 def findversion(root='.'):
     """Find version number. Skip [env, venv, .*].
-    
+
     We use the first __init__.py with a __version__ that we find.
 
     :param root: Root folder of the project.
@@ -61,7 +62,7 @@ def findversion(root='.'):
 
 def replaceversion(new_version, version, root='.'):
     """Replace version number. Skip [env, venv, .*].
-    
+
     We replace in all __init__.py, conf.py, setup.py, and pyproject.toml
     """
 

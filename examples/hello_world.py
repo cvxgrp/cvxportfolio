@@ -1,16 +1,17 @@
 import os
 
-import cvxportfolio as cvx
 import matplotlib.pyplot as plt
+
+import cvxportfolio as cvx
 
 # risk aversion parameter (Chapter 4.2)
 # chosen to match resulting volatility with the
 # uniform portfolio (for illustrative purpose)
-gamma = 2.5 
+gamma = 2.5
 
 # covariance forecast error risk parameter (Chapter 4.3)
 # this can help regularize a noisy covariance estimate
-kappa = 0.05  
+kappa = 0.05
 
 objective = cvx.ReturnsForecast() - gamma * (
 	cvx.FullCovariance() + kappa * cvx.RiskForecastError()

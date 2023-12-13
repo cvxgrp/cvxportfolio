@@ -13,8 +13,8 @@
 # limitations under the License.
 """This module contains up-to-date universes of stock tickers.
 
-If you run it attempts to download updated lists from the relevant 
-Wikipedia pages and it rewrites itself. Be careful when you run it 
+If you run it attempts to download updated lists from the relevant
+Wikipedia pages and it rewrites itself. Be careful when you run it
 and check that the results make sense.
 
 We could also save each universe in a ``json`` file.
@@ -101,18 +101,18 @@ if __name__ == '__main__':
 
     universes = {
         'sp500': {
-            'page':"http://en.wikipedia.org/wiki/List_of_S%26P_500_companies", 
-            'table_number': 0, 
+            'page': "http://en.wikipedia.org/wiki/List_of_S%26P_500_companies",
+            'table_number': 0,
             'column_number': 0,
         },
-        'ndx100':{
-            'page':"https://en.wikipedia.org/wiki/Nasdaq-100", 
-            'table_number': -1, 
+        'ndx100': {
+            'page': "https://en.wikipedia.org/wiki/Nasdaq-100",
+            'table_number': -1,
             'column_number': 1,
         },
-        'dow30':{
-            'page':"https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average", 
-            'table_number': 0, 
+        'dow30': {
+            'page': "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average",
+            'table_number': 0,
             'column_number': 1,
         }
     }
@@ -121,12 +121,12 @@ if __name__ == '__main__':
         """Get a column as list of strings from a table on wikipedia.
 
         This is adapted from:
-        
+
         https://pythonprogramming.net/sp500-company-price-data-python-programming-for-finance/
-        
+
         :param page: Wikipedia URL.
         :type page: str
-        :param table_number: Which table on the page. 
+        :param table_number: Which table on the page.
         :type table_number: int
         :param column_number: Which column to extract.
         :type column_number: int

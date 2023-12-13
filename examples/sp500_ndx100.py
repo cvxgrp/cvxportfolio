@@ -1,13 +1,14 @@
-import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 
-from .universes import SP500, NDX100
+import cvxportfolio as cvx
+
+from .universes import NDX100, SP500
 
 ## This is an example of a very large backtest, ~600 names and ~6000 days
 ## with multi period optimization. It shows that all parts of the system scale
 ## to such usecases.
 
-objective = cvx.ReturnsForecast() -.05 * cvx.ReturnsForecastError() \
+objective = cvx.ReturnsForecast() - .05 * cvx.ReturnsForecastError() \
      - 5 * (cvx.FactorModelCovariance(num_factors=50)
           + 0.1 * cvx.RiskForecastError()) \
      - cvx.StocksTransactionCost(exponent=2)  - cvx.StocksHoldingCost()

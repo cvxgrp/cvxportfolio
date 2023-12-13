@@ -1,7 +1,8 @@
-import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+import cvxportfolio as cvx
 
 universe = ["AMZN", "AAPL", "MSFT", "GOOGL", "TSLA", "GM",  'NKE', 'MCD', 'GE', 'CVX']
 
@@ -32,4 +33,4 @@ result = simulator.backtest(policy, start_time='2023-03-01', end_time='2023-06-0
 print(result)
 
 # plot value and weights of the portfolio in time
-result.plot() 
+result.plot()

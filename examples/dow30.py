@@ -1,6 +1,6 @@
 """Example of long-only portfolio among DOW-30 components.
 
-Monthly rebalance, backtest spans from the start of data of the 
+Monthly rebalance, backtest spans from the start of data of the
 components of the current index (in the 60s), the other stocks
 enter the backtest as times goes on. It ends today.
 
@@ -9,9 +9,9 @@ policies with a grid of values for the risk term multiplier
 and the transaction cost term multiplier. (We don't use the
 holding cost term because the portfolio is long-only.)
 
-All result objects are collected, and then the one with 
+All result objects are collected, and then the one with
 largest Sharpe ratio, and the one with largest growth rate,
-are shown. 
+are shown.
 
 Finally, we show the effect of using symbolic hyper-parameters,
 :class:`cvxportfolio.Gamma`, as multipliers of the risk and transaction
@@ -21,12 +21,11 @@ that maximize some back-test metric (in this case, profit).
 You can run this with this command from the parent directory:
 
 .. code-block:: bash
-    
-    python -m examples.dow30
 
+    python -m examples.dow30
 """
 
-# Uncomment the logging lines to get online information 
+# Uncomment the logging lines to get online information
 # from the parallel backtest routines
 
 # import logging
@@ -35,9 +34,10 @@ You can run this with this command from the parent directory:
 
 import os
 
-import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 import numpy as np
+
+import cvxportfolio as cvx
 
 from .universes import DOW30
 
@@ -50,17 +50,17 @@ def make_policy(gamma_trade, gamma_risk):
     :type gamma_trade: float or int
     :param gamma_risk: Risk model multiplier.
     :type gamma_risk: float or int
-    :return: Multi-period optimization policy with given 
+    :return: Multi-period optimization policy with given
         hyper-parameter values.
     :rtype: cvxportfolio.Policy
     """
-    return cvx.MultiPeriodOptimization(cvx.ReturnsForecast() 
-        - gamma_risk * cvx.FactorModelCovariance(num_factors=10) 
-        - gamma_trade * cvx.StocksTransactionCost(), 
+    return cvx.MultiPeriodOptimization(cvx.ReturnsForecast()
+        - gamma_risk * cvx.FactorModelCovariance(num_factors=10)
+        - gamma_trade * cvx.StocksTransactionCost(),
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
         planning_horizon=6, solver='ECOS')
 
-keys = [(gamma_trade, gamma_risk) for 
+keys = [(gamma_trade, gamma_risk) for
     gamma_trade in np.array(range(10))/10 for gamma_risk in [.5, 1, 2, 5, 10]]
 ress = sim.backtest_many([make_policy(*key) for key in keys])
 
@@ -103,9 +103,9 @@ if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
     plt.savefig('dow30_uniform.png')
 
 print('\n\nHYPER-PARAMETER OPTIMIZATION')
-policy = cvx.MultiPeriodOptimization(cvx.ReturnsForecast() 
-        - cvx.Gamma() * cvx.FactorModelCovariance(num_factors=10) 
-        - cvx.Gamma() * cvx.StocksTransactionCost(), 
+policy = cvx.MultiPeriodOptimization(cvx.ReturnsForecast()
+        - cvx.Gamma() * cvx.FactorModelCovariance(num_factors=10)
+        - cvx.Gamma() * cvx.StocksTransactionCost(),
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
         planning_horizon=6, solver='ECOS')
 sim.optimize_hyperparameters(policy, objective='profit')

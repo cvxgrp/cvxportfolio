@@ -4,15 +4,16 @@ This uses an explicit loop to create Multi Period Optimization
 policies with a grid of values for the risk term multiplier
 and the transaction cost term multiplier.
 
-All result objects are collected, and then the one with 
+All result objects are collected, and then the one with
 largest Sharpe ratio, and the one with largest growth rate,
-are shown. 
+are shown.
 """
 
-import cvxportfolio as cvx
 import numpy as np
 
-# Uncomment the logging lines to get online information 
+import cvxportfolio as cvx
+
+# Uncomment the logging lines to get online information
 # from the parallel backtest routines
 
 # import logging
@@ -39,14 +40,14 @@ UNIVERSE = [
     'TIP', # TIPS
     'DBC', # commodities
     ]
-    
+
 
 sim = cvx.StockMarketSimulator(UNIVERSE, trading_frequency='monthly')
 
 def make_policy(gamma_trade, gamma_risk):
-    return cvx.MultiPeriodOptimization(cvx.ReturnsForecast() 
-        - gamma_risk * cvx.FactorModelCovariance(num_factors=10) 
-        - gamma_trade * cvx.StocksTransactionCost(), 
+    return cvx.MultiPeriodOptimization(cvx.ReturnsForecast()
+        - gamma_risk * cvx.FactorModelCovariance(num_factors=10)
+        - gamma_trade * cvx.StocksTransactionCost(),
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
         planning_horizon=6, solver='ECOS')
 
