@@ -37,7 +37,7 @@ test:  ## run tests w/ cov report
 	# $(BINDIR)/bandit $(PROJECT)/*.py $(TESTS)/*.py
 
 lint:  ## run linter
-	$(BINDIR)/pylint $(PROJECT) #$(EXTRA_SCRIPTS) $(EXAMPLES)
+	$(BINDIR)/pylint $(PROJECT) $(EXTRA_SCRIPTS) $(EXAMPLES)
 	$(BINDIR)/diff-quality --violations=pylint --config-file pyproject.toml
 
 docs:  ## build docs
@@ -52,10 +52,10 @@ coverage:  ## open html cov report
 
 fix:  ## auto-fix code
 	# selected among many code auto-fixers, tweaked in pyproject.toml
-	$(BINDIR)/autopep8 -i $(PROJECT)/*.py $(TESTS)/*.py $(EXAMPLES)/*.py $(EXTRA_SCRIPTS)
-	$(BINDIR)/isort $(PROJECT)/*.py $(TESTS)/*.py $(EXAMPLES)/*.py $(EXTRA_SCRIPTS)
+	$(BINDIR)/autopep8 -i -r $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
+	$(BINDIR)/isort $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 	# this is the best found for the purpose
-	$(BINDIR)/docformatter --in-place $(PROJECT)/*.py $(TESTS)/*.py $(EXAMPLES)/*.py $(EXTRA_SCRIPTS)
+	$(BINDIR)/docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 
 release: update lint test  ## update version, publish to pypi
 	$(BINDIR)/python bumpversion.py
