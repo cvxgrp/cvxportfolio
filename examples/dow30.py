@@ -1,7 +1,7 @@
 """Example of long-only portfolio among DOW-30 components.
 
 Monthly rebalance, backtest spans from the start of data of the 
-components of the current index (in the 60s) and the other stocks
+components of the current index (in the 60s), the other stocks
 enter the backtest as times goes on. It ends today.
 
 This uses an explicit loop to create Multi Period Optimization
@@ -17,6 +17,13 @@ Finally, we show the effect of using symbolic hyper-parameters,
 :class:`cvxportfolio.Gamma`, as multipliers of the risk and transaction
 cost terms. We can optimize on those explicitely, by finding the values
 that maximize some back-test metric (in this case, profit).
+
+You can run this with this command from the parent directory:
+
+.. code-block:: bash
+    
+    python -m examples.dow30
+
 """
 
 # Uncomment the logging lines to get online information 
@@ -32,22 +39,29 @@ import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 import numpy as np
 
+from .universes import DOW30
 
-UNIVERSE = ['MMM', 'AXP', 'AMGN', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'DIS',  'DOW', 
-            'GS', 'HD', 'HON', 'IBM','INTC', 'JNJ',
-            'JPM','MCD', 'MRK', 'MSFT', 'NKE', 'PG', 'CRM', 'TRV', 'VZ', 'V', 'WBA', 'WMT']
-    
-
-sim = cvx.StockMarketSimulator(UNIVERSE, trading_frequency='monthly')
+sim = cvx.StockMarketSimulator(DOW30, trading_frequency='monthly')
 
 def make_policy(gamma_trade, gamma_risk):
+    """Build MPO policy given risk and trans. cost multipliers.
+
+    :param gamma_trade: Transaction cost multiplier.
+    :type gamma_trade: float or int
+    :param gamma_risk: Risk model multiplier.
+    :type gamma_risk: float or int
+    :return: Multi-period optimization policy with given 
+        hyper-parameter values.
+    :rtype: cvxportfolio.Policy
+    """
     return cvx.MultiPeriodOptimization(cvx.ReturnsForecast() 
         - gamma_risk * cvx.FactorModelCovariance(num_factors=10) 
         - gamma_trade * cvx.StocksTransactionCost(), 
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
         planning_horizon=6, solver='ECOS')
 
-keys = [(gamma_trade, gamma_risk) for gamma_trade in np.array(range(10))/10 for gamma_risk in [.5, 1, 2, 5, 10]]
+keys = [(gamma_trade, gamma_risk) for 
+    gamma_trade in np.array(range(10))/10 for gamma_risk in [.5, 1, 2, 5, 10]]
 ress = sim.backtest_many([make_policy(*key) for key in keys])
 
 

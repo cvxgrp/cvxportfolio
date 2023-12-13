@@ -16,9 +16,11 @@
 If you run it attempts to download updated lists from the relevant 
 Wikipedia pages and it rewrites itself. Be careful when you run it 
 and check that the results make sense.
+
+We could also save each universe in a ``json`` file.
 """
 
-# This was generated on 2023-12-11 09:06:57.144451+00:00
+# This was generated on 2023-12-12 15:18:33.706712+00:00
 
 SP500 = \
 ['A', 'AAL', 'AAPL', 'ABBV', 'ABNB', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI',
@@ -26,8 +28,8 @@ SP500 = \
  'ALB', 'ALGN', 'ALK', 'ALL', 'ALLE', 'AMAT', 'AMCR', 'AMD', 'AME', 'AMGN',
  'AMP', 'AMT', 'AMZN', 'ANET', 'ANSS', 'AON', 'AOS', 'APA', 'APD', 'APH',
  'APTV', 'ARE', 'ATO', 'AVB', 'AVGO', 'AVY', 'AWK', 'AXON', 'AXP', 'AZO', 'BA',
- 'BAC', 'BALL', 'BAX', 'BBWI', 'BBY', 'BDX', 'BEN', 'BF.B', 'BG', 'BIIB',
- 'BIO', 'BK', 'BKNG', 'BKR', 'BLK', 'BMY', 'BR', 'BRK.B', 'BRO', 'BSX', 'BWA',
+ 'BAC', 'BALL', 'BAX', 'BBWI', 'BBY', 'BDX', 'BEN', 'BF-B', 'BG', 'BIIB',
+ 'BIO', 'BK', 'BKNG', 'BKR', 'BLK', 'BMY', 'BR', 'BRK-B', 'BRO', 'BSX', 'BWA',
  'BX', 'BXP', 'C', 'CAG', 'CAH', 'CARR', 'CAT', 'CB', 'CBOE', 'CBRE', 'CCI',
  'CCL', 'CDAY', 'CDNS', 'CDW', 'CE', 'CEG', 'CF', 'CFG', 'CHD', 'CHRW', 'CHTR',
  'CI', 'CINF', 'CL', 'CLX', 'CMA', 'CMCSA', 'CME', 'CMG', 'CMI', 'CMS', 'CNC',
@@ -83,13 +85,37 @@ NDX100 = \
  'TMUS', 'TSLA', 'TTD', 'TXN', 'VRSK', 'VRTX', 'WBA', 'WBD', 'WDAY', 'XEL',
  'ZM', 'ZS']
 
+DOW30 = \
+['AAPL', 'AMGN', 'AXP', 'BA', 'CAT', 'CRM', 'CSCO', 'CVX', 'DIS', 'DOW', 'GS',
+ 'HD', 'HON', 'IBM', 'INTC', 'JNJ', 'JPM', 'KO', 'MCD', 'MMM', 'MRK', 'MSFT',
+ 'NKE', 'PG', 'TRV', 'UNH', 'V', 'VZ', 'WBA', 'WMT']
+
 if __name__ == '__main__':
 
+    # import json
     from pprint import pprint
 
     import bs4 as bs
     import pandas as pd
     import requests
+
+    universes = {
+        'sp500': {
+            'page':"http://en.wikipedia.org/wiki/List_of_S%26P_500_companies", 
+            'table_number': 0, 
+            'column_number': 0,
+        },
+        'ndx100':{
+            'page':"https://en.wikipedia.org/wiki/Nasdaq-100", 
+            'table_number': -1, 
+            'column_number': 1,
+        },
+        'dow30':{
+            'page':"https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average", 
+            'table_number': 0, 
+            'column_number': 1,
+        }
+    }
 
     def get_column_wikipedia_page(page, table_number, column_number):
         """Get a column as list of strings from a table on wikipedia.
@@ -118,23 +144,17 @@ if __name__ == '__main__':
             column.append(element.strip())
         return sorted(column)
 
-    def get_sp500_tickers():
-        """Get current list of SP500 tickers by parsing wikipedia page.
-        
-        :returns: Current SP500 tickers.
-        :rtype: list
-        """
-        return get_column_wikipedia_page(
-            "http://en.wikipedia.org/wiki/List_of_S%26P_500_companies", 0, 0)
+    def adapt_for_yahoo_finance(tickers_list):
+        """Change tickers to match the spelling of Yahoo Finance.
 
-    def get_ndx100_tickers():
-        """Get current list of NDX100 tickers by parsing wikipedia page.
-        
-        :returns: Current NDX100 tickers.
+        :param tickers_list: Tickers from Wikipedia.
+        :type tickers_list: list
+
+        :returns: Adapted tickers.
         :rtype: list
         """
-        return get_column_wikipedia_page(
-            "https://en.wikipedia.org/wiki/Nasdaq-100", -1, 1)
+
+        return [el.replace('.', '-') for el in tickers_list]
 
     # re-write this file
 
@@ -154,15 +174,17 @@ if __name__ == '__main__':
         # timestamp
         f.write("\n# This was generated on " + str(pd.Timestamp.utcnow()) + "\n")
 
-        # SP500 list
-        f.write('\nSP500 = \\\n')
-        pprint(
-            get_sp500_tickers(), compact=True, width=79, stream=f)
+        # universes lists
+        for key, value in universes.items():
 
-        # NDX100 list
-        f.write('\nNDX100 = \\\n')
-        pprint(
-            get_ndx100_tickers(), compact=True, width=79, stream = f)
+            tickers = adapt_for_yahoo_finance(
+                get_column_wikipedia_page(**value))
+            f.write(f'\n{key.upper()} = \\\n')
+            pprint(tickers, compact=True, width=79, stream=f)
+
+            # # also save in json
+            # with open(key + '.json', 'w', encoding='utf-8') as f1:
+            #     json.dump(tickers, f1)
 
         # copy everything in the if __name__ == '__main__' clause
         f.write('\n')

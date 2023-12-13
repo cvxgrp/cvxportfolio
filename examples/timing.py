@@ -1,6 +1,7 @@
+import time
+
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
-import time
 import pandas as pd
 
 from .universes import SP500
@@ -64,14 +65,22 @@ simulator = cvx.StockMarketSimulator(SP500)
 
 # execution and timing, 5 years backtest
 s = time.time()
-result = simulator.backtest(policy, start_time=pd.Timestamp.today() - pd.Timedelta(f'{365*5}d'))
-print('BACKTEST TOOK', time.time() - s)
-print('SIMULATOR + POLICY TIMES', result.simulator_times.sum() + result.policy_times.sum())
-print('AVERAGE TIME PER ITERATION', result.simulator_times.mean() + result.policy_times.mean())
+result = simulator.backtest(
+    policy, start_time=pd.Timestamp.today() - pd.Timedelta(f'{365.24*5}d'))
+
+print('## RESULT')
+print(result)
+
+print('BACKTEST TOOK:', time.time() - s)
+print(
+    'SIMULATOR + POLICY TIMES:', 
+    result.simulator_times.sum() + result.policy_times.sum())
+print(
+    'AVERAGE TIME PER ITERATION:', 
+    result.simulator_times.mean() + result.policy_times.mean())
 
 # plot
 result.policy_times.plot(label='policy times')
 result.simulator_times.plot(label='simulator times')
 plt.legend()
 plt.show()
-

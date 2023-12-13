@@ -53,7 +53,12 @@ accept-no-yields-doc = false
 fail_under = 99
 
 [tool.diff_cover]
-# this will be superflous once we push the above to 100
+# this will be superflous once we push coverage to 100
+compare_branch = "origin/master"
+fail_under = 99
+
+[tool.diff_quality]
+# this will be superflous once we push pylint score to 10
 compare_branch = "origin/master"
 fail_under = 99
 

@@ -26,4 +26,4 @@ result = simulator.backtest(policy, start_time='2000-01-01', initial_value=1E9)
 print(result)
 
 # plot value and weights of the portfolio in time
-result.plot() 
+result.plot()
