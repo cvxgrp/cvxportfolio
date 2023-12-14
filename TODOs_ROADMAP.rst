@@ -10,9 +10,8 @@ as:
 
 *Internal* methods that are used by 
 Cvxportfolio objects to communicate with each other (or other tasks) and don't
-have a leading underscore, are considered public 
-if they are exposed through the HTML documentation
-and are used in the examples.
+have a leading underscore, are considered public if they are exposed through 
+the HTML documentation and/or are used in the examples.
 
 In this document we list the planned
 changes, in particular the ones that are relevant for semantic versioning, and 
@@ -28,12 +27,14 @@ their planned release.
 -------------------------
 
 - cache logic needs improvement, not easily exposable to third-parties now with ``dataclass.__hash__``
+
   - drop decorator
   - drop dataclass
   - cache IO logic should be managed by forecaster not by simulator, could be done by ``initialize_estimator``; maybe enough to just
-  define it in the base class of forecasters
+    define it in the base class of forecasters
 - improve names of internal methods, clean them (lots of stuff can be re-used at universe change, ...)
 - generalize the mean estimator:
+
   - use same code for ``past_returns``, ``past_returns**2``, ``past_volumes``, ...
   - add rolling window option, should be in ``pd.Timedelta``
   - add exponential moving avg, should be in half-life ``pd.Timedelta``
@@ -47,12 +48,16 @@ their planned release.
   ``1.0.4``. 
 - ``Estimator`` could define base logic for on-disk caching. By itself it
   wouldn't do anything, actual functionality implemented by forecasters' base
-  class.  
+  class.
+
   - [ ] ``initialize_estimator`` could get optional market data partial
-  signature for caching. Default None, no incompatible change.
+    signature for caching. Default None, no incompatible change.
   - [ ] Could get a ``finalize_estimator`` method used for storing
-  data, like risk models on disk, doesn't need arguments; it can use the
-  partial signature got above. No incompatible change.
+    data, like risk models on disk, doesn't need arguments; it can use the
+    partial signature got above. No incompatible change.
+
+``cvxportfolio.data``
+--------------------------
 
 ``cvxportfolio.simulator``
 --------------------------
@@ -63,17 +68,39 @@ their planned release.
 ``cvxportfolio.policies``
 -------------------------
 
+Optimization policies
+~~~~~~~~~~~~~~~~~~~~~
+
+- [ ] Improve behavior for infeasibility/unboundedness/solver error. Target 
+  ``1.1.0``.
+
+``cvxportfolio.constraints``
+----------------------------
+
+- [ ] Add missing constraints from the paper. Target ``1.1.0``.
+- [ ] Make ``MarketNeutral`` accept arbitrary benchmark (policy object).
+
+``cvxportfolio.result``
+-----------------------
+
+- [ ] Make ``BackTestResult`` interface methods with ``MarketSimulator`` 
+  public. 
+
+
 Development & testing
 ---------------------
 
-- Add extra pylint checkers. 
+- [ ] Add extra pylint checkers. 
   
-  - Code complexity. Target ``1.0.4``. 
-- Consider removing downloaded data from ``test_simulator.py``,
+  - [ ] Code complexity. Target ``1.0.4``. 
+- [ ] Consider removing downloaded data from ``test_simulator.py``,
   so only ``test_data.py`` requires internet. 
 
 Documentation
 -------------
+
+- Manual
+- Quickstart
 
 Examples
 --------
