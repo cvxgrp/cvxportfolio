@@ -12,6 +12,9 @@ paper <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`__.
 The documentation of the library is at
 `www.cvxportfolio.com <https://www.cvxportfolio.com>`__.
 
+
+.. Installation
+
 Installation
 ------------
 
@@ -26,10 +29,14 @@ You can see how this works on our `Installation and Hello
 World <https://youtu.be/1ThOKEu371M>`__ youtube video. 
 Anaconda installs 
 `are also supported <https://anaconda.org/conda-forge/cvxportfolio>`_.
-Its main dependencies are `Cvxpy <https://www.cvxpy.org>`_ for interfacing
-with numerical solvers and `Pandas <https://pandas.pydata.org/>`_
+
+Cvxportfolio's main dependencies are `Cvxpy <https://www.cvxpy.org>`_ for
+interfacing with numerical solvers and `Pandas <https://pandas.pydata.org/>`_
 for interfacing with databases. We don't require any specific version of our
 dependencies and test against all recent ones (up to a few years ago).
+
+
+.. Test
 
 Test
 ----
@@ -42,9 +49,11 @@ After installing you can run our unit test suite in you local environment by
 
 We test against recent python versions (3.9, 3.10, 3.11) and recent versions
 of the main dependencies (from pandas 1.4, cvxpy 1.1, ..., up to the current
-versions) on all major operating systems. You can see the automated testing code 
-`here <https://github.com/cvxgrp/cvxportfolio/blob/master/.github/workflows/test.yml>`_.
+versions) on all major operating systems. You can see the `automated testing code 
+<https://github.com/cvxgrp/cvxportfolio/blob/master/.github/workflows/test.yml>`_.
 
+
+.. Simple Example
 
 Simple Example
 --------------
@@ -106,25 +115,16 @@ sophisticated parallel backtest machinery, quickly provides results on
 the best strategy to apply to any given selection of assets.
 
 
-Versions and releases
----------------------
+Examples from the paper
+-----------------------
 
-Cvxportfolio follows the `semantic versioning <https://semver.org>`_
-specification. No breaking change in its public API will be introduced
-until the next major version (``2.0.0``), which won't happen for some time. 
-New features in the public API are introduced with minor versions 
-(``1.1.0``, ``1.2.0``, ...), and only bug fixes at each revision.
+In branch `0.0.X <https://github.com/cvxgrp/cvxportfolio/tree/0.0.X>`__
+you can find the original material used to generate plots and results in
+the paper. As you may see from those ipython notebooks a lot of the
+logic that was implemented there, outside of Cvxportfolio proper, is
+being included and made automatic in newer versions of Cvxportfolio.
 
-The history of our releases (source distributions and wheels) is visible on our 
-`PyPI page <https://pypi.org/project/cvxportfolio/#history>`_.
-
-Releases are also tagged in our git repository and include a short summary
-of changes in 
-`their commit messages <https://github.com/cvxgrp/cvxportfolio/tags>`_.
-
-We maintain a document listing the planned changes and target releases
-`here <https://github.com/cvxgrp/cvxportfolio/blob/master/TODOs_ROADMAP.rst>`_.
-
+.. Contributions
 
 Contributions
 -------------
@@ -191,15 +191,29 @@ Additionally, to match our CI/CD pipeline, you may set the following
    chmod +x .git/hooks/pre-push
 
 
-Examples from the paper
------------------------
+.. Versions
 
-In branch `0.0.X <https://github.com/cvxgrp/cvxportfolio/tree/0.0.X>`__
-you can find the original material used to generate plots and results in
-the paper. As you may see from those ipython notebooks a lot of the
-logic that was implemented there, outside of Cvxportfolio proper, is
-being included and made automatic in newer versions of Cvxportfolio.
+Versions and releases
+---------------------
 
+Cvxportfolio follows the `semantic versioning <https://semver.org>`_
+specification. No breaking change in its public API will be introduced
+until the next major version (``2.0.0``), which won't happen for some time. 
+New features in the public API are introduced with minor versions 
+(``1.1.0``, ``1.2.0``, ...), and only bug fixes at each revision.
+
+The history of our releases (source distributions and wheels) is visible on our 
+`PyPI page <https://pypi.org/project/cvxportfolio/#history>`_.
+
+Releases are also tagged in our git repository and include a short summary
+of changes in 
+`their commit messages <https://github.com/cvxgrp/cvxportfolio/tags>`_.
+
+We maintain a `document listing the planned changes and target releases
+<https://github.com/cvxgrp/cvxportfolio/blob/master/TODOs_ROADMAP.rst>`_. 
+
+
+.. Citing
 
 Citing
 ------------
@@ -248,7 +262,7 @@ The latter is also the first chapter of this PhD thesis:
 Licensing
 ---------
 
-Cvxportfolio is licensed under the `Apache 2.0 <http://www.apache.org/licenses/>`_ permissive
+Cvxportfolio is licensed under the `Apache 2.0 <https://www.apache.org/licenses/LICENSE-2.0>`_ permissive
 open source license.
 
 .. |CVXportfolio on PyPI| image:: https://img.shields.io/pypi/v/cvxportfolio.svg
