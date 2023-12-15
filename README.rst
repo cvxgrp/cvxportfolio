@@ -55,7 +55,7 @@ versions) on all major operating systems. You can see the `automated testing cod
 
 .. Simple Example
 
-Simple Example
+Simple example
 --------------
 
 In the following example market data is downloaded by a public source
@@ -94,8 +94,23 @@ includes holding and transaction costs, using the models described in
 the paper, and default parameters that are typical for the US stock
 market.
 
-Some Other Examples
--------------------
+Other examples
+--------------
+
+`Many examples 
+<https://www.cvxportfolio.com/en/latest/examples.html>`_ 
+are shown in the documentation website, along with
+their output and comments.
+
+`Even more example scripts
+<https://github.com/cvxgrp/cvxportfolio/blob/master/examples>`_ 
+are available in the code repository. 
+
+`The original examples from the paper 
+<https://github.com/cvxgrp/cvxportfolio/tree/0.0.X/examples>`_ 
+are visible in a dedicated branch,
+and are being translated to run with the stable versions (``1.0.*``) of the
+library. 
 
 We show in the example on `user-provided
 forecasters <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/user_provided_forecasters.py>`__
@@ -114,15 +129,6 @@ how a simple sweep over hyper-parameters, taking advantage of our
 sophisticated parallel backtest machinery, quickly provides results on
 the best strategy to apply to any given selection of assets.
 
-
-Examples from the paper
------------------------
-
-In branch `0.0.X <https://github.com/cvxgrp/cvxportfolio/tree/0.0.X>`__
-you can find the original material used to generate plots and results in
-the paper. As you may see from those ipython notebooks a lot of the
-logic that was implemented there, outside of Cvxportfolio proper, is
-being included and made automatic in newer versions of Cvxportfolio.
 
 .. Contributions
 
@@ -190,6 +196,21 @@ Additionally, to match our CI/CD pipeline, you may set the following
    echo "make test" > .git/hooks/pre-push
    chmod +x .git/hooks/pre-push
 
+
+Code style and quality
+----------------------
+
+We follow the `PEP8 <https://peps.python.org/pep-0008/>`_ specification for
+code style. This is enforced by the `Pylint
+<https://pylint.readthedocs.io/en/stable/>`_ automated linter, with options 
+in the `Pyproject 
+<https://github.com/cvxgrp/cvxportfolio/blob/master/pyproject.toml>`_
+configuration file.
+Pylint is also used to enforce code quality standards, along with some of its
+optional plugins.
+Docstrings are written in the `Sphinx style 
+<https://www.sphinx-doc.org/en/master/index.html>`_, are also checked by 
+Pylint, and are used to generate the documentation.
 
 .. Versions
 
