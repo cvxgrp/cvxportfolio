@@ -31,29 +31,8 @@ with numerical solvers and `Pandas <https://pandas.pydata.org/>`_
 for interfacing with databases. We don't require any specific version of our
 dependencies and test against all recent ones (up to a few years ago).
 
-
-Versioning and releases
------------------------
-
-Cvxportfolio follows the `semantic versioning <https://semver.org>`
-specification. No breaking change in its public API will be introduced
-until the next major version (``2.0.0``), which won't happen for some time. 
-New features in the public API are introduced with minor versions 
-(``1.1.0``, ``1.2.0``, ...), and only bug fixes at each revision.
-
-The history of our releases (source distributions and wheels) is visible on our 
-`PyPI page <https://pypi.org/project/cvxportfolio/#history>`_.
-
-Releases are also tagged in our git repository and include a short summary
-of changes in 
-`their commit messages <https://github.com/cvxgrp/cvxportfolio/tags>`_.
-
-We maintain a document listing the planned changes and target releases
-`here <https://github.com/cvxgrp/cvxportfolio/blob/master/TODOs_ROADMAP.rst>`_.
-
-
-Testing
--------
+Test
+----
 
 After installing you can run our unit test suite in you local environment by
 
@@ -63,10 +42,9 @@ After installing you can run our unit test suite in you local environment by
 
 We test against recent python versions (3.9, 3.10, 3.11) and recent versions
 of the main dependencies (from pandas 1.4, cvxpy 1.1, ..., up to the current
-versions) on all major operating systems. So, Cvxportfolio doesn't require
-any specific version of any dependency, and should work in any pre-existing
-environment. You can see the automated testing code 
+versions) on all major operating systems. You can see the automated testing code 
 `here <https://github.com/cvxgrp/cvxportfolio/blob/master/.github/workflows/test.yml>`_.
+
 
 Simple Example
 --------------
@@ -127,6 +105,40 @@ how a simple sweep over hyper-parameters, taking advantage of our
 sophisticated parallel backtest machinery, quickly provides results on
 the best strategy to apply to any given selection of assets.
 
+
+Versions and releases
+---------------------
+
+Cvxportfolio follows the `semantic versioning <https://semver.org>`_
+specification. No breaking change in its public API will be introduced
+until the next major version (``2.0.0``), which won't happen for some time. 
+New features in the public API are introduced with minor versions 
+(``1.1.0``, ``1.2.0``, ...), and only bug fixes at each revision.
+
+The history of our releases (source distributions and wheels) is visible on our 
+`PyPI page <https://pypi.org/project/cvxportfolio/#history>`_.
+
+Releases are also tagged in our git repository and include a short summary
+of changes in 
+`their commit messages <https://github.com/cvxgrp/cvxportfolio/tags>`_.
+
+We maintain a document listing the planned changes and target releases
+`here <https://github.com/cvxgrp/cvxportfolio/blob/master/TODOs_ROADMAP.rst>`_.
+
+
+Contributions
+-------------
+
+We welcome contributors and you don't need to sign a CLA. If you don't have
+a Github account you may also send a 
+`git patch via email <https://git-scm.com/docs/git-send-email>`_ to the project 
+maintainer.
+
+Bug fixes, improvements in the documentations and examples,
+new constraints, new cost objects, ..., are good contributions and can be done
+even if you're not familiar with the low-level details on the library.
+
+
 Development
 -----------
 
@@ -135,7 +147,7 @@ repository (or, `fork on
 Github <https://docs.github.com/en/get-started/quickstart/fork-a-repo>`__
 and then clone your fork)
 
-.. code:: bash
+.. code:: console
 
    git clone https://github.com/cvxgrp/cvxportfolio.git
    cd cvxportfolio
@@ -145,7 +157,7 @@ Then, you should have a look at our
 and possibly change the ``PYTHON`` variable to match your system’s
 python interpreter. Once you have done that,
 
-.. code:: bash
+.. code:: console
 
    make env
    make test
@@ -157,7 +169,7 @@ test suite.
 You activate the shell environment with one of scripts in ``env/bin``
 (or ``env\Scripts`` on Windows), for example if you use bash on POSIX
 
-.. code:: bash
+.. code:: console
 
    source env/bin/activate
 
@@ -171,12 +183,13 @@ Windows) like we do in the Makefile.
 Additionally, to match our CI/CD pipeline, you may set the following
 `git hooks <https://git-scm.com/docs/githooks>`__
 
-.. code:: bash
+.. code:: console
 
    echo "make lint" > .git/hooks/pre-commit
    chmod +x .git/hooks/pre-commit
    echo "make test" > .git/hooks/pre-push
    chmod +x .git/hooks/pre-push
+
 
 Examples from the paper
 -----------------------
@@ -186,6 +199,7 @@ you can find the original material used to generate plots and results in
 the paper. As you may see from those ipython notebooks a lot of the
 logic that was implemented there, outside of Cvxportfolio proper, is
 being included and made automatic in newer versions of Cvxportfolio.
+
 
 Citing
 ------------
