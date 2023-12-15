@@ -137,13 +137,16 @@ Contributions
 
 We welcome contributors and you don't need to sign a CLA. If you don't have
 a Github account you may also send a 
-`git patch via email <https://git-scm.com/docs/git-send-email>`_ to the project 
-maintainer.
+`git patch via email <https://git-scm.com/docs/git-send-email>`_ to the 
+`project maintainer <https://github.com/enzbus>`_.
 
 Bug fixes, improvements in the documentations and examples,
 new constraints, new cost objects, ..., are good contributions and can be done
 even if you're not familiar with the low-level details on the library.
-
+For more advanced contributions we recommend reading the
+`TODOs and roadmap
+<https://github.com/cvxgrp/cvxportfolio/blob/master/TODOs_ROADMAP.rst>`_
+file.
 
 Development
 -----------
@@ -200,8 +203,8 @@ Additionally, to match our CI/CD pipeline, you may set the following
 Code style and quality
 ----------------------
 
-We follow the `PEP8 <https://peps.python.org/pep-0008/>`_ specification for
-code style. This is enforced by the `Pylint
+Cvxportfolio follows the `PEP8 <https://peps.python.org/pep-0008/>`_
+specification for code style. This is enforced by the `Pylint
 <https://pylint.readthedocs.io/en/stable/>`_ automated linter, with options 
 in the `Pyproject 
 <https://github.com/cvxgrp/cvxportfolio/blob/master/pyproject.toml>`_
