@@ -15,9 +15,8 @@ objective = cvx.ReturnsForecast() - .05 * cvx.ReturnsForecastError() \
 
 constraints = [cvx.LeverageLimit(3)]
 
-policy = cvx.MultiPeriodOptimization(
-     objective, constraints, planning_horizon=3, ignore_dpp=True)
-
+policy = cvx.MultiPeriodOptimization(objective, constraints, planning_horizon=3, ignore_dpp=True)
+ 
 universe = sorted(set(SP500 + NDX100))
 simulator = cvx.StockMarketSimulator(universe)
 
@@ -27,4 +26,4 @@ result = simulator.backtest(policy, start_time='2000-01-01', initial_value=1E9)
 print(result)
 
 # plot value and weights of the portfolio in time
-result.plot()
+result.plot() 

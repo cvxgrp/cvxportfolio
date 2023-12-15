@@ -95,6 +95,9 @@ ENV/
 # Spyder project settings
 .spyderproject
 
+# Codium
+.vscode/*
+
 # Rope project settings
 .ropeproject
 

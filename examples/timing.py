@@ -1,6 +1,7 @@
 import time
 
 import matplotlib.pyplot as plt
+import time
 import pandas as pd
 
 import cvxportfolio as cvx
@@ -85,3 +86,4 @@ result.policy_times.plot(label='policy times')
 result.simulator_times.plot(label='simulator times')
 plt.legend()
 plt.show()
+
