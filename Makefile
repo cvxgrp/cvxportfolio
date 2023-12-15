@@ -9,7 +9,7 @@ BUILDDIR      = build
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
 EXTRA_SCRIPTS = bumpversion.py
-EXAMPLES      = examples/*.py
+EXAMPLES      = examples
 
 ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
@@ -34,7 +34,7 @@ test:  ## run tests w/ cov report
 	$(BINDIR)/coverage xml
 	$(BINDIR)/diff-cover coverage.xml --config-file pyproject.toml
 	# disabled for now, we need to change pickle as default on-disk cache
-	# $(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	# $(BINDIR)/bandit $(PROJECT)/*.py $(TESTS)/*.py
 
 lint:  ## run linter
 	$(BINDIR)/pylint $(PROJECT) $(EXTRA_SCRIPTS) $(EXAMPLES)
@@ -65,8 +65,8 @@ release: update lint test  ## update version, publish to pypi
 	$(BINDIR)/twine upload --skip-existing dist/*
 
 examples:  ## run examples for docs
-	for example in hello_world case_shiller dow30_example; \
-		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python examples/"$$example".py > docs/_static/"$$example"_output.txt; \
+	for example in hello_world case_shiller universes dow30; \
+		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python -m examples."$$example" > docs/_static/"$$example"_output.txt; \
 	done
 	mv *.png docs/_static/
 
