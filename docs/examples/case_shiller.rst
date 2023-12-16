@@ -1,5 +1,5 @@
-Case-Shiller Example
-====================
+Case-Shiller multi-period
+=========================
 
 This is an example that shows that Cvxportfolio can work as well with
 different asset classes, in this case a real estate portfolio. We use
