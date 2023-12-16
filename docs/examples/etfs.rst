@@ -6,3 +6,4 @@ This example script is
 
 .. literalinclude:: ../../examples/etfs.py
    :language: python
+   :lines: 14-

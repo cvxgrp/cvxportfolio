@@ -7,6 +7,7 @@ See the docstring below for its explanation.
 
 .. literalinclude:: ../../examples/dow30.py
    :language: python
+   :lines: 14-
 
 This is the output printed to screen when executing this script. You can see
 many statistics of the back-tests.

@@ -13,7 +13,7 @@ dependencies = ["pandas", "numpy", "matplotlib", "requests", "cvxpy",
 [project.optional-dependencies]
 docs = ["sphinx", "furo"]
 dev = ["build", "twine", "coverage", "diff_cover", "pylint", "isort",
-    "autopep8", "docformatter"]
+    "autopep8", "docformatter", "beautifulsoup4"]
 
 [project.urls]
 Homepage = "https://www.cvxportfolio.com"

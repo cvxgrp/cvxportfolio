@@ -58,6 +58,7 @@ import pandas as pd
 
 import cvxportfolio as cvx
 
+
 def paper_market_data():
     """Build market data server for the paper's examples.
 
@@ -65,7 +66,7 @@ def paper_market_data():
     (as its last), we point the ``cash_key`` argument to its name.
 
     We also use the ``min_history`` argument, which, howerver ,in this case is
-    not needed (since we start our back-tests after the default minimum 
+    not needed (since we start our back-tests after the default minimum
     history of one year).
 
     :return: Market data for the paper.
@@ -89,21 +90,21 @@ def paper_risk_model():
     dataframes and we explicitely skip the cash column.
 
     :return: Factor exposures, factor covariances, idyosincratic risks.
-    :rtype: pandas.DataFrame, pandas.DataFrame, pandas.DataFrame 
+    :rtype: pandas.DataFrame, pandas.DataFrame, pandas.DataFrame
     """
 
-    k=15
+    k = 15
 
     start_t = "2012-01-01"
     end_t = "2016-12-31"
 
     returns = pd.read_csv(
-        Path(__file__).parent / 'returns.csv.gz', 
+        Path(__file__).parent / 'returns.csv.gz',
         index_col=0, parse_dates=[0]).iloc[:, :-1]  # skip cash column
 
     first_days_month = pd.date_range(
         start=returns.index[next(
-            i for (i,el) in enumerate(returns.index >= start_t) if el)-1],
+            i for (i, el) in enumerate(returns.index >= start_t) if el)-1],
         end=returns.index[-1], freq='MS')
 
     print('Computing risk model...')
@@ -120,7 +121,7 @@ def paper_risk_model():
 
     idyosincratic = pd.DataFrame(
         index = first_days_month, columns = returns.columns)
-    
+
     for day in first_days_month:
         used_returns = returns.loc[
             (returns.index < day) & (returns.index >= day-pd.Timedelta(
@@ -130,12 +131,11 @@ def paper_risk_model():
             / used_returns.values.shape[0])
         eival, eivec = np.linalg.eigh(second_moment)
         factor_sigma.loc[day] = np.diag(eival[-k:])
-        factor_exposures.loc[day] = eivec[:,-k:].T
+        factor_exposures.loc[day] = eivec[:, -k:].T
         idyosincratic.loc[day] = np.diag(
-            eivec[:,:-k] @ np.diag(eival[:-k]) @ eivec[:,:-k].T)
+            eivec[:, :-k] @ np.diag(eival[:-k]) @ eivec[:, :-k].T)
 
     return factor_exposures, factor_sigma, idyosincratic
-
 
 
 if __name__ == '__main__':
