@@ -65,14 +65,27 @@ their planned release.
 ``cvxportfolio.risks``
 ----------------------
 
+``cvxportfolio.hyperparameters``
+-------------------------
+
+- [ ] Clean up interface w/ ``MarketSimulator``, right now it calls private 
+  methods, maybe enough to make them public. Target ``1.0.4``.
+- [ ] Add risk/fine default ``GammaTrade``, ``GammaRisk`` (which are
+  ``RangeHyperParameter``) modeled after original examples from paper. 
+  Target ``1.1.0``.
+
 ``cvxportfolio.policies``
 -------------------------
+
+- [ ] Add `AllIn` policy, which allocates all to a single name (like 
+  ``AllCash``). Target ``1.1.0``.
 
 Optimization policies
 ~~~~~~~~~~~~~~~~~~~~~
 
 - [ ] Improve behavior for infeasibility/unboundedness/solver error. Target 
   ``1.1.0``.
+- [ ] Improve ``__repr__`` method, now hard to read. Target ``1.0.4``.
 
 ``cvxportfolio.constraints``
 ----------------------------
@@ -99,8 +112,10 @@ Development & testing
 Documentation
 -------------
 
-- Manual
-- Quickstart
+- [ ] Improve examples section, also how "Hello world" is mentioned in readme.
+  Target ``1.0.4``, PR #118.
+- [ ] Manual.
+- [ ] Quickstart, probably to merge into manual.
 
 Examples
 --------
