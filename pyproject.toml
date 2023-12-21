@@ -14,6 +14,7 @@ dependencies = ["pandas", "numpy", "matplotlib", "requests", "cvxpy",
 docs = ["sphinx", "furo"]
 dev = ["build", "twine", "coverage", "diff_cover", "pylint", "isort",
     "autopep8", "docformatter", "beautifulsoup4"]
+examples = ['beatifulsoup4', 'pandas_datareader', 'yfinance']
 
 [project.urls]
 Homepage = "https://www.cvxportfolio.com"

@@ -13,9 +13,14 @@
 # limitations under the License.
 """Test different choices of risk models, which has best performance?
 
-**WORK IN PROGRESS**
+.. note::
 
-On the Nasdaq 100 index, daily trading from 2016 to today:
+    The output of this example is currently (Cvxportfolio ``1.0.3``)
+    not too easy to read; the ``__repr__`` method of a policy object
+    with symbolic hyper-parameters is scheduled for improvement. It
+    does work, though.
+
+On the Dow Jones, daily trading from 2016 to today:
 - diagonal risk model
 - diagonal risk model with risk forecast error
 - full covariance
@@ -24,28 +29,26 @@ On the Nasdaq 100 index, daily trading from 2016 to today:
 
 We test on a long-only portfolio and use automatic hyper-parameter
 optimization to maximize the information ratio, in back-test,
-versus an index ETF.
+versus the index ETF.
 """
 
 import os
 from pprint import pprint
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 import cvxportfolio as cvx
-from .universes import DOW30 as UNIVERSE
-#from .universes import NDX100 as UNIVERSE
 
+from .universes import DOW30 as UNIVERSE
 
 # Index
-INDEX = 'DIA' #
-#INDEX = 'QQQ'
+INDEX = 'DIA'
 
 # Times.
-START = '2000-01-01' #'2016-01-01'
-END = None #'2017-01-01'
+START = '2000-01-01'
+END = None # today
 
 # Leverage.
 LEVERAGE_LIMIT = 1.
@@ -60,40 +63,41 @@ all_in_index = pd.Series(
 all_in_index[INDEX] = 1.
 benchmark = cvx.FixedWeights(all_in_index)
 
-# Define hyper-parameter objects:
+# Define hyper-parameter objects.
+# These will be included in the library in a future release.
 class GammaTradeCoarse(cvx.RangeHyperParameter):
     """Transaction cost multiplier, coarse value range."""
     def __init__(self):
         super().__init__(
-        values_range=np.arange(1,11),
+        values_range=np.arange(1, 11),
         current_value=1.)
 
 class GammaTradeFine(cvx.RangeHyperParameter):
     """Transaction cost multiplier, fine value range."""
     def __init__(self):
         super().__init__(
-        values_range=np.linspace(-1.,1.,51),
+        values_range=np.linspace(-1., 1., 51),
         current_value=0)
 
 class GammaRiskCoarse(cvx.RangeHyperParameter):
     """Risk term multiplier, coarse value range."""
     def __init__(self):
         super().__init__(
-        values_range=np.arange(1,21),
+        values_range=np.arange(1, 21),
         current_value=1.)
 
 class GammaRiskFine(cvx.RangeHyperParameter):
     """Risk term multiplier, fine value range."""
     def __init__(self):
         super().__init__(
-        values_range=np.linspace(-1.,1.,51),
+        values_range=np.linspace(-1., 1., 51),
         current_value=0)
 
 class Kappa(cvx.RangeHyperParameter):
     """Risk forecast error multiplier, fine value range."""
     def __init__(self):
         super().__init__(
-        values_range=np.linspace(0.,0.5),
+        values_range=np.linspace(0., 0.5),
         current_value=0)
 
 
@@ -132,7 +136,7 @@ for risk_model in RISK_MODELS:
             - (GammaTradeCoarse() + GammaTradeFine()
                 ) * cvx.StocksTransactionCost()
             - risk_model,
-        constraints=[cvx.LongOnly(), cvx.LeverageLimit(LEVERAGE_LIMIT)], 
+        constraints=[cvx.LongOnly(), cvx.LeverageLimit(LEVERAGE_LIMIT)],
         benchmark=benchmark,
         solver='CLARABEL')
 
