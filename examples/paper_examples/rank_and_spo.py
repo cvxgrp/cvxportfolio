@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""""""
+"""Ranking vs. SPO example.
+
+This is a close translation of what was done in `this notebook
+<https://github.com/cvxgrp/cvxportfolio/blob/0.0.X/examples/RankAndSPO.ipynb>`_.
+"""
 
 import cvxportfolio as cvx

@@ -98,6 +98,10 @@ Optimization policies
 
 - [ ] Make ``BackTestResult`` interface methods with ``MarketSimulator`` 
   public. 
+- [ ] Add a ``backruptcy`` property (boolean). Amend ``sharpe_ratio``
+  and other aggregate statistics (as best as possible) to return ``-np.inf``
+  if back-test ended in backruptcy. This is needed specifically for
+  hyper-parameter optimization. Target ``1.0.4``.
 
 
 Development & testing

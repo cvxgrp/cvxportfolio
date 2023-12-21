@@ -18,27 +18,27 @@ This is a close translation of what was done in `this notebook
 
 Note that the behavior of :class:`cvxportfolio.PeriodicRebalance` changed;
 We now require an explicit iterable of rebalancing timestamps.
-The original implementation was smart (`you can see the code here
-<https://github.com/cvxgrp/cvxportfolio/blob/1786671014f6cdbc539976b2e2795c02be31355d/cvxportfolio/policies.py#L158C5-L158C5>`_
-) but it wasn't robust enough to be included in the main library. In fact,
-an API change by Pandas broke it.
+The original implementation, `you can see the code here
+<https://github.com/cvxgrp/cvxportfolio/blob/1786671014f6cdbc539976b2e2795c02be31355d/cvxportfolio/policies.py#L158C5-L158C5>`_,
+wasn't robust enough to be included in the main library. In fact, an API change
+by Pandas broke it.
 
 You can see in the plot that there is a slight difference in the transaction
 cost model with respect to the development code. That is due to how the daily
-volatility was estimated in the original examples. We used *intraday* 
+volatility was estimated in the original examples. We used *intraday*
 historical volatility, while now the library uses historical volatility of
-open-to-open returns. In practice, the market impact term of the transaction
-cost model is either negligible for small to medium investors, or needs to
-be tuned (with the ``b`` parameter) using realized execution cost data.
+open-to-open returns, which matches what is described in the paper. In
+practice, the market impact term of the transaction cost model is either
+negligible for small to medium investors, or needs to be tuned (using the ``b``
+parameter) with realized execution cost data.
 """
-
-import pandas as pd
-import numpy as np
-
-import cvxportfolio as cvx
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+import numpy as np
+import pandas as pd
+
+import cvxportfolio as cvx
 
 from .data_risk_model import paper_market_data, paper_risk_model
 
@@ -56,7 +56,7 @@ market_data = paper_market_data()
 # Define benchmark weights.
 w_b = pd.Series(index=market_data.returns.columns, data=1)
 w_b.USDOLLAR = 0.
-w_b/=sum(w_b)
+w_b /= sum(w_b)
 
 # Cost models.
 simulated_tcost = cvx.TcostModel(
@@ -92,7 +92,7 @@ print(rebalancing_times_per_periodicity['year'])
 
 policies = [
     cvx.PeriodicRebalance(
-        target=w_b, rebalancing_times=rebalancing_times_per_periodicity[p]) 
+        target=w_b, rebalancing_times=rebalancing_times_per_periodicity[p])
     for p in periodicities]
 
 policies.append(cvx.Hold())
@@ -102,41 +102,41 @@ res = pd.DataFrame(
     index=['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Annual', 'Hold'])
 for label, fund_val in [(r'\$100M', 1E8), (r'\$10B', 1E10)]:
     res[label] = simulator.run_multiple_backtest(
-        h=[fund_val*w_b] * 6, # number of policies 
-        start_time=start_t, end_time=end_t, 
+        h=[fund_val*w_b] * 6, # number of policies
+        start_time=start_t, end_time=end_t,
         policies=policies, parallel=True)
 
 # Compile results.
 used_returns = market_data.returns.loc[
-    (market_data.returns.index>=start_t)&(market_data.returns.index<=end_t)]
+    (market_data.returns.index >= start_t)&(market_data.returns.index <= end_t)]
 benchmark_returns = pd.Series(
     index=used_returns.index, data=np.dot(used_returns.values, w_b.values))
 
-table=pd.DataFrame()
-table[r'Active return']=res.map(
+table = pd.DataFrame()
+table[r'Active return'] = res.map(
     lambda res: 100*250*(res.returns - benchmark_returns).mean()).unstack()
-table[r'Active risk']= \
+table[r'Active risk'] = \
     res.map(lambda res: np.std(benchmark_returns - res.returns
         )*100*np.sqrt(250)).unstack()
-table[r'Trans. costs']=\
+table[r'Trans. costs'] =\
     res.map(lambda res: (res.costs['TcostModel']/res.v
         ).mean() * 100 * 250).unstack()
-table[r'Turnover']= \
+table[r'Turnover'] = \
     res.map(lambda res: res.turnover.mean()*100.*250.).unstack()
 
 # Print latex table.
 print('Latex table:')
-table_print=pd.DataFrame(table,copy=True)
-table_print.iloc[:,:]=table_print.iloc[:,:].applymap(lambda x: r'%.2f%%'%x )
+table_print = pd.DataFrame(table, copy=True)
+table_print.iloc[:, :] = table_print.iloc[:, :].applymap(lambda x: r'%.2f%%'%x )
 print(table_print.to_latex(float_format='%.2f', escape=False).replace(
-    '%',r'\%'))
+    '%', r'\%'))
 
 # Plot.
-plt.figure(figsize=(8,5))
+plt.figure(figsize=(8, 5))
 for v1 in table.index.levels[0][:]:
     x = table.loc[v1]['Trans. costs']
     y = table.loc[v1]['Active risk']
-    plt.plot(np.array(x),np.array(y), 'o-', label='$%s\mathrm{%s}$'%(v1[:-1],v1[-1:]))
+    plt.plot(np.array(x), np.array(y), 'o-', label='$%s\mathrm{%s}$'%(v1[:-1], v1[-1:]))
 
 plt.legend(loc='upper right')
 plt.xlabel('Transaction cost')

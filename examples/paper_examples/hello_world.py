@@ -25,10 +25,10 @@ the open-to-open total returns.
 
 In this example returns and covariances are forecasted externally,
 while today this can be done automatically using the default forecasters
-used by :class:`cvxportfolio.ReturnsForecast` and 
-:class:`cvxportfolio.FullCovariance`. 
+used by :class:`cvxportfolio.ReturnsForecast` and
+:class:`cvxportfolio.FullCovariance`.
 
-Nevertheless, you can see by running this that we are still able to 
+Nevertheless, you can see by running this that we are still able to
 reproduce exactly the behavior of the early development versions
 of the library.
 
@@ -36,26 +36,24 @@ of the library.
 
     To run this, you need to install ``yfinance`` and
     ``pandas_datareader``.
-
 """
 
 import matplotlib.pyplot as plt
 import pandas as pd
-
-import yfinance
 import pandas_datareader as pdr
+import yfinance
 
 import cvxportfolio as cvx
 
-# Download market data 
+# Download market data
 tickers = ['AMZN', 'GOOGL', 'TSLA', 'NKE']
 
-returns = pd.DataFrame(dict([(ticker, 
+returns = pd.DataFrame(dict([(ticker,
     yfinance.download(ticker)['Adj Close'].pct_change())
                 for ticker in tickers]))
-    
-returns["USDOLLAR"]=pdr.get_data_fred(
-    'DFF', start="1900-01-01", 
+
+returns["USDOLLAR"] = pdr.get_data_fred(
+    'DFF', start="1900-01-01",
     end=pd.Timestamp.today())['DFF']/(252*100)
 
 returns = returns.fillna(method='ffill').iloc[1:]
@@ -79,17 +77,17 @@ print('Historical returns:')
 print(market_data.returns)
 
 # Build forecasts of expected returns and covariances.
-# Note that we shift so that each day we use ones built 
+# Note that we shift so that each day we use ones built
 # using past returns only. This is done automatically
 # by the forecasters used by default in the stable versions
 # of Cvxportfolio.
 r_hat_with_cash = market_data.returns.rolling(
     window=250).mean().shift(1).dropna()
-Sigma_hat_without_cash = market_data.returns.iloc[:,:-1
+Sigma_hat_without_cash = market_data.returns.iloc[:, :-1
     ].rolling(window=250).cov().shift(4).dropna()
 
 r_hat = r_hat_with_cash.iloc[:, :-1]
-r_hat_cash = r_hat_with_cash.iloc[:,-1]
+r_hat_cash = r_hat_with_cash.iloc[:, -1]
 print('Expected returns forecast:')
 print(r_hat_with_cash)
 
