@@ -76,7 +76,7 @@ def paper_market_data():
         Path(__file__).parent / 'returns.csv.gz', index_col=0, parse_dates=[0])
     volumes = pd.read_csv(
         Path(__file__).parent / 'volumes.csv.gz', index_col=0, parse_dates=[0])
-    print(returns)
+    # print(returns)
     return cvx.UserProvidedMarketData(
         returns=returns, volumes=volumes,
         cash_key='USDOLLAR', min_history=pd.Timedelta('0d'))

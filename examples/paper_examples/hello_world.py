@@ -95,13 +95,13 @@ print(r_hat_with_cash)
 
 # Define transaction and holding cost models.
 
-# half spread
+# Half spread.
 HALF_SPREAD = 10E-4
 
 # In the 2016 development code borrow fees were expressed per-period.
 # In the stable version we require annualized percent.
-# This value corresponds to 1 basis point per period,
-# which was in the original example.
+# This value corresponds to 1 basis point per period, which was in the
+# original example.
 BORROW_FEE = 2.552
 
 tcost_model = cvx.TcostModel(a=HALF_SPREAD, b=None)
@@ -109,15 +109,15 @@ hcost_model = cvx.HcostModel(short_fees=BORROW_FEE)
 
 # As risk model, we use the historical covariances computed above.
 # Note that the stable version of Cvxportfolio requires the covariance
-# matrix to not include cash (as it should). In the development versions
+# matrix to not include cash (as it shouldn't). In the development versions
 # it was there. It doesn't make any difference in numerical terms.
 risk_model = cvx.FullSigma(Sigma_hat_without_cash)
 
 # Constraint.
 leverage_limit = cvx.LeverageLimit(3)
 
-# Define a single-period optimization policy; its
-# objective function is maximized.
+# Define a single-period optimization policy; its objective function is
+# maximized.
 gamma_risk, gamma_trade, gamma_hold = 5., 1., 1.
 spo_policy = cvx.SinglePeriodOpt(
     objective = cvx.ReturnsForecast(r_hat) + cvx.CashReturn(r_hat_cash)
