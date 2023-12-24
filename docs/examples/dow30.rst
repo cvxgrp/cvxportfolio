@@ -1,12 +1,13 @@
-DOW30 Example
+DOW30 monthly
 =============
 
 This example script is
-`available in the repository <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/dow30_example.py>`_.
+`available in the repository <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/dow30.py>`_.
 See the docstring below for its explanation.
 
-.. literalinclude:: ../../examples/dow30_example.py
+.. literalinclude:: ../../examples/dow30.py
    :language: python
+   :lines: 14-
 
 This is the output printed to screen when executing this script. You can see
 many statistics of the back-tests.

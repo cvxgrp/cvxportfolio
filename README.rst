@@ -21,7 +21,7 @@ Installation
 Cvxportolio is written in Python and can easily installed in any Python
 environment by simple:
 
-.. code:: console
+.. code:: bash
 
    pip install -U cvxportfolio
 
@@ -43,7 +43,7 @@ Test
 
 After installing you can run our unit test suite in you local environment by
 
-.. code:: console
+.. code:: bash
 
    python -m cvxportfolio.tests
 
@@ -109,8 +109,9 @@ are available in the code repository.
 `The original examples from the paper 
 <https://github.com/cvxgrp/cvxportfolio/tree/0.0.X/examples>`_ 
 are visible in a dedicated branch,
-and are being translated to run with the stable versions (``1.0.*``) of the
-library. 
+and are being translated to run with the stable versions (``1.0.0`` and above) of the
+library. The translations are visible at `this documentation page
+<https://www.cvxportfolio.com/en/latest/examples/paper_examples.html>_`.
 
 We show in the example on `user-provided
 forecasters <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/user_provided_forecasters.py>`__
@@ -156,7 +157,7 @@ repository (or, `fork on
 Github <https://docs.github.com/en/get-started/quickstart/fork-a-repo>`__
 and then clone your fork)
 
-.. code:: console
+.. code:: bash
 
    git clone https://github.com/cvxgrp/cvxportfolio.git
    cd cvxportfolio
@@ -166,7 +167,7 @@ Then, you should have a look at our
 and possibly change the ``PYTHON`` variable to match your system’s
 python interpreter. Once you have done that,
 
-.. code:: console
+.. code:: bash
 
    make env
    make test
@@ -178,7 +179,7 @@ test suite.
 You activate the shell environment with one of scripts in ``env/bin``
 (or ``env\Scripts`` on Windows), for example if you use bash on POSIX
 
-.. code:: console
+.. code:: bash
 
    source env/bin/activate
 
@@ -192,7 +193,7 @@ Windows) like we do in the Makefile.
 Additionally, to match our CI/CD pipeline, you may set the following
 `git hooks <https://git-scm.com/docs/githooks>`__
 
-.. code:: console
+.. code:: bash
 
    echo "make lint" > .git/hooks/pre-commit
    chmod +x .git/hooks/pre-commit

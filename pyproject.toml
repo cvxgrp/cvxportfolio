@@ -13,7 +13,9 @@ dependencies = ["pandas", "numpy", "matplotlib", "requests", "cvxpy",
 [project.optional-dependencies]
 docs = ["sphinx", "furo"]
 dev = ["build", "twine", "coverage", "diff_cover", "pylint", "isort",
-    "autopep8", "docformatter"]
+    "autopep8", "docformatter", "beautifulsoup4"]
+examples = ['beatifulsoup4', 'pandas_datareader', 'yfinance', 
+    'clarabel', 'ecos']
 
 [project.urls]
 Homepage = "https://www.cvxportfolio.com"
@@ -53,7 +55,12 @@ accept-no-yields-doc = false
 fail_under = 99
 
 [tool.diff_cover]
-# this will be superflous once we push the above to 100
+# this will be superflous once we push coverage to 100
+compare_branch = "origin/master"
+fail_under = 99
+
+[tool.diff_quality]
+# this will be superflous once we push pylint score to 10
 compare_branch = "origin/master"
 fail_under = 99
 
