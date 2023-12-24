@@ -47,7 +47,7 @@ After installing you can run our unit test suite in you local environment by
 
    python -m cvxportfolio.tests
 
-We test against recent python versions (3.9, 3.10, 3.11) and recent versions
+We test against recent python versions (3.8, 3.9, 3.10, 3.11, 3.12) and recent versions
 of the main dependencies (from pandas 1.4, cvxpy 1.1, ..., up to the current
 versions) on all major operating systems. You can see the `automated testing code 
 <https://github.com/cvxgrp/cvxportfolio/blob/master/.github/workflows/test.yml>`_.
@@ -111,7 +111,7 @@ are available in the code repository.
 are visible in a dedicated branch,
 and are being translated to run with the stable versions (``1.0.0`` and above) of the
 library. The translations are visible at `this documentation page
-<https://www.cvxportfolio.com/en/latest/examples/paper_examples.html>_`.
+<https://www.cvxportfolio.com/en/latest/examples/paper_examples.html>`_.
 
 We show in the example on `user-provided
 forecasters <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/user_provided_forecasters.py>`__
