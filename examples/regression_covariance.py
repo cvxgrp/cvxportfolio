@@ -19,19 +19,18 @@ library. However we're not sure yet which precise form it will take.
 
 .. note::
 
-    The internal interface methods used here **may not be public** 
+    The internal interface methods used here **may not be public**
     and may not covered by the semantic versioning agreement (they might change
     without notice). In general, methods that are shown in the examples are
-    considered public, but for this one it may not be not so.
-
+    considered public, but for this one there is no such guarantee.
 """
 
 import numpy as np
 import pandas as pd
 
 import cvxportfolio as cvx
-
 from cvxportfolio.estimator import Estimator
+
 # from cvxportfolio.forecast import BaseForecast
 
 def _striptime(df):
@@ -61,8 +60,7 @@ def _decorrelate(XtX, obs, gamma):
         obs)
 
 class RegressionBase(Estimator):
-    """Base for linear regression forecasters.
-    """
+    """Base for linear regression forecasters."""
 
     def __init__(self, regressors, gamma=1e-1):
         """Initialize with regressors.
@@ -108,8 +106,8 @@ class RegressionBase(Estimator):
                 self.regressors.index <= pd.Timestamp(t.date())], copy=True)
 
         # to extend to index
-        used_regressors['intercept'] = past_returns.iloc[:,-1]
-        
+        used_regressors['intercept'] = past_returns.iloc[:, -1]
+
         used_regressors = used_regressors.ffill()
         used_regressors -= used_regressors.mean()
         used_regressors /= np.sqrt((used_regressors**2).mean())
@@ -124,15 +122,14 @@ class RegressionBase(Estimator):
         lhs = _decorrelate(_, used_regressors.iloc[-1], gamma=self.gamma)
         # print('lhs', lhs)
 
-        _ = self._obtain_weighted(used_regressors, 
+        _ = self._obtain_weighted(used_regressors,
             t=t, past_returns=past_returns, **kwargs)
 
         return sum(el * _[i] for i, el in enumerate(lhs))
 
 
 class RegressionCovariance(RegressionBase):
-    """Covariance matrix that is obtained by linear regression.
-    """
+    """Covariance matrix that is obtained by linear regression."""
 
     def _obtain_weighted(self, used_regressors, past_returns, **kwargs):
         """Obtain objects weigthed by the regressors.
@@ -153,8 +150,7 @@ class RegressionCovariance(RegressionBase):
             for col in used_regressors]
 
 class RegressionReturns(RegressionBase):
-    """Returns forecast that is obtained by linear regression.
-    """
+    """Returns forecast that is obtained by linear regression."""
 
     def _obtain_weighted(self, used_regressors, past_returns, **kwargs):
         """Obtain objects weighted by the regressors.
@@ -188,9 +184,9 @@ def example_regressors():
     #wage_change = cvx.Fred('CES0500000003').data.pct_change()
     #gdp_change = cvx.Fred('GDP').data.pct_change()
     base_regressors = {
-        'vix':vix, 
-        'rate':rate, 
-        #'wage_change': wage_change, 
+        'vix': vix,
+        'rate': rate,
+        #'wage_change': wage_change,
         #'gdp_change': gdp_change
         }
     regressors = pd.DataFrame(base_regressors)
@@ -255,7 +251,7 @@ if __name__ == '__main__':
         start_time='2010-01-01') # can't do earlier than ~2010
         # because regressor not available,
         # need to add logic to include them after some min_history
-    
+
     result_plain.plot()
     result_covregr.plot()
     # result_retregr.plot()

@@ -11,19 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Market (and dollar) neutral strategy on the SP500 universe.
+"""Market (and dollar) neutral strategy on the NDX100 universe.
 
-We use standard historical means and covariances to build a simple example
-of a market neutral strategy.
+We use standard historical means and factor covariances to build a simple
+example of a market neutral strategy.
 
 We use symbolic hyper-parameters (to be improved, see also
 ``examples.risk_models``) to choose the values that maximize Sharpe ratio
 of the back-test, for illustrative purposes only.
 
 We use all default values for transaction cost (both spread and market impact
-terms) and holding cost (stocks borrow fees) models.
+terms) and holding cost (stocks borrow fees) models. These are used both for
+the optimization and the back-test in
+:class:`cvxportfolio.StockMarketSimulator`.
 
-To improve the Sharpe ratio of such kind of strategies, in practice one would
+To improve the Sharpe ratio of this kind of strategies, in practice, one would
 use returns forecasts produced by some machine learning model. It is very easy
 to plug such forecasts into this strategy, either by providing them as a
 Dataframe or by coding the forecasting logic as a Cvxportfolio native

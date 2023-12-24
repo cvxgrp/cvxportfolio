@@ -32,7 +32,7 @@ Nevertheless, you can see by running this that we are still able to
 reproduce exactly the behavior of the early development versions
 of the library.
 
-.. note ::
+.. note::
 
     To run this, you need to install ``yfinance`` and
     ``pandas_datareader``.

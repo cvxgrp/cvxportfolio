@@ -1,6 +1,8 @@
 Original examples from the paper
 ================================
 
+*Work in progress.*
+
 These are the original examples, which were also used to generate plots
 and results in :paper:`chapter 7 of the paper <chapter.7>`. They were
 originally written as IPython notebook, and have been translated into Python

@@ -13,6 +13,8 @@
 # limitations under the License.
 """Ranking vs. SPO example.
 
+*Work in progress.*
+
 This is a close translation of what was done in `this notebook
 <https://github.com/cvxgrp/cvxportfolio/blob/0.0.X/examples/RankAndSPO.ipynb>`_.
 """
