@@ -121,7 +121,6 @@ class TestSimulator(CvxportfolioTest):
         rets.iloc[8:15, 5:7] = np.nan
         rets.iloc[16:29, 7:8] = np.nan
         print(rets.iloc[10:20])
-        # raise Exception
 
         modified_market_data = cvx.UserProvidedMarketData(
             returns=rets, volumes=volumes, prices=prices,
@@ -134,6 +133,10 @@ class TestSimulator(CvxportfolioTest):
             cvx.ReturnsForecast() - 10 * cvx.FullCovariance(),
             [cvx.LongOnly(), cvx.LeverageLimit(1)],
             solver=self.default_qp_solver)
+
+        with self.assertRaises(ValueError):
+            simulator.backtest(policy, start_time = rets.index[10],
+            end_time = rets.index[9])
 
         bt_result = simulator.backtest(policy, start_time = rets.index[10],
             end_time = rets.index[20])
@@ -469,7 +472,8 @@ class TestSimulator(CvxportfolioTest):
                                            cvx.ReturnsForecastError() -
                                            .5 * cvx.FullCovariance(),
                                            [  # cvx.LongOnly(),
-            cvx.LeverageLimit(1)], verbose=True, solver=self.default_qp_solver)
+            cvx.LeverageLimit(1)], # verbose=True,
+            solver=self.default_qp_solver)
 
         pol1 = cvx.Uniform()
 
@@ -477,21 +481,47 @@ class TestSimulator(CvxportfolioTest):
             market_data=self.market_data_4, base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
-            result = sim.run_multiple_backtest([pol, pol1], pd.Timestamp(
+            sim.run_multiple_backtest([pol, pol1], pd.Timestamp(
                 '2023-01-01'), pd.Timestamp('2023-04-20'), h=['hello'])
 
         with self.assertRaises(SyntaxError):
-            result = sim.run_multiple_backtest(pol, pd.Timestamp(
+            sim.run_multiple_backtest(pol, pd.Timestamp(
                 '2023-01-01'), pd.Timestamp('2023-04-20'), h=['hello'])
 
         result = sim.backtest(pol1, pd.Timestamp(
             '2023-01-01'), pd.Timestamp('2023-04-20'))
 
-        _, result3 = sim.backtest_many(
+        result2, result3 = sim.backtest_many(
             [pol, pol1], pd.Timestamp('2023-01-01'),
             pd.Timestamp('2023-04-20'))
 
         self.assertTrue(np.all(result.h == result3.h))
+
+        # with user-provided h
+        good_h = pd.Series([0, 0, 1E6], index=['AAPL', 'MSFT', 'USDOLLAR'])
+        result4, result5 = sim.backtest_many(
+            [pol, pol1], start_time=pd.Timestamp('2023-01-01'),
+            end_time=pd.Timestamp('2023-04-20'), h=[good_h, good_h])
+
+        self.assertTrue(np.all(result2.h == result4.h))
+        self.assertTrue(np.all(result3.h == result5.h))
+
+        # shuffled h
+        good_h_shuffled = good_h.iloc[::-1]
+        result6, result7 = sim.backtest_many(
+            [pol, pol1], start_time=pd.Timestamp('2023-01-01'),
+            end_time=pd.Timestamp('2023-04-20'),
+            h=[good_h_shuffled, good_h_shuffled])
+
+        self.assertTrue(np.all(result2.h == result6.h))
+        self.assertTrue(np.all(result3.h == result7.h))
+
+        # bad h
+        bad_h = pd.Series([0, 0, 1E6], index=['AAPL_bad', 'MSFT', 'USDOLLAR'])
+        with self.assertRaises(ValueError):
+            sim.backtest_many(
+                [pol, pol1], start_time=pd.Timestamp('2023-01-01'),
+                end_time=pd.Timestamp('2023-04-20'), h=[bad_h, good_h])
 
     def test_multiple_backtest2(self):
         """Test re-use of a worker process."""

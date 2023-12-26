@@ -808,7 +808,8 @@ class MarketDataInMemory(MarketData):
     returns = None
 
     def __init__(
-        self, trading_frequency, base_location, cash_key, min_history):
+        self, trading_frequency, base_location, cash_key, min_history,
+        do_asset_selection = True):
         """This must be called by the derived classes."""
         if (self.returns.index[-1] - self.returns.index[0]) < min_history:
             raise DataError(
@@ -827,6 +828,7 @@ class MarketDataInMemory(MarketData):
         self.base_location = Path(base_location)
         self.cash_key = cash_key
         self._min_history_timedelta = min_history
+        self.do_asset_selection = do_asset_selection
 
     def _mask_dataframes(self, mask):
         """Mask internal dataframes if necessary."""
@@ -877,7 +879,12 @@ class MarketDataInMemory(MarketData):
             pandas.Series or None, pandas.Series or None)
         """
 
-        mask = self._universe_mask_at_time(t).values
+        # TODO: this clauses should be improved, no need to mask with full
+        # columns
+        if self.do_asset_selection:
+            mask = self._universe_mask_at_time(t).values
+        else:
+            mask = np.ones(self.returns.shape[1], dtype=bool)
         self._mask_dataframes(mask)
 
         tidx = self.returns.index.get_loc(t)
@@ -1184,14 +1191,20 @@ class UserProvidedMarketData(MarketDataInMemory):
         make sure your provided dataframes have a timezone aware datetime
         index. Its returns are the risk-free rate.
     :type cash_key: str
+    :param do_asset_selection: Whether to remove assets that don't meet the
+        ``min_history`` or have ``np.nan`` return for the given time. Default
+        True.
+    :type do_asset_selection: bool
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(self, returns, volumes=None, prices=None,
                  copy_dataframes=True, trading_frequency=None,
                  min_history=pd.Timedelta('365.24d'),
                  base_location=BASE_LOCATION,
                  grace_period=pd.Timedelta('1d'),
-                 cash_key='USDOLLAR'):
+                 cash_key='USDOLLAR',
+                 do_asset_selection=True):
 
         if returns is None:
             raise SyntaxError(
@@ -1214,7 +1227,8 @@ class UserProvidedMarketData(MarketDataInMemory):
             trading_frequency=trading_frequency,
             base_location=base_location,
             cash_key=cash_key,
-            min_history=min_history)
+            min_history=min_history,
+            do_asset_selection=do_asset_selection)
 
 
 class DownloadedMarketData(MarketDataInMemory):
@@ -1248,8 +1262,13 @@ class DownloadedMarketData(MarketDataInMemory):
         We implement ``'weekly'``, ``'monthly'``, ``'quarterly'`` and
         ``'annual'``. By default (None) don't down-sample.
     :type trading_frequency: str or None
+    :param do_asset_selection: Whether to remove assets that don't meet the
+        ``min_history`` or have ``np.nan`` return for the given time. You need
+        to set this to False for online usage. Default True.
+    :type do_asset_selection: bool
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(self,
                  universe=(),
                  datasource='YahooFinance',
@@ -1258,7 +1277,8 @@ class DownloadedMarketData(MarketDataInMemory):
                  storage_backend='pickle',
                  min_history=pd.Timedelta('365.24d'),
                  grace_period=pd.Timedelta('1d'),
-                 trading_frequency=None):
+                 trading_frequency=None,
+                 do_asset_selection=True):
         """Initializer."""
 
         # drop duplicates and ensure ordering
@@ -1281,7 +1301,8 @@ class DownloadedMarketData(MarketDataInMemory):
             trading_frequency=trading_frequency,
             base_location=base_location,
             cash_key=cash_key,
-            min_history=min_history)
+            min_history=min_history,
+            do_asset_selection=do_asset_selection)
 
     def _get_market_data(self, universe, grace_period, storage_backend):
         """Download market data."""

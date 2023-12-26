@@ -15,6 +15,14 @@
 
 .. note::
 
+    Some of the interfaces used here (custom hyper-parameter objects) are
+    experimental and **are not covered by the semantic versioning agreement**,
+    meaning that they could change without notice. In general, methods and
+    interfaces shown in the examples are public and are protected
+    under semantic versioning, but in this example that may not be the case.
+
+.. note::
+
     The output of this example is currently (Cvxportfolio ``1.0.3``)
     not too easy to read; the ``__repr__`` method of a policy object
     with symbolic hyper-parameters is scheduled for improvement. It

@@ -29,7 +29,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from multiprocess import Lock, Pool
+from multiprocess import Lock, Pool  # pylint: disable=no-name-in-module
 
 from .cache import _load_cache, _mp_init, _store_cache
 from .costs import StocksHoldingCost, StocksTransactionCost
@@ -113,6 +113,7 @@ class MarketSimulator:
     :type round_trades: bool
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(self, universe=(), returns=None, volumes=None,
                  prices=None, market_data=None, costs=(), round_trades=False,
                  datasource='YahooFinance',
@@ -163,6 +164,7 @@ class MarketSimulator:
         result.iloc[-1] = -sum(result.iloc[:-1])
         return result
 
+    # pylint: disable=too-many-arguments
     def simulate(
             self, t, t_next, h, policy, past_returns, current_returns,
             past_volumes, current_volumes, current_prices):
@@ -425,6 +427,7 @@ class MarketSimulator:
     def _worker(policy, simulator, start_time, end_time, h):
         return simulator._backtest(policy, start_time, end_time, h)
 
+    # pylint: disable=too-many-arguments
     def optimize_hyperparameters(self, policy, start_time=None, end_time=None,
         initial_value=1E6, h=None, objective='sharpe_ratio', parallel=True):
         """Optimize hyperparameters to maximize back-test objective.
@@ -528,6 +531,7 @@ class MarketSimulator:
 
         return policy
 
+    # pylint: disable=too-many-arguments
     def backtest(
             self, policy, start_time=None, end_time=None, initial_value=1E6,
             h=None):
@@ -565,6 +569,7 @@ class MarketSimulator:
     # Alias to match original syntax
     run_backtest = backtest
 
+    # pylint: disable=too-many-arguments
     def backtest_many(
             self, policies, start_time=None, end_time=None, initial_value=1E6,
             h=None, parallel=True):
@@ -603,6 +608,8 @@ class MarketSimulator:
         :type parallel: bool
 
         :raises SyntaxError: If the lenghts of objects passed don't match, ....
+        :raises ValueError: If there are no trading days between the provided
+            times.
 
         :returns: List of :class:`cvxportfolio.BacktestResult` which have all
             relevant backtest data and logic to compute metrics, generate
@@ -635,10 +642,22 @@ class MarketSimulator:
 
         trading_calendar_inclusive = self.market_data.trading_calendar(
             start_time, end_time, include_end=True)
+        if len(trading_calendar_inclusive) < 1:
+            raise ValueError(
+                'There are no trading days between the provided times.')
         start_time = trading_calendar_inclusive[0]
         end_time = trading_calendar_inclusive[-1]
         _, initial_returns, _, _, _ = self.market_data.serve(start_time)
         initial_universe = initial_returns.index
+
+        # check that provided h are right and sort them
+        for i, single_h in enumerate(h):
+            if single_h is not None:
+                if sorted(single_h.index) != sorted(initial_universe):
+                    raise ValueError(
+                        "Holdings provided don't match the universe"
+                        " implied by the market data server.")
+                h[i] = single_h[initial_universe]
 
         # initialize policies and get initial portfolios
         for i in range(len(policies)):

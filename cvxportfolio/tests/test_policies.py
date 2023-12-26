@@ -608,9 +608,42 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(t == self.returns.index[-1])
         self.assertTrue(u['CSCO'] >= .9)
 
-        h.iloc[-1] = -100
+        h_neg_value = pd.Series(h, copy=True)
+        h_neg_value.iloc[-1] = -100
         with self.assertRaises(DataError):
-            execution = policy.execute(market_data=market_data, h=h)
+            execution = policy.execute(market_data=market_data, h=h_neg_value)
+
+        h_wrong_uni = pd.Series(h[1:], copy=True)
+        with self.assertRaises(ValueError):
+            execution = policy.execute(market_data=market_data, h=h_wrong_uni)
+
+        h_wrong_uni = pd.Series(h, copy=True)
+        h_wrong_uni['WRONG'] = 1.
+        with self.assertRaises(ValueError):
+            execution = policy.execute(market_data=market_data, h=h_wrong_uni)
+
+        h_wrong_uni = pd.Series(h, copy=True)
+        h_wrong_uni.index = [el + 'SUFFIX' for el in h_wrong_uni.index]
+        with self.assertRaises(ValueError):
+            execution = policy.execute(market_data=market_data, h=h_wrong_uni)
+
+        # shuffled
+        execution = policy.execute(market_data=market_data, h=h)
+        h_shuffled = pd.Series(h.iloc[::-1], copy=True)
+        execution_shuffled = policy.execute(
+            market_data=market_data, h=h_shuffled)
+        self.assertTrue(np.all(execution[0] == execution_shuffled[0]))
+
+        # for online
+        market_data = cvx.UserProvidedMarketData(
+                    returns=self.returns, volumes=self.volumes,
+                    cash_key='cash', base_location=self.datadir,
+                    min_history=pd.Timedelta('0d'),
+                    do_asset_selection=False)
+
+        execution_online = policy.execute(market_data=market_data, h=h)
+        self.assertTrue(np.all(execution[0] == execution_online[0]))
+
 
 if __name__ == '__main__':
 

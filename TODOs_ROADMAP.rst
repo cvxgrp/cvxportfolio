@@ -67,12 +67,19 @@ their planned release.
 
 ``cvxportfolio.hyperparameters``
 -------------------------
+Partially public; only ``cvx.Gamma()`` (no arguments) and ``optimize_hyperparameters``
+(simple usage) are public, all the rest is not.
 
 - [ ] Clean up interface w/ ``MarketSimulator``, right now it calls private 
   methods, maybe enough to make them public. Target ``1.0.4``.
 - [ ] Add risk/fine default ``GammaTrade``, ``GammaRisk`` (which are
   ``RangeHyperParameter``) modeled after original examples from paper. 
   Target ``1.1.0``.
+- [ ] Add ``Constant`` internal object throughout the library, also in ``DataEstimator``
+  in the case of scalar; it resolves to ``current_value`` if you pass a hyper-parameter.
+- [ ] Distinguish integer and positive hyper-parameters (also enforced by Constant).
+- [ ] Consider changing the increment/decrement model; hyperparameter object
+  could instead return a ``neighbors`` set at each point. Probably cleaner.
 
 ``cvxportfolio.policies``
 -------------------------
