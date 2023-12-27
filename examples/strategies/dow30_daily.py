@@ -25,6 +25,13 @@ both the uniform allocation (1/n) over this universe, the market benchmark
 itself, and an index ETF which tracks the Dow Jones.
 
 We will see how it performs online.
+
+You run it from the root of the repository in the development environment by:
+
+.. code:: bash
+
+    python -m examples.strategies.dow30daily
+
 """
 
 import cvxportfolio as cvx
@@ -62,15 +69,15 @@ def hyperparameter_optimize():
         }
 
 def execute_strategy(current_holdings, market_data, gamma_risk, gamma_trade):
-    """_summary_
+    """Execute this strategy.
 
-    :param current_holdings: _description_
+    :param current_holdings: Current holdings in dollars.
     :type current_holdings: pandas.Series
-    :param market_data: _description_
+    :param market_data: Market data server.
     :type market_data: cvxportfolio.data.MarketData
-    :param gamma_risk: _description_
+    :param gamma_risk: Risk aversion multiplier
     :type gamma_risk: float
-    :param gamma_trade: _description_
+    :param gamma_trade: Transaction cost aversion multiplier.
     :type gamma_trade: float
 
     :return: Output of the execute method of a Cvxportfolio policy.
