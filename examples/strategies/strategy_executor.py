@@ -281,7 +281,8 @@ class _Runner:
         u, t, _ = self.execute_strategy(
             current_holdings=h,
             market_data=cvx.DownloadedMarketData(
-                self.universe, online_usage=True),
+                self.universe, online_usage=True,
+                min_history=pd.Timedelta('0d')),
             **self.all_hyper_params[hp_index])
 
         assert t == self.today
