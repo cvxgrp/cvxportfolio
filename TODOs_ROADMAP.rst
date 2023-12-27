@@ -109,6 +109,12 @@ Optimization policies
   and other aggregate statistics (as best as possible) to return ``-np.inf``
   if back-test ended in backruptcy. This is needed specifically for
   hyper-parameter optimization. Target ``1.0.4``.
+- [ ] Capture **logs** from the back-test; add ``logs`` property that returns
+  then as a string (newline separated, like a .log file). Make log level
+  changeable by a module constant (like ``cvxportfolio.result.LOG_LEVEL``) set
+  to ``INFO`` by default. Then, improve logs throughout (informative, proactive
+  on possible issues). Logs formatter should produce source module and
+  timestamp.
 
 
 Development & testing

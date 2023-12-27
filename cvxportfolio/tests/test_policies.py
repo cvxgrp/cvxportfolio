@@ -639,7 +639,7 @@ class TestPolicies(CvxportfolioTest):
                     returns=self.returns, volumes=self.volumes,
                     cash_key='cash', base_location=self.datadir,
                     min_history=pd.Timedelta('0d'),
-                    do_asset_selection=False)
+                    online_usage=True)
 
         execution_online = policy.execute(market_data=market_data, h=h)
         self.assertTrue(np.all(execution[0] == execution_online[0]))

@@ -31,7 +31,6 @@ You run it from the root of the repository in the development environment by:
 .. code:: bash
 
     python -m examples.strategies.dow30daily
-
 """
 
 import cvxportfolio as cvx

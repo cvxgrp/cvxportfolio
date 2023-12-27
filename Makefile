@@ -19,7 +19,7 @@ endif
 
 env:  ## create environment
 	$(PYTHON) -m venv $(ENVDIR)
-	$(BINDIR)/python -m pip install --editable .[docs,dev]
+	$(BINDIR)/python -m pip install --editable .[docs,dev,examples]
 	
 clean:  ## clean environment
 	-rm -rf $(BUILDDIR)/*

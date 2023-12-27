@@ -66,8 +66,8 @@ class Policy(Estimator):
         :param t: Time at which we execute. If None (the default), the
             last timestamp in the trading calendar provided by the
             :class:`MarketData` instance is used. Note: if you use a default
-            market data server, you probably want to set ``do_asset_selection``
-            to ``False`` for online usage.
+            market data server, you probably want to set their ``online_usage``
+            argument to ``True``.
         :type t: pandas.Timestamp or None
 
         :raises cvxportfolio.errors.DataError: Holdings vector sum to a
