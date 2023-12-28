@@ -293,6 +293,9 @@ class MarketSimulator:
         return policy
 
     def _finalize_policy(self, policy, universe):
+
+        policy.finalize_estimator_recursive() # currently unused
+
         if hasattr(policy, '_cache'):
             logger.info('Storing cache from policy to disk...')
             _store_cache(

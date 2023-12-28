@@ -112,6 +112,9 @@ class Policy(Estimator):
             current_weights=w, current_portfolio_value=v,
             current_prices=current_prices)
 
+        # this could be optional, currently unused)
+        self.finalize_estimator_recursive()
+
         z = w_plus - w
         u = z * v
 
@@ -727,6 +730,19 @@ class MultiPeriodOptimization(Policy):
         self._cache = {}
 
         self._compile_to_cvxpy()
+
+    def finalize_estimator_recursive(self, **kwargs):
+        """Finalize all objects in this policy's estimator tree.
+
+        :param kwargs: Arguments.
+        :type kwargs: dict
+        """
+        for obj in self.objective:
+            obj.finalize_estimator_recursive(**kwargs)
+        for constr_at_lag in self.constraints:
+            for constr in constr_at_lag:
+                constr.finalize_estimator_recursive(**kwargs)
+        self.benchmark.finalize_estimator_recursive(**kwargs)
 
     def values_in_time_recursive(
         self, t, current_weights,

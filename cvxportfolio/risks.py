@@ -444,6 +444,15 @@ class WorstCaseRisk(Cost):
                  for risk in self.riskmodels]
         return cp.max(cp.hstack(risks))
 
+    def finalize_estimator_recursive(self, **kwargs):
+        """Finalize object.
+
+        :param kwargs: Arguments.
+        :type kwargs: dict
+        """
+        for risk in self.riskmodels:
+            risk.finalize_estimator_recursive(**kwargs)
+
 # Aliases
 
 class FullSigma(FullCovariance):

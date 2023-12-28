@@ -142,7 +142,7 @@ class CombinedCosts(Cost):
                              [el * other for el in self.multipliers])
 
     def initialize_estimator_recursive(self, universe, trading_calendar):
-        """Iterate over constituent costs.
+        """Initialize iterating over constituent costs.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
@@ -151,6 +151,14 @@ class CombinedCosts(Cost):
         """
         _ = [el.initialize_estimator_recursive(universe, trading_calendar)
             for el in self.costs]
+
+    def finalize_estimator_recursive(self, **kwargs):
+        """Finalize iterating over constituent costs.
+
+        :param kwargs: Arguments.
+        :type kwargs: dict
+        """
+        _ = [el.finalize_estimator_recursive(**kwargs) for el in self.costs]
 
     def values_in_time_recursive(self, **kwargs):
         """Iterate over constituent costs.

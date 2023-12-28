@@ -51,6 +51,9 @@ accept-no-raise-doc = false
 accept-no-return-doc = false
 accept-no-yields-doc = false
 
+[tool.pylint.'MESSAGE CONTROL'] # check updates for the spelling of this
+enable=["useless-suppression"] # flag useless pylint pragmas
+
 [tool.coverage.report]
 fail_under = 99
 
