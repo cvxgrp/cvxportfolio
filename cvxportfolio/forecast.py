@@ -35,6 +35,7 @@ import pandas as pd
 from .errors import ForecastError
 from .estimator import Estimator
 
+logger = logging.getLogger(__name__)
 
 def online_cache(values_in_time):
     """A simple online cache that decorates values_in_time.
@@ -74,13 +75,13 @@ def online_cache(values_in_time):
             cache[self] = {}
 
         if t in cache[self]:
-            logging.debug(
+            logger.debug(
                 '%s.values_in_time at time %s is retrieved from cache.',
                 self, t)
             result = cache[self][t]
         else:
             result = values_in_time(self, t=t, cache=cache, **kwargs)
-            logging.debug('%s.values_in_time at time %s is stored in cache.',
+            logger.debug('%s.values_in_time at time %s is stored in cache.',
                 self, t)
             cache[self][t] = result
         return result
@@ -97,12 +98,12 @@ class BaseForecast(Estimator):
         """Choose whether to make forecast from scratch or update last one."""
         if (self._last_time is None) or (
             self._last_time != past_returns.index[-1]):
-            logging.debug(
+            logger.debug(
                 '%s.values_in_time at time %s is computed from scratch.',
                 self, t)
             self._initial_compute(t=t, past_returns=past_returns)
         else:
-            logging.debug(
+            logger.debug(
               '%s.values_in_time at time %s is updated from previous value.',
               self, t)
             self._online_update(t=t, past_returns=past_returns)

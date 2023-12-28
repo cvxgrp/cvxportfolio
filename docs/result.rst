@@ -1,10 +1,10 @@
 Back-test result 
 ================
 
-.. automodule:: cvxportfolio.result
-
 .. py:module:: cvxportfolio
      :noindex:
+
+.. automodule:: cvxportfolio.result
 
 .. autoclass:: BacktestResult
 
@@ -87,6 +87,8 @@ Back-test result
     .. autoproperty:: policy_times
     
     .. autoproperty:: simulator_times
+
+    .. autoproperty:: log
 
     .. automethod:: plot
 

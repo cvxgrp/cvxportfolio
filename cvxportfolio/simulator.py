@@ -39,6 +39,7 @@ from .result import BacktestResult
 PPY = 252
 __all__ = ['StockMarketSimulator', 'MarketSimulator']
 
+logger = logging.getLogger(__name__)
 
 class MarketSimulator:
     """This class is a generic financial market simulator.
@@ -227,7 +228,7 @@ class MarketSimulator:
         if not current_volumes is None:
             non_tradable_stocks = current_volumes[current_volumes <= 0].index
             if len(non_tradable_stocks):
-                logging.info(
+                logger.info(
                     "At time %s the simulator canceled trades on assets %s"
                     + " because their market volumes for the period are zero.",
                     t, non_tradable_stocks)
@@ -281,7 +282,7 @@ class MarketSimulator:
 
         # if policy uses a cache load it from disk
         if hasattr(policy, '_cache'):
-            logging.info('Trying to load cache from disk...')
+            logger.info('Trying to load cache from disk...')
             policy._cache = _load_cache(
               signature=self.market_data.partial_universe_signature(universe),
               base_location=self.base_location)
@@ -293,7 +294,7 @@ class MarketSimulator:
 
     def _finalize_policy(self, policy, universe):
         if hasattr(policy, '_cache'):
-            logging.info('Storing cache from policy to disk...')
+            logger.info('Storing cache from policy to disk...')
             _store_cache(
               cache=policy._cache,
               signature=self.market_data.partial_universe_signature(universe),
@@ -361,7 +362,7 @@ class MarketSimulator:
             h = h_next
 
             if sum(h) <= 0.: # bankruptcy
-                logging.warning('Back-test ended in bankruptcy at time %s!', t)
+                logger.warning('Back-test ended in bankruptcy at time %s!', t)
                 break
 
         self._finalize_policy(used_policy, h.index)
@@ -410,12 +411,12 @@ class MarketSimulator:
 
         new_assets = pd.Index(set(new_universe).difference(h.index))
         if len(new_assets):
-            logging.info("Adjusting h vector by adding assets %s", new_assets)
+            logger.info("Adjusting h vector by adding assets %s", new_assets)
 
         remove_assets = pd.Index(set(h.index).difference(new_universe))
         if len(remove_assets):
             total_liquidation = h[remove_assets].sum()
-            logging.info(
+            logger.info(
                 "Adjusting h vector by removing assets %s."
                 + " Their current market value of %s is added"
                 + " to the cash account.", remove_assets, total_liquidation)

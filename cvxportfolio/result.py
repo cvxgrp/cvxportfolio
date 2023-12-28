@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module defines :class:`cvxportfolio.BacktestResult`.
+"""This module defines :class:`BacktestResult`.
 
 This is the object that is returned by the
 :meth:`cvxportfolio.MarketSimulator.backtest`
@@ -22,6 +22,11 @@ to compute various performance metrics, in addition to the
 :meth:`BacktestResult.plot` method for producing plots
 and ``__repr__`` magic method, which is invoked when the user
 prints an instance.
+
+.. versionadded:: 1.1.0
+    The :attr:`BacktestResult.log` property, which returns the logs produced
+    during the back-test, at level ``INFO`` or higher. It works also for
+    back-tests run in parallel!
 """
 
 
@@ -29,6 +34,7 @@ from __future__ import annotations, print_function
 
 import collections
 import logging
+from io import StringIO
 from typing import Dict
 
 import matplotlib.pyplot as plt
@@ -39,6 +45,12 @@ from .utils import periods_per_year_from_datetime_index
 
 __all__ = ['BacktestResult']
 
+# Module level constants, should be exposed to user (move to configuration.py?)
+RECORD_LOGS = 'INFO'
+LOG_FORMAT = '| %(asctime)s | %(levelname)s | process:%(process)d | %(pathname)s:%(lineno)s | %(message)s '
+
+
+logger = logging.getLogger(__name__)
 
 # def getFiscalQuarter(dt):
 #     """Convert a time to a fiscal quarter."""
@@ -47,6 +59,7 @@ __all__ = ['BacktestResult']
 #     return "Q%i %s" % (quarter, year)
 
 
+# pylint: disable=too-many-public-methods
 class BacktestResult:
     """Store the data from a back-test and produce metrics and plots.
 
@@ -76,9 +89,38 @@ class BacktestResult:
         self._current_universe = pd.Index(universe)
         self._indexer = np.arange(len(universe), dtype=int)
 
+        # record logs
+        self._log = ''
+        self._root_logger = logging.getLogger()
+
+        # We modify the root logger to filter at our chosen level (or lower
+        # if its was lower) and pre-existing handlers (notably the
+        # stderr one) to filter at the level of the original logger, or theirs
+        # if higher. We put them back to their initial state at the end.
+        self._orig_rootlogger_level = self._root_logger.level
+        self._root_logger.setLevel(
+            min(logging.getLevelNamesMapping()[RECORD_LOGS],
+                self._root_logger.level))
+        self._orig_loghandlers_levels = []
+        for pre_existing_handler in self._root_logger.handlers:
+            self._orig_loghandlers_levels.append(pre_existing_handler.level)
+            pre_existing_handler.setLevel(
+                max(self._orig_rootlogger_level, pre_existing_handler.level))
+
+        # add stream handler that we use
+        self._log_stream = StringIO()
+        self._log_stream_handler = logging.StreamHandler(
+            stream=self._log_stream)
+        self._log_stream_handler.setLevel(RECORD_LOGS)
+        self._root_logger.addHandler(self._log_stream_handler)
+
+        # logs formatting
+        formatter = logging.Formatter(LOG_FORMAT)
+        self._log_stream_handler.setFormatter(formatter)
+
     @property
     def _current_full_universe(self):
-        """Helper property used by _change_universe.
+        """Helper property used by ``_change_universe``.
 
         :returns: Current full universe (including assets that were seen
             in the past but have been dropped).
@@ -110,7 +152,7 @@ class BacktestResult:
 
             # otherwise we lose the ordering :(
             else:
-                logging.info(
+                logger.info(
                     "%s joining new universe with old",
                     self.__class__.__name__)
                 joined = pd.Index(
@@ -127,6 +169,7 @@ class BacktestResult:
         self._current_universe = new_universe
         self._indexer = self._h.columns.get_indexer(new_universe)
 
+    #pylint: disable=too-many-arguments
     def _log_trading(self, t: pd.Timestamp,
         h: pd.Series[float], u: pd.Series[float],
         z: pd.Series[float], costs: Dict[str, float],
@@ -168,9 +211,32 @@ class BacktestResult:
             self._cash_returns = self._cash_returns.iloc[:tidx]
             self._benchmark_returns = self._benchmark_returns.iloc[:tidx]
 
+        # logging output
+        self._log = self._log_stream.getvalue()
+
+        # put back root logger and handlers to initial state
+        self._root_logger.setLevel(self._orig_rootlogger_level)
+        self._root_logger.removeHandler(self._log_stream_handler)
+        for i, handler in enumerate(self._root_logger.handlers):
+            handler.setLevel(self._orig_loghandlers_levels[i])
+
+        # delete logging helpers (unnecessary?)
+        del self._log_stream_handler
+        self._log_stream.close()
+        del self._log_stream
+
     #
     # General backtest information
     #
+
+    @property
+    def log(self):
+        """Logs from the policy, simulator, market data server, ....
+
+        :return: Logs produced during the back-test, newline separated.
+        :rtype: str
+        """
+        return self._log
 
     @property
     def policy_times(self):

@@ -46,6 +46,8 @@ __all__ = [
     "MultiPeriodOpt",
 ]
 
+logger = logging.getLogger(__name__)
+
 class Policy(Estimator):
     """Base trading policy class, defines execute method."""
 
@@ -361,7 +363,7 @@ class FixedTrades(Policy):
             result = current_weights + pd.Series(
                 self.trades_weights.current_value, current_weights.index)
         except MissingTimesError:
-            logging.info("%s didn't trade at time %s because it couldn't find"
+            logger.info("%s didn't trade at time %s because it couldn't find"
                 + " trade weights among the provided ones.",
                 self.__class__.__name__, t)
             result = current_weights
@@ -413,7 +415,7 @@ class FixedWeights(Policy):
                 self.target_weights.current_value, current_weights.index
                 ) - current_weights
         except MissingTimesError:
-            logging.info("%s didn't trade at time %s because it couldn't find"
+            logger.info("%s didn't trade at time %s because it couldn't find"
                 + " target weights among the provided ones.",
                 self.__class__.__name__, t)
             result = current_weights
