@@ -98,9 +98,12 @@ class BacktestResult:
         # stderr one) to filter at the level of the original logger, or theirs
         # if higher. We put them back to their initial state at the end.
         self._orig_rootlogger_level = self._root_logger.level
-        self._root_logger.setLevel(
-            min(logging.getLevelNamesMapping()[RECORD_LOGS],
-                self._root_logger.level))
+        try:
+            _ = logging.getLevelNamesMapping()[RECORD_LOGS]
+        # for Py < 3.11
+        except AttributeError: # pragma: no cover
+            _ = logging._nameToLevel[RECORD_LOGS] # pragma: no cover
+        self._root_logger.setLevel(min(_, self._root_logger.level))
         self._orig_loghandlers_levels = []
         for pre_existing_handler in self._root_logger.handlers:
             self._orig_loghandlers_levels.append(pre_existing_handler.level)
