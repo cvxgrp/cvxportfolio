@@ -91,56 +91,18 @@ class Estimator:
         """
         return self._current_value
 
-    
-    # pylint: disable=useless-type-doc,useless-param-doc
-    def values_in_time(
-            self, t, current_weights, current_portfolio_value,
-            past_returns, past_volumes, current_prices, 
-            mpo_step=None, cache=None, **kwargs):
-        """Evaluate estimator at current time, possibly return current value.
-
-        This method is usually the most important for Estimator classes.
-        It is called at each point in a back-test with all data of the current
-        state. Sub-estimators are evaluated first, in a depth-first recursive
-        tree fashion (defined in :meth:`values_in_time_recursive`). The 
-        signature differs slightly between different estimators, see below.
-
-        :param t: Current timestamp.
-        :type t: pandas.Timestamp
-        :param current_weights: Current allocation weights.
-        :type current_weights: pandas.Series
-        :param current_portfolio_value: Current total value of the portfolio
-            in cash units.
-        :type current_portfolio_value: float
-        :param past_returns: Past market returns (including cash).
-        :type past_returns: pandas.DataFrame
-        :param past_volumes: Past market volumes, or None if not available.
-        :type past_volumes: pandas.DataFrame or None
-        :param current_prices: Current (open) prices, or None if not available.
-        :type current_prices: pandas.Series or None
-        :param mpo_step: For :class:`cvxportfolio.MultiPeriodOptimization`
-            which step in future planning this estimator is at: 0 is for
-            the current step (:class:`cvxportfolio.SinglePeriodOptimization`),
-            1 is for day ahead, .... Defaults to ``None`` if unused.
-        :type mpo_step: int, optional
-        :param cache: Cache or workspace shared between all elements of an
-            estimator tree, currently only used by 
-            :class:`cvxportfolio.MultiPeriodOptimization` (and derived 
-            classes). It's useful to avoid re-computing expensive
-            things like covariance estimates at different MPO steps. 
-            Defaults to ``None`` if unused.
-        :type cache: dict, optional
-        :param kwargs: Reserved for future new features.
-        :type kwargs: dict
-
-        :returns: Current value of the estimator.
-        :rtype: object or None
-        """
-        # we don't raise NotImplementedError because this is called
-        # on classes that don't re-define it
-
     def values_in_time_recursive(self, **kwargs):
         """Evaluate recursively on sub-estimators.
+
+        This function is called by Simulator classes on Policy classes
+        returning the current trades list. Policy classes, if they
+        contain internal estimators, should declare them as attributes
+        and call this base function (via `super()`) before they do their
+        internal computation. CvxpyExpression estimators should instead
+        define this method to update their Cvxpy parameters.
+
+        Once we finalize the interface all parameters will be listed
+        here.
 
         :param kwargs: Various parameters that are passed to all elements
             contained in a policy object.

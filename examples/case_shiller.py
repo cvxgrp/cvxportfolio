@@ -1,9 +1,23 @@
+# Copyright 2023 Enzo Busseti
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import os
 
-import cvxportfolio as cvx
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+
+import cvxportfolio as cvx
 
 # We test the Multi-Period Optimization model on a real estate
 # portfolio for which the transaction cost are large with respect
@@ -11,7 +25,7 @@ import matplotlib.pyplot as plt
 # We use the Case-Shiller indices as proxies for (residential) real
 # estate prices.
 
-# These are monthly time serieses of the Case-Shiller index for 
+# These are monthly time serieses of the Case-Shiller index for
 # a selection of US metropolitan areas. You can find them on the
 # website of FRED https://fred.stlouisfed.org/
 UNIVERSE = [
@@ -36,8 +50,8 @@ UNIVERSE = [
     'DNXRSA', # Denver
     'BOXRSA', # Boston
     ]
-    
-# we assume that the cost of transacting 
+
+# we assume that the cost of transacting
 # residential real estate is about 5%
 LINEAR_TCOST = 0.05
 
@@ -45,7 +59,7 @@ simulator = cvx.MarketSimulator(
     universe = UNIVERSE,
     # we enabled the default data interface to download index
     # prices from FRED
-    datasource='Fred', 
+    datasource='Fred',
     costs = [cvx.TransactionCost(
         a=LINEAR_TCOST,
         b=None, # since we don't have market volumes, we can't use the
@@ -67,7 +81,7 @@ if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
 NUM_FACTORS = 5
 kappa = 0.1
 
-# This is the multi-period planning horizon. We plan for 6 months 
+# This is the multi-period planning horizon. We plan for 6 months
 # in the future.
 HORIZON = 6
 
@@ -77,10 +91,10 @@ policies = []
 for gamma_risk in np.logspace(0, 3, 10):
     policies.append(cvx.MultiPeriodOptimization(
         cvx.ReturnsForecast() - gamma_risk * (
-        cvx.FactorModelCovariance(num_factors=NUM_FACTORS) 
+        cvx.FactorModelCovariance(num_factors=NUM_FACTORS)
         + kappa * cvx.RiskForecastError())
-             - cvx.TransactionCost(a=LINEAR_TCOST, b=None), 
-                 [cvx.LongOnly(applies_to_cash=True)], 
+             - cvx.TransactionCost(a=LINEAR_TCOST, b=None),
+                 [cvx.LongOnly(applies_to_cash=True)],
                      planning_horizon=HORIZON,
              )
         )
@@ -102,7 +116,7 @@ plt.plot(
     'r*-',
     label='Multi-period optimization frontier'
     )
-plt.scatter([result_uniform.excess_returns.std() * np.sqrt(12)], 
+plt.scatter([result_uniform.excess_returns.std() * np.sqrt(12)],
     [result_uniform.excess_returns.mean() * 12],
     label='Uniform (1/n) allocation'
     )
@@ -115,4 +129,3 @@ if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
     fig.savefig('case_shiller_frontier.png')
 else:
     plt.show()
-

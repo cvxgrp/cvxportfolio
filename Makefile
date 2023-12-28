@@ -9,7 +9,7 @@ BUILDDIR      = build
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
 EXTRA_SCRIPTS = bumpversion.py
-EXAMPLES      = examples/*.py
+EXAMPLES      = examples
 
 ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
@@ -19,7 +19,7 @@ endif
 
 env:  ## create environment
 	$(PYTHON) -m venv $(ENVDIR)
-	$(BINDIR)/python -m pip install --editable .[docs,dev]
+	$(BINDIR)/python -m pip install --editable .[docs,dev,examples]
 	
 clean:  ## clean environment
 	-rm -rf $(BUILDDIR)/*
@@ -34,10 +34,11 @@ test:  ## run tests w/ cov report
 	$(BINDIR)/coverage xml
 	$(BINDIR)/diff-cover coverage.xml --config-file pyproject.toml
 	# disabled for now, we need to change pickle as default on-disk cache
-	# $(BINDIR)/bandit $(PROJECT)/*.py $(PROJECT)/tests/*.py
+	# $(BINDIR)/bandit $(PROJECT)/*.py $(TESTS)/*.py
 
 lint:  ## run linter
-	$(BINDIR)/pylint $(PROJECT)
+	$(BINDIR)/pylint $(PROJECT) $(EXTRA_SCRIPTS) $(EXAMPLES)
+	$(BINDIR)/diff-quality --violations=pylint --config-file pyproject.toml
 
 docs:  ## build docs
 	$(BINDIR)/sphinx-build -E docs $(BUILDDIR)
@@ -51,10 +52,10 @@ coverage:  ## open html cov report
 
 fix:  ## auto-fix code
 	# selected among many code auto-fixers, tweaked in pyproject.toml
-	$(BINDIR)/autopep8 -i $(PROJECT)/*.py $(TESTS)/*.py
-	$(BINDIR)/isort $(PROJECT)/*.py $(TESTS)/*.py
+	$(BINDIR)/autopep8 -i -r $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
+	$(BINDIR)/isort $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 	# this is the best found for the purpose
-	$(BINDIR)/docformatter --in-place $(PROJECT)/*.py $(TESTS)/*.py
+	$(BINDIR)/docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 
 release: update lint test  ## update version, publish to pypi
 	$(BINDIR)/python bumpversion.py
@@ -64,8 +65,8 @@ release: update lint test  ## update version, publish to pypi
 	$(BINDIR)/twine upload --skip-existing dist/*
 
 examples:  ## run examples for docs
-	for example in hello_world case_shiller dow30_example; \
-		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python examples/"$$example".py > docs/_static/"$$example"_output.txt; \
+	for example in hello_world case_shiller universes dow30; \
+		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python -m examples."$$example" > docs/_static/"$$example"_output.txt; \
 	done
 	mv *.png docs/_static/
 

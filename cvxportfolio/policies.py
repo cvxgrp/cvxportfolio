@@ -46,6 +46,8 @@ __all__ = [
     "MultiPeriodOpt",
 ]
 
+logger = logging.getLogger(__name__)
+
 class Policy(Estimator):
     """Base trading policy class, defines execute method."""
 
@@ -65,7 +67,9 @@ class Policy(Estimator):
         :type market_data: cvxportfolio.MarketData instance
         :param t: Time at which we execute. If None (the default), the
             last timestamp in the trading calendar provided by the
-            :class:`MarketData` instance is used.
+            :class:`MarketData` instance is used. Note: if you use a default
+            market data server, you probably want to set their ``online_usage``
+            argument to ``True``.
         :type t: pandas.Timestamp or None
 
         :raises cvxportfolio.errors.DataError: Holdings vector sum to a
@@ -89,9 +93,15 @@ class Policy(Estimator):
                 f"Holdings provided to {self.__class__.__name__}.execute "
                 + " have negative sum.")
 
-        w = h / v
-
         past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
+
+        if sorted(h.index) != sorted(past_returns.columns):
+            raise ValueError(
+                "Holdings provided don't match the universe"
+                " implied by the market data server.")
+
+        h = h[past_returns.columns]
+        w = h / v
 
         self.initialize_estimator_recursive(
             universe=past_returns.columns,
@@ -101,6 +111,7 @@ class Policy(Estimator):
             t=t, past_returns=past_returns, past_volumes=past_volumes,
             current_weights=w, current_portfolio_value=v,
             current_prices=current_prices)
+
         z = w_plus - w
         u = z * v
 
@@ -352,7 +363,7 @@ class FixedTrades(Policy):
             result = current_weights + pd.Series(
                 self.trades_weights.current_value, current_weights.index)
         except MissingTimesError:
-            logging.info("%s didn't trade at time %s because it couldn't find"
+            logger.info("%s didn't trade at time %s because it couldn't find"
                 + " trade weights among the provided ones.",
                 self.__class__.__name__, t)
             result = current_weights
@@ -404,7 +415,7 @@ class FixedWeights(Policy):
                 self.target_weights.current_value, current_weights.index
                 ) - current_weights
         except MissingTimesError:
-            logging.info("%s didn't trade at time %s because it couldn't find"
+            logger.info("%s didn't trade at time %s because it couldn't find"
                 + " target weights among the provided ones.",
                 self.__class__.__name__, t)
             result = current_weights
