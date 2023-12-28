@@ -30,13 +30,18 @@ import json
 import sys
 from functools import cached_property
 from pathlib import Path
+import logging
 
 import numpy as np
 import pandas as pd
 
+from cvxportfolio.result import RECORD_LOGS, LOG_FORMAT
 import cvxportfolio as cvx
 
 INITIAL_VALUE = 1E6 # initial value (in cash)
+
+logging.basicConfig(level=RECORD_LOGS, format=LOG_FORMAT)
+logger = logging.getLogger(__name__)
 
 def main(
     hyperparameter_optimize, execute_strategy, universe, cash_key='USDOLLAR'):
@@ -103,7 +108,10 @@ class _Runner:
         :returns: Open timestamp.
         :rtype: pandas.Timestamp
         """
-        return cvx.DownloadedMarketData(self.universe[:1]).returns.index[-1]
+        logger.info('Getting last time-stamp from market data.')
+        _today = cvx.DownloadedMarketData(self.universe[:1]).returns.index[-1]
+        logger.info('Last timestamp is %s', _today)
+        return _today
 
     @property
     def file_hyper_parameters(self):
@@ -144,10 +152,12 @@ class _Runner:
         :return: Loaded content (always dict in our files).
         :rtype: dict
         """
+        logger.info('Loading json file %s', filename)
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 result = json.load(f)
         except FileNotFoundError:
+            logger.info("File not found, returning empty dict.")
             result = {}
         return {pd.Timestamp(k): result[k] for k in result}
 
@@ -159,6 +169,7 @@ class _Runner:
         :param content: Content to store.
         :type content: dict
         """
+        logger.info('Storing json file %s', filename)
         content = {str(k): dict(content[k]) for k in content}
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(content, f, sort_keys=True, indent=4)
@@ -166,8 +177,9 @@ class _Runner:
     def run_hyperparameters(self):
         """Run hyper-parameter optimization, store result."""
 
+        logger.info('Running hyper-parameter optimization')
         if self.today in self.all_hyper_params:
-            print('Today already ran hyper-parameter optimization.')
+            logger.info('Today already ran hyper-parameter optimization.')
             return
 
         self.all_hyper_params[self.today] = self.hyperparameter_optimize()
@@ -188,10 +200,9 @@ class _Runner:
         :return: New holdings up to today's open.
         :rtype: pandas.DataFrame
         """
-
         last_day = sorted(self.all_holdings.keys())[-1]
-        print("Back-testing from %s to %s to get today's holdings"
-            % (last_day, self.today))
+        logger.info("Back-testing from %s to %s to get today's holdings",
+            last_day, self.today)
 
         last_day_holdings = pd.Series(self.all_holdings[last_day])
         last_day_target_weigths = pd.Series(self.all_target_weights[last_day])
@@ -245,11 +256,15 @@ class _Runner:
         :rtype: pandas.Series
         """
 
+        logger.info('Getting holdings for today %s', self.today)
         if len(self.all_holdings) < 1:
+            logger.info('Defaulting to %s all in cash', INITIAL_VALUE)
             self.all_holdings[self.today] = pd.Series(0., self.universe)
             self.all_holdings[self.today][self.cash_key] = INITIAL_VALUE
         else:
             if self.today in self.all_holdings:
+                logger.info(
+                    'Today already in the initial holdings file, returning.')
                 return self.all_holdings[self.today]
             new_holdings = self.backtest_from_last_point()
             for t in new_holdings.index:
@@ -270,7 +285,7 @@ class _Runner:
         if len(self.all_hyper_params) < 1:
             raise ValueError('Empty hyper-parameters file!')
         hp_index = sorted(self.all_hyper_params.keys())[-1]
-        print('Using hyper-parameters optimized on %s' % hp_index)
+        logger.info('Using hyper-parameters optimized on %s', hp_index)
 
         todays_holdings = self.get_current_holdings()
 
@@ -278,6 +293,7 @@ class _Runner:
         v = sum(h)
         w = h / v
 
+        logger.info('Running strategy execution for day %s', self.today)
         u, t, _ = self.execute_strategy(
             current_holdings=h,
             market_data=cvx.DownloadedMarketData(
