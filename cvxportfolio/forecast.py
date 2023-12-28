@@ -129,13 +129,11 @@ class HistoricalMeanReturn(BaseForecast):
         self._last_counts = None
         self._last_sum = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, **kwargs):
         """Re-initialize whenever universe changes.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.__post_init__()
 
@@ -189,13 +187,11 @@ class HistoricalVariance(BaseForecast):
         self._last_counts = None
         self._last_sum = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, **kwargs):
         """Re-initialize whenever universe changes.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.__post_init__()
 
@@ -422,13 +418,11 @@ class HistoricalFactorizedCovariance(BaseForecast):
         self._last_sum_matrix = None
         self._joint_mean = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, **kwargs):
         """Re-initialize whenever universe changes.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.__post_init__()
 

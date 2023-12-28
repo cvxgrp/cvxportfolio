@@ -103,6 +103,7 @@ class Policy(Estimator):
         h = h[past_returns.columns]
         w = h / v
 
+        # consider adding caching logic here
         self.initialize_estimator_recursive(
             universe=past_returns.columns,
             trading_calendar=trading_calendar[trading_calendar >= t])
@@ -273,13 +274,15 @@ class ProportionalTradeToTargets(Policy):
         self.targets = targets
         self.trading_days = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, trading_calendar, **kwargs):
         """Initialize policy instance with updated trading_calendar.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
         :param trading_calendar: Future (including current) trading calendar.
         :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.trading_days = trading_calendar
 
@@ -441,13 +444,13 @@ class Uniform(FixedWeights):
         # values_in_time_recursive
         self.target_weights = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize this estimator.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         target_weights = pd.Series(1., universe)
         target_weights.iloc[-1] = 0
@@ -694,7 +697,7 @@ class MultiPeriodOptimization(Policy):
                 + " mis-specified custom term.", self.__class__.__name__)
 
     # pylint: disable=useless-type-doc,useless-param-doc
-    def initialize_estimator_recursive(self, universe, trading_calendar):
+    def initialize_estimator_recursive(self, universe, **kwargs):
         """Initialize the policy object with the trading universe.
 
         We redefine the recursive version of :meth:`initialize_estimator`
@@ -702,20 +705,20 @@ class MultiPeriodOptimization(Policy):
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
 
         for obj in self.objective:
-            obj.initialize_estimator_recursive(
-                universe=universe, trading_calendar=trading_calendar)
+            obj.initialize_estimator_recursive(universe=universe, **kwargs)
         for constr_at_lag in self.constraints:
             for constr in constr_at_lag:
                 constr.initialize_estimator_recursive(
-                    universe=universe, trading_calendar=trading_calendar)
+                    universe=universe, **kwargs)
 
         self.benchmark.initialize_estimator_recursive(
-            universe=universe, trading_calendar=trading_calendar)
+            universe=universe, **kwargs)
+
         self.w_bm = cp.Parameter(len(universe))
 
         self.w_current = cp.Parameter(len(universe))

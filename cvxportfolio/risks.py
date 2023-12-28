@@ -70,13 +70,13 @@ class FullCovariance(Cost):
         self.Sigma = DataEstimator(Sigma)
         self._sigma_sqrt = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self._sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
@@ -130,13 +130,13 @@ class RiskForecastError(Cost):
 
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.sigmas_parameter = cp.Parameter(
             len(universe)-1, nonneg=True)  # +self.kelly))
@@ -184,15 +184,15 @@ class DiagonalCovariance(Cost):
             sigma_squares = sigma_squares()
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
-        self.sigmas_parameter = cp.Parameter(len(universe)-1)  # +self.kelly))
+        self.sigmas_parameter = cp.Parameter(len(universe)-1)
 
     def values_in_time(self, **kwargs):
         """Update parameters of risk model.
@@ -314,13 +314,13 @@ class FactorModelCovariance(Cost):
             self._fit = False
         self.idyosync_sqrt_parameter = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         if self._fit:
@@ -406,16 +406,14 @@ class WorstCaseRisk(Cost):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
 
-    def initialize_estimator_recursive(self, universe, trading_calendar):
+    def initialize_estimator_recursive(self, **kwargs):
         """Initialize risk model with universe and trading times.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         for risk in self.riskmodels:
-            risk.initialize_estimator_recursive(universe, trading_calendar)
+            risk.initialize_estimator_recursive(**kwargs)
 
     def values_in_time_recursive(self, **kwargs):
         """Update parameters of constituent risk models.

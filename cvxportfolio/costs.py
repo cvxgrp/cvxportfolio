@@ -141,21 +141,18 @@ class CombinedCosts(Cost):
         return CombinedCosts(self.costs,
                              [el * other for el in self.multipliers])
 
-    def initialize_estimator_recursive(self, universe, trading_calendar):
+    def initialize_estimator_recursive(self, **kwargs):
         """Initialize iterating over constituent costs.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs:  All parameters passed to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
-        _ = [el.initialize_estimator_recursive(universe, trading_calendar)
-            for el in self.costs]
+        _ = [el.initialize_estimator_recursive(**kwargs) for el in self.costs]
 
     def finalize_estimator_recursive(self, **kwargs):
         """Finalize iterating over constituent costs.
 
-        :param kwargs: Arguments.
+        :param kwargs:  All parameters passed to :meth:`finalize_estimator`.
         :type kwargs: dict
         """
         _ = [el.finalize_estimator_recursive(**kwargs) for el in self.costs]
@@ -414,7 +411,7 @@ class HoldingCost(Cost, SimulatorCost):
             dividends)
         self.periods_per_year = periods_per_year
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize cvxpy parameters.
 
         We don't use the parameter from
@@ -423,8 +420,8 @@ class HoldingCost(Cost, SimulatorCost):
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
 
         if self.short_fees is not None:
@@ -608,13 +605,13 @@ class TransactionCost(Cost):
         self.first_term_multiplier = None
         self.second_term_multiplier = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize cvxpy parameters.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         if self.a is not None or self.pershare_cost is not None:
             self.first_term_multiplier = cp.Parameter(

@@ -102,7 +102,7 @@ class Estimator:
             if hasattr(subestimator, "finalize_estimator_recursive"):
                 subestimator.finalize_estimator_recursive(**kwargs)
         if hasattr(self, "finalize_estimator"):
-            self.initialize_estimator(**kwargs)
+            self.finalize_estimator(**kwargs)
 
     _current_value = None
 

@@ -231,13 +231,13 @@ class MarketNeutral(EqualityConstraint):
         # self.benchmark = benchmark
         self.market_vector = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize parameter with size of universe.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.market_vector = cp.Parameter(len(universe)-1)
 
@@ -383,13 +383,13 @@ class NoTrade(Constraint):
         self._low = None
         self._high = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize internal parameters.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self._index = (universe.get_loc if hasattr(
             universe, 'get_loc') else universe.index)(self.asset)
@@ -639,13 +639,13 @@ class MinMaxWeightsAtTimes(Estimator):
         self.limit = None
         self.trading_calendar = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, trading_calendar, **kwargs):
         """Initialize estimator instance with updated trading_calendar.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
         :param trading_calendar: Future (including current) trading calendar.
         :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.trading_calendar = trading_calendar
         self.limit = cp.Parameter()

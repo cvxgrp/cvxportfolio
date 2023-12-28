@@ -277,6 +277,7 @@ class MarketSimulator:
 
         policy = copy.deepcopy(orig_policy)
 
+        # caching will be handled here
         policy.initialize_estimator_recursive(
             universe=universe, trading_calendar=trading_calendar)
 
