@@ -13,30 +13,34 @@
 # limitations under the License.
 """This module contains code used to run each individual strategy.
 
-Each strategy defines two functions: one that back-tests and optimizes over
-hyper-parameters, returning their chosen values, and one that takes such values
-and runs the strategy for the day.
+Each strategy defines only one function, which defines its chosen trading
+policy, and a few constants: trading universe, start of the hyper-parameter
+optimization period, and objective function.
 
-Here we define the logic to handle those two functions, save everything in json
-files, store in git, and check for problems and errors. The final product is a
-strategy script that is run by one line of crontab.
+Here we define the logic to handle those, both for online execution and
+hyper-parameter optimization. Also we save everything in json
+files and (in the future) store in git and check for problems and errors.
+This is currently run in a cron job from a shell script 
+(``strategies_runner.sh``) in the root of the repository, which also stores in
+git.
 
 .. note::
 
     We may eventually move this in the main library.
 """
 
+import inspect
 import json
+import logging
 import sys
 from functools import cached_property
 from pathlib import Path
-import logging
 
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.result import RECORD_LOGS, LOG_FORMAT
 import cvxportfolio as cvx
+from cvxportfolio.result import LOG_FORMAT, RECORD_LOGS
 
 INITIAL_VALUE = 1E6 # initial value (in cash)
 
@@ -44,16 +48,21 @@ logging.basicConfig(level=RECORD_LOGS, format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
 def main(
-    hyperparameter_optimize, execute_strategy, universe, cash_key='USDOLLAR'):
+    policy, hyperparameter_opt_start, objective, universe,
+    cash_key='USDOLLAR'):
     """Executor for each strategy's script.
 
-    :param hyperparameter_optimize: Function that returns the current best
-        choice of hyper-parameters, as a dictionary.
-    :type hyperparameter_optimize: callable
-    :param execute_strategy: Function that takes the current holdings,
-        market data object, and the choices of hyper-parameters, and returns
-        the output of :meth:`cvxportfolio.Policy.execute`.
-    :type execute_strategy: callable
+    :param policy: Function that returns the policy object and a dictionary
+        mapping its hyper-parameter names (which are the arguments it takes)
+        to their respective objects (used only for hyper-parameter
+        optimization).
+    :type policy: callable
+    :param hyperparameter_opt_start: Start of hyper-parameter optimization
+        back-test period.
+    :type hyperparameter_opt_start: str or pandas.Timestamp
+    :param objective: Objective used for hyper-parameter optimization (
+        attribute of :class:`cvxportfolio.BacktestResult`).
+    :type objective: str
     :param universe: Current universe of the strategy.
     :type universe: iterable
     :param cash_key: Name of cash account.
@@ -61,7 +70,7 @@ def main(
     """
     if len(sys.argv) < 2 or sys.argv[1] not in ['hyperparameters', 'strategy']:
         print('Usage (from root directory):')
-        stratfile = hyperparameter_optimize.__code__.co_filename
+        stratfile = policy.__code__.co_filename
         print()
         print('\tpython -m', __package__ + '.' + Path(stratfile).stem,
             'hyperparameters')
@@ -77,7 +86,7 @@ def main(
         sys.exit(0)
 
     runner = _Runner(
-        hyperparameter_optimize, execute_strategy, universe, cash_key)
+        policy, hyperparameter_opt_start, objective, universe, cash_key)
 
     if sys.argv[1] == 'hyperparameters':
         runner.run_hyperparameters()
@@ -85,18 +94,72 @@ def main(
         runner.run_execute_strategy()
 
 
+def hyperparameter_optimize(
+    universe, policy, hyperparameter_opt_start, objective='sharpe_ratio'):
+    """Optimize hyper-parameters of a policy over back-test.
+
+    :param universe: Trading universe for the policy.
+    :type universe: iterable
+    :param policy: Policy creation function.
+    :type policy: callable
+    :param hyperparameter_opt_start: When to start the hyper-parameter
+        optimization.
+    :type hyperparameter_opt_start: str or pandas.Timestamp
+    :param objective: Which hyper-parameter optimization objective to use
+        (must be an attribute of :class:`cvxportfolio.BacktestResult`).
+        Default ``'sharpe_ratio'``.
+    :type objective: str
+
+    :return: Choice of gamma risk and gamma trade.
+    :rtype: dict
+    """
+    hyper_parameter_names = inspect.getfullargspec(policy).args
+    initial_values = {k: 1. for k in hyper_parameter_names}
+
+    sim = cvx.StockMarketSimulator(universe)
+    policy, hyperpar_handles = policy(**initial_values)
+
+    # check to be sure
+    assert set(hyper_parameter_names) == set(hyperpar_handles)
+
+    sim.optimize_hyperparameters(
+        policy, start_time=hyperparameter_opt_start,
+        objective=objective)
+
+    return {k: hyperpar_handles[k].current_value
+        for k in hyperpar_handles}
+
+def execute_strategy(
+    current_holdings, market_data, policy, hyper_parameters):
+    """Execute this strategy.
+
+    :param current_holdings: Current holdings in dollars.
+    :type current_holdings: pandas.Series
+    :param market_data: Market data server.
+    :type market_data: cvxportfolio.data.MarketData
+    :param policy: Policy constructor function.
+    :type policy: callable
+    :param hyper_parameters: Current choice of hyper-parameters.
+    :type hyper_parameters: dict
+
+    :return: Output of the execute method of a Cvxportfolio policy.
+    :rtype: tuple
+    """
+    _policy, _ = policy(**hyper_parameters)
+    return _policy.execute(h=current_holdings, market_data=market_data)
+
 class _Runner:
 
     def __init__(
-        self, hyperparameter_optimize, execute_strategy, universe, cash_key):
-        self.hyperparameter_optimize = hyperparameter_optimize
-        self.execute_strategy = execute_strategy
+        self, policy, hyperparameter_opt_start, objective, universe,
+            cash_key='USDOLLAR'):
+        self.policy = policy
+        self.hyperparameter_opt_start = hyperparameter_opt_start
+        self.objective = objective
         self.universe = universe
         self.cash_key = cash_key
         # self.today = str(datetime.datetime.now().date())
-        self.stratfile = self.hyperparameter_optimize.__code__.co_filename
-        assert self.stratfile == \
-            self.execute_strategy.__code__.co_filename
+        self.stratfile = self.policy.__code__.co_filename
         self.all_hyper_params = self.load_json(self.file_hyper_parameters)
         self.all_target_weights = self.load_json(self.file_target_weights)
         self.all_holdings = self.load_json(self.file_holdings)
@@ -182,7 +245,10 @@ class _Runner:
             logger.info('Today already ran hyper-parameter optimization.')
             return
 
-        self.all_hyper_params[self.today] = self.hyperparameter_optimize()
+        self.all_hyper_params[self.today] = hyperparameter_optimize(
+            universe=self.universe, policy=self.policy,
+            hyperparameter_opt_start=self.hyperparameter_opt_start,
+            objective=self.objective)
 
         print('Hyper-parameters optimized today:')
         print(self.all_hyper_params[self.today])
@@ -294,12 +360,13 @@ class _Runner:
         w = h / v
 
         logger.info('Running strategy execution for day %s', self.today)
-        u, t, _ = self.execute_strategy(
+        u, t, _ = execute_strategy(
             current_holdings=h,
             market_data=cvx.DownloadedMarketData(
                 self.universe, online_usage=True,
                 min_history=pd.Timedelta('0d')),
-            **self.all_hyper_params[hp_index])
+            policy=self.policy,
+            hyper_parameters=self.all_hyper_params[hp_index])
 
         assert t == self.today
 

@@ -39,8 +39,21 @@ from ..universes import DOW30
 
 HYPERPAR_OPTIMIZE_START = '2012-01-01'
 
-def _policy(gamma_risk, gamma_trade):
-    """Create fresh policy object, also return handles to hyper-parameters."""
+OBJECTIVE = 'sharpe_ratio'
+
+
+def policy(gamma_risk, gamma_trade):
+    """Create fresh policy object, also return handles to hyper-parameters.
+
+    :param gamma_risk: Risk aversion multiplier.
+    :type gamma_risk: float
+    :param gamma_trade: Transaction cost aversion multiplier.
+    :type gamma_trade: float, optional
+
+    :return: Policy object and dictionary mapping hyper-parameter names (which
+        must match the arguments of this function) to their respective objects.
+    :rtype: tuple
+    """
     gamma_risk_hp = cvx.Gamma(initial_value=gamma_risk)
     gamma_trade_hp = cvx.Gamma(initial_value=gamma_trade)
     return cvx.SinglePeriodOptimization(
@@ -48,42 +61,8 @@ def _policy(gamma_risk, gamma_trade):
         - gamma_risk_hp * cvx.FullCovariance()
         - gamma_trade_hp * cvx.StocksTransactionCost(),
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
-        benchmark=cvx.MarketBenchmark()
-    ), gamma_risk_hp, gamma_trade_hp
-
-def hyperparameter_optimize():
-    """Optimize hyper-parameters of the policy over back-test.
-
-    :return: Choice of gamma risk and gamma trade.
-    :rtype: dict
-    """
-    sim = cvx.StockMarketSimulator(DOW30)#, trading_frequency='weekly')
-    policy, gamma_risk_hp, gamma_trade_hp = _policy(1., 1.)
-    sim.optimize_hyperparameters(
-        policy, start_time=HYPERPAR_OPTIMIZE_START,
-        objective='sharpe_ratio')#, objective='information_ratio')
-    return {
-        'gamma_risk': gamma_risk_hp.current_value,
-        'gamma_trade': gamma_trade_hp.current_value,
-        }
-
-def execute_strategy(current_holdings, market_data, gamma_risk, gamma_trade):
-    """Execute this strategy.
-
-    :param current_holdings: Current holdings in dollars.
-    :type current_holdings: pandas.Series
-    :param market_data: Market data server.
-    :type market_data: cvxportfolio.data.MarketData
-    :param gamma_risk: Risk aversion multiplier
-    :type gamma_risk: float
-    :param gamma_trade: Transaction cost aversion multiplier.
-    :type gamma_trade: float
-
-    :return: Output of the execute method of a Cvxportfolio policy.
-    :rtype: tuple
-    """
-    policy, _, _ = _policy(gamma_risk, gamma_trade)
-    return policy.execute(h=current_holdings, market_data=market_data)
+        benchmark=cvx.MarketBenchmark(),
+    ), {'gamma_risk': gamma_risk_hp, 'gamma_trade': gamma_trade_hp}
 
 
 if __name__ == '__main__':
@@ -92,23 +71,15 @@ if __name__ == '__main__':
 
     if not RESEARCH:
         from .strategy_executor import main
-        main(hyperparameter_optimize, execute_strategy, universe=DOW30)
+        main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
+            objective=OBJECTIVE, universe=DOW30)
 
     else:
         import matplotlib.pyplot as plt
 
         research_sim = cvx.StockMarketSimulator(DOW30)
 
-        research_policy = cvx.SinglePeriodOptimization(
-            cvx.ReturnsForecast()
-            - cvx.Gamma() * cvx.FullCovariance()
-            #- cvx.Gamma() * FactorModelCovariance(num_factors=10)
-            #- cvx.Gamma() * (cvx.FullCovariance()
-            # + 0.05 * cvx.Gamma() * cvx.RiskForecastError())
-            - cvx.Gamma() * cvx.StocksTransactionCost(),
-            [cvx.LongOnly(), cvx.LeverageLimit(1)],
-            benchmark=cvx.MarketBenchmark()
-        )
+        research_policy, _ = policy(1., 1.)
 
         result_unif = research_sim.backtest(
             cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
