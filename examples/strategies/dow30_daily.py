@@ -76,6 +76,7 @@ if __name__ == '__main__':
 
     else:
         import matplotlib.pyplot as plt
+        INDEX_ETF = 'DIA'
 
         research_sim = cvx.StockMarketSimulator(DOW30)
 
@@ -85,6 +86,16 @@ if __name__ == '__main__':
             cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
         print('uniform')
         print(result_unif)
+
+        result_market = research_sim.backtest(
+            cvx.MarketBenchmark(), start_time=HYPERPAR_OPTIMIZE_START)
+        print('market')
+        print(result_market)
+
+        result_etf = cvx.StockMarketSimulator([INDEX_ETF]).backtest(
+            cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
+        print(INDEX_ETF)
+        print(result_etf)
 
         research_sim.optimize_hyperparameters(
             research_policy, start_time=HYPERPAR_OPTIMIZE_START,
@@ -96,26 +107,16 @@ if __name__ == '__main__':
         print('optimized')
         print(result_opt)
 
-        result_market = research_sim.backtest(
-            cvx.MarketBenchmark(), start_time=HYPERPAR_OPTIMIZE_START)
-        print('market')
-        print(result_market)
-
-        result_dia = cvx.StockMarketSimulator(['DIA']).backtest(
-            cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
-        print('dia')
-        print(result_dia)
-
         result_unif.plot()
         result_opt.plot()
         result_market.plot()
-        result_dia.plot()
+        result_etf.plot()
 
         plt.figure()
         result_opt.growth_rates.iloc[-252*4:].cumsum().plot(label='optimized')
         result_unif.growth_rates.iloc[-252*4:].cumsum().plot(label='uniform')
         result_market.growth_rates.iloc[-252*4:].cumsum().plot(label='market')
-        result_dia.growth_rates.iloc[-252*4:].cumsum().plot(label='market etf')
+        result_etf.growth_rates.iloc[-252*4:].cumsum().plot(label='market etf')
         plt.legend()
 
         plt.show()
