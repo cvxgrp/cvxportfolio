@@ -10,10 +10,14 @@
 
 env/bin/python -m examples.strategies.dow30_daily strategy &>> examples/strategies/dow30_daily.log
 git add examples/strategies/dow30_daily*.json
-git commit -m '[auto commit] ${date +%Y-%m-%d} dow30_daily reconciliation & execution'
+git commit -m '[auto commit] dow30_daily reconciliation & execution'
 
 env/bin/python -m examples.strategies.ndx100_daily strategy &>> examples/strategies/ndx100_daily.log
 git add examples/strategies/ndx100_daily*.json
-git commit -m '[auto commit] ${date +%Y-%m-%d} ndx100_daily reconciliation & execution'
+git commit -m '[auto commit] ndx100_daily reconciliation & execution'
+
+env/bin/python -m examples.strategies.sp500_daily strategy &>> examples/strategies/sp500_daily.log
+git add examples/strategies/sp500_daily*.json
+git commit -m '[auto commit] sp500_daily reconciliation & execution'
 
 git push

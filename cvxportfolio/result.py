@@ -233,7 +233,7 @@ class BacktestResult:
     #
 
     @property
-    def log(self):
+    def logs(self):
         """Logs from the policy, simulator, market data server, ....
 
         :return: Logs produced during the back-test, newline separated.

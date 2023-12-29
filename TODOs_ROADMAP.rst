@@ -45,7 +45,7 @@ their planned release.
 --------------------------
 
 - [ ] ``DataEstimator`` needs refactoring, too long and complex methods. Target 
-  ``1.0.4``. 
+  ``1.1.1``. 
 - ``Estimator`` could define base logic for on-disk caching. By itself it
   wouldn't do anything, actual functionality implemented by forecasters' base
   class.
@@ -71,10 +71,9 @@ Partially public; only ``cvx.Gamma()`` (no arguments) and ``optimize_hyperparame
 (simple usage) are public, all the rest is not.
 
 - [ ] Clean up interface w/ ``MarketSimulator``, right now it calls private 
-  methods, maybe enough to make them public. Target ``1.0.4``.
+  methods, maybe enough to make them public. Target ``1.1.1``.
 - [ ] Add risk/fine default ``GammaTrade``, ``GammaRisk`` (which are
-  ``RangeHyperParameter``) modeled after original examples from paper. 
-  Target ``1.1.0``.
+  ``RangeHyperParameter``) modeled after original examples from paper.
 - [ ] Add ``Constant`` internal object throughout the library, also in ``DataEstimator``
   in the case of scalar; it resolves to ``current_value`` if you pass a hyper-parameter.
 - [ ] Distinguish integer and positive hyper-parameters (also enforced by Constant).
@@ -90,14 +89,18 @@ Partially public; only ``cvx.Gamma()`` (no arguments) and ``optimize_hyperparame
 Optimization policies
 ~~~~~~~~~~~~~~~~~~~~~
 
-- [ ] Improve behavior for infeasibility/unboundedness/solver error. Target 
-  ``1.1.0``.
-- [ ] Improve ``__repr__`` method, now hard to read. Target ``1.0.4``.
+- [ ] Improve behavior for infeasibility/unboundedness/solver error. Idea:
+  optimization policy gets arguments ``infeasible_fallback``, ... which are
+  policies (default to ``cvx.Hold``), problem is that this breaks
+  compatibility, it doesn't if we don't give defaults (so exceptions are raised
+  all the way to the caller), but then it's extra complication (more 
+  arguments). Consider for ``2.0.0``.
+- [ ] Improve ``__repr__`` method, now hard to read. Target ``1.1.1``.
 
 ``cvxportfolio.constraints``
 ----------------------------
 
-- [ ] Add missing constraints from the paper. Target ``1.1.0``.
+- [ ] Add missing constraints from the paper.
 - [ ] Make ``MarketNeutral`` accept arbitrary benchmark (policy object).
 
 ``cvxportfolio.result``
@@ -105,24 +108,31 @@ Optimization policies
 
 - [ ] Make ``BackTestResult`` interface methods with ``MarketSimulator`` 
   public. 
-- [ ] Add a ``backruptcy`` property (boolean). Amend ``sharpe_ratio``
+- [ ] Add a ``bankruptcy`` property (boolean). Amend ``sharpe_ratio``
   and other aggregate statistics (as best as possible) to return ``-np.inf``
   if back-test ended in backruptcy. This is needed specifically for
-  hyper-parameter optimization. Target ``1.0.4``.
-- [ ] Capture **logs** from the back-test; add ``logs`` property that returns
-  then as a string (newline separated, like a .log file). Make log level
+  hyper-parameter optimization. Target ``1.1.1``.
+- [X] Capture **logs** from the back-test; add ``logs`` property that returns
+  them as a string (newline separated, like a .log file). Make log level
   changeable by a module constant (like ``cvxportfolio.result.LOG_LEVEL``) set
   to ``INFO`` by default. Then, improve logs throughout (informative, proactive
   on possible issues). Logs formatter should produce source module and
   timestamp.
 
+Other 
+-----
+
+- [ ] Exceptions are not too good, probably ``cvxportfolio.DataError`` should
+  be ``ValueError``, .... Research this, one option is to simply derive from
+  built-ins (``class DataError(ValueError): pass``), .... No compatibility
+  breaks.
 
 Development & testing
 ---------------------
 
 - [ ] Add extra pylint checkers. 
   
-  - [ ] Code complexity. Target ``1.0.4``. 
+  - [ ] Code complexity. Target ``1.1.1``. 
 - [ ] Consider removing downloaded data from ``test_simulator.py``,
   so only ``test_data.py`` requires internet. 
 
@@ -130,13 +140,12 @@ Documentation
 -------------
 
 - [ ] Improve examples section, also how "Hello world" is mentioned in readme.
-  Target ``1.0.4``, PR #118.
 - [ ] Manual.
 - [ ] Quickstart, probably to merge into manual.
 
 Examples
 --------
 
-- [ ] Restore examples from paper. Target ``1.0.4``, PR #118.
-- [ ] Expose more (all?) examples through HTML docs. Target ``1.0.4``, PR #118.
+- [ ] Finish restore examples from paper. Target ``1.1.1``.
+- [ ] Expose more (all?) examples through HTML docs.
 - [ ] Consider making examples a package that can be pip installed.

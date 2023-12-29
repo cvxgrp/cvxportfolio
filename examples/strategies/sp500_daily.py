@@ -13,34 +13,29 @@
 # limitations under the License.
 """This is a simple example strategy which we run every day.
 
-It is a long-only, unit leverage, allocation on the Dow Jones universe. We
-use some of the simplest default settings and only optimize over two
-hyper-parameters, the risk aversion and transaction cost aversion multipliers.
-The code that chooses them is below.
+It is a long-only, unit leverage, allocation on the Standard and Poor's 500
+universe. It's very similar to the two strategies ``dow30_daily`` and
+``ndx100_daily``, but here we also constrain the allocation to be close
+to our chosen benchmark, :class:`cvxportfolio.MarketBenchmark` (allocation
+proportional to last year's total market volumes in dollars).
 
-We use a full covariance risk model, which penalizes deviations from our
-market benchmark (benchmark weights proportional to last year's total
-market volumes). In our research this allocation seems to have outperformed
-both the uniform allocation (1/n) over this universe, the market benchmark
-itself, and an index ETF which tracks the Dow Jones.
-
+This strategy also seems to have outperformed our benchmarks and an index ETF.
 We will see how it performs online.
 
 You run it from the root of the repository in the development environment by:
 
 .. code:: bash
 
-    python -m examples.strategies.dow30daily
+    python -m examples.strategies.sp500_daily
 """
 
 import cvxportfolio as cvx
 
-from ..universes import DOW30
+from ..universes import SP500
 
-HYPERPAR_OPTIMIZE_START = '2012-01-01'
+HYPERPAR_OPTIMIZE_START = '2023-01-01'
 
 OBJECTIVE = 'sharpe_ratio'
-
 
 def policy(gamma_risk, gamma_trade):
     """Create fresh policy object, also return handles to hyper-parameters.
@@ -60,8 +55,11 @@ def policy(gamma_risk, gamma_trade):
         cvx.ReturnsForecast()
         - gamma_risk_hp * cvx.FullCovariance()
         - gamma_trade_hp * cvx.StocksTransactionCost(),
-        [cvx.LongOnly(), cvx.LeverageLimit(1)],
+        [cvx.LongOnly(), cvx.LeverageLimit(1),
+            cvx.MaxBenchmarkDeviation(0.05),
+            cvx.MinBenchmarkDeviation(-0.05)],
         benchmark=cvx.MarketBenchmark(),
+        ignore_dpp=True,
     ), {'gamma_risk': gamma_risk_hp, 'gamma_trade': gamma_trade_hp}
 
 
@@ -69,18 +67,10 @@ if __name__ == '__main__':
 
     RESEARCH = False
 
-    if not RESEARCH:
-        from .strategy_executor import main
-        main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
-            objective=OBJECTIVE, universe=DOW30)
+    if RESEARCH:
+        INDEX_ETF = 'SPY'
 
-    else:
-        import matplotlib.pyplot as plt
-        INDEX_ETF = 'DIA'
-
-        research_sim = cvx.StockMarketSimulator(DOW30)
-
-        research_policy, _ = policy(1., 1.)
+        research_sim = cvx.StockMarketSimulator(SP500)
 
         result_unif = research_sim.backtest(
             cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
@@ -97,25 +87,8 @@ if __name__ == '__main__':
         print(INDEX_ETF)
         print(result_etf)
 
-        research_sim.optimize_hyperparameters(
-            research_policy, start_time=HYPERPAR_OPTIMIZE_START,
-            objective='sharpe_ratio')
-
-        result_opt = research_sim.backtest(
-            research_policy, start_time=HYPERPAR_OPTIMIZE_START)
-        print('optimized')
-        print(result_opt)
-
-        result_unif.plot()
-        result_opt.plot()
-        result_market.plot()
-        result_etf.plot()
-
-        plt.figure()
-        result_opt.growth_rates.iloc[-252*4:].cumsum().plot(label='optimized')
-        result_unif.growth_rates.iloc[-252*4:].cumsum().plot(label='uniform')
-        result_market.growth_rates.iloc[-252*4:].cumsum().plot(label='market')
-        result_etf.growth_rates.iloc[-252*4:].cumsum().plot(label='market etf')
-        plt.legend()
-
-        plt.show()
+    from .strategy_executor import main
+    main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
+        objective=OBJECTIVE, universe=SP500, initial_values={
+            'gamma_risk': 30., 'gamma_trade': 1.
+        })

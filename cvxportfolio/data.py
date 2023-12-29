@@ -803,6 +803,16 @@ class MarketData:
         """
         return None
 
+# compiled based on Interactive Brokers benchmark rates choices
+# (see https://www.ibkrguides.com/kb/article-2949.htm)
+# and their FRED codes
+RATES = {
+    'USDOLLAR': 'DFF', # Federal funds effective rate
+    'EURO': 'ECBESTRVOLWGTTRMDMNRT', # BCE short term rate
+    'GBPOUND': 'IUDSOIA', # SONIA
+    'JPYEN': 'IRSTCB01JPM156N', # updated monthly
+    }
+
 class MarketDataInMemory(MarketData):
     """Market data that is stored in memory when initialized."""
 
@@ -919,9 +929,10 @@ class MarketDataInMemory(MarketData):
         objective term.
         """
 
-        if not cash_key == 'USDOLLAR':
+        if not cash_key in RATES:
             raise NotImplementedError(
-                'Currently the only data pipeline built is for USDOLLAR cash')
+                'Currently the only data pipelines built are for cash_key'
+                f' in {list(RATES)}')
 
         if self.returns.index.tz is None:
             raise DataError(
@@ -937,7 +948,9 @@ class MarketDataInMemory(MarketData):
                 + " its name.")
 
         data = Fred(
-            'DFF', base_location=self.base_location, grace_period=grace_period)
+            RATES[cash_key], base_location=self.base_location,
+            grace_period=grace_period)
+
         cash_returns_per_period = resample_returns(
             data.data/100, periods=self.periods_per_year)
 

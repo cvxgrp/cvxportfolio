@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 def main(
     policy, hyperparameter_opt_start, objective, universe,
-    cash_key='USDOLLAR'):
+    cash_key='USDOLLAR', initial_values=None):
     """Executor for each strategy's script.
 
     :param policy: Function that returns the policy object and a dictionary
@@ -67,6 +67,8 @@ def main(
     :type universe: iterable
     :param cash_key: Name of cash account.
     :type cash_key: str
+    :param initial_values: Initial hyper-parameter choices.
+    :type initial_values: dict or None
     """
     if len(sys.argv) < 2 or sys.argv[1] not in ['hyperparameters', 'strategy']:
         print('Usage (from root directory):')
@@ -86,7 +88,9 @@ def main(
         sys.exit(0)
 
     runner = _Runner(
-        policy, hyperparameter_opt_start, objective, universe, cash_key)
+        policy=policy, hyperparameter_opt_start=hyperparameter_opt_start,
+        objective=objective, universe=universe, cash_key=cash_key,
+        initial_values=initial_values)
 
     if sys.argv[1] == 'hyperparameters':
         runner.run_hyperparameters()
@@ -95,7 +99,8 @@ def main(
 
 
 def hyperparameter_optimize(
-    universe, policy, hyperparameter_opt_start, objective='sharpe_ratio'):
+    universe, policy, hyperparameter_opt_start, objective='sharpe_ratio',
+    initial_values=None):
     """Optimize hyper-parameters of a policy over back-test.
 
     :param universe: Trading universe for the policy.
@@ -109,12 +114,15 @@ def hyperparameter_optimize(
         (must be an attribute of :class:`cvxportfolio.BacktestResult`).
         Default ``'sharpe_ratio'``.
     :type objective: str
+    :param initial_values: Initial hyper-parameter choices.
+    :type initial_values: dict or None
 
     :return: Choice of gamma risk and gamma trade.
     :rtype: dict
     """
     hyper_parameter_names = inspect.getfullargspec(policy).args
-    initial_values = {k: 1. for k in hyper_parameter_names}
+    if initial_values is None:
+        initial_values = {k: 1. for k in hyper_parameter_names}
 
     sim = cvx.StockMarketSimulator(universe)
     policy, hyperpar_handles = policy(**initial_values)
@@ -152,12 +160,13 @@ class _Runner:
 
     def __init__(
         self, policy, hyperparameter_opt_start, objective, universe,
-            cash_key='USDOLLAR'):
+            cash_key='USDOLLAR', initial_values=None):
         self.policy = policy
         self.hyperparameter_opt_start = hyperparameter_opt_start
         self.objective = objective
         self.universe = universe
         self.cash_key = cash_key
+        self.initial_values = initial_values
         # self.today = str(datetime.datetime.now().date())
         self.stratfile = self.policy.__code__.co_filename
         self.all_hyper_params = self.load_json(self.file_hyper_parameters)
@@ -248,7 +257,7 @@ class _Runner:
         self.all_hyper_params[self.today] = hyperparameter_optimize(
             universe=self.universe, policy=self.policy,
             hyperparameter_opt_start=self.hyperparameter_opt_start,
-            objective=self.objective)
+            objective=self.objective, initial_values=self.initial_values)
 
         print('Hyper-parameters optimized today:')
         print(self.all_hyper_params[self.today])
