@@ -20,7 +20,7 @@ optimization period, and objective function.
 Here we define the logic to handle those, both for online execution and
 hyper-parameter optimization. Also we save everything in json
 files and (in the future) store in git and check for problems and errors.
-This is currently run in a cron job from a shell script 
+This is currently run in a cron job from a shell script
 (``strategies_runner.sh``) in the root of the repository, which also stores in
 git.
 
@@ -255,65 +255,106 @@ class _Runner:
 
         self.store_json(self.file_hyper_parameters, self.all_hyper_params)
 
-    def backtest_from_last_point(self):
-        """Backtest from the last point to get new holdings.
+    def backtest_from_day(self, day):
+        """Back-test from day with stored weights to get next days holdings.
 
         .. note::
 
-            If some stock was delisted between the last execution and today's
-            open this will fail.
+            If some stock was delisted between the day and the next this will
+            fail.
+
+        :param day: Which day to back-test.
+        :type day: pandas.Timestamp
 
         :return: New holdings up to today's open.
         :rtype: pandas.DataFrame
         """
-        last_day = sorted(self.all_holdings.keys())[-1]
-        logger.info("Back-testing from %s to %s to get today's holdings",
-            last_day, self.today)
+        # last_day = sorted(self.all_holdings.keys())[-1]
+        logger.info("Back-testing day %s to get next day's holdings", day)
 
-        last_day_holdings = pd.Series(self.all_holdings[last_day])
-        last_day_target_weigths = pd.Series(self.all_target_weights[last_day])
-        last_day_universe = [
-            el for el in last_day_holdings.index if not el == self.cash_key]
+        day_init_holdings = pd.Series(self.all_holdings[day])
+        day_target_weigths = pd.Series(self.all_target_weights[day])
+        day_universe = [
+            el for el in day_init_holdings.index if not el == self.cash_key]
         sim = cvx.StockMarketSimulator(
-            last_day_universe, cash_key=self.cash_key)
+            day_universe, cash_key=self.cash_key)
 
         # This should be done by MarketSimulator, but for safety.
-        last_day_holdings = last_day_holdings[sim.market_data.returns.columns]
-        last_day_target_weigths = last_day_target_weigths[
+        day_init_holdings = day_init_holdings[sim.market_data.returns.columns]
+        last_day_target_weigths = day_target_weigths[
             sim.market_data.returns.columns]
 
         # For safety also recompute cash of target weights
-        assert np.isclose(last_day_target_weigths.iloc[-1],
-            1-last_day_target_weigths.iloc[:-1].sum())
-        last_day_target_weigths.iloc[-1] = \
-            1-last_day_target_weigths.iloc[:-1].sum()
+        assert np.isclose(day_target_weigths.iloc[-1],
+            1-day_target_weigths.iloc[:-1].sum())
+        day_target_weigths.iloc[-1] = \
+            1-day_target_weigths.iloc[:-1].sum()
 
         result = sim.backtest(
                 policy=cvx.FixedWeights(last_day_target_weigths),
-                h=last_day_holdings, start_time=last_day)
-        return result.h.loc[result.h.index > last_day]
+                h=day_init_holdings, start_time=day)
+        return result.h.loc[result.h.index > day]
 
-    def adjust_universe(self):
-        """If today's universe changed, liquidate unused stocks first."""
-        today_ts = sorted(self.all_holdings.keys())[-1]
-        initial_holdings = self.all_holdings[today_ts]
+    def adjust_universe(self, day, new_universe):
+        """If day universe changed, liquidate unused stocks first.
+
+        :param day: Time period at which we adjust.
+        :type day: pandas.Timestamp
+        :param new_universe: New universe to adjust to.
+        :type new_universe: iterable
+        """
+
+        initial_holdings = self.all_holdings[day]
         holdings_universe = [
             el for el in initial_holdings if not el == self.cash_key]
 
-        if not set(holdings_universe) == set(self.universe):
-            print('Universe from last time is not same as todays. Adjusting.')
+        if not set(holdings_universe) == set(new_universe):
+            logging.info(
+                'Universe from last time is not same as day %s. Adjusting.',
+                day)
 
             # liquidate
             stocks_to_liquidate = set(holdings_universe).difference(
-                self.universe)
+                new_universe)
             initial_holdings[self.cash_key] += sum(
                 initial_holdings[k] for k in stocks_to_liquidate)
             for stock in stocks_to_liquidate:
                 del initial_holdings[stock]
 
             # add zeros
-            for stock in set(self.universe).difference(holdings_universe):
+            for stock in set(new_universe).difference(holdings_universe):
                 initial_holdings[stock] = 0.
+
+    def reconcile_and_get_todays_holdings(self):
+        """Reconcile yesterday's holdings and get today's."""
+
+        last_run_day = sorted(self.all_holdings.keys())[-1]
+
+        # reconciliation
+        if len(self.all_holdings) > 1:
+
+            # first get the universe we were using yesterday
+            yesterdays_holdings = self.all_holdings[last_run_day]
+            yesterdays_universe = [
+                el for el in yesterdays_holdings if not el == self.cash_key]
+
+            # now back-test from day before yesterday
+            day_before_last_run = sorted(self.all_holdings.keys())[-2]
+            new_holdings = self.backtest_from_day(day_before_last_run)
+
+            # update including today (which will be overwritten next)
+            for t in new_holdings.index:
+                self.all_holdings[t] = dict(new_holdings.loc[t])
+
+            # adjust yesterday universe
+            self.adjust_universe(
+                last_run_day, new_universe=yesterdays_universe)
+
+        # now back-test from yesterday to get today holdings
+        new_holdings = self.backtest_from_day(last_run_day)
+        for t in new_holdings.index:
+            self.all_holdings[t] = dict(new_holdings.loc[t])
+        self.adjust_universe(self.today, self.universe)
 
     def get_current_holdings(self):
         """Get current (today's open) holdings.
@@ -332,10 +373,8 @@ class _Runner:
                 logger.info(
                     'Today already in the initial holdings file, returning.')
                 return self.all_holdings[self.today]
-            new_holdings = self.backtest_from_last_point()
-            for t in new_holdings.index:
-                self.all_holdings[t] = dict(new_holdings.loc[t])
-            self.adjust_universe()
+
+            self.reconcile_and_get_todays_holdings()
 
         self.store_json(self.file_holdings, self.all_holdings)
 
