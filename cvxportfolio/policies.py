@@ -528,7 +528,7 @@ class AdaptiveRebalance(Policy):
             return self.target.current_value
         return current_weights
 
-
+# pylint: disable=too-many-instance-attributes
 class MultiPeriodOptimization(Policy):
     r"""Multi Period Optimization policy.
 
@@ -589,6 +589,7 @@ class MultiPeriodOptimization(Policy):
         is not right.
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self, objective, constraints=(), include_cash_return=True,
         planning_horizon=None, terminal_constraint=None,
@@ -629,60 +630,60 @@ class MultiPeriodOptimization(Policy):
 
         self.cvxpy_kwargs = kwargs
 
-        # redefined below, maybe they all should be private attributes
-        self.cvxpy_objective = 0
-        self.cvxpy_constraints = []
-        self.problem = None
-        self.w_bm = None
-        self.w_current = None
-        self.z_at_lags = None
-        self.w_plus_at_lags = None
-        self.w_plus_minus_w_bm_at_lags = None
+        # redefined below
+        self._cvxpy_objective = 0
+        self._cvxpy_constraints = []
+        self._problem = None
+        self._w_bm = None
+        self._w_current = None
+        self._z_at_lags = None
+        self._w_plus_at_lags = None
+        self._w_plus_minus_w_bm_at_lags = None
         self._cache = {}
 
-    def _compile_to_cvxpy(self):  # , w_plus, z, value):
+    def _compile_to_cvxpy(self):
         """Compile all cvxpy expressions and the problem."""
-        self.cvxpy_objective = [
+        self._cvxpy_objective = [
             el.compile_to_cvxpy(
-                self.w_plus_at_lags[i], self.z_at_lags[i],
-                self.w_plus_minus_w_bm_at_lags[i])
+                self._w_plus_at_lags[i], self._z_at_lags[i],
+                self._w_plus_minus_w_bm_at_lags[i])
             for i, el in enumerate(self.objective)]
-        for el, term in zip(self.objective, self.cvxpy_objective):
+        for el, term in zip(self.objective, self._cvxpy_objective):
             if not term.is_dcp():
                 raise ConvexSpecificationError(el)
             if not term.is_concave():
                 raise ConvexityError(el)
-        self.cvxpy_objective = sum(self.cvxpy_objective)
+        self._cvxpy_objective = sum(self._cvxpy_objective)
 
         def _compile_and_check_constraint(constr, i):
             result = constr.compile_to_cvxpy(
-                self.w_plus_at_lags[i], self.z_at_lags[i],
-                self.w_plus_minus_w_bm_at_lags[i])
+                self._w_plus_at_lags[i], self._z_at_lags[i],
+                self._w_plus_minus_w_bm_at_lags[i])
             for el in (result if hasattr(result, '__iter__') else [result]):
                 if not el.is_dcp():
                     raise ConvexSpecificationError(constr)
             return result
 
-        self.cvxpy_constraints = [
+        self._cvxpy_constraints = [
             flatten_heterogeneous_list([
                 _compile_and_check_constraint(constr, i) for constr in el])
             for i, el in enumerate(self.constraints)]
 
-        self.cvxpy_constraints = sum(self.cvxpy_constraints, [])
-        self.cvxpy_constraints += [cp.sum(z) == 0 for z in self.z_at_lags]
-        w = self.w_current
+        self._cvxpy_constraints = sum(self._cvxpy_constraints, [])
+        self._cvxpy_constraints += [cp.sum(z) == 0 for z in self._z_at_lags]
+        w = self._w_current
         for i in range(self._planning_horizon):
-            self.cvxpy_constraints.append(
-                self.w_plus_at_lags[i] == self.z_at_lags[i] + w)
-            self.cvxpy_constraints.append(
-                self.w_plus_at_lags[i] - self.w_bm == \
-                    self.w_plus_minus_w_bm_at_lags[i])
-            w = self.w_plus_at_lags[i]
+            self._cvxpy_constraints.append(
+                self._w_plus_at_lags[i] == self._z_at_lags[i] + w)
+            self._cvxpy_constraints.append(
+                self._w_plus_at_lags[i] - self._w_bm == \
+                    self._w_plus_minus_w_bm_at_lags[i])
+            w = self._w_plus_at_lags[i]
         if not self.terminal_constraint is None:
-            self.cvxpy_constraints.append(w == self.terminal_constraint)
-        self.problem = cp.Problem(cp.Maximize(
-            self.cvxpy_objective), self.cvxpy_constraints)
-        if not self.problem.is_dcp():  # dpp=True)
+            self._cvxpy_constraints.append(w == self.terminal_constraint)
+        self._problem = cp.Problem(cp.Maximize(
+            self._cvxpy_objective), self._cvxpy_constraints)
+        if not self._problem.is_dcp():  # dpp=True)
             raise SyntaxError(
                 "The optimization problem compiled by %s"
                 + " does not follow the convex optimization rules."
@@ -713,14 +714,14 @@ class MultiPeriodOptimization(Policy):
 
         self.benchmark.initialize_estimator_recursive(
             universe=universe, trading_calendar=trading_calendar)
-        self.w_bm = cp.Parameter(len(universe))
+        self._w_bm = cp.Parameter(len(universe))
 
-        self.w_current = cp.Parameter(len(universe))
-        self.z_at_lags = [cp.Variable(len(universe))
+        self._w_current = cp.Parameter(len(universe))
+        self._z_at_lags = [cp.Variable(len(universe))
                           for i in range(self._planning_horizon)]
-        self.w_plus_at_lags = [cp.Variable(
+        self._w_plus_at_lags = [cp.Variable(
             len(universe)) for i in range(self._planning_horizon)]
-        self.w_plus_minus_w_bm_at_lags = [cp.Variable(
+        self._w_plus_minus_w_bm_at_lags = [cp.Variable(
             len(universe)) for i in range(self._planning_horizon)]
 
         # simulator will overwrite this with cache loaded from disk
@@ -728,10 +729,9 @@ class MultiPeriodOptimization(Policy):
 
         self._compile_to_cvxpy()
 
+    # pylint: disable=arguments-differ
     def values_in_time_recursive(
-        self, t, current_weights,
-        current_portfolio_value, past_returns, past_volumes,
-        current_prices, **kwargs):
+        self, t, current_weights, current_portfolio_value, **kwargs):
         """Update all cvxpy parameters, solve, and return allocation weights.
 
         We redefine the recursive version of :meth:`values_in_time`
@@ -743,13 +743,7 @@ class MultiPeriodOptimization(Policy):
         :type current_weights: pandas.Series
         :param current_portfolio_value: Current total value of the portfolio.
         :type current_portfolio_value: float
-        :param past_returns: Past market returns (includes cash).
-        :type past_returns: pandas.DataFrame
-        :param past_volumes: Past market volumes, or None if not provided.
-        :type past_volumes: pandas.DataFrame or None
-        :param current_prices: Current open prices, or None if not provided.
-        :type current_prices: pandas.Series or None
-        :param kwargs: Unused arguments to :meth:`values_in_time_recursive`.
+        :param kwargs: Other arguments to :meth:`values_in_time_recursive`.
         :type kwargs: dict
 
         :raises cvxportfolio.errors.DataError: Current portfolio value is
@@ -773,8 +767,7 @@ class MultiPeriodOptimization(Policy):
             obj.values_in_time_recursive(
                 t=t, current_weights=current_weights,
                 current_portfolio_value=current_portfolio_value,
-                past_returns=past_returns, past_volumes=past_volumes,
-                current_prices=current_prices, mpo_step=i, cache=self._cache,
+                mpo_step=i, cache=self._cache,
                 **kwargs)
 
         for i, constr_at_lag in enumerate(self.constraints):
@@ -782,20 +775,17 @@ class MultiPeriodOptimization(Policy):
                 constr.values_in_time_recursive(
                     t=t, current_weights=current_weights,
                     current_portfolio_value=current_portfolio_value,
-                    past_returns=past_returns, past_volumes=past_volumes,
-                    current_prices=current_prices, mpo_step=i,
-                    cache=self._cache, **kwargs)
+                    mpo_step=i, cache=self._cache, **kwargs)
 
         self.benchmark.values_in_time_recursive(
             t=t, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value,
-            past_returns=past_returns, past_volumes=past_volumes,
-            current_prices=current_prices, **kwargs)
+            **kwargs)
 
-        self.w_bm.value = np.array(self.benchmark.current_value.values)\
+        self._w_bm.value = np.array(self.benchmark.current_value.values)\
              if hasattr(self.benchmark.current_value, 'values'
             ) else np.array(self.benchmark.current_value)
-        self.w_current.value = current_weights.values
+        self._w_current.value = current_weights.values
 
         try:
             with warnings.catch_warnings():
@@ -804,25 +794,25 @@ class MultiPeriodOptimization(Policy):
                 # suppress cvxpy 1.4 ECOS deprecation warnings
                 if cp.__version__[:3] == '1.4':
                     warnings.filterwarnings("ignore", category=FutureWarning)
-                self.problem.solve(**self.cvxpy_kwargs)
+                self._problem.solve(**self.cvxpy_kwargs)
         except cp.SolverError as exc:
             raise PortfolioOptimizationError(
                 "Numerical solver for policy %s at time %s failed;"
                 + " try changing it, relaxing some constraints,"
                 + " or removing costs.", self.__class__.__name__, t) from exc
 
-        if self.problem.status in ["unbounded", "unbounded_inaccurate"]:
+        if self._problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(
                 f"Policy {self.__class__.__name__} at time "
                 + f"{t} resulted in an unbounded problem.")
 
-        if self.problem.status in ["infeasible", 'infeasible_inaccurate']:
+        if self._problem.status in ["infeasible", 'infeasible_inaccurate']:
             raise PortfolioOptimizationError(
                 f"Policy {self.__class__.__name__} at time "
                 + f"{t} resulted in an infeasible problem.")
 
         result = current_weights + pd.Series(
-            self.z_at_lags[0].value, current_weights.index)
+            self._z_at_lags[0].value, current_weights.index)
         self._current_value = result
         return result
 
@@ -880,12 +870,13 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
             include_cash_return=include_cash_return,
             benchmark=benchmark, **kwargs)
 
-    # def __repr__(self):
-    #     return self.__class__.__name__ + '(' \
-    #         + 'objective=' + str(self.objective[0]) \
-    #         + ', constraints=' + str(self.constraints[0])
-    #         + ', benchmark=' + str(self.constraints[0])
-    #         + ', cvxpy_kwargs=' + str(self.cvxpy_kwargs)
+    def __repr__(self):
+        return self.__class__.__name__ + '(' \
+            + 'objective=' + str(self.objective[0]) \
+            + ', constraints=' + str(self.constraints[0])\
+            + ', benchmark=' + str(self.benchmark)\
+            + ', cvxpy_kwargs=' + str(self.cvxpy_kwargs)\
+            + ')'
 
 # Aliases
 
