@@ -1,12 +1,14 @@
 #! /usr/bin/env bash
 # 
-# run this from root of repo, at ~9.35am New York Time
+# We run this in a cron job, from the root of repo in the development
+# environment, at **10am New York time**. So, we give time to the
+# data provider to update their open prices. If we had a real-time data
+# provider we could run this exactly at market open.
 #
-# note that the open prices provided by the data provider are not finalized,
-# they may change on the next day. we handle this case by re-calculating the
-# holdings of yesterday as well, and committing the change to git too; 
-# **we do not change** the weights that we calculated yesterday, so there
-# is still no look-ahead
+# Since the open prices by the data provider are in any case not
+# finalized, we also re-calculate the holdings of the previous day and commit
+# their changes to git too; **we do not change** the weights that we calculated
+# the previous day (as certified by git), so there is still no look-ahead.
 
 env/bin/python -m examples.strategies.dow30_daily strategy &>> examples/strategies/dow30_daily.log
 git add examples/strategies/dow30_daily*.json
