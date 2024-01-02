@@ -396,6 +396,11 @@ class _Runner:
         :raises ValueError: If there are no hyper-parameters available.
         """
 
+        if self.today in self.all_target_weights:
+            logger.info(
+                "Already computed weights for last trading day, aborting.")
+            return
+
         if len(self.all_hyper_params) < 1:
             raise ValueError('Empty hyper-parameters file!')
         hp_index = sorted(self.all_hyper_params.keys())[-1]
