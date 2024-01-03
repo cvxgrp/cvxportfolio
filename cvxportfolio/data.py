@@ -329,14 +329,15 @@ class YahooFinance(SymbolData):
         # fill open price with close from day(s) before
         # repeat as long as it helps (up to 1 year)
         for shifter in range(252):
-            logger.info(
-                "Filling opens with close from %s days before", shifter)
             orig_missing_opens = data['open'].isnull().sum()
             data['open'] = data['open'].fillna(data['close'].shift(
                 shifter+1))
             new_missing_opens = data['open'].isnull().sum()
             if orig_missing_opens == new_missing_opens:
                 break
+            logger.info(
+                "Filled missing open prices with close from %s periods before",
+                shifter+1)
 
         # fill close price with same day's open
         data['close'] = data['close'].fillna(data['open'])
