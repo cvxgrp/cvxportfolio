@@ -543,9 +543,9 @@ class Fred(SymbolData):
 
     def _internal_download(self, symbol):
         try:
-            return pd.read_csv(
+            return pd.to_numeric(pd.read_csv(
                 self.URL + f'?id={symbol}',
-                index_col=0, parse_dates=[0])[symbol]
+                index_col=0, parse_dates=[0])[symbol], errors='coerce')
         except URLError as exc:
             raise DataError(f"Download of {symbol}"
                 + f" from {self.__class__.__name__} failed."
