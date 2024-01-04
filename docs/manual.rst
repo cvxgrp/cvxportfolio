@@ -10,6 +10,12 @@ to know. The code blocks in this document assume the following imports
     import numpy as np
     import pandas as pd
 
+.. note::
+
+    This document is a work in progress. It will eventually have more
+    structure. We are prioritizing topics which are more important to
+    understand when using Cvxportfolio.
+
 .. _passing-data:
 
 Passing Data
@@ -216,4 +222,26 @@ that you can access in a :class:`cvxportfolio.BacktestResult` object, include
 the cash account as their last element. In most cases used-provided data is not
 concerned with the cash account (such as all examples above) and so it can be
 ignored. Exceptions are noted in the documentation of each object.
+
+
+.. _multi-period:
+
+Multi-Period Optimization
+-------------------------
+Multi-period optimization is an advanced feature but an important one. You
+should probably first read section 5 (:paper:`in particular 5 <section.5.2>`)
+of the paper to understand the model we work with, which is based on
+model-predictive control, the industrial engineering standard for multi-period
+optimization.
+
+The model itself is given by the following optimization problem, which is
+solved at each time :math:`t` in a back-test (or, the current time if
+running a policy on-line)
+
+.. math::
+
+    \begin{array}{ll}
+         \text{maximize} & \sum_{\tau = t} w_\tau^T \mathbf{E}[r] - \frac{1}{2} w^T \mathbf{Var}[r] w \\
+         \text{subject to} & w \geq 0, w^T \mathbf{1} <= 1
+    \end{array}
 
