@@ -56,6 +56,8 @@ __all__ = [
     "ParticipationRateLimit",
     "MaxWeights",
     "MinWeights",
+    "MaxBenchmarkDeviation",
+    "MinBenchmarkDeviation",
     "NoTrade",
     "NoCash",
     "FactorMaxLimit",
@@ -616,6 +618,77 @@ class MinWeights(InequalityConstraint):
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
         return -self.limit.parameter
+
+class MaxBenchmarkDeviation(MaxWeights):
+    r"""A max limit on post-trade weights minus the benchmark weights.
+
+    In our notation, this is
+
+    .. math::
+
+        {(w_t + z_t - w^\text{bm}_t)}_{1:n} \leq w^\text{max}
+
+    where the limit :math:`w^\text{max}` is either a scalar or a vector, see
+    below.
+
+    .. versionadded:: 1.1.0
+        Added in version 1.1.0
+
+    :param limit: A series or number giving the weights limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
+
+    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile left hand side of the constraint expression."""
+        return w_plus_minus_w_bm[:-1]
+
+
+class MinBenchmarkDeviation(MinWeights):
+    r"""A min limit on post-trade weights minus the benchmark weights.
+
+    In our notation, this is
+
+    .. math::
+
+        {(w_t + z_t - w^\text{bm}_t)}_{1:n} \geq w^\text{min}
+
+    where the limit :math:`w^\text{min}` is either a scalar or a vector, see
+    below.
+
+    .. versionadded:: 1.1.0
+        Added in version 1.1.0
+
+    :param limit: A series or number giving the weights limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
+
+    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+        """Compile left hand side of the constraint expression."""
+        return -w_plus_minus_w_bm[:-1]
 
 
 class MinMaxWeightsAtTimes(Estimator):

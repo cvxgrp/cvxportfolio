@@ -193,6 +193,73 @@ class TestConstraints(CvxportfolioTest):
         model.values_in_time_recursive(t=self.returns.index[2])
         self.assertFalse(cons.value())
 
+    def test_max_bm_dev(self):
+        """Test max benchmark deviation constraint."""
+        model = cvx.MaxBenchmarkDeviation(2)
+        cons = self._build_constraint(model)
+        self.w_plus_minus_w_bm.value = np.ones(self.N) / self.N
+        self.assertTrue(cons.value())
+        tmp = np.zeros(self.N)
+        tmp[0] = 4
+        tmp[-1] = -3
+        self.w_plus_minus_w_bm.value = tmp
+        self.assertFalse(cons.value())
+
+        model = cvx.MaxBenchmarkDeviation(7)
+        cons = self._build_constraint(model)
+
+        tmp = np.zeros(self.N)
+        tmp[0] = 4
+        tmp[-1] = -3
+        self.w_plus_minus_w_bm.value = tmp
+        self.assertTrue(cons.value())
+
+        limits = pd.Series(index=self.returns.index, data=2)
+        limits.iloc[1] = 7
+
+        model = cvx.MaxBenchmarkDeviation(limits)
+        cons = self._build_constraint(model, t=self.returns.index[1])
+
+        tmp = np.zeros(self.N)
+        tmp[0] = 4
+        tmp[-1] = -3
+        self.w_plus_minus_w_bm.value = tmp
+        self.assertTrue(cons.value())
+        model.values_in_time_recursive(t=self.returns.index[2])
+        self.assertFalse(cons.value())
+
+    def test_min_bm_dev(self):
+        """Test min benchmark deviation constraint."""
+        model = cvx.MinBenchmarkDeviation(2)
+        cons = self._build_constraint(model, self.returns.index[1])
+
+        self.w_plus_minus_w_bm.value = np.ones(self.N) / self.N
+        self.assertFalse(cons.value())
+        tmp = np.zeros(self.N)
+        tmp[0] = 4
+        tmp[-1] = -3
+        self.w_plus_minus_w_bm.value = tmp
+        self.assertFalse(cons.value())
+        model = cvx.MinBenchmarkDeviation(-3)
+        cons = self._build_constraint(model, self.returns.index[1])
+        tmp = np.zeros(self.N)
+        tmp[0] = 4
+        tmp[-1] = -3
+        self.w_plus_minus_w_bm.value = tmp
+        self.assertTrue(cons.value())
+
+        limits = pd.Series(index=self.returns.index, data=2)
+        limits.iloc[1] = -3
+        model = cvx.MinBenchmarkDeviation(limits)
+        cons = self._build_constraint(model, t=self.returns.index[1])
+        tmp = np.zeros(self.N)
+        tmp[0] = 4
+        tmp[-1] = -3
+        self.w_plus_minus_w_bm.value = tmp
+        self.assertTrue(cons.value())
+        model.values_in_time_recursive(t=self.returns.index[2])
+        self.assertFalse(cons.value())
+
     def test_factor_max_limit(self):
         """Test factor max limit constraint."""
 

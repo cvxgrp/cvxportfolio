@@ -18,6 +18,8 @@ and Multi Period Optimization policies and can be iterated (and
 optimized over) automatically.
 """
 
+from numbers import Number
+
 import numpy as np
 
 # GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]
@@ -120,11 +122,45 @@ class CombinedHyperParameter(HyperParameter):
         return result
 
     def __repr__(self):
-        result = ''
-        for le, ri in zip(self.left, self.right):
-            result += str(le) + ' * ' + str(ri)
-        return result
+        """Pretty print.
 
+        .. note::
+            This could be improved a lot, it does pretty-printing of algebraic
+            expressions in general. It's not perfect but readable.
+        """
+
+        def _minus_repr(obj):
+            rawrepr = str(obj).lstrip()
+            if rawrepr[0] == '-':
+                return ' +' + rawrepr[1:].lstrip()
+            if rawrepr[0] == '+':
+                return ' -' + rawrepr[1:].lstrip() # pragma: no cover
+            return ' -' + rawrepr
+
+        def _plus_repr(obj):
+            rawrepr = str(obj).lstrip()
+            if rawrepr[0] == '-':
+                return ' -' + rawrepr[1:].lstrip()
+            if rawrepr[0] == '+':
+                return ' +' + rawrepr[1:].lstrip()
+            return ' +' + str(obj)
+
+        result = ''
+
+        def _with_possible_number(num, other):
+            if num == -1.:
+                return _minus_repr(other)
+            if num == 1.:
+                return _plus_repr(other)
+            return str(num).rstrip() + ' * ' + str(other).lstrip()
+
+        for left, right in zip(self.left, self.right):
+            if isinstance(left, Number):
+                result += _with_possible_number(left, right) # pragma: no cover
+            else:
+                result += _with_possible_number(right, left)
+
+        return result.strip()
 
 class RangeHyperParameter(HyperParameter):
     """Range Hyper Parameter.
@@ -147,11 +183,6 @@ class RangeHyperParameter(HyperParameter):
         :rtype: int or float
         """
         return self.values_range[self._index]
-
-    def __repr__(self):
-        return self.__class__.__name__\
-            + f'(current_value={self.current_value})'
-            #+ f'(values_range={self.values_range}'\
 
     def _increment(self):
         if self._index == len(self.values_range) - 1:

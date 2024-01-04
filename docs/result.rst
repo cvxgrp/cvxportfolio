@@ -88,7 +88,7 @@ Back-test result
     
     .. autoproperty:: simulator_times
 
-    .. autoproperty:: log
+    .. autoproperty:: logs
 
     .. automethod:: plot
 

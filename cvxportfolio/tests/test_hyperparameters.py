@@ -38,6 +38,31 @@ class GammaTrade(cvx.RangeHyperParameter):
 class TestHyperparameters(CvxportfolioTest):
     """Test hyper-parameters interface."""
 
+    def test_repr(self):
+        """Test the repr method."""
+        obj = cvx.ReturnsForecast() - cvx.Gamma() * cvx.FullCovariance()\
+            - cvx.Gamma() * cvx.StocksTransactionCost()
+
+        self.assertTrue(str(obj) ==
+         '-Gamma(current_value=1.0) * '
+         + 'FullCovariance(Sigma=HistoricalFactorizedCovariance(kelly=True))'
+         + ' + ReturnsForecast(r_hat=HistoricalMeanReturn(), decay=1.0)'
+         + '-Gamma(current_value=1.0) * StocksTransactionCost(a=0.0,'
+         + ' pershare_cost=0.005, b=1.0, exponent=1.5)')
+
+        print(cvx.Gamma() * cvx.Gamma())
+        print(cvx.Gamma() - cvx.Gamma())
+        print(cvx.Gamma() - (2 * cvx.Gamma()))
+        print(cvx.Gamma() - (-2 * cvx.Gamma()))
+        print(cvx.Gamma() - (cvx.Gamma() * -2))
+        print(cvx.Gamma() - (cvx.Gamma() * -2))
+        print(cvx.Gamma() * -1 * (cvx.Gamma() * -2))
+        print(2 * cvx.Gamma() - 3 * cvx.Gamma())
+        print(2 * cvx.Gamma() * ( cvx.ReturnsForecast()
+            - 3 * cvx.Gamma() * cvx.FullCovariance()))
+        print(cvx.Gamma() * 2 * ( cvx.ReturnsForecast()
+            - cvx.Gamma() * (-3) *  cvx.FullCovariance()))
+
     def test_basic_hyper_parameters(self):
         """Test simple syntax and errors."""
         gamma = GammaRisk(current_value=1)

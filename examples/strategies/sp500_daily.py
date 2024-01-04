@@ -13,23 +13,28 @@
 # limitations under the License.
 """This is a simple example strategy which we run every day.
 
-It is a variant of the ``dow30_daily`` strategy with the Nasdaq 100 universe.
-All the rest is the same, but we optimize hyper-parameters over a shorter
-period. It too seems to have outperformed the index etf (``QQQ``), and our
-benchmarks. We will see how it performs online.
+It is a long-only, unit leverage, allocation on the Standard and Poor's 500
+universe. It's very similar to the two strategies ``dow30_daily`` and
+``ndx100_daily``, but here we also constrain the allocation to be close
+to our chosen benchmark, :class:`cvxportfolio.MarketBenchmark` (allocation
+proportional to last year's total market volumes in dollars).
+
+This strategy also seems to have outperformed our benchmarks and an index ETF.
+We will see how it performs online.
 
 You run it from the root of the repository in the development environment by:
 
 .. code:: bash
 
-    python -m examples.strategies.ndx100_daily
+    python -m examples.strategies.sp500_daily
 """
 
 import cvxportfolio as cvx
 
-from ..universes import NDX100
+from ..universes import SP500
 
-HYPERPAR_OPTIMIZE_START = '2020-01-01'
+HYPERPAR_OPTIMIZE_START = '2023-01-01'
+
 OBJECTIVE = 'sharpe_ratio'
 
 def policy(gamma_risk, gamma_trade):
@@ -50,13 +55,40 @@ def policy(gamma_risk, gamma_trade):
         cvx.ReturnsForecast()
         - gamma_risk_hp * cvx.FullCovariance()
         - gamma_trade_hp * cvx.StocksTransactionCost(),
-        [cvx.LongOnly(), cvx.LeverageLimit(1)],
+        [cvx.LongOnly(), cvx.LeverageLimit(1),
+            cvx.MaxBenchmarkDeviation(0.05),
+            cvx.MinBenchmarkDeviation(-0.05)],
         benchmark=cvx.MarketBenchmark(),
         ignore_dpp=True,
     ), {'gamma_risk': gamma_risk_hp, 'gamma_trade': gamma_trade_hp}
 
+
 if __name__ == '__main__':
+
+    RESEARCH = False
+
+    if RESEARCH:
+        INDEX_ETF = 'SPY'
+
+        research_sim = cvx.StockMarketSimulator(SP500)
+
+        result_unif = research_sim.backtest(
+            cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
+        print('uniform')
+        print(result_unif)
+
+        result_market = research_sim.backtest(
+            cvx.MarketBenchmark(), start_time=HYPERPAR_OPTIMIZE_START)
+        print('market')
+        print(result_market)
+
+        result_etf = cvx.StockMarketSimulator([INDEX_ETF]).backtest(
+            cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
+        print(INDEX_ETF)
+        print(result_etf)
 
     from .strategy_executor import main
     main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
-        objective=OBJECTIVE, universe=NDX100)
+        objective=OBJECTIVE, universe=SP500, initial_values={
+            'gamma_risk': 30., 'gamma_trade': 1.
+        })

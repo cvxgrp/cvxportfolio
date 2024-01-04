@@ -59,6 +59,11 @@ def _load_cache(signature, base_location):
     except FileNotFoundError:
         logger.info('Cache not found!')
         return {}
+    except EOFError:
+        logger.warning(
+            'Cache file %s is corrupt! Discarding it.',
+                name) # pragma: no cover
+        return {} # pragma: no cover
     finally:
         if 'LOCK' in globals():
             logger.debug( # pragma: no cover

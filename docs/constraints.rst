@@ -28,6 +28,10 @@ Constraints
 
 .. autoclass:: MinWeights
 
+.. autoclass:: MaxBenchmarkDeviation
+
+.. autoclass:: MinBenchmarkDeviation
+
 .. autoclass:: ParticipationRateLimit
 
 .. autoclass:: TurnoverLimit

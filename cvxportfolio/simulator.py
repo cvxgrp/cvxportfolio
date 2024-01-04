@@ -200,10 +200,13 @@ class MarketSimulator:
 
         # translate to weights
         current_portfolio_value = sum(h)
+        logger.info(
+            'Portfolio value at time %s: %s', t, current_portfolio_value)
         current_weights = pd.to_numeric(h / current_portfolio_value)
 
         # evaluate the policy
         s = time.time()
+        logger.info('Evaluating the policy at time %s', t)
         policy_w = policy.values_in_time_recursive(
             t=t, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value,
@@ -486,6 +489,7 @@ class MarketSimulator:
             print('iteration', i)
             # print('Current optimal hyper-parameters:')
             # print(policy)
+            logger.info('Current policy: %s', policy)
             print('Current objective:')
             print(current_objective)
             # print()
