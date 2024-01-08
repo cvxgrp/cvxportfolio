@@ -73,7 +73,7 @@ class Policy(Estimator):
         :type t: pandas.Timestamp or None
 
         :raises cvxportfolio.errors.DataError: Holdings vector sum to a
-            negative value.
+            negative value or don't match the market data server's universe.
 
         :returns: u, t, shares_traded
         :rtype: pandas.Series, pandas.Timestamp, pandas.Series
@@ -96,7 +96,7 @@ class Policy(Estimator):
         past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
 
         if sorted(h.index) != sorted(past_returns.columns):
-            raise ValueError(
+            raise DataError(
                 "Holdings provided don't match the universe"
                 " implied by the market data server.")
 
@@ -131,7 +131,8 @@ class Policy(Estimator):
 class Hold(Policy):
     """Hold initial portfolio, don't trade."""
 
-    def values_in_time(self, current_weights, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_weights, **kwargs):
         """Return current_weights.
 
         :param current_weights: Current weights.
@@ -151,7 +152,8 @@ class AllCash(Policy):
     :class:`MultiPeriodOptimization` policies.
     """
 
-    def values_in_time(self, past_returns, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, past_returns, **kwargs):
         """Return all cash weights.
 
         :param past_returns: Past market returns (used to infer universe).
@@ -169,7 +171,8 @@ class AllCash(Policy):
 class MarketBenchmark(Policy):
     """Allocation weighted by last year's total market volumes."""
 
-    def values_in_time(self, past_returns, past_volumes, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, past_returns, past_volumes, **kwargs):
         """Return market benchmark weights.
 
         :param past_returns: Past market returns (used to infer universe with
@@ -226,7 +229,8 @@ class RankAndLongShort(Policy):
         self.signal = DataEstimator(signal)
         self.target_leverage = DataEstimator(target_leverage)
 
-    def values_in_time(self, current_weights, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_weights, **kwargs):
         """Get allocation weights.
 
         :param current_weights: Current allocation weights.
@@ -274,11 +278,10 @@ class ProportionalTradeToTargets(Policy):
         self.targets = targets
         self.trading_days = None
 
-    def initialize_estimator(self, trading_calendar, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, trading_calendar, **kwargs):
         """Initialize policy instance with updated trading_calendar.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
         :param trading_calendar: Future (including current) trading calendar.
         :type trading_calendar: pandas.DatetimeIndex
         :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
@@ -286,13 +289,14 @@ class ProportionalTradeToTargets(Policy):
         """
         self.trading_days = trading_calendar
 
-    def values_in_time(self, t, current_weights, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, current_weights, **kwargs):
         """Get current allocation weights.
 
-        :param current_weights: Current allocation weights.
-        :type current_weights: pandas.Series
         :param t: Current time.
         :type t: pandas.Timestamp
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
         :param kwargs: Unused arguments to :meth:`values_in_time`.
         :type kwargs: dict
 
@@ -347,17 +351,18 @@ class FixedTrades(Policy):
         self.trades_weights = DataEstimator(
             trades_weights, data_includes_cash=True)
 
-    def values_in_time_recursive(self, t, current_weights, **kwargs):
+    def values_in_time_recursive( # pylint: disable=arguments-differ
+            self, t, current_weights, **kwargs):
         """Get current allocation weights.
 
         We redefine the recursive version of :meth:`values_in_time` because
         we catch an exception thrown by a sub-estimator.
 
-        :param current_weights: Current allocation weights.
-        :type current_weights: pandas.Series
         :param t: Current time.
         :type t: pandas.Timestamp
-        :param kwargs: Unused arguments to :meth:`values_in_time_recursive`.
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
         :type kwargs: dict
 
         :returns: Allocation weights.
@@ -398,16 +403,17 @@ class FixedWeights(Policy):
         self.target_weights = DataEstimator(
             target_weights, data_includes_cash=True)
 
-    def values_in_time_recursive(self, t, current_weights, **kwargs):
+    def values_in_time_recursive( # pylint: disable=arguments-differ
+            self, t, current_weights, **kwargs):
         """Get current allocation weights.
 
         We redefine the recursive version of :meth:`values_in_time` because
         we catch an exception thrown by a sub-estimator.
 
-        :param current_weights: Current allocation weights.
-        :type current_weights: pandas.Series
         :param t: Current time.
         :type t: pandas.Timestamp
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
         :param kwargs: Unused arguments to :meth:`values_in_time_recursive`.
         :type kwargs: dict
 
@@ -444,7 +450,8 @@ class Uniform(FixedWeights):
         # values_in_time_recursive
         self.target_weights = None
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize this estimator.
 
         :param universe: Trading universe, including cash.
@@ -518,7 +525,8 @@ class AdaptiveRebalance(Policy):
         self.target = DataEstimator(target)
         self.tracking_error = DataEstimator(tracking_error)
 
-    def values_in_time(self, current_weights, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_weights, **kwargs):
         """Get target allocation weights.
 
         :param current_weights: Current allocation weights.
@@ -697,8 +705,8 @@ class MultiPeriodOptimization(Policy):
                 + " cvxportfolio terms and is probably due to a"
                 + " mis-specified custom term.", self.__class__.__name__)
 
-    # pylint: disable=useless-type-doc,useless-param-doc
-    def initialize_estimator_recursive(self, universe, **kwargs):
+    def initialize_estimator_recursive( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize the policy object with the trading universe.
 
         We redefine the recursive version of :meth:`initialize_estimator`
@@ -719,7 +727,6 @@ class MultiPeriodOptimization(Policy):
 
         self.benchmark.initialize_estimator_recursive(
             universe=universe, **kwargs)
-
 
         self._w_bm = cp.Parameter(len(universe))
 
@@ -749,9 +756,8 @@ class MultiPeriodOptimization(Policy):
                 constr.finalize_estimator_recursive(**kwargs)
         self.benchmark.finalize_estimator_recursive(**kwargs)
 
-    # pylint: disable=arguments-differ
-    def values_in_time_recursive(
-        self, t, current_weights, current_portfolio_value, **kwargs):
+    def values_in_time_recursive( # pylint: disable=arguments-differ
+            self, t, current_weights, current_portfolio_value, **kwargs):
         """Update all cvxpy parameters, solve, and return allocation weights.
 
         We redefine the recursive version of :meth:`values_in_time`

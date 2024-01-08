@@ -129,7 +129,8 @@ class HistoricalMeanReturn(BaseForecast):
         self._last_counts = None
         self._last_sum = None
 
-    def initialize_estimator(self, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Re-initialize whenever universe changes.
 
         :param kwargs: Unused arguments to :meth:`initialize_estimator`.
@@ -137,7 +138,8 @@ class HistoricalMeanReturn(BaseForecast):
         """
         self.__post_init__()
 
-    def values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, past_returns, **kwargs):
         """Obtain current value of the mean returns.
 
         :param t: Current time.
@@ -187,7 +189,8 @@ class HistoricalVariance(BaseForecast):
         self._last_counts = None
         self._last_sum = None
 
-    def initialize_estimator(self, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Re-initialize whenever universe changes.
 
         :param kwargs: Unused arguments to :meth:`initialize_estimator`.
@@ -195,7 +198,8 @@ class HistoricalVariance(BaseForecast):
         """
         self.__post_init__()
 
-    def values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, past_returns, **kwargs):
         """Obtain current value either by update or from scratch.
 
         :param t: Current time.
@@ -360,7 +364,8 @@ class HistoricalLowRankCovarianceSVD(Estimator):
         return F.values, idyosyncratic.values
 
     @online_cache
-    def values_in_time(self, past_returns, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, past_returns, **kwargs):
         """Current low-rank model, also cached.
 
         :param past_returns: Past market returns (including cash).
@@ -418,7 +423,8 @@ class HistoricalFactorizedCovariance(BaseForecast):
         self._last_sum_matrix = None
         self._joint_mean = None
 
-    def initialize_estimator(self, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Re-initialize whenever universe changes.
 
         :param kwargs: Unused arguments to :meth:`initialize_estimator`.
@@ -464,7 +470,8 @@ class HistoricalFactorizedCovariance(BaseForecast):
             self._joint_mean += last_ret
 
     @online_cache
-    def values_in_time(self, t, past_returns, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, past_returns, **kwargs):
         """Obtain current value of the covariance estimate.
 
         :param t: Current time.

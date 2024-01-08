@@ -165,8 +165,8 @@ class Estimator:
     def values_in_time_recursive(self, **kwargs):
         """Evaluate recursively on sub-estimators.
 
-        :param kwargs: Various parameters that are passed to all elements
-            contained in a policy object.
+        :param kwargs: All parameters to :meth:`values_in_time` that are passed
+            to all elements contained in a policy object.
         :type kwargs: dict
 
         :returns: The current value evaluated by this instance, if it
@@ -323,7 +323,7 @@ class DataEstimator(Estimator):
         :type universe: pandas.Index
         :param trading_calendar: Future (including current) trading calendar.
         :type trading_calendar: pandas.DatetimeIndex
-        :param kwargs: Unused arguments.
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
 
@@ -486,7 +486,8 @@ class DataEstimator(Estimator):
         # if data is scalar or numpy
         return self.value_checker(self._universe_subselect(self.data))
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Obtain value of `self.data` at time t or right before.
 
         :param kwargs: All parameters passed to :meth:`values_in_time`.

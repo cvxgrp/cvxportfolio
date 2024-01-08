@@ -70,7 +70,8 @@ class FullCovariance(Cost):
         self.Sigma = DataEstimator(Sigma)
         self._sigma_sqrt = None
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
@@ -80,7 +81,8 @@ class FullCovariance(Cost):
         """
         self._sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of risk model.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -130,7 +132,8 @@ class RiskForecastError(Cost):
 
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
@@ -141,7 +144,8 @@ class RiskForecastError(Cost):
         self.sigmas_parameter = cp.Parameter(
             len(universe)-1, nonneg=True)  # +self.kelly))
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of risk model.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -184,7 +188,8 @@ class DiagonalCovariance(Cost):
             sigma_squares = sigma_squares()
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
@@ -194,7 +199,8 @@ class DiagonalCovariance(Cost):
         """
         self.sigmas_parameter = cp.Parameter(len(universe)-1)
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of risk model.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -314,7 +320,8 @@ class FactorModelCovariance(Cost):
             self._fit = False
         self.idyosync_sqrt_parameter = None
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
@@ -335,7 +342,8 @@ class FactorModelCovariance(Cost):
                 self.factor_exposures_parameter = cp.Parameter(
                     self.F.parameter.shape)
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update internal parameters.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -406,7 +414,8 @@ class WorstCaseRisk(Cost):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
 
-    def initialize_estimator_recursive(self, **kwargs):
+    def initialize_estimator_recursive( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param kwargs: Arguments to :meth:`initialize_estimator`.
@@ -415,7 +424,8 @@ class WorstCaseRisk(Cost):
         for risk in self.riskmodels:
             risk.initialize_estimator_recursive(**kwargs)
 
-    def values_in_time_recursive(self, **kwargs):
+    def values_in_time_recursive( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of constituent risk models.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -442,7 +452,8 @@ class WorstCaseRisk(Cost):
                  for risk in self.riskmodels]
         return cp.max(cp.hstack(risks))
 
-    def finalize_estimator_recursive(self, **kwargs):
+    def finalize_estimator_recursive( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Finalize object.
 
         :param kwargs: Arguments.

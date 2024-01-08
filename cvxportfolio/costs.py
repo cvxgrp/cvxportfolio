@@ -40,7 +40,7 @@ __all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
            "HcostModel"]
 
 
-class Cost(CvxpyExpressionEstimator):
+class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
     """Base class for cost objects (and also risks).
 
     Here there is some logic used to implement the algebraic operations.
@@ -147,7 +147,8 @@ class CombinedCosts(Cost):
         :param kwargs:  All parameters passed to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-        _ = [el.initialize_estimator_recursive(**kwargs) for el in self.costs]
+        for el in self.costs:
+            el.initialize_estimator_recursive(**kwargs)
 
     def finalize_estimator_recursive(self, **kwargs):
         """Finalize iterating over constituent costs.
@@ -155,18 +156,20 @@ class CombinedCosts(Cost):
         :param kwargs:  All parameters passed to :meth:`finalize_estimator`.
         :type kwargs: dict
         """
-        _ = [el.finalize_estimator_recursive(**kwargs) for el in self.costs]
+        for el in self.costs:
+            el.finalize_estimator_recursive(**kwargs)
 
     def values_in_time_recursive(self, **kwargs):
-        """Iterate over constituent costs.
+        """Evaluate estimators by iterating over constituent costs.
 
         :param kwargs: All parameters passed to :meth:`values_in_time`.
         :type kwargs: dict
         """
-        _ = [el.values_in_time_recursive(**kwargs) for el in self.costs]
+        for el in self.costs:
+            el.values_in_time_recursive(**kwargs)
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Iterate over constituent costs.
+        """Compile cost by iterating over constituent costs.
 
         :param w_plus: Post-trade weights.
         :type w_plus: cvxpy.Variable
@@ -252,9 +255,8 @@ class SoftConstraint(Cost):
     def __init__(self, constraint):
         self.constraint = constraint
 
-    # pylint: disable=inconsistent-return-statements
-    # because we catch the exception
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=inconsistent-return-statements
+        self, w_plus, z, w_plus_minus_w_bm):
         """Compile cost to cvxpy expression.
 
         :param w_plus: Post-trade weights.
@@ -411,7 +413,8 @@ class HoldingCost(Cost, SimulatorCost):
             dividends)
         self.periods_per_year = periods_per_year
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize cvxpy parameters.
 
         We don't use the parameter from
@@ -435,7 +438,8 @@ class HoldingCost(Cost, SimulatorCost):
         if self.dividends is not None:
             self._dividends_parameter = cp.Parameter(len(universe) - 1)
 
-    def values_in_time(self, past_returns, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, past_returns, **kwargs):
         """Update cvxpy parameters.
 
         We compute the estimate of periods per year from past returns
@@ -605,7 +609,8 @@ class TransactionCost(Cost):
         self.first_term_multiplier = None
         self.second_term_multiplier = None
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize cvxpy parameters.
 
         :param universe: Trading universe, including cash.
@@ -620,9 +625,9 @@ class TransactionCost(Cost):
             self.second_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
 
-    def values_in_time(
-        self, current_portfolio_value, past_returns, past_volumes,
-        current_prices, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, past_returns, past_volumes,
+            current_prices, **kwargs):
         """Update cvxpy parameters.
 
         :raises SyntaxError: If the prices are missing from the market data.
@@ -676,8 +681,9 @@ class TransactionCost(Cost):
                      volume_est) ** (
                          (2 if self.exponent is None else self.exponent) - 1)
 
-    def simulate(self, t, u, past_returns, current_returns, current_volumes,
-                  current_prices, **kwargs):
+    def simulate(
+            self, t, u, past_returns, current_returns, current_volumes,
+            current_prices, **kwargs):
         """Simulate transaction cost in cash units.
 
         :raises SyntaxError: If the market returns are not available in the

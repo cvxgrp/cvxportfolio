@@ -233,7 +233,8 @@ class MarketNeutral(EqualityConstraint):
         # self.benchmark = benchmark
         self.market_vector = None
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize parameter with size of universe.
 
         :param universe: Trading universe, including cash.
@@ -243,7 +244,8 @@ class MarketNeutral(EqualityConstraint):
         """
         self.market_vector = cp.Parameter(len(universe)-1)
 
-    def values_in_time(self, past_volumes, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, past_volumes, **kwargs):
         """Update parameter with current market weights and covariance.
 
         :param past_volumes: Past market volumes, in units of value.
@@ -315,7 +317,8 @@ class ParticipationRateLimit(InequalityConstraint):
             max_fraction_of_volumes, compile_parameter=True)
         self.portfolio_value = cp.Parameter(nonneg=True)
 
-    def values_in_time(self, current_portfolio_value, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
         """Update parameter with current portfolio value.
 
         :param current_portfolio_value: Current total value of the portfolio.
@@ -385,7 +388,8 @@ class NoTrade(Constraint):
         self._low = None
         self._high = None
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize internal parameters.
 
         :param universe: Trading universe, including cash.
@@ -398,7 +402,8 @@ class NoTrade(Constraint):
         self._low = cp.Parameter()
         self._high = cp.Parameter()
 
-    def values_in_time(self, t, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, **kwargs):
         """Update parameters, if necessary by imposing no-trade.
 
         :param t: Current time.
@@ -481,7 +486,8 @@ class MinCashBalance(InequalityConstraint):
         self.c_min = DataEstimator(c_min)
         self.rhs = cp.Parameter()
 
-    def values_in_time(self, current_portfolio_value, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
         """Update parameter with current portfolio value.
 
         :param current_portfolio_value: Current total value of the portfolio.
@@ -712,7 +718,8 @@ class MinMaxWeightsAtTimes(Estimator):
         self.limit = None
         self.trading_calendar = None
 
-    def initialize_estimator(self, trading_calendar, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, trading_calendar, **kwargs):
         """Initialize estimator instance with updated trading_calendar.
 
         :param trading_calendar: Future (including current) trading calendar.
@@ -723,7 +730,8 @@ class MinMaxWeightsAtTimes(Estimator):
         self.trading_calendar = trading_calendar
         self.limit = cp.Parameter()
 
-    def values_in_time(self, t, mpo_step, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, mpo_step, **kwargs):
         """If target period is in sight activate constraint.
 
         :param t: Current time.
