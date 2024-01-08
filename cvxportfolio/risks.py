@@ -414,8 +414,7 @@ class WorstCaseRisk(Cost):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
 
-    def initialize_estimator_recursive( # pylint: disable=arguments-differ
-            self, **kwargs):
+    def initialize_estimator_recursive(self, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param kwargs: Arguments to :meth:`initialize_estimator`.
@@ -424,8 +423,7 @@ class WorstCaseRisk(Cost):
         for risk in self.riskmodels:
             risk.initialize_estimator_recursive(**kwargs)
 
-    def values_in_time_recursive( # pylint: disable=arguments-differ
-            self, **kwargs):
+    def values_in_time_recursive(self, **kwargs):
         """Update parameters of constituent risk models.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -452,8 +450,7 @@ class WorstCaseRisk(Cost):
                  for risk in self.riskmodels]
         return cp.max(cp.hstack(risks))
 
-    def finalize_estimator_recursive( # pylint: disable=arguments-differ
-            self, **kwargs):
+    def finalize_estimator_recursive(self, **kwargs):
         """Finalize object.
 
         :param kwargs: Arguments.

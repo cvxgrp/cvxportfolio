@@ -24,6 +24,11 @@ from cvxportfolio.errors import DataError, PortfolioOptimizationError
 from cvxportfolio.forecast import HistoricalFactorizedCovariance
 from cvxportfolio.tests import CvxportfolioTest
 
+VALUES_IN_TIME_DUMMY_KWARGS = {
+    'past_returns': None,
+    'current_prices': None,
+    'past_volumes': None
+}
 
 class TestPolicies(CvxportfolioTest):
     """Test trading policies."""
@@ -150,11 +155,19 @@ class TestPolicies(CvxportfolioTest):
         policy = cvx.FixedTrades(fixed_trades)
         t = self.returns.index[123]
         w = pd.Series(0., self.returns.columns)
-        wplus = policy.values_in_time_recursive(t=t, current_weights=w)
+        wplus = policy.values_in_time_recursive(
+            t=t, current_weights=w,
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS,
+            )
         self.assertTrue(np.all(wplus-w == fixed_trades.loc[t]))
         w = wplus-w
         t = pd.Timestamp('1900-01-01')
-        wplus = policy.values_in_time_recursive(t=t, current_weights=w)
+        wplus = policy.values_in_time_recursive(
+            t=t, current_weights=w,
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS,
+            )
         self.assertTrue(np.all(wplus-w == 0.))
 
     def test_fixed_weights(self):
@@ -169,16 +182,24 @@ class TestPolicies(CvxportfolioTest):
         policy = cvx.FixedWeights(fixed_weights)
         t = self.returns.index[123]
         wplus = policy.values_in_time_recursive(
-            t=t, current_weights=pd.Series(0., self.returns.columns))
+            t=t, current_weights=pd.Series(0., self.returns.columns),
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS,
+            )
         self.assertTrue(np.all(wplus == fixed_weights.loc[t]))
 
         t = self.returns.index[111]
         wplus = policy.values_in_time_recursive(
-            t=t, current_weights=fixed_weights.iloc[110])
+            t=t, current_weights=fixed_weights.iloc[110],
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS)
         self.assertTrue(np.allclose( wplus, fixed_weights.loc[t]))
 
         t = pd.Timestamp('1900-01-01')
-        wplus1 = policy.values_in_time_recursive(t=t, current_weights=wplus)
+        wplus1 = policy.values_in_time_recursive(t=t, current_weights=wplus,
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS,
+            )
         self.assertTrue(np.all(wplus1 == wplus))
 
     def test_periodic_rebalance(self):
@@ -196,23 +217,32 @@ class TestPolicies(CvxportfolioTest):
             self.returns.shape[1]), self.returns.columns)
 
         wplus = policy.values_in_time_recursive(
-            t=rebalancing_times[0], current_weights=init)
+            t=rebalancing_times[0], current_weights=init,
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS,
+            )
         self.assertTrue(np.allclose(wplus, target))
 
         wplus = policy.values_in_time_recursive(
-            t=rebalancing_times[0] + pd.Timedelta('1d'), current_weights=init)
+            t=rebalancing_times[0] + pd.Timedelta('1d'), current_weights=init,
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS,
+            )
         self.assertTrue(np.allclose(wplus, init))
 
     def test_uniform(self):
         """Test uniform allocation."""
         pol = cvx.Uniform()
         pol.initialize_estimator_recursive(
-            self.returns.columns, self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
 
         init = pd.Series(np.random.randn(
             self.returns.shape[1]), self.returns.columns)
         wplus = pol.values_in_time_recursive(
-            t=self.returns.index[123], current_weights=init)
+            t=self.returns.index[123], current_weights=init,
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS,
+            )
         self.assertTrue(np.allclose(
             wplus[:-1],
             np.ones(self.returns.shape[1]-1)/(self.returns.shape[1]-1)))

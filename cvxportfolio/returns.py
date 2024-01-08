@@ -226,7 +226,28 @@ class ReturnsForecastError(Cost):
 
         if isinstance(deltas, type):
             deltas = deltas()
-        self.deltas = DataEstimator(deltas, compile_parameter=True)
+        self.deltas = DataEstimator(deltas)
+        self._deltas_parameter = None
+
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
+        """Initialize model with universe size.
+
+        :param universe: Trading universe, including cash.
+        :type universe: pandas.Index
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: pandas.DatetimeIndex
+        """
+        self._deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Update returns forecast error parameters.
+
+        :param kwargs: All arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
+        self._deltas_parameter.value = self.deltas.current_value
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile to cvxpy expression.
@@ -242,6 +263,4 @@ class ReturnsForecastError(Cost):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        return cp.sum(
-            cp.multiply(
-                cp.abs(w_plus_minus_w_bm[:-1]).T, self.deltas.parameter))
+        return cp.abs(w_plus_minus_w_bm[:-1]).T @ self._deltas_parameter
