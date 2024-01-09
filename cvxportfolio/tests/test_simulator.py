@@ -433,15 +433,33 @@ class TestSimulator(CvxportfolioTest):
         """Test simple back-test."""
         pol = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast() - cvx.ReturnsForecastError()
-            - .5 * cvx.FullCovariance(),
+            - .5 * cvx.WorstCaseRisk(
+                [cvx.FullCovariance(),
+                cvx.DiagonalCovariance() + .25 * cvx.DiagonalCovariance()]),
             [cvx.LeverageLimit(1)], verbose=True,
-            solver=self.default_qp_solver)
+            solver=self.default_socp_solver)
         sim = cvx.MarketSimulator(
             market_data=self.market_data_4, base_location=self.datadir)
         result = sim.backtest(pol, pd.Timestamp(
             '2023-01-01'), pd.Timestamp('2023-04-20'))
 
         print(result)
+
+    def test_wrong_worstcase(self):
+        """Test wrong worst-case convexity."""
+        pol = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast() - cvx.ReturnsForecastError()
+            - .5 * cvx.WorstCaseRisk(
+                [-cvx.FullCovariance(),
+                cvx.DiagonalCovariance() + .25 * cvx.DiagonalCovariance()]),
+            [cvx.LeverageLimit(1)], verbose=True,
+            solver=self.default_socp_solver)
+        sim = cvx.MarketSimulator(
+            market_data=self.market_data_4, base_location=self.datadir)
+
+        with self.assertRaises(ConvexityError):
+            sim.backtest(pol, pd.Timestamp(
+                '2023-01-01'), pd.Timestamp('2023-04-20'))
 
     def test_backtest_changing_universe(self):
         """Test back-test with changing universe."""

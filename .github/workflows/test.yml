@@ -87,6 +87,7 @@ jobs:
               coverage lcov
 
       - name: Coveralls GitHub Action
+        if: ${{ github.event_name == 'push'}}
         uses: coverallsapp/github-action@v1
         with:
           path-to-lcov: coverage.lcov

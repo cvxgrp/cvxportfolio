@@ -21,6 +21,12 @@ import pandas as pd
 import cvxportfolio as cvx
 from cvxportfolio.tests import CvxportfolioTest
 
+VALUES_IN_TIME_DUMMY_KWARGS = {
+    'current_weights': None,
+    'past_returns': None,
+    'current_prices': None,
+    'past_volumes': None
+}
 
 class TestConstraints(CvxportfolioTest):
     """Test Cvxportfolio constraint objects."""
@@ -28,11 +34,14 @@ class TestConstraints(CvxportfolioTest):
     def _build_constraint(self, constraint, t=None):
         """Initialize constraint, build expression, and point it to time."""
         constraint.initialize_estimator_recursive(
-            self.returns.columns, self.returns.index)
+            universe=self.returns.columns, trading_calendar=self.returns.index)
         cvxpy_expression = constraint.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
-        constraint.values_in_time_recursive(t=pd.Timestamp(
-            "2020-01-01") if t is None else t, current_portfolio_value=1000)
+        constraint.values_in_time_recursive(
+            t=pd.Timestamp("2020-01-01") if t is None else t,
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS
+            )
         return cvxpy_expression
 
     def test_long_only(self):
@@ -74,10 +83,12 @@ class TestConstraints(CvxportfolioTest):
         self.w_plus.value = np.zeros(self.N)
         self.w_plus.value[-1] = 1
         model.values_in_time_recursive(t=pd.Timestamp(
-            "2020-01-01"), current_portfolio_value=10001)
+            "2020-01-01"), current_portfolio_value=10001,
+            **VALUES_IN_TIME_DUMMY_KWARGS)
         self.assertTrue(cons.value())
         model.values_in_time_recursive(t=pd.Timestamp(
-            "2020-01-01"), current_portfolio_value=9999)
+            "2020-01-01"), current_portfolio_value=9999,
+            **VALUES_IN_TIME_DUMMY_KWARGS)
         self.assertFalse(cons.value())
 
     def test_dollar_neutral(self):
@@ -123,7 +134,9 @@ class TestConstraints(CvxportfolioTest):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        model.values_in_time_recursive(t=self.returns.index[2])
+        model.values_in_time_recursive(t=self.returns.index[2],
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS)
         self.assertFalse(cons.value())
 
     def test_max_weights(self):
@@ -158,7 +171,9 @@ class TestConstraints(CvxportfolioTest):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        model.values_in_time_recursive(t=self.returns.index[2])
+        model.values_in_time_recursive(t=self.returns.index[2],
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS)
         self.assertFalse(cons.value())
 
     def test_min_weights(self):
@@ -190,7 +205,9 @@ class TestConstraints(CvxportfolioTest):
         tmp[-1] = -3
         self.w_plus.value = tmp
         self.assertTrue(cons.value())
-        model.values_in_time_recursive(t=self.returns.index[2])
+        model.values_in_time_recursive(t=self.returns.index[2],
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS)
         self.assertFalse(cons.value())
 
     def test_max_bm_dev(self):
@@ -225,7 +242,9 @@ class TestConstraints(CvxportfolioTest):
         tmp[-1] = -3
         self.w_plus_minus_w_bm.value = tmp
         self.assertTrue(cons.value())
-        model.values_in_time_recursive(t=self.returns.index[2])
+        model.values_in_time_recursive(t=self.returns.index[2],
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS)
         self.assertFalse(cons.value())
 
     def test_min_bm_dev(self):
@@ -257,7 +276,9 @@ class TestConstraints(CvxportfolioTest):
         tmp[-1] = -3
         self.w_plus_minus_w_bm.value = tmp
         self.assertTrue(cons.value())
-        model.values_in_time_recursive(t=self.returns.index[2])
+        model.values_in_time_recursive(t=self.returns.index[2],
+            current_portfolio_value=1000,
+            **VALUES_IN_TIME_DUMMY_KWARGS)
         self.assertFalse(cons.value())
 
     def test_factor_max_limit(self):
@@ -388,7 +409,8 @@ class TestConstraints(CvxportfolioTest):
         model = cvx.ParticipationRateLimit(
             self.volumes, max_fraction_of_volumes=0.1)
         model.initialize_estimator_recursive(
-            self.returns.columns, self.returns.index)
+            universe=self.returns.columns,
+            trading_calendar=self.returns.index)
         cons = model.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         model.values_in_time_recursive(t=t, current_portfolio_value=value)

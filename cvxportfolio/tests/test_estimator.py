@@ -166,7 +166,7 @@ class TestEstimator(unittest.TestCase):
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data, data_includes_cash=True)
         estimator.initialize_estimator_recursive(
-            universe, trading_calendar=[t])
+            universe=universe, trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data.values)
 
@@ -174,29 +174,30 @@ class TestEstimator(unittest.TestCase):
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data)
         estimator.initialize_estimator_recursive(
-            universe, trading_calendar=[t])
+            universe=universe, trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data.values[:2])
 
         # shuffled universe
         estimator = DataEstimator(data.iloc[::-1])
         estimator.initialize_estimator_recursive(
-            universe, trading_calendar=[t])
+            universe=universe, trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data.values[:2])
 
         # wrong universe
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data)
-        estimator.initialize_estimator_recursive(['d', 'e', 'f'],
-                                                 trading_calendar=[t])
+        estimator.initialize_estimator_recursive(
+            universe=['d', 'e', 'f'], trading_calendar=[t])
         with self.assertRaises(MissingAssetsError):
             result = estimator.values_in_time_recursive(t=t)
 
         # selection of universe
         data = pd.Series(range(len(universe)), index=universe)
         estimator = DataEstimator(data, data_includes_cash=True)
-        estimator.initialize_estimator_recursive(['b'], trading_calendar=[t])
+        estimator.initialize_estimator_recursive(
+            universe=['b'], trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data.values[1])
 
@@ -207,30 +208,30 @@ class TestEstimator(unittest.TestCase):
 
         # with universe of size 2
         estimator = DataEstimator(data, data_includes_cash=True)
-        estimator.initialize_estimator_recursive(['a', 'b'],
-                                                 trading_calendar=[t])
+        estimator.initialize_estimator_recursive(
+            universe=['a', 'b'], trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data)
 
         # with universe of size 3
         estimator = DataEstimator(data, data_includes_cash=True)
-        estimator.initialize_estimator_recursive(['a', 'b', 'c'],
-                                                 trading_calendar=[t])
+        estimator.initialize_estimator_recursive(
+            universe=['a', 'b', 'c'], trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data)
 
         # error with universe of size 4
         estimator = DataEstimator(data, data_includes_cash=True)
-        estimator.initialize_estimator_recursive(['a', 'b', 'c', 'd'],
-                                                 trading_calendar=[t])
+        estimator.initialize_estimator_recursive(
+            universe=['a', 'b', 'c', 'd'], trading_calendar=[t])
         with self.assertRaises(MissingAssetsError):
             result = estimator.values_in_time_recursive(t=t)
 
         # all ok if skipping check
         estimator = DataEstimator(data, data_includes_cash=True,
             ignore_shape_check=True)
-        estimator.initialize_estimator_recursive(['a', 'b', 'c', 'd'],
-                                                 trading_calendar=[t])
+        estimator.initialize_estimator_recursive(
+            universe=['a', 'b', 'c', 'd'], trading_calendar=[t])
         result = estimator.values_in_time_recursive(t=t)
         assert np.all(result == data)
 
