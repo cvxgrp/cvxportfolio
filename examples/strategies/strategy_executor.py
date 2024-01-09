@@ -287,7 +287,7 @@ class _Runner:
             el for el in day_init_holdings.index if not el == self.cash_key]
         sim = cvx.StockMarketSimulator(
             market_data=cvx.DownloadedMarketData(
-            day_universe, min_history=pd.Timedelta('0d'), 
+            day_universe, min_history=pd.Timedelta('0d'),
             cash_key=self.cash_key))
 
         # This should be done by MarketSimulator, but for safety.
