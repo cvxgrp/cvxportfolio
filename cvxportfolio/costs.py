@@ -63,7 +63,7 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
         by summing over costs.
         """
         if isinstance(other, CombinedCosts):
-            return other + self
+            return other.__radd__(self)
         return CombinedCosts([self, other], [1.0, 1.0])
 
     def __rmul__(self, other):
@@ -132,16 +132,26 @@ class CombinedCosts(Cost):
         self.do_convexity_check = True
 
     def __add__(self, other):
-        """Add other (combined) cost to self."""
+        """Add self to other (combined) cost."""
         if isinstance(other, CombinedCosts):
             return CombinedCosts(self.costs + other.costs,
                                  self.multipliers + other.multipliers)
         return CombinedCosts(self.costs + [other], self.multipliers + [1.0])
 
+    def __radd__(self, other):
+        """Add other (combined) cost to self."""
+        if isinstance(other, CombinedCosts):
+            return other + self # pragma: no cover
+        return CombinedCosts([other] + self.costs, [1.0] + self.multipliers)
+
     def __mul__(self, other):
         """Multiply by constant."""
         return CombinedCosts(self.costs,
                              [el * other for el in self.multipliers])
+
+    def __neg__(self):
+        """Take negative of cost."""
+        return self * -1
 
     def initialize_estimator_recursive(self, **kwargs):
         """Initialize iterating over constituent costs.

@@ -129,21 +129,25 @@ class CombinedHyperParameter(HyperParameter):
             expressions in general. It's not perfect but readable.
         """
 
+        # TODO this gives wrong string repr with nested expressions like
+        # ``-(cvx.Gamma() * -3 * (cvx.Gamma() - cvx.Gamma()))``
+        # internal algebra is correct, though
+
         def _minus_repr(obj):
             rawrepr = str(obj).lstrip()
             if rawrepr[0] == '-':
-                return ' +' + rawrepr[1:].lstrip()
+                return ' + ' + rawrepr[1:].lstrip()
             if rawrepr[0] == '+':
-                return ' -' + rawrepr[1:].lstrip() # pragma: no cover
-            return ' -' + rawrepr
+                return ' - ' + rawrepr[1:].lstrip() # pragma: no cover
+            return ' - ' + rawrepr
 
         def _plus_repr(obj):
             rawrepr = str(obj).lstrip()
             if rawrepr[0] == '-':
-                return ' -' + rawrepr[1:].lstrip()
+                return ' - ' + rawrepr[1:].lstrip()
             if rawrepr[0] == '+':
-                return ' +' + rawrepr[1:].lstrip()
-            return ' +' + str(obj)
+                return ' + ' + rawrepr[1:].lstrip()
+            return ' + ' + rawrepr
 
         result = ''
 
