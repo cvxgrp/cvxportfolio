@@ -85,6 +85,8 @@ class Estimator:
         We aren't currently using in the rest of the library but we plan to
         move the caching logic in it.
 
+        .. versionadded:: 1.1.0
+
         :param kwargs: Reserved for future expansion.
         :type kwargs: dict
         """
@@ -94,6 +96,8 @@ class Estimator:
 
     def finalize_estimator_recursive(self, **kwargs):
         """Recursively finalize all estimators in a policy.
+
+        .. versionadded:: 1.1.0
 
         :param kwargs: Parameters sent down an estimator tree to finalize it.
         :type kwargs: dict

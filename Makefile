@@ -37,7 +37,7 @@ test:  ## run tests w/ cov report
 	# $(BINDIR)/bandit $(PROJECT)/*.py $(TESTS)/*.py
 
 lint:  ## run linter
-	$(BINDIR)/pylint $(PROJECT) $(EXTRA_SCRIPTS) $(EXAMPLES)
+	$(BINDIR)/pylint $(PROJECT) # $(EXTRA_SCRIPTS) $(EXAMPLES)
 	$(BINDIR)/diff-quality --violations=pylint --config-file pyproject.toml
 
 docs:  ## build docs

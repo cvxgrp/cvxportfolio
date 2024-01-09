@@ -399,12 +399,16 @@ class FactorModelCovariance(Cost):
 class WorstCaseRisk(Cost):
     """Select the most restrictive risk model for each value of the allocation.
 
-    vector.
-
     Given a list of risk models, penalize the portfolio allocation by
     the one with highest risk value at the solution point. If uncertain
     about which risk model to use this procedure can be an easy
     solution.
+
+    :Example:
+
+        >>> risk_model = cvx.WorstCaseRisk(
+                [cvx.FullCovariance(),
+                cvx.DiagonalCovariance() + 0.25 * cvx.RiskForecastError()])
 
     :param riskmodels: risk model instances on which to compute the
         worst-case risk.
@@ -446,8 +450,16 @@ class WorstCaseRisk(Cost):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        risks = [risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
-                 for risk in self.riskmodels]
+        risks = []
+        for risk in self.riskmodels:
+            # this is needed if user provides individual risk terms
+            # that are composed objects (CombinedCost)
+            # it will check concavity instead of convexity
+            risk.DO_CONVEXITY_CHECK = False
+            risks.append(risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm))
+            # we also change it back in case the user is sharing the instance
+            risk.DO_CONVEXITY_CHECK = True
+
         return cp.max(cp.hstack(risks))
 
     def finalize_estimator_recursive(self, **kwargs):
