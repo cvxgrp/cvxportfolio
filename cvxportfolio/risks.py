@@ -455,10 +455,10 @@ class WorstCaseRisk(Cost):
             # this is needed if user provides individual risk terms
             # that are composed objects (CombinedCost)
             # it will check concavity instead of convexity
-            risk.DO_CONVEXITY_CHECK = False
+            risk.do_convexity_check = False
             risks.append(risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm))
             # we also change it back in case the user is sharing the instance
-            risk.DO_CONVEXITY_CHECK = True
+            risk.do_convexity_check = True
 
         return cp.max(cp.hstack(risks))
 

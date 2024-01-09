@@ -129,7 +129,7 @@ class CombinedCosts(Cost):
         self.costs = costs
         self.multipliers = multipliers
         # this is changed by WorstCaseRisk before compiling to Cvxpy
-        self.DO_CONVEXITY_CHECK = True
+        self.do_convexity_check = True
 
     def __add__(self, other):
         """Add other (combined) cost to self."""
@@ -196,9 +196,9 @@ class CombinedCosts(Cost):
                     cost.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
             if not add.is_dcp():
                 raise ConvexSpecificationError(cost * multiplier)
-            if self.DO_CONVEXITY_CHECK and (not add.is_concave()):
+            if self.do_convexity_check and (not add.is_concave()):
                 raise ConvexityError(cost * multiplier)
-            if (not self.DO_CONVEXITY_CHECK) and add.is_concave():
+            if (not self.do_convexity_check) and add.is_concave():
                 raise ConvexityError(-cost * multiplier)
             expression += add
         return expression
