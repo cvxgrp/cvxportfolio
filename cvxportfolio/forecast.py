@@ -228,11 +228,12 @@ class HistoricalVariance(BaseMeanForecast):
 
     def __post_init__(self):
         if not self.kelly:
-            self.meanforecaster = HistoricalMeanReturn()
+            self.meanforecaster = HistoricalMeanReturn(
+                ema_half_life=self.ema_half_life,
+                ma_window=self.ma_window)
         super().__post_init__()
 
-    def values_in_time( # pylint: disable=arguments-differ
-            self, **kwargs):
+    def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
 
         :param kwargs: All arguments to :meth:`values_in_time`.
