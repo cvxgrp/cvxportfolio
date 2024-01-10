@@ -12,8 +12,14 @@ paper <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`__.
 The documentation of the library is at
 `www.cvxportfolio.com <https://www.cvxportfolio.com>`__.
 
-
 .. Installation
+
+.. note::
+
+   Since end of December 2023 we're running daily `example strategies
+   <https://github.com/cvxgrp/cvxportfolio/tree/master/examples/strategies>`_
+   using the development version (master branch); each day we commit target
+   weights and initial holdings to the repository.
 
 Installation
 ------------
