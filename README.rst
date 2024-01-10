@@ -14,12 +14,13 @@ The documentation of the library is at
 
 .. Installation
 
-.. note::
+*News:*
 
-   Since end of December 2023 we're running daily `example strategies
+   Since end of 2023 we're running daily `example strategies
    <https://github.com/cvxgrp/cvxportfolio/tree/master/examples/strategies>`_
    using the development version (master branch); each day we commit target
-   weights and initial holdings to the repository.
+   weights and initial holdings to the repository. All the code that runs them,
+   including the cron script, is the repository.
 
 Installation
 ------------
