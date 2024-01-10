@@ -282,7 +282,10 @@ class _Runner:
         logger.info("Back-testing day %s to get next day's holdings", day)
 
         day_init_holdings = pd.Series(self.all_holdings[day])
-        day_target_weigths = pd.Series(self.all_target_weights[day])
+        # select same day if available, else last one before
+        weights_day = sorted(
+            [d for d in self.all_target_weights if d <= day])[-1]
+        day_target_weigths = pd.Series(self.all_target_weights[weights_day])
         day_universe = [
             el for el in day_init_holdings.index if not el == self.cash_key]
         sim = cvx.StockMarketSimulator(
