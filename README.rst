@@ -130,6 +130,23 @@ how a simple sweep over hyper-parameters, taking advantage of our
 sophisticated parallel backtest machinery, quickly provides results on
 the best strategy to apply to any given selection of assets.
 
+Similar projects
+----------------
+
+There are many open-source projects for portfolio optimization and back-testing.
+Some notable ones in the Python ecosystem are `Zipline <https://github.com/quantopian/zipline>`_,
+which implements a call-back model for back-testing very similar to the one
+we provide, `Riskfolio-Lib <https://riskfolio-lib.readthedocs.io/en/latest/examples.html>`_
+which implements (many!) portfolio optimization models and also follows a modular
+approach like ours, `VectorBT <https://vectorbt.dev/>`_, a back-testing library
+well-suited for high frequency applications, `PyPortfolioOpt <https://pyportfolioopt.readthedocs.io/en/latest/>`_,
+a simple yet powerful library for portfolio optimization that uses well-known models,
+`YFinance <https://github.com/ranaroussi/yfinance>`_, which is not a portfolio
+optimization library (it only provides a data interface to Yahoo Finance), but
+used to be one of our dependencies, and also `CVXPY <https://www.cvxpy.org>`_ by
+itself, which is used by some of the above and has an extensive 
+`set of examples <https://www.cvxpy.org/examples/index.html#finance>`_
+devoted to portfolio optimization (indeed, Cvxportfolio was born out of those).
 
 .. Contributions
 
