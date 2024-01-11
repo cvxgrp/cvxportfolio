@@ -20,12 +20,12 @@ The documentation of the library is at
    <https://github.com/cvxgrp/cvxportfolio/tree/master/examples/strategies>`_
    using the development version (master branch); each day we commit target
    weights and initial holdings to the repository. All the code that runs them,
-   including the cron script, is the repository.
+   including the cron script, is in the repository.
 
 Installation
 ------------
 
-Cvxportolio is written in Python and can easily installed in any Python
+Cvxportolio is written in Python and can be easily installed in any Python
 environment by simple:
 
 .. code:: bash
@@ -105,7 +105,7 @@ Other examples
 --------------
 
 `Many examples 
-<https://www.cvxportfolio.com/en/latest/examples.html>`_ 
+<https://www.cvxportfolio.com/en/stable/examples.html>`_
 are shown in the documentation website, along with
 their output and comments.
 
@@ -118,7 +118,7 @@ are available in the code repository.
 are visible in a dedicated branch,
 and are being translated to run with the stable versions (``1.0.0`` and above) of the
 library. The translations are visible at `this documentation page
-<https://www.cvxportfolio.com/en/latest/examples/paper_examples.html>`_.
+<https://www.cvxportfolio.com/en/stable/examples/paper_examples.html>`_.
 
 We show in the example on `user-provided
 forecasters <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/user_provided_forecasters.py>`__
@@ -320,8 +320,8 @@ open source license.
    :target: https://github.com/pylint-dev/pylint
 .. |Coverage Status| image:: https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master
    :target: https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master
-.. |Documentation Status| image:: https://readthedocs.org/projects/cvxportfolio/badge/?version=latest
-   :target: https://cvxportfolio.readthedocs.io/en/latest/?badge=latest
+.. |Documentation Status| image:: https://readthedocs.org/projects/cvxportfolio/badge/?version=stable
+   :target: https://cvxportfolio.readthedocs.io/en/stable/?badge=stable
 .. |Apache 2.0 License| image:: https://img.shields.io/badge/License-Apache%202.0-green.svg
    :target: https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/cvxportfolio/badges/version.svg
