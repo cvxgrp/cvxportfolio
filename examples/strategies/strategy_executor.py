@@ -285,6 +285,7 @@ class _Runner:
         # select same day if available, else last one before
         weights_day = sorted(
             [d for d in self.all_target_weights if d <= day])[-1]
+        logger.info('Using target weights of day %s', weights_day)
         day_target_weigths = pd.Series(self.all_target_weights[weights_day])
         day_universe = [
             el for el in day_init_holdings.index if not el == self.cash_key]
