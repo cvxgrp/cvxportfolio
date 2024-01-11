@@ -14,22 +14,27 @@
 """This is a simple example strategy which we run every day.
 
 It is a variant of the ``dow30_daily`` strategy with the Nasdaq 100 universe.
-All the rest is the same, but we optimize hyper-parameters over a shorter
-period. It too seems to have outperformed the index etf (``QQQ``), and our
-benchmarks. We will see how it performs online.
+It too seems to have outperformed the index etf (``QQQ``), and our benchmarks.
+We will see how it performs online.
 
 You run it from the root of the repository in the development environment by:
 
 .. code:: bash
 
     python -m examples.strategies.ndx100_daily
+
+*Edit 2024-01-11:*
+
+    Changed the start time for hyperparameter optimization from 2020-01-01 to
+    2012-01-01, the benchmark from market to uniform, and the CVXPY solver.
+
 """
 
 import cvxportfolio as cvx
 
 from ..universes import NDX100
 
-HYPERPAR_OPTIMIZE_START = '2020-01-01'
+HYPERPAR_OPTIMIZE_START = '2012-01-01'
 OBJECTIVE = 'sharpe_ratio'
 
 def policy(gamma_risk, gamma_trade):
@@ -51,12 +56,38 @@ def policy(gamma_risk, gamma_trade):
         - gamma_risk_hp * cvx.FullCovariance()
         - gamma_trade_hp * cvx.StocksTransactionCost(),
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
-        benchmark=cvx.MarketBenchmark(),
+        benchmark=cvx.Uniform(),
         ignore_dpp=True,
+        solver='CLARABEL',
     ), {'gamma_risk': gamma_risk_hp, 'gamma_trade': gamma_trade_hp}
 
 if __name__ == '__main__':
 
+    RESEARCH = False
+
+    if RESEARCH:
+        INDEX_ETF = 'QQQ'
+
+        research_sim = cvx.StockMarketSimulator(NDX100)
+
+        result_unif = research_sim.backtest(
+            cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
+        print('uniform')
+        print(result_unif)
+
+        result_market = research_sim.backtest(
+            cvx.MarketBenchmark(), start_time=HYPERPAR_OPTIMIZE_START)
+        print('market')
+        print(result_market)
+
+        result_etf = cvx.StockMarketSimulator([INDEX_ETF]).backtest(
+            cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
+        print(INDEX_ETF)
+        print(result_etf)
+
+
     from .strategy_executor import main
     main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
-        objective=OBJECTIVE, universe=NDX100)
+        objective=OBJECTIVE, universe=NDX100, initial_values={
+            'gamma_risk': 10., 'gamma_trade': 1.
+        })
