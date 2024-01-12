@@ -26,7 +26,7 @@ You run it from the root of the repository in the development environment by:
 *Edit 2024-01-11:*
 
     Changed the start time for hyperparameter optimization from 2020-01-01 to
-    2012-01-01, the benchmark from market to uniform, and the CVXPY solver.
+    2012-01-01 and the CVXPY solver.
 
 """
 
@@ -56,7 +56,7 @@ def policy(gamma_risk, gamma_trade):
         - gamma_risk_hp * cvx.FullCovariance()
         - gamma_trade_hp * cvx.StocksTransactionCost(),
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
-        benchmark=cvx.Uniform(),
+        benchmark=cvx.MarketBenchmark(),
         ignore_dpp=True,
         solver='CLARABEL',
     ), {'gamma_risk': gamma_risk_hp, 'gamma_trade': gamma_trade_hp}
@@ -66,6 +66,8 @@ if __name__ == '__main__':
     RESEARCH = False
 
     if RESEARCH:
+        import matplotlib.pyplot as plt
+        import pandas as pd
         INDEX_ETF = 'QQQ'
 
         research_sim = cvx.StockMarketSimulator(NDX100)
@@ -80,14 +82,33 @@ if __name__ == '__main__':
         print('market')
         print(result_market)
 
+        # current strategy
+
+        hyper_pars = pd.read_json(
+            'examples/strategies/ndx100_daily_hyper_parameters.json'
+            ).T.iloc[-1].to_dict()
+
+        result_cur = research_sim.backtest(
+            policy(**hyper_pars)[0],
+            start_time=HYPERPAR_OPTIMIZE_START)
+        print('current')
+        print(result_cur)
+
         result_etf = cvx.StockMarketSimulator([INDEX_ETF]).backtest(
             cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
         print(INDEX_ETF)
         print(result_etf)
 
+        plt.figure()
+        result_cur.growth_rates.iloc[-252*4:].cumsum().plot(label='current')
+        result_unif.growth_rates.iloc[-252*4:].cumsum().plot(label='uniform')
+        result_market.growth_rates.iloc[-252*4:].cumsum().plot(label='market')
+        result_etf.growth_rates.iloc[-252*4:].cumsum().plot(label='market etf')
+        plt.legend()
+
+        plt.show()
+
 
     from .strategy_executor import main
     main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
-        objective=OBJECTIVE, universe=NDX100, initial_values={
-            'gamma_risk': 10., 'gamma_trade': 1.
-        })
+        objective=OBJECTIVE, universe=NDX100)
