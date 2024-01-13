@@ -166,6 +166,26 @@ class BaseMeanForecast(BaseForecast):
         self._agnostic_update(**kwargs)
         return (self._last_sum / self._last_counts).values
 
+    def _ewm_numerator(self, df, t):
+        """Exponential moving window (optional) numerator."""
+        if not _is_timedelta(self.ema_half_life):
+            return df.sum()
+
+        index_in_halflifes = (df.index - t) / self.ema_half_life
+        weighter = np.exp(index_in_halflifes) / np.log(2)
+        filled = df.fillna(0.)
+        return filled.multiply(weighter, axis=0).sum()
+
+    def _ewm_denominator(self, df, t):
+        """Exponential moving window (optional) denominator."""
+        if not _is_timedelta(self.ema_half_life):
+            return df.count()
+
+        index_in_halflifes = (df.index - t) / self.ema_half_life
+        weighter = np.exp(index_in_halflifes) / np.log(2)
+        ones = (~df.isnull()) * 1.
+        return ones.multiply(weighter, axis=0).sum()
+
     def _initial_compute(self, t, **kwargs):
         """Make forecast from scratch."""
         df = self._dataframe_selector(t=t, **kwargs)
@@ -174,18 +194,28 @@ class BaseMeanForecast(BaseForecast):
         if _is_timedelta(self.ma_window):
             df = df.loc[df.index >= t-self.ma_window]
 
-        self._last_counts = df.count()
+        self._last_counts = self._ewm_denominator(df, t)
         if self._last_counts.min() == 0:
             raise ForecastError(
                 f'{self.__class__.__name__} is computing the '
                 + 'mean of a column with no values.')
-        self._last_sum = df.sum()
+        self._last_sum = self._ewm_numerator(df, t)
         self._last_time = t
 
     def _online_update(self, t, **kwargs):
         """Update forecast from period before."""
         df = self._dataframe_selector(t=t, **kwargs)
         last_row = df.iloc[-1]
+
+        # if ewm discount past
+        if _is_timedelta(self.ema_half_life):
+            time_passed_in_halflifes = (
+                self._last_time - t)/self.ema_half_life
+            discount_factor = np.exp(time_passed_in_halflifes) / np.log(2)
+            self._last_counts *= discount_factor
+            self._last_sum *= discount_factor
+
+        # this stays the same for ewm
         self._last_counts += ~(last_row.isnull())
         self._last_sum += last_row.fillna(0.)
 
@@ -195,8 +225,8 @@ class BaseMeanForecast(BaseForecast):
                 (df.index >= (self._last_time - self.ma_window))
                 & (df.index < (t - self.ma_window))
             ]
-            self._last_counts -= skips.count()
-            self._last_sum -= skips.sum().fillna(0.)
+            self._last_counts -= self._ewm_denominator(skips, t)
+            self._last_sum -= self._ewm_numerator(skips, t).fillna(0.)
 
         self._last_time = t
 
