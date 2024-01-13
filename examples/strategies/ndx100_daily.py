@@ -26,7 +26,8 @@ You run it from the root of the repository in the development environment by:
 *Edit 2024-01-11:*
 
     Changed the start time for hyperparameter optimization from 2020-01-01 to
-    2012-01-01 and the CVXPY solver.
+    2012-01-01 and the CVXPY solver (and, 2024-01-12, the initial values of
+    hyper-parameter optimization).
 
 """
 
@@ -111,4 +112,5 @@ if __name__ == '__main__':
 
     from .strategy_executor import main
     main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
-        objective=OBJECTIVE, universe=NDX100)
+        objective=OBJECTIVE, universe=NDX100,
+        initial_values={'gamma_risk':20., 'gamma_trade':1.})
