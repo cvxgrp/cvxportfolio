@@ -86,8 +86,9 @@ jobs:
               coverage run -m cvxportfolio.tests
               coverage lcov
 
-      - name: Send coverage to Coveralls (only on Linux w/ latest Python)
-        if: ${{ github.event_name == 'push' && matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'}}
+      - name: Send coverage to Coveralls
+        if: ${{ github.event_name == 'push'}}
+        continue-on-error: true
         uses: coverallsapp/github-action@v1
         with:
           path-to-lcov: coverage.lcov
