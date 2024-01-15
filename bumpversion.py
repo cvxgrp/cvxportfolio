@@ -36,8 +36,6 @@ def findversion(root='.'):
     :param root: Root folder of the project.
     :type root: pathlib.Path or str
 
-    :raises ValueError: No version found.
-
     :returns: Found version string.
     :rtype: str
     """
@@ -56,9 +54,6 @@ def findversion(root='.'):
                 result = findversion(fname)
                 if result:
                     return result
-
-    raise ValueError('Not found any!')
-
 
 def replaceversion(new_version, version, root='.'):
     """Replace version number. Skip [env, venv, .*].
