@@ -47,6 +47,46 @@ class TestForecast(CvxportfolioTest):
             self.assertTrue(np.allclose(
                 mean, past_returns.iloc[:, :-1].mean()))
 
+    def test_mean_update_moving_window(self):
+        """Test the mean forecaster."""
+        window = pd.Timedelta('20d')
+        forecaster = HistoricalMeanReturn(ma_window=window)
+
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:20, 3:10] = np.nan
+
+        for tidx in [50, 51, 52, 55, 56, 57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index < t]
+            past_returns_window = past_returns.loc[
+                past_returns.index>=t - window]
+            mean = forecaster.values_in_time_recursive(
+                t=t, past_returns=past_returns)
+            self.assertTrue(np.allclose(
+                mean, past_returns_window.iloc[:, :-1].mean()))
+
+
+    def test_mean_update_exponential_moving_window(self):
+        """Test the mean forecaster."""
+        half_life = pd.Timedelta('20d')
+        forecaster = HistoricalMeanReturn(ema_half_life=half_life)
+
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:20, 3:10] = np.nan
+
+        for tidx in [50, 51, 52, 55, 56, 57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index < t]
+
+            mean = forecaster.values_in_time_recursive(
+                t=t, past_returns=past_returns)
+            print(mean)
+            print(past_returns.iloc[:, :-1].ewm(
+                    halflife=half_life, times=past_returns.index).mean().iloc[-1])
+            self.assertTrue(np.allclose(
+                mean, past_returns.iloc[:, :-1].ewm(
+                    halflife=half_life, times=past_returns.index).mean().iloc[-1]))
+
     def test_variance_update(self):
         """Test the variance forecaster."""
         forecaster = HistoricalVariance(kelly=False)
