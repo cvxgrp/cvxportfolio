@@ -498,6 +498,47 @@ class YahooFinance(SymbolData):
         new = self._clean(new)
         return pd.concat([current.iloc[:-overlap], new])
 
+    def _quality_check(self, data):
+        """Analyze quality of the OHLCV-TR data."""
+
+        # zero volume
+        zerovol_idx = data.index[data.volume == 0]
+        if len(zerovol_idx) > 0:
+            logger.warning(
+                '%s("%s") has volume equal to zero for timestamps: %s',
+                self.__class__.__name__, self.symbol, zerovol_idx)
+
+        def print_extreme(logreturns, name, sigmas=50):
+
+            # TODO: choose
+            m, s = logreturns.median(), np.sqrt((logreturns**2).median())
+            normalized = (logreturns - m)/s
+
+            # normalized = logreturns / logreturns.rolling(252).std().shift(1)
+
+            extremereturn_idx = normalized.index[np.abs(normalized) > sigmas]
+            if len(extremereturn_idx) > 0:
+                logger.warning(
+                    '%s("%s") has extreme %s (~%s sigmas) for timestamps: %s',
+                    self.__class__.__name__, self.symbol, name, sigmas,
+                    extremereturn_idx)
+
+        # extreme logreturns
+        logreturns = np.log(1 + data['return']).dropna()
+        print_extreme(logreturns, 'total returns')
+
+        # extreme open2close
+        open2close = np.log(data['close']) - np.log(data['open']).dropna()
+        print_extreme(open2close, 'open to close returns')
+
+        # extreme open2high
+        open2high = np.log(data['high']) - np.log(data['open']).dropna()
+        print_extreme(open2high, 'open to high returns')
+
+        # extreme open2low
+        open2low = np.log(data['low']) - np.log(data['open']).dropna()
+        print_extreme(open2low, 'open to low returns')
+
     def _preload(self, data):
         """Prepare data for use by Cvxportfolio.
 
@@ -505,6 +546,8 @@ class YahooFinance(SymbolData):
         replace it with `valuevolume` which is an estimate of the (e.g.,
         US dollar) value of the volume exchanged on the day.
         """
+
+        self._quality_check(data)
         data["valuevolume"] = data["volume"] * data["open"]
         del data["volume"]
 
