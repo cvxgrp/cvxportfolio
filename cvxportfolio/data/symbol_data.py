@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
 
 __all__ = [
-    '_loader_csv', '_loader_pickle', '_loader_sqlite', 
-    '_storer_csv', '_storer_pickle', '_storer_sqlite', 
+    '_loader_csv', '_loader_pickle', '_loader_sqlite',
+    '_storer_csv', '_storer_pickle', '_storer_sqlite',
     'Fred', 'SymbolData', 'YahooFinance', 'BASE_LOCATION']
 
 def now_timezoned():
@@ -249,27 +249,17 @@ def _timestamp_convert(unix_seconds_ts):
     """Convert a UNIX timestamp in seconds to a pandas.Timestamp."""
     return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
 
+class OHLCV(SymbolData): # pylint: disable=abstract-method
+    """Base class for Open-High-Low-Close-Volume symbol data."""
 
-class YahooFinance(SymbolData):
-    """Yahoo Finance symbol data.
+    # TODO: factor quality check and clean into total-return related and non-
 
-    :param symbol: The symbol that we downloaded.
-    :type symbol: str
-    :param storage_backend: The storage backend, implemented ones are
-        ``'pickle'``, ``'csv'``, and ``'sqlite'``.
-    :type storage_backend: str
-    :param base_storage_location: The location of the storage. We store in a
-        subdirectory named after the class which derives from this.
-    :type base_storage_location: pathlib.Path
-    :param grace_period: If the most recent observation in the data is less
-        old than this we do not download new data.
-    :type grace_period: pandas.Timedelta
+class OHLCVTR(OHLCV): # pylint: disable=abstract-method
+    """Base class for Open-High-Low-Close-Volume-Total Return symbol data."""
 
-    :attribute data: The downloaded, and cleaned, data for the symbol.
-    :type data: pandas.DataFrame
-    """
+    # TODO: consider creating a OHLCVAC (adjusted closes) subclass
 
-    # is open-high-low-close-volume-(total)return
+    # is open-high-low-close-volume-total return
     IS_OHLCVR = True
 
     @staticmethod
@@ -379,6 +369,66 @@ class YahooFinance(SymbolData):
 
         return data
 
+    def _quality_check(self, data):
+        """Analyze quality of the OHLCV-TR data."""
+
+        # zero volume
+        zerovol_idx = data.index[data.volume == 0]
+        if len(zerovol_idx) > 0:
+            logger.warning(
+                '%s("%s") has volume equal to zero for timestamps: %s',
+                self.__class__.__name__, self.symbol, zerovol_idx)
+
+        def print_extreme(logreturns, name, sigmas=50):
+
+            # TODO: choose
+            m, s = logreturns.median(), np.sqrt((logreturns**2).median())
+            normalized = (logreturns - m)/s
+
+            # normalized = logreturns / logreturns.rolling(252).std().shift(1)
+
+            extremereturn_idx = normalized.index[np.abs(normalized) > sigmas]
+            if len(extremereturn_idx) > 0:
+                logger.warning(
+                    '%s("%s") has extreme %s (~%s sigmas) for timestamps: %s',
+                    self.__class__.__name__, self.symbol, name, sigmas,
+                    extremereturn_idx)
+
+        # extreme logreturns
+        logreturns = np.log(1 + data['return']).dropna()
+        print_extreme(logreturns, 'total returns')
+
+        # extreme open2close
+        open2close = np.log(data['close']) - np.log(data['open']).dropna()
+        print_extreme(open2close, 'open to close returns')
+
+        # extreme open2high
+        open2high = np.log(data['high']) - np.log(data['open']).dropna()
+        print_extreme(open2high, 'open to high returns')
+
+        # extreme open2low
+        open2low = np.log(data['low']) - np.log(data['open']).dropna()
+        print_extreme(open2low, 'open to low returns')
+
+class YahooFinance(OHLCVTR):
+    """Yahoo Finance symbol data.
+
+    :param symbol: The symbol that we downloaded.
+    :type symbol: str
+    :param storage_backend: The storage backend, implemented ones are
+        ``'pickle'``, ``'csv'``, and ``'sqlite'``.
+    :type storage_backend: str
+    :param base_storage_location: The location of the storage. We store in a
+        subdirectory named after the class which derives from this.
+    :type base_storage_location: pathlib.Path
+    :param grace_period: If the most recent observation in the data is less
+        old than this we do not download new data.
+    :type grace_period: pandas.Timedelta
+
+    :attribute data: The downloaded, and cleaned, data for the symbol.
+    :type data: pandas.DataFrame
+    """
+
     @staticmethod
     def _get_data_yahoo(ticker, start='1900-01-01', end='2100-01-01'):
         """Get 1 day OHLC from Yahoo finance.
@@ -432,9 +482,9 @@ class YahooFinance(SymbolData):
                 data['indicators']['quote'][0], index=index)
             df_result['adjclose'] = data[
                 'indicators']['adjclose'][0]['adjclose']
-        except KeyError:
+        except KeyError as exc:
             raise DataError(f'Yahoo finance download of {ticker} failed.'
-                + ' Json:', str(res.json())) # pragma: no cover
+                + ' Json:', str(res.json())) from exc # pragma: no cover
 
         # last timestamp is probably broken (not timed to market open)
         # we set its time to same as the day before, but this is wrong
@@ -488,47 +538,6 @@ class YahooFinance(SymbolData):
         new = self._get_data_yahoo(symbol, start=current.index[-overlap])
         new = self._clean(new)
         return pd.concat([current.iloc[:-overlap], new])
-
-    def _quality_check(self, data):
-        """Analyze quality of the OHLCV-TR data."""
-
-        # zero volume
-        zerovol_idx = data.index[data.volume == 0]
-        if len(zerovol_idx) > 0:
-            logger.warning(
-                '%s("%s") has volume equal to zero for timestamps: %s',
-                self.__class__.__name__, self.symbol, zerovol_idx)
-
-        def print_extreme(logreturns, name, sigmas=50):
-
-            # TODO: choose
-            m, s = logreturns.median(), np.sqrt((logreturns**2).median())
-            normalized = (logreturns - m)/s
-
-            # normalized = logreturns / logreturns.rolling(252).std().shift(1)
-
-            extremereturn_idx = normalized.index[np.abs(normalized) > sigmas]
-            if len(extremereturn_idx) > 0:
-                logger.warning(
-                    '%s("%s") has extreme %s (~%s sigmas) for timestamps: %s',
-                    self.__class__.__name__, self.symbol, name, sigmas,
-                    extremereturn_idx)
-
-        # extreme logreturns
-        logreturns = np.log(1 + data['return']).dropna()
-        print_extreme(logreturns, 'total returns')
-
-        # extreme open2close
-        open2close = np.log(data['close']) - np.log(data['open']).dropna()
-        print_extreme(open2close, 'open to close returns')
-
-        # extreme open2high
-        open2high = np.log(data['high']) - np.log(data['open']).dropna()
-        print_extreme(open2high, 'open to high returns')
-
-        # extreme open2low
-        open2low = np.log(data['low']) - np.log(data['open']).dropna()
-        print_extreme(open2low, 'open to low returns')
 
     def _preload(self, data):
         """Prepare data for use by Cvxportfolio.
