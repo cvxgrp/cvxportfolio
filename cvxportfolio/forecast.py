@@ -166,13 +166,15 @@ class BaseMeanForecast(BaseForecast):
         self._agnostic_update(**kwargs)
         return (self._last_sum / self._last_counts).values
 
+    def _ewm_weights(self, df, t):
+        index_in_halflifes = (df.index - t) / self.ema_half_life
+        return np.exp(index_in_halflifes * np.log(2))
+
     def _ewm_numerator(self, df, t):
         """Exponential moving window (optional) numerator."""
         if not _is_timedelta(self.ema_half_life):
             return df.sum()
-
-        index_in_halflifes = (df.index - t) / self.ema_half_life
-        weighter = np.exp(index_in_halflifes) / np.log(2)
+        weighter = self._ewm_weights(df, t)
         filled = df.fillna(0.)
         return filled.multiply(weighter, axis=0).sum()
 
@@ -181,8 +183,7 @@ class BaseMeanForecast(BaseForecast):
         if not _is_timedelta(self.ema_half_life):
             return df.count()
 
-        index_in_halflifes = (df.index - t) / self.ema_half_life
-        weighter = np.exp(index_in_halflifes) / np.log(2)
+        weighter = self._ewm_weights(df, t)
         ones = (~df.isnull()) * 1.
         return ones.multiply(weighter, axis=0).sum()
 
@@ -211,7 +212,7 @@ class BaseMeanForecast(BaseForecast):
         if _is_timedelta(self.ema_half_life):
             time_passed_in_halflifes = (
                 self._last_time - t)/self.ema_half_life
-            discount_factor = np.exp(time_passed_in_halflifes) / np.log(2)
+            discount_factor = np.exp(time_passed_in_halflifes * np.log(2))
             self._last_counts *= discount_factor
             self._last_sum *= discount_factor
 
