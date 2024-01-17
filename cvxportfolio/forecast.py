@@ -95,7 +95,7 @@ class BaseForecast(Estimator):
     _last_time = None
 
     def __post_init__(self):
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, **kwargs):
@@ -215,10 +215,12 @@ class BaseMeanForecast(BaseForecast):
             discount_factor = np.exp(time_passed_in_halflifes * np.log(2))
             self._last_counts *= discount_factor
             self._last_sum *= discount_factor
+        else:
+            discount_factor = 1.
 
         # this stays the same for ewm
-        self._last_counts += ~(last_row.isnull())
-        self._last_sum += last_row.fillna(0.)
+        self._last_counts += ~(last_row.isnull()) * discount_factor
+        self._last_sum += last_row.fillna(0.) * discount_factor
 
         # Moving average window logic
         if _is_timedelta(self.ma_window):
