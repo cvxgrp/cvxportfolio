@@ -70,17 +70,19 @@ class FullCovariance(Cost):
         self.Sigma = DataEstimator(Sigma)
         self._sigma_sqrt = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self._sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of risk model.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -130,18 +132,20 @@ class RiskForecastError(Cost):
 
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.sigmas_parameter = cp.Parameter(
             len(universe)-1, nonneg=True)  # +self.kelly))
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of risk model.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -184,17 +188,19 @@ class DiagonalCovariance(Cost):
             sigma_squares = sigma_squares()
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
-        self.sigmas_parameter = cp.Parameter(len(universe)-1)  # +self.kelly))
+        self.sigmas_parameter = cp.Parameter(len(universe)-1)
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of risk model.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -314,13 +320,14 @@ class FactorModelCovariance(Cost):
             self._fit = False
         self.idyosync_sqrt_parameter = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         if self._fit:
@@ -335,7 +342,8 @@ class FactorModelCovariance(Cost):
                 self.factor_exposures_parameter = cp.Parameter(
                     self.F.parameter.shape)
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update internal parameters.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -391,12 +399,16 @@ class FactorModelCovariance(Cost):
 class WorstCaseRisk(Cost):
     """Select the most restrictive risk model for each value of the allocation.
 
-    vector.
-
     Given a list of risk models, penalize the portfolio allocation by
     the one with highest risk value at the solution point. If uncertain
     about which risk model to use this procedure can be an easy
     solution.
+
+    :Example:
+
+        >>> risk_model = cvx.WorstCaseRisk(
+                [cvx.FullCovariance(),
+                cvx.DiagonalCovariance() + 0.25 * cvx.RiskForecastError()])
 
     :param riskmodels: risk model instances on which to compute the
         worst-case risk.
@@ -406,16 +418,14 @@ class WorstCaseRisk(Cost):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
 
-    def initialize_estimator_recursive(self, universe, trading_calendar):
+    def initialize_estimator_recursive(self, **kwargs):
         """Initialize risk model with universe and trading times.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         for risk in self.riskmodels:
-            risk.initialize_estimator_recursive(universe, trading_calendar)
+            risk.initialize_estimator_recursive(**kwargs)
 
     def values_in_time_recursive(self, **kwargs):
         """Update parameters of constituent risk models.
@@ -440,9 +450,26 @@ class WorstCaseRisk(Cost):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        risks = [risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
-                 for risk in self.riskmodels]
+        risks = []
+        for risk in self.riskmodels:
+            # this is needed if user provides individual risk terms
+            # that are composed objects (CombinedCost)
+            # it will check concavity instead of convexity
+            risk.do_convexity_check = False
+            risks.append(risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm))
+            # we also change it back in case the user is sharing the instance
+            risk.do_convexity_check = True
+
         return cp.max(cp.hstack(risks))
+
+    def finalize_estimator_recursive(self, **kwargs):
+        """Finalize object.
+
+        :param kwargs: Arguments.
+        :type kwargs: dict
+        """
+        for risk in self.riskmodels:
+            risk.finalize_estimator_recursive(**kwargs)
 
 # Aliases
 

@@ -280,6 +280,7 @@ class MarketSimulator:
 
         policy = copy.deepcopy(orig_policy)
 
+        # caching will be handled here
         policy.initialize_estimator_recursive(
             universe=universe, trading_calendar=trading_calendar)
 
@@ -296,6 +297,9 @@ class MarketSimulator:
         return policy
 
     def _finalize_policy(self, policy, universe):
+
+        policy.finalize_estimator_recursive() # currently unused
+
         if hasattr(policy, '_cache'):
             logger.info('Storing cache from policy to disk...')
             _store_cache(

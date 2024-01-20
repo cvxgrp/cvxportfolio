@@ -52,15 +52,29 @@ their planned release.
 
   - [ ] ``initialize_estimator`` could get optional market data partial
     signature for caching. Default None, no incompatible change.
-  - [ ] Could get a ``finalize_estimator`` method used for storing
+  - [X] Could get a ``finalize_estimator`` method used for storing
     data, like risk models on disk, doesn't need arguments; it can use the
     partial signature got above. No incompatible change.
 
 ``cvxportfolio.data``
 --------------------------
 
+- [ ] Improve ``YahooFinance`` data cleaning. Idea is to factor it in a 
+  base ``OpenLowHighCloseVolume`` class, which should flexible enough to
+  accommodate adjusted closes (i.e., with backwards dividend adjustments like
+  YF), total returns like other data sources, or neither for non-stocks assets.
+  This would implement all data cleaning process as sequence of small steps
+  in separate methods, with good logging. It would also implement data quality
+  check in the ``preload`` method to give feedback to the user. PR #125
+- [ ] Factor ``data.py`` in ``data/`` submodule. PR #125
+
 ``cvxportfolio.simulator``
 --------------------------
+- [ ] Make ``BackTestResult`` interface methods with ``MarketSimulator`` 
+  public. It probably should do a context manager b/c logging code in 
+  ``BackTestResult`` does cleanup of loggers at the end, to ensure all right
+  in case back-test fails. 
+- [ ] Move caching logic out of it; see above.
 
 ``cvxportfolio.risks``
 ----------------------
@@ -95,7 +109,7 @@ Optimization policies
   compatibility, it doesn't if we don't give defaults (so exceptions are raised
   all the way to the caller), but then it's extra complication (more 
   arguments). Consider for ``2.0.0``.
-- [ ] Improve ``__repr__`` method, now hard to read. Target ``1.1.1``.
+- [X] Improve ``__repr__`` method, now hard to read. Target ``1.1.0``.
 
 ``cvxportfolio.constraints``
 ----------------------------
@@ -106,8 +120,6 @@ Optimization policies
 ``cvxportfolio.result``
 -----------------------
 
-- [ ] Make ``BackTestResult`` interface methods with ``MarketSimulator`` 
-  public. 
 - [ ] Add a ``bankruptcy`` property (boolean). Amend ``sharpe_ratio``
   and other aggregate statistics (as best as possible) to return ``-np.inf``
   if back-test ended in backruptcy. This is needed specifically for
@@ -122,7 +134,7 @@ Optimization policies
 Other 
 -----
 
-- [ ] Exceptions are not too good, probably ``cvxportfolio.DataError`` should
+- [X] Exceptions are not too good, probably ``cvxportfolio.DataError`` should
   be ``ValueError``, .... Research this, one option is to simply derive from
   built-ins (``class DataError(ValueError): pass``), .... No compatibility
   breaks.
@@ -140,8 +152,8 @@ Documentation
 -------------
 
 - [ ] Improve examples section, also how "Hello world" is mentioned in readme.
-- [ ] Manual.
-- [ ] Quickstart, probably to merge into manual.
+- [ ] Manual. PR #124
+- [ ] Quickstart, probably to merge into manual. PR #124
 
 Examples
 --------
