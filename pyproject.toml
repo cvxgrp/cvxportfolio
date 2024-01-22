@@ -7,7 +7,7 @@ license = {text = "Apache License (2.0)"}
 authors = [{name = "Enzo Busseti"}, {name = "Stephen Boyd"},
     {name = "Steven Diamond"}, {name = "BlackRock Inc."}]
 maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
-dependencies = ["pandas", "numpy", "matplotlib", "requests", "cvxpy",
+dependencies = ["pandas<2.2.0", "numpy", "matplotlib", "requests", "cvxpy",
     "multiprocess"]
 
 [project.optional-dependencies]
