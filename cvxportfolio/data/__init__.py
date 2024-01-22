@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module include classes that download, store, and serve market data.
+
 The two main abstractions are :class:`SymbolData` and :class:`MarketData`.
 Neither are exposed outside this module. Their derived classes instead are.
 If you want to interface cvxportfolio with financial data source other
