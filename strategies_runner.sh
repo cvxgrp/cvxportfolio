@@ -10,16 +10,19 @@
 # their changes to git too; **we do not change** the weights that we calculated
 # the previous day (as certified by git), so there is still no look-ahead.
 
-env/bin/python -m examples.strategies.dow30_daily strategy &>> examples/strategies/dow30_daily.log
-git add examples/strategies/dow30_daily*.json
-git commit -m '[auto commit] dow30_daily reconciliation & execution'
+date=$(date '+%Y-%m-%d')
 
-env/bin/python -m examples.strategies.ndx100_daily strategy &>> examples/strategies/ndx100_daily.log
-git add examples/strategies/ndx100_daily*.json
-git commit -m '[auto commit] ndx100_daily reconciliation & execution'
-
-env/bin/python -m examples.strategies.sp500_daily strategy &>> examples/strategies/sp500_daily.log
-git add examples/strategies/sp500_daily*.json
-git commit -m '[auto commit] sp500_daily reconciliation & execution'
-
+for strat in dow30_daily ndx100_daily sp500_daily; do
+    retry_counter=0
+    until env/bin/python -m examples.strategies."$strat" strategy &>> examples/strategies/"$strat".log
+        do
+            if [ $retry_counter -gt 10 ]; then
+                break
+            fi
+            sleep 10
+            ((retry_counter++))
+        done
+    git add examples/strategies/"$strat"*.json
+    git commit -m '[auto commit] '"$strat"' reconciliation & execution on '"$date"
+done
 git push

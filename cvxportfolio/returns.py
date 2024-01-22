@@ -53,18 +53,18 @@ class CashReturn(Cost):
             cash_returns, compile_parameter=True)
         self._cash_return_parameter = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Initialize model.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self._cash_return_parameter = (cp.Parameter()
             if self.cash_returns is None else self.cash_returns.parameter)
 
-    def values_in_time(self, past_returns, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, past_returns, **kwargs):
         """Update cash return parameter as last cash return.
 
         :param past_returns: Past market returns.
@@ -158,17 +158,19 @@ class ReturnsForecast(Cost):
         self.decay = decay
         self._r_hat_parameter = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize model with universe size.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self._r_hat_parameter = cp.Parameter(len(universe)-1)
 
-    def values_in_time(self, mpo_step=0, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, mpo_step=0, **kwargs):
         """Update returns parameter knowing which MPO step we're at.
 
         :param mpo_step: MPO step, 0 is current.
@@ -227,20 +229,22 @@ class ReturnsForecastError(Cost):
         self.deltas = DataEstimator(deltas)
         self._deltas_parameter = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize model with universe size.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: pandas.DatetimeIndex
         """
         self._deltas_parameter = cp.Parameter(len(universe)-1, nonneg=True)
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update returns forecast error parameters.
 
-        :param kwargs: All parameters to :meth:`values_in_time`.
+        :param kwargs: All arguments to :meth:`values_in_time`.
         :type kwargs: dict
         """
         self._deltas_parameter.value = self.deltas.current_value

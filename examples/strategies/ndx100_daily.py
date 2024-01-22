@@ -14,22 +14,28 @@
 """This is a simple example strategy which we run every day.
 
 It is a variant of the ``dow30_daily`` strategy with the Nasdaq 100 universe.
-All the rest is the same, but we optimize hyper-parameters over a shorter
-period. It too seems to have outperformed the index etf (``QQQ``), and our
-benchmarks. We will see how it performs online.
+It too seems to have outperformed the index etf (``QQQ``), and our benchmarks.
+We will see how it performs online.
 
 You run it from the root of the repository in the development environment by:
 
 .. code:: bash
 
     python -m examples.strategies.ndx100_daily
+
+*Edit 2024-01-11:*
+
+    Changed the start time for hyperparameter optimization from 2020-01-01 to
+    2012-01-01 and the CVXPY solver (and, 2024-01-12, the initial values of
+    hyper-parameter optimization).
+
 """
 
 import cvxportfolio as cvx
 
 from ..universes import NDX100
 
-HYPERPAR_OPTIMIZE_START = '2020-01-01'
+HYPERPAR_OPTIMIZE_START = '2012-01-01'
 OBJECTIVE = 'sharpe_ratio'
 
 def policy(gamma_risk, gamma_trade):
@@ -53,10 +59,58 @@ def policy(gamma_risk, gamma_trade):
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
         benchmark=cvx.MarketBenchmark(),
         ignore_dpp=True,
+        solver='CLARABEL',
     ), {'gamma_risk': gamma_risk_hp, 'gamma_trade': gamma_trade_hp}
 
 if __name__ == '__main__':
 
+    RESEARCH = False
+
+    if RESEARCH:
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        INDEX_ETF = 'QQQ'
+
+        research_sim = cvx.StockMarketSimulator(NDX100)
+
+        result_unif = research_sim.backtest(
+            cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
+        print('uniform')
+        print(result_unif)
+
+        result_market = research_sim.backtest(
+            cvx.MarketBenchmark(), start_time=HYPERPAR_OPTIMIZE_START)
+        print('market')
+        print(result_market)
+
+        # current strategy
+
+        hyper_pars = pd.read_json(
+            'examples/strategies/ndx100_daily_hyper_parameters.json'
+            ).T.iloc[-1].to_dict()
+
+        result_cur = research_sim.backtest(
+            policy(**hyper_pars)[0],
+            start_time=HYPERPAR_OPTIMIZE_START)
+        print('current')
+        print(result_cur)
+
+        result_etf = cvx.StockMarketSimulator([INDEX_ETF]).backtest(
+            cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
+        print(INDEX_ETF)
+        print(result_etf)
+
+        plt.figure()
+        result_cur.growth_rates.iloc[-252*4:].cumsum().plot(label='current')
+        result_unif.growth_rates.iloc[-252*4:].cumsum().plot(label='uniform')
+        result_market.growth_rates.iloc[-252*4:].cumsum().plot(label='market')
+        result_etf.growth_rates.iloc[-252*4:].cumsum().plot(label='market etf')
+        plt.legend()
+
+        plt.show()
+
+
     from .strategy_executor import main
     main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
-        objective=OBJECTIVE, universe=NDX100)
+        objective=OBJECTIVE, universe=NDX100,
+        initial_values={'gamma_risk':20., 'gamma_trade':1.})
