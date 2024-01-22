@@ -203,17 +203,17 @@ class TestData(CvxportfolioTest):
                 name="test2"),
             pd.Series("hello",
                 pd.date_range("2020-01-01", "2020-01-02",  tz='UTC-05:00',
-                    freq="H"),
+                    freq="h"),
                 name="test3"),
             # test overwrite
             pd.Series("hello",
-                pd.date_range("2020-01-01", "2020-01-02",  tz='UTC', freq="H"),
+                pd.date_range("2020-01-01", "2020-01-02",  tz='UTC', freq="h"),
                 name="test3"),
             # test datetime conversion
             pd.Series(
                 pd.date_range("2022-01-01", "2022-01-02",  tz='UTC',
-                    freq="H"),
-                pd.date_range("2020-01-01", "2020-01-02",  tz='UTC', freq="H"),
+                    freq="h"),
+                pd.date_range("2020-01-01", "2020-01-02",  tz='UTC', freq="h"),
                 name="test4"),
             ]:
 
@@ -248,7 +248,7 @@ class TestData(CvxportfolioTest):
     def _base_test_dataframe(self, loader, storer):
         """Test storing and retrieving of a DataFrame with datetime index."""
 
-        index = pd.date_range("2020-01-01", "2020-01-02", freq="H", tz='UTC')
+        index = pd.date_range("2020-01-01", "2020-01-02", freq="h", tz='UTC')
         data = {
             "one": range(len(index)),
             "two": np.arange(len(index)) / 19.0,
