@@ -262,6 +262,54 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
     # is open-high-low-close-volume-total return
     IS_OHLCVR = True
 
+    # rolstd windows for finding wrong logreturns
+    _ROLSTD_WINDOWS = [20, 60, 252]
+
+    # threshold for finding wrong logreturns
+    _WRONG_LOGRET_THRESHOLD = 15
+
+    def _indexes_extreme_logrets_wrt_rolstddev(self, lrets, window, treshold):
+        """Get indexes of logreturns that are extreme wrt trailing stddev."""
+        trailing_stdev = np.sqrt((lrets**2).rolling(window).median().shift(1))
+        bad_indexes = lrets.index[np.abs(lrets / trailing_stdev) > treshold]
+        return bad_indexes
+
+    def _find_wrong_daily_logreturns(self, lrets):
+        """Find indexes of logreturns that are most probably data errors."""
+        bad_indexes = []
+        for window in self._ROLSTD_WINDOWS:
+            bad_indexes.append(
+                set(self._indexes_extreme_logrets_wrt_rolstddev(
+                lrets, window=window, treshold=self._WRONG_LOGRET_THRESHOLD)))
+            bad_indexes.append(
+                set(self._indexes_extreme_logrets_wrt_rolstddev(
+                lrets.iloc[::-1], window=window,
+                treshold=self._WRONG_LOGRET_THRESHOLD)))
+        bad_indexes = set.intersection(*bad_indexes)
+        return bad_indexes
+
+    # TODO: plan
+    # ffill adj closes & compute adj close logreturns
+    # use code above to get indexes of wrong ones, raise warnings, set to 0
+    #
+    # check close vs adj close, there should be only dividends (with y finance)
+    #
+    # throw out opens that are not in [low, high]
+    #
+    # apply similar logic (perhaps using total lrets for the stddev) for
+    # open-close , close-high , close-low, throw out open/low/close not OK
+    #
+    # fill
+    #
+    # compute open-open total returns, then check with same logic for errors
+    #
+    # when doing append, make past data adhere to same format: recompute adj close
+    #
+    # could use volumes as well, if there are jumps in price due to
+    # splits not recorded, then price * volume should be more stable
+    #
+    #
+
     def _nan_impossible(self, data):
         """Set impossible values to NaN."""
 
@@ -269,18 +317,32 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         # print(data.isnull().sum())
 
         # nan-out nonpositive prices
-        data.loc[data["open"] <= 0, 'open'] = np.nan
-        data.loc[data["close"] <= 0, "close"] = np.nan
-        data.loc[data["high"] <= 0, "high"] = np.nan
-        data.loc[data["low"] <= 0, "low"] = np.nan
-        data.loc[data["adjclose"] <= 0, "adjclose"] = np.nan
+        for column in ["open", "close", "high", "low", "adjclose"]:
+            bad_indexes = data.index[data[column] <= 0]
+            if len(bad_indexes) > 0:
+                logger.warning(
+                    '%s("%s") has non-positive %s prices on timestamps: %s,'
+                    + ' setting to nan',
+                    self.__class__.__name__, self.symbol, column, bad_indexes)
+                data.loc[bad_indexes, column] = np.nan
 
         # nan-out negative volumes
-        data.loc[data["volume"] < 0, 'volume'] = np.nan
+        bad_indexes = data.index[data["volume"] < 0]
+        if len(bad_indexes) > 0:
+            logger.warning(
+                '%s("%s") has negative volumes on timestamps: %s,'
+                + ' setting to nan',
+                self.__class__.__name__, self.symbol, bad_indexes)
+            data.loc[bad_indexes, "volume"] = np.nan
 
         # all infinity values are nans
-        data.iloc[:, :] = np.nan_to_num(
-            data.values, copy=True, nan=np.nan, posinf=np.nan, neginf=np.nan)
+        if np.isinf(data).sum().sum() > 0:
+            logger.warning(
+                '%s("%s") has +/- infinity values, setting those to nan',
+                self.__class__.__name__, self.symbol)
+            data.iloc[:, :] = np.nan_to_num(
+                data.values, copy=True, nan=np.nan, posinf=np.nan,
+                neginf=np.nan)
 
         # print(data)
         # print(data.isnull().sum())
@@ -288,12 +350,24 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         # TODO: these can be made smarter (sometimes the open is clearly wrong)
 
         # if low is not the lowest, set it to nan
-        data['low'].loc[
-            data['low'] > data[['open', 'high', 'close']].min(1)] = np.nan
+        bad_indexes = data.index[
+            data['low'] > data[['open', 'high', 'close']].min(1)]
+        if len(bad_indexes) > 0:
+            logger.warning(
+                '%s("%s") low prices are not the lowest on timestamps: %s,'
+                + ' setting to nan',
+                self.__class__.__name__, self.symbol, bad_indexes)
+            data.loc[bad_indexes, "low"] = np.nan
 
         # if high is not the highest, set it to nan
-        data['high'].loc[
-            data['high'] < data[['open', 'high', 'close']].max(1)] = np.nan
+        bad_indexes = data.index[
+            data['high'] < data[['open', 'high', 'close']].max(1)]
+        if len(bad_indexes) > 0:
+            logger.warning(
+                '%s("%s") high prices are not the highest on timestamps: %s,'
+                + ' setting to nan',
+                self.__class__.__name__, self.symbol, bad_indexes)
+            data.loc[bad_indexes, "high"] = np.nan
 
         # print(data)
         # print(data.isnull().sum())
