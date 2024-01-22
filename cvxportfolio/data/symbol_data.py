@@ -262,9 +262,8 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
     # is open-high-low-close-volume-total return
     IS_OHLCVR = True
 
-    @staticmethod
-    def _clean(data):
-        """Clean Yahoo Finance open-close-high-low-volume-adjclose data."""
+    def _nan_impossible(self, data):
+        """Set impossible values to NaN."""
 
         # print(data)
         # print(data.isnull().sum())
@@ -286,6 +285,8 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         # print(data)
         # print(data.isnull().sum())
 
+        # TODO: these can be made smarter (sometimes the open is clearly wrong)
+
         # if low is not the lowest, set it to nan
         data['low'].loc[
             data['low'] > data[['open', 'high', 'close']].min(1)] = np.nan
@@ -297,9 +298,11 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         # print(data)
         # print(data.isnull().sum())
 
-        #
-        # fills
-        #
+    def _fill_easy(self, data):
+        """Make easy fills."""
+
+        # print(data)
+        # print(data.isnull().sum())
 
         # fill volumes with zeros (safest choice)
         data['volume'] = data['volume'].fillna(0.)
@@ -331,9 +334,11 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         # print(data)
         # print(data.isnull().sum())
 
-        #
-        # Compute returns
-        #
+    def _compute_total_returns(self, data):
+        """Compute total open-to-open returns."""
+
+        # print(data)
+        # print(data.isnull().sum())
 
         # compute log of ratio between adjclose and close
         log_adjustment_ratio = np.log(data['adjclose'] / data['close'])
@@ -358,14 +363,25 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         #     intraday_logreturn.shift(-1)
         # )
         # data["return"] = np.exp(open_to_open_logreturn) - 1
+
+        # print(data)
+        # print(data.isnull().sum())
+
+    def _clean(self, data):
+        """Clean Yahoo Finance open-close-high-low-volume-adjclose data."""
+
+        self._nan_impossible(data)
+
+        self._fill_easy(data)
+
+        self._compute_total_returns(data)
+
+        # eliminate adjclose column
         del data["adjclose"]
 
         # eliminate last period's intraday data
         data.loc[data.index[-1],
             ["high", "low", "close", "return", "volume"]] = np.nan
-
-        # print(data)
-        # print(data.isnull().sum())
 
         return data
 
