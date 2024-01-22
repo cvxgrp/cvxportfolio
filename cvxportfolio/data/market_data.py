@@ -49,7 +49,6 @@ class MarketData:
         """
         raise NotImplementedError # pragma: no cover
 
-    # pylint: disable=redundant-returns-doc
     def trading_calendar(
         self, start_time=None, end_time=None, include_end=True):
         """Get trading calendar between times.
@@ -77,7 +76,7 @@ class MarketData:
         raise NotImplementedError # pragma: no cover
 
     @property
-    def full_universe(self): # pylint: disable=redundant-returns-doc
+    def full_universe(self):
         """Full universe, which might not be available for trading.
 
         :returns: Full universe.
