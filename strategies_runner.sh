@@ -12,6 +12,7 @@
 
 date=$(date '+%Y-%m-%d')
 
+git pull
 for strat in dow30_daily ndx100_daily sp500_daily; do
     retry_counter=0
     until env/bin/python -m examples.strategies."$strat" strategy &>> examples/strategies/"$strat".log
