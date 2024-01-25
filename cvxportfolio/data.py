@@ -306,12 +306,12 @@ class YahooFinance(SymbolData):
         # print(data.isnull().sum())
 
         # if low is not the lowest, set it to nan
-        data['low'].loc[
-            data['low'] > data[['open', 'high', 'close']].min(1)] = np.nan
+        data.loc[data['low'] > data[['open', 'high', 'close']].min(1),
+            'low']  = np.nan
 
         # if high is not the highest, set it to nan
-        data['high'].loc[
-            data['high'] < data[['open', 'high', 'close']].max(1)] = np.nan
+        data.loc[data['high'] < data[['open', 'high', 'close']].max(1),
+            'high'] = np.nan
 
         # print(data)
         # print(data.isnull().sum())
@@ -959,7 +959,8 @@ class MarketDataInMemory(MarketData):
         # be misaligned (e.g., with tz-aware timestamps)
         cash_returns_per_period.name = self.cash_key
         original_returns_index = self.returns.index
-        tmp = pd.concat([self.returns, cash_returns_per_period], axis=1)
+        tmp = pd.concat(
+            [self.returns, cash_returns_per_period], sort=True, axis=1)
         tmp[cash_key] = tmp[cash_key].ffill()
         self.returns = tmp.loc[original_returns_index]
 
@@ -1082,9 +1083,8 @@ class MarketDataInMemory(MarketData):
 
         # we nan-out the first non-nan element of every col
         for col in self.returns.columns[:-1]:
-            self.returns[col].loc[
-                    (~(self.returns[col].isnull())).idxmax()
-                ] = np.nan
+            self.returns.loc[
+                    (~(self.returns[col].isnull())).idxmax(), col] = np.nan
 
         # and we drop the first row, which is mostly NaNs anyway
         self.returns = self.returns.iloc[1:]
@@ -1107,9 +1107,8 @@ class MarketDataInMemory(MarketData):
 
             # we nan-out the first non-nan element of every col
             for col in self.volumes.columns:
-                self.volumes[col].loc[
-                        (~(self.volumes[col].isnull())).idxmax()
-                    ] = np.nan
+                self.volumes.loc[
+                    (~(self.volumes[col].isnull())).idxmax(), col] = np.nan
 
             # and we drop the first row, which is mostly NaNs anyway
             self.volumes = self.volumes.iloc[1:]
@@ -1129,9 +1128,8 @@ class MarketDataInMemory(MarketData):
 
             # we nan-out the first non-nan element of every col
             for col in self.prices.columns:
-                self.prices[col].loc[
-                        (~(self.prices[col].isnull())).idxmax()
-                    ] = np.nan
+                self.prices.loc[
+                    (~(self.prices[col].isnull())).idxmax(), col] = np.nan
 
             # and we drop the first row, which is mostly NaNs anyway
             self.prices = self.prices.iloc[1:]
