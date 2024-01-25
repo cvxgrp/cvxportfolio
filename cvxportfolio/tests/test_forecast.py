@@ -28,113 +28,206 @@ from cvxportfolio.tests import CvxportfolioTest
 
 
 class TestForecast(CvxportfolioTest):
-    """Test forecast estimators and their caching."""
+    """Test forecast estimators and their caching.
+    
+    In most cases we test against the relevant pandas function as reference.
+    """
 
-    def test_mean_update(self):
-        """Test the mean forecaster."""
-        forecaster = HistoricalMeanReturn()  # lastforcash=True)
+    def test_vector_fc_syntax(self):
+        """Test syntax of vector forecasters."""
+        with self.assertRaises(ValueError):
+            forecaster = HistoricalMeanReturn(ma_window=3)
+            forecaster.values_in_time_recursive(
+                t=pd.Timestamp.today(), past_returns=self.returns)
 
+        with self.assertRaises(ValueError):
+            forecaster = HistoricalMeanReturn(ma_window=pd.Timedelta('0d'))
+            forecaster.values_in_time_recursive(
+                t=pd.Timestamp.today(), past_returns=self.returns)
+
+        with self.assertRaises(ForecastError):
+            forecaster = HistoricalMeanReturn()
+            returns = pd.DataFrame(self.returns, copy=True)
+            returns.iloc[:40, 3:10] = np.nan
+            forecaster.values_in_time_recursive(
+                t=self.returns.index[20], past_returns=returns.iloc[:20])
+
+    def _base_test_vector_update(
+            # pylint: disable=too-many-arguments
+            self, forecaster, fc_kwargs, df_attr, pd_kwargs, df_callable=None):
+        """Base function to test vector updates (mean, std, var)."""
+        forecaster = forecaster(**fc_kwargs)
+        
         returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:20, 3:10] = np.nan
+        returns.iloc[:40, 3:10] = np.nan
 
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
-            mean = forecaster.values_in_time_recursive(
+            cvx_val = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
-            # print(mean)
-            # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
+            self.assertFalse(np.any(np.isnan(cvx_val)))
             self.assertTrue(np.allclose(
-                mean, past_returns.iloc[:, :-1].mean()))
+                cvx_val,
+                df_callable(past_returns.iloc[:,:-1]) 
+                    if df_callable is not None else
+                    getattr(past_returns.iloc[:, :-1], df_attr)(**pd_kwargs)))
 
-    def test_mean_update_moving_window(self):
+    def test_mean_update(self):
         """Test the mean forecaster."""
-        window = pd.Timedelta('20d')
-        forecaster = HistoricalMeanReturn(ma_window=window)
+        self._base_test_vector_update(HistoricalMeanReturn, {}, 'mean', {})
 
+
+    def test_variance_update(self):
+        """Test the variance forecaster."""
+        self._base_test_vector_update(
+            HistoricalVariance, {'kelly':False}, 'var', {'ddof':0})
+
+    def test_stddev_update(self):
+        """Test the standard deviation forecaster."""
+        self._base_test_vector_update(
+            HistoricalStandardDeviation, {'kelly':False}, 'std', {'ddof':0})
+
+    def test_meanerror_update(self):
+        """Test the forecaster of the standard deviation on the mean."""
+
+        def _me(past_returns_noncash):
+            return past_returns_noncash.std(ddof=0)\
+                / np.sqrt(past_returns_noncash.count())
+
+        self._base_test_vector_update(
+            HistoricalMeanError, {}, None, None, df_callable=_me)
+
+    def _base_test_moving_window_vector_update(
+            # pylint: disable=too-many-arguments
+            self, forecaster, fc_kwargs, df_attr, pd_kwargs, df_callable=None):
+        """Base test for vector quantities using a moving window."""
+
+        window = pd.Timedelta('20d')
+        forecaster = forecaster(**fc_kwargs, ma_window=window)
+        
         returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:20, 3:10] = np.nan
+        returns.iloc[:40, 3:10] = np.nan
 
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
             past_returns_window = past_returns.loc[
-                past_returns.index>=t - window]
-            mean = forecaster.values_in_time_recursive(
+                past_returns.index >= t - window]
+            cvx_val = forecaster.values_in_time_recursive(
                 t=t, past_returns=past_returns)
-            self.assertTrue(np.allclose(
-                mean, past_returns_window.iloc[:, :-1].mean()))
 
+            self.assertFalse(np.any(np.isnan(cvx_val)))
+            self.assertTrue(np.allclose(
+                cvx_val,
+                df_callable(past_returns_window.iloc[:,:-1]) 
+                    if df_callable is not None else
+                    getattr(past_returns_window.iloc[:, :-1], 
+                        df_attr)(**pd_kwargs)))
+
+    def test_mean_update_moving_window(self):
+        """Test the mean forecaster with moving window."""
+        self._base_test_moving_window_vector_update(
+            HistoricalMeanReturn, {}, 'mean', {})
+
+    def test_variance_update_moving_window(self):
+        """Test the variance forecaster with moving window."""
+        self._base_test_moving_window_vector_update(
+            HistoricalVariance, {'kelly':False}, 'var', {'ddof':0})
+
+    def test_stddev_update_moving_window(self):
+        """Test the standard deviation forecaster with moving window."""
+        self._base_test_moving_window_vector_update(
+            HistoricalStandardDeviation, {'kelly':False}, 'std', {'ddof':0})
+
+    def test_meanerror_update_moving_window(self):
+        """Test standard deviation on the mean with moving window."""
+
+        def _me(past_returns_noncash):
+            return past_returns_noncash.std(ddof=0)\
+                / np.sqrt(past_returns_noncash.count())
+
+        self._base_test_moving_window_vector_update(
+            HistoricalMeanError, {}, None, None, df_callable=_me)
+
+    def _base_test_exponential_moving_window_vector_update(
+            self, forecaster, fc_kwargs, df_callable=None):
+        """Base test for vector quantities using an exponential moving window.
+        """
+        half_life = pd.Timedelta('20d')
+        inst_forecaster = forecaster(**fc_kwargs, ema_half_life=half_life)        
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:40, 3:10] = np.nan
+
+        for tidx in [50, 51, 52, 55, 56, 57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index < t]
+
+            cvx_val = inst_forecaster.values_in_time_recursive(
+                t=t, past_returns=past_returns)
+
+            self.assertFalse(np.any(np.isnan(cvx_val)))
+            self.assertTrue(np.allclose(
+                cvx_val, df_callable(past_returns.iloc[:,:-1], half_life)))
+
+        # Test with both MA and EMA
+
+        half_life = pd.Timedelta('10d')
+        window = pd.Timedelta('20d')
+        inst_forecaster = forecaster(
+            **fc_kwargs, ma_window = window, ema_half_life=half_life)        
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[:40, 3:10] = np.nan
+
+        for tidx in [50, 51, 52, 55, 56, 57]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index < t]
+            past_returns_window = past_returns.loc[
+                past_returns.index >= t - window]
+            cvx_val = inst_forecaster.values_in_time_recursive(
+                t=t, past_returns=past_returns)
+
+            self.assertFalse(np.any(np.isnan(cvx_val)))
+            self.assertTrue(np.allclose(
+                cvx_val, df_callable(
+                    past_returns_window.iloc[:,:-1], half_life)))
+
+
+    @staticmethod
+    def _mean_ewm(past_returns_noncash, half_life):
+        return past_returns_noncash.ewm(
+            halflife=half_life, times=past_returns_noncash.index
+            ).mean().iloc[-1]
 
     def test_mean_update_exponential_moving_window(self):
-        """Test the mean forecaster."""
-        half_life = pd.Timedelta('20d')
-        forecaster = HistoricalMeanReturn(ema_half_life=half_life)
+        """Test the mean forecaster with exponential moving window."""
 
-        returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:20, 3:10] = np.nan
+        self._base_test_exponential_moving_window_vector_update(
+            HistoricalMeanReturn, {}, self._mean_ewm)
 
-        for tidx in [50, 51, 52, 55, 56, 57]:
-            t = returns.index[tidx]
-            past_returns = returns.loc[returns.index < t]
+    @staticmethod
+    def _var_ewm(past_returns_noncash, half_life):
+        """We need to do this b/c pandas.DataFrame.ewm.var doesn't support
+        the ddof=0 option."""
+        return (past_returns_noncash**2).ewm(
+                halflife=half_life, times=past_returns_noncash.index
+                ).mean().iloc[-1] - TestForecast._mean_ewm(
+                    past_returns_noncash, half_life)**2
 
-            mean = forecaster.values_in_time_recursive(
-                t=t, past_returns=past_returns)
-            print(mean)
-            print(past_returns.iloc[:, :-1].ewm(
-                    halflife=half_life, times=past_returns.index).mean().iloc[-1])
-            self.assertTrue(np.allclose(
-                mean, past_returns.iloc[:, :-1].ewm(
-                    halflife=half_life, times=past_returns.index).mean().iloc[-1]))
+    def test_variance_update_exponential_moving_window(self):
+        """Test the var forecaster with exponential moving window."""
 
-    def test_variance_update(self):
-        """Test the variance forecaster."""
-        forecaster = HistoricalVariance(kelly=False)
+        self._base_test_exponential_moving_window_vector_update(
+            HistoricalVariance, {'kelly':False}, self._var_ewm)
 
-        returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:20, 3:10] = np.nan
+    def test_stddev_update_exponential_moving_window(self):
+        """Test the std forecaster with exponential moving window."""
 
-        for tidx in [50, 51, 52, 55, 56, 57]:
-            t = returns.index[tidx]
-            past_returns = returns.loc[returns.index < t]
-            var = forecaster.values_in_time_recursive(
-                t=t, past_returns=past_returns)
-            print(var)
-            # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
-            self.assertTrue(np.allclose(var, past_returns.var(ddof=0)[:-1]))
+        def _std_ewm(*args):
+            return np.sqrt(self._var_ewm(*args))
+        self._base_test_exponential_moving_window_vector_update(
+            HistoricalStandardDeviation, {'kelly':False}, _std_ewm)
 
-    def test_stddev_update(self):
-        """Test the standard deviation forecaster."""
-        forecaster = HistoricalStandardDeviation(kelly=False)
-
-        returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:20, 3:10] = np.nan
-
-        for tidx in [50, 51, 52, 55, 56, 57]:
-            t = returns.index[tidx]
-            past_returns = returns.loc[returns.index < t]
-            std = forecaster.values_in_time_recursive(
-                t=t, past_returns=past_returns)
-            print(std)
-            # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
-            self.assertTrue(np.allclose(std, past_returns.std(ddof=0)[:-1]))
-
-    def test_meanerror_update(self):
-        """Test the forecaster of the standard deviation on the mean."""
-        forecaster = HistoricalMeanError()
-
-        returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:20, 3:10] = np.nan
-
-        for tidx in [50, 51, 52, 55, 56, 57]:
-            t = returns.index[tidx]
-            past_returns = returns.loc[returns.index < t]
-            val = forecaster.values_in_time_recursive(
-                t=t, past_returns=past_returns)
-            print(val)
-            # self.assertTrue(mean[-1] == past_returns.iloc[-1,-1])
-            self.assertTrue(np.allclose(val, past_returns.std(ddof=0)[
-                            :-1] / np.sqrt(past_returns.count()[:-1])))
 
     def test_counts_matrix(self):
         """Test internal method(s) of HistoricalFactorizedCovariance."""

@@ -130,11 +130,14 @@ class BaseForecast(Estimator):
 
 def _is_timedelta(value):
     if isinstance(value, pd.Timedelta):
+        if value <= pd.Timedelta('0d'):
+            raise ValueError(
+                '(Exponential) moving average window must be positive')
         return True
     if isinstance(value, float) and np.isposinf(value):
         return False
     raise ValueError(
-        '(Exponential) moving average windows can only be'
+        '(Exponential) moving average window can only be'
         ' pandas Timedeltas or np.inf.')
 
 @dataclass(unsafe_hash=True)
@@ -187,7 +190,7 @@ class BaseMeanForecast(BaseForecast):
         ones = (~df.isnull()) * 1.
         return ones.multiply(weighter, axis=0).sum()
 
-    def _initial_compute(self, t, **kwargs):
+    def _initial_compute(self, t, **kwargs): # pylint: disable=arguments-differ
         """Make forecast from scratch."""
         df = self._dataframe_selector(t=t, **kwargs)
 
@@ -203,7 +206,7 @@ class BaseMeanForecast(BaseForecast):
         self._last_sum = self._ewm_numerator(df, t)
         self._last_time = t
 
-    def _online_update(self, t, **kwargs):
+    def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
         """Update forecast from period before."""
         df = self._dataframe_selector(t=t, **kwargs)
         last_row = df.iloc[-1]
@@ -239,7 +242,7 @@ class HistoricalMeanReturn(BaseMeanForecast):
 
     This ignores both the cash returns column and all missing values.
     """
-
+    # pylint: disable=arguments-differ
     def _dataframe_selector(self, past_returns, **kwargs):
         """Return dataframe to compute the historical means of."""
         return past_returns.iloc[:, :-1]
@@ -279,7 +282,8 @@ class HistoricalVariance(BaseMeanForecast):
         if not self.kelly:
             result -= self.meanforecaster.current_value**2
         return result
-
+    
+    # pylint: disable=arguments-differ
     def _dataframe_selector(self, past_returns, **kwargs):
         """Return dataframe to compute the historical means of."""
         return past_returns.iloc[:, :-1]**2
@@ -304,6 +308,7 @@ class HistoricalStandardDeviation(HistoricalVariance):
             super().values_in_time(**kwargs)
         return np.sqrt(variances)
 
+@dataclass(unsafe_hash=True)
 class HistoricalMeanError(HistoricalVariance):
     r"""Historical standard deviations of the mean of non-cash returns.
 
@@ -313,8 +318,7 @@ class HistoricalMeanError(HistoricalVariance):
     count.
     """
 
-    def __init__(self):
-        super().__init__(kelly=False)
+    kelly: bool = False
 
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
@@ -487,6 +491,7 @@ class HistoricalFactorizedCovariance(BaseForecast):
         tmp = nonnull.T @ past_returns.iloc[:, :-1].fillna(0.)
         return tmp  # * tmp.T
 
+    # pylint: disable=arguments-differ
     def _initial_compute(self, t, past_returns, **kwargs):
         self._last_counts_matrix = self._get_count_matrix(past_returns).values
         filled = past_returns.iloc[:, :-1].fillna(0.).values
