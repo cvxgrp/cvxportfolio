@@ -52,6 +52,21 @@ class TestForecast(CvxportfolioTest):
             forecaster.values_in_time_recursive(
                 t=self.returns.index[20], past_returns=returns.iloc[:20])
 
+        # test that update throws exception when moving window results
+        # in invalid data
+        forecaster = HistoricalMeanReturn(ma_window=pd.Timedelta('10d'))
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[20:, 3:10] = np.nan
+        last_valid_t = 25
+        forecaster.values_in_time_recursive(
+            t=self.returns.index[last_valid_t], 
+            past_returns=returns.iloc[:last_valid_t])
+
+        with self.assertRaises(ForecastError):
+            forecaster.values_in_time_recursive(
+                t=self.returns.index[last_valid_t+1], 
+                past_returns=returns.iloc[:last_valid_t+1])
+
     def _base_test_vector_update(
             # pylint: disable=too-many-arguments
             self, forecaster, fc_kwargs, df_attr, pd_kwargs, df_callable=None):
@@ -152,14 +167,15 @@ class TestForecast(CvxportfolioTest):
 
     def _base_test_exponential_moving_window_vector_update(
             self, forecaster, fc_kwargs, df_callable=None):
-        """Base test for vector quantities using an exponential moving window.
+        """Base test for vector quantities using an exponential moving window,
+        and an exponential moving window in combination with a moving window.
         """
         half_life = pd.Timedelta('20d')
         inst_forecaster = forecaster(**fc_kwargs, ema_half_life=half_life)        
         returns = pd.DataFrame(self.returns, copy=True)
         returns.iloc[:40, 3:10] = np.nan
 
-        for tidx in [50, 51, 52, 55, 56, 57]:
+        for tidx in [50, 51, 52, 55, 56, 57, 58, 59, 60]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
 
@@ -179,7 +195,7 @@ class TestForecast(CvxportfolioTest):
         returns = pd.DataFrame(self.returns, copy=True)
         returns.iloc[:40, 3:10] = np.nan
 
-        for tidx in [50, 51, 52, 55, 56, 57]:
+        for tidx in [50, 51, 52, 55, 56, 57, 58, 59, 60]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]
             past_returns_window = past_returns.loc[
@@ -191,7 +207,6 @@ class TestForecast(CvxportfolioTest):
             self.assertTrue(np.allclose(
                 cvx_val, df_callable(
                     past_returns_window.iloc[:,:-1], half_life)))
-
 
     @staticmethod
     def _mean_ewm(past_returns_noncash, half_life):
@@ -227,7 +242,6 @@ class TestForecast(CvxportfolioTest):
             return np.sqrt(self._var_ewm(*args))
         self._base_test_exponential_moving_window_vector_update(
             HistoricalStandardDeviation, {'kelly':False}, _std_ewm)
-
 
     def test_counts_matrix(self):
         """Test internal method(s) of HistoricalFactorizedCovariance."""

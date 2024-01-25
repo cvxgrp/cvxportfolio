@@ -221,7 +221,7 @@ class BaseMeanForecast(BaseForecast):
         else:
             discount_factor = 1.
 
-        # this stays the same for ewm
+        # for ewm we also need to discount last element
         self._last_counts += ~(last_row.isnull()) * discount_factor
         self._last_sum += last_row.fillna(0.) * discount_factor
 
@@ -232,6 +232,10 @@ class BaseMeanForecast(BaseForecast):
                 & (df.index < (t - self.ma_window))
             ]
             self._last_counts -= self._ewm_denominator(skips, t)
+            if self._last_counts.min() == 0:
+                raise ForecastError(
+                    f'{self.__class__.__name__} is computing the '
+                    + 'mean of a column with no values.')
             self._last_sum -= self._ewm_numerator(skips, t).fillna(0.)
 
         self._last_time = t
