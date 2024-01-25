@@ -169,15 +169,15 @@ class BaseMeanForecast(BaseForecast):
         self._agnostic_update(**kwargs)
         return (self._last_sum / self._last_counts).values
 
-    def _ewm_weights(self, df, t):
-        index_in_halflifes = (df.index - t) / self.ema_half_life
+    def _ewm_weights(self, index, t):
+        index_in_halflifes = (index - t) / self.ema_half_life
         return np.exp(index_in_halflifes * np.log(2))
 
     def _ewm_numerator(self, df, t):
         """Exponential moving window (optional) numerator."""
         if not _is_timedelta(self.ema_half_life):
             return df.sum()
-        weighter = self._ewm_weights(df, t)
+        weighter = self._ewm_weights(df.index, t)
         filled = df.fillna(0.)
         return filled.multiply(weighter, axis=0).sum()
 
@@ -186,12 +186,23 @@ class BaseMeanForecast(BaseForecast):
         if not _is_timedelta(self.ema_half_life):
             return df.count()
 
-        weighter = self._ewm_weights(df, t)
+        weighter = self._ewm_weights(df.index, t)
         ones = (~df.isnull()) * 1.
         return ones.multiply(weighter, axis=0).sum()
 
+    def _update_numerator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied below."""
+        return last_row.fillna(0.)
+    
+    def _update_denominator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied below."""
+        return ~(last_row.isnull())
+
     def _initial_compute(self, t, **kwargs): # pylint: disable=arguments-differ
-        """Make forecast from scratch."""
+        """Make forecast from scratch.
+        
+        This is designed to also work for the covariance forecaster.
+        """
         df = self._dataframe_selector(t=t, **kwargs)
 
         # Moving average window logic
@@ -201,13 +212,16 @@ class BaseMeanForecast(BaseForecast):
         self._last_counts = self._ewm_denominator(df, t)
         if self._last_counts.min() == 0:
             raise ForecastError(
-                f'{self.__class__.__name__} is computing the '
-                + 'mean of a column with no values.')
+                f'{self.__class__.__name__} is given a dataframe with '
+                    + 'at least a column that has no values.')
         self._last_sum = self._ewm_numerator(df, t)
         self._last_time = t
 
     def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
-        """Update forecast from period before."""
+        """Update forecast from period before.
+        
+        This is designed to also work for the covariance forecaster.
+        """
         df = self._dataframe_selector(t=t, **kwargs)
         last_row = df.iloc[-1]
 
@@ -222,8 +236,9 @@ class BaseMeanForecast(BaseForecast):
             discount_factor = 1.
 
         # for ewm we also need to discount last element
-        self._last_counts += ~(last_row.isnull()) * discount_factor
-        self._last_sum += last_row.fillna(0.) * discount_factor
+        self._last_counts += self._update_denominator(
+            last_row) * discount_factor
+        self._last_sum += self._update_numerator(last_row) * discount_factor
 
         # Moving average window logic
         if _is_timedelta(self.ma_window):
@@ -234,8 +249,8 @@ class BaseMeanForecast(BaseForecast):
             self._last_counts -= self._ewm_denominator(skips, t)
             if self._last_counts.min() == 0:
                 raise ForecastError(
-                    f'{self.__class__.__name__} is computing the '
-                    + 'mean of a column with no values.')
+                    f'{self.__class__.__name__} is given a dataframe with '
+                    + 'at least a column that has no values.')
             self._last_sum -= self._ewm_numerator(skips, t).fillna(0.)
 
         self._last_time = t
@@ -292,6 +307,13 @@ class HistoricalVariance(BaseMeanForecast):
         """Return dataframe to compute the historical means of."""
         return past_returns.iloc[:, :-1]**2
 
+
+## HOW TO DO COVARIANCE
+## Factor out non-kelly part in dedicated forecaster (like it's done for var)
+## initial compute is good
+## ewm_weights is good
+## ewm_num and ewm_denum to override
+## online update needs to be refactored in BaseMean
 
 @dataclass(unsafe_hash=True)
 class HistoricalStandardDeviation(HistoricalVariance):
@@ -450,7 +472,7 @@ def project_on_psd_cone_and_factorize(covariance):
     return eigvec @ np.diag(np.sqrt(eigval))
 
 @dataclass(unsafe_hash=True)
-class HistoricalFactorizedCovariance(BaseForecast):
+class HistoricalFactorizedCovariance(BaseMeanForecast):
     r"""Historical covariance matrix, sqrt factorized.
 
     :param kelly: if ``True`` compute each
@@ -471,13 +493,46 @@ class HistoricalFactorizedCovariance(BaseForecast):
     FACTORIZED = True
 
     def __post_init__(self):
-        self._last_time = None
-        self._last_counts_matrix = None
-        self._last_sum_matrix = None
+        super().__post_init__()
         self._joint_mean = None
 
+    # pylint: disable=arguments-differ
+    def _dataframe_selector(self, past_returns, **kwargs):
+        """Return dataframe to compute the historical covariance of."""
+        return past_returns.iloc[:, :-1]
+
+
+    def _ewm_numerator(self, df, t):
+        """Exponential moving window (optional) numerator."""
+        if not _is_timedelta(self.ema_half_life):
+            return df.sum()
+        weighter = self._ewm_weights(df.index, t)
+        filled = df.fillna(0.)
+        return filled.multiply(weighter, axis=0).sum()
+
+    def _ewm_denominator(self, df, t):
+        """Exponential moving window (optional) denominator."""
+        ones = (~df.isnull()) * 1.
+        if not _is_timedelta(self.ema_half_life):
+            return ones.T @ ones
+
+        weighter = self._ewm_weights(df.index, t)
+        ones = (~df.isnull()) * 1.
+        tmp = ones.multiply(weighter, axis=0)
+        return tmp.T @ tmp
+
+    def _update_numerator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied below."""
+        return last_row.fillna(0.)
+    
+    def _update_denominator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied below."""
+        return ~(last_row.isnull())
+
+
+
     @staticmethod
-    def _get_count_matrix(past_returns):
+    def _get_count_matrix(past_returns): # -> _ewn_denominator
         r"""We obtain the matrix of non-null joint counts:
 
         .. math::
@@ -497,9 +552,9 @@ class HistoricalFactorizedCovariance(BaseForecast):
 
     # pylint: disable=arguments-differ
     def _initial_compute(self, t, past_returns, **kwargs):
-        self._last_counts_matrix = self._get_count_matrix(past_returns).values
+        self._last_counts = self._get_count_matrix(past_returns).values
         filled = past_returns.iloc[:, :-1].fillna(0.).values
-        self._last_sum_matrix = filled.T @ filled
+        self._last_sum = filled.T @ filled
         if not self.kelly:
             self._joint_mean = self._get_initial_joint_mean(past_returns)
 
@@ -507,9 +562,9 @@ class HistoricalFactorizedCovariance(BaseForecast):
 
     def _online_update(self, t, past_returns, **kwargs):
         nonnull = ~(past_returns.iloc[-1, :-1].isnull())
-        self._last_counts_matrix += np.outer(nonnull, nonnull)
+        self._last_counts += np.outer(nonnull, nonnull)
         last_ret = past_returns.iloc[-1, :-1].fillna(0.)
-        self._last_sum_matrix += np.outer(last_ret, last_ret)
+        self._last_sum += np.outer(last_ret, last_ret)
         self._last_time = t
         if not self.kelly:
             self._joint_mean += last_ret
@@ -533,10 +588,10 @@ class HistoricalFactorizedCovariance(BaseForecast):
         """
 
         self._agnostic_update(t=t, **kwargs)
-        covariance = self._last_sum_matrix / self._last_counts_matrix
+        covariance = self._last_sum / self._last_counts
 
         if not self.kelly:
-            tmp = self._joint_mean / self._last_counts_matrix
+            tmp = self._joint_mean / self._last_counts
             covariance -= tmp.T * tmp
         try:
             return project_on_psd_cone_and_factorize(covariance)

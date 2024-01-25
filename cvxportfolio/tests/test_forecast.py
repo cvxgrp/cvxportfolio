@@ -274,7 +274,7 @@ class TestForecast(CvxportfolioTest):
             t=pd.Timestamp('2022-01-01'), past_returns=returns)
 
         # pylint: disable=protected-access
-        sum_matrix = forecaster._last_sum_matrix
+        sum_matrix = forecaster._last_sum
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
                 (7, 24), (1, 15), (13, 22)]:
