@@ -1,4 +1,4 @@
-# Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+# Copyright 2023 Enzo Busseti
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,19 +11,64 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains classes that make forecasts.
+r"""This module implements the simple forecasting models used by Cvxportfolio.
 
-It implements the models described in Chapter 7 of the book (Examples).
+These are standard ones like historical mean, variance, and covariance. In
+most cases the models implemented here are equivalent to the relevant Pandas
+DataFrame methods, including (most importantly) the logic used to skip over any
+``np.nan``. There are some subtle differences explained below.
 
-For example, historical means of market returns, and covariances, are
-forecasted here. These are used internally by cvxportfolio objects. In
-addition, some of the classes defined here have the ability to cache the
-result of their computation online so that if multiple copies of the
-same forecaster need access to the estimated value (as is the case in
-MultiPeriodOptimization policies) the expensive evaluation is only done
-once. The same cache is stored on disk when a back-test ends, so next
-time the user runs a back-test with the same universe and market data,
-the forecasted values will be retrieved automatically.
+Our forecasters are optimized to be evaluated sequentially in time: at each
+point in time in a back-test the forecast computed at the previous time step
+is updated with the most recent observation. This is in some cases (e.g.,
+covariances) much more efficient than computing from scratch.
+
+Most of our forecasters implement both a rolling window and exponential moving
+average logic. These are specified by the ``rolling`` and ``half_life``
+parameters respectively, which are either Pandas Timedeltas or ``np.inf``.
+The latter is the default, and means that the whole past is used, with no
+exponential smoothing. Note that it's possible to use both, e.g.,
+estimate covariance matrices ignoring past returns older than 5 years and
+smoothing the recent ones using an exponential kernel with half-life of 1 year.
+
+Finally, we note that the covariance, variance and standard deviation
+forecasters implement the ``kelly`` parameter, which is True by default.
+This is a simple trick explained in
+:paper:`section 4.2 (page 28) <section.4.2>` of the paper, simplifies the
+computation and provides in general (slightly) higher performance.
+For example, using the notation of the paper, the classical definition of
+covariance is
+
+.. math::
+
+    \Sigma = \mathbf{E}(r_t - \mu)(r_t - \mu)^T,
+
+this is what you get by setting ``kelly=False``. The default, ``kelly=True``,
+gives instead
+
+.. math::
+
+    \Sigma^\text{kelly} = \mathbf{E}r_t r_t^T = \Sigma + \mu \mu^T,
+
+so that the resulting Markowitz-style optimization problem corresponds to
+the second order Taylor approximation of a (risk-constrained) Kelly objective,
+as is explained briefly :paper:`at page 28 of the paper <section.4.2>`, or with
+more detail (and hard-to-read math) in `section 6 of the Risk-Constrained Kelly
+Gambling paper <https://web.stanford.edu/~boyd/papers/pdf/kelly.pdf>`_.
+
+Lastly, some forecasters implement a basic caching mechanism.
+This is used in two ways. First, online (e.g., in back-test): if multiple
+copies of the same forecaster need access to the estimated value, as is the
+case in :class:`cvxportfolio.MultiPeriodOptimization` policies, the expensive
+evaluation is only done once. Then, offline, provided that the
+:class:`cvxportfolio.data.MarketData` server used implements the
+:meth:`cvxportfolio.data.MarketData.partial_universe_signature` method
+(so that we can certify which market data the cached values are computed on).
+This type of caching simply saves on disk the forecasted values, and makes it
+available automatically next time the user runs a back-test on the same market
+data (and same universe). This is especially useful when doing hyper-parameter
+optimization, so that expensive computations like evaluating large covariance
+matrices are only done once.
 """
 
 import logging
@@ -38,7 +83,7 @@ from .estimator import Estimator
 logger = logging.getLogger(__name__)
 
 def online_cache(values_in_time):
-    """A simple online cache that decorates values_in_time.
+    """A simple online cache that decorates :meth:`values_in_time`.
 
     The instance it is used on needs to be hashable (we currently use
     the hash of its __repr__ via dataclass).
@@ -154,33 +199,33 @@ class BaseMeanVarForecast(BaseForecast):
     scratch (especially for covariances).
     """
 
-    ema_half_life: pd.Timedelta = np.inf
-    ma_window: pd.Timedelta = np.inf
+    half_life: pd.Timedelta or float = np.inf
+    rolling: pd.Timedelta or float = np.inf
 
     def __post_init__(self):
         self._last_time = None
         self._denominator = None
         self._numerator = None
 
-    def _compute_numerator(self, df, ewm_weights):
+    def _compute_numerator(self, df, emw_weights):
         """Exponential moving window (optional) numerator."""
         raise NotImplementedError # pragma: no cover
 
-    def _compute_denominator(self, df, ewm_weights):
+    def _compute_denominator(self, df, emw_weights):
         """Exponential moving window (optional) denominator."""
         raise NotImplementedError # pragma: no cover
 
     def _update_numerator(self, last_row):
         """Update with last observation.
 
-        Ewm (if any) is applied in this class.
+        Emw (if any) is applied in this class.
         """
         raise NotImplementedError # pragma: no cover
 
     def _update_denominator(self, last_row):
         """Update with last observation.
 
-        Ewm (if any) is applied in this class.
+        Emw (if any) is applied in this class.
         """
         raise NotImplementedError # pragma: no cover
 
@@ -188,7 +233,6 @@ class BaseMeanVarForecast(BaseForecast):
         """Return dataframe we work with.
 
         This method receives the **kwargs passed to :meth:`values_in_time`.
-        .
         """
         raise NotImplementedError # pragma: no cover
 
@@ -205,8 +249,9 @@ class BaseMeanVarForecast(BaseForecast):
         self._agnostic_update(**kwargs)
         return (self._numerator / self._denominator).values
 
-    def _ewm_weights(self, index, t):
-        index_in_halflifes = (index - t) / self.ema_half_life
+    def _emw_weights(self, index, t):
+        """Get weights to apply to the past obs for EMW."""
+        index_in_halflifes = (index - t) / self.half_life
         return np.exp(index_in_halflifes * np.log(2))
 
     def _initial_compute(self, t, **kwargs): # pylint: disable=arguments-differ
@@ -217,25 +262,25 @@ class BaseMeanVarForecast(BaseForecast):
         df = self._dataframe_selector(t=t, **kwargs)
 
         # Moving average window logic
-        if _is_timedelta(self.ma_window):
-            df = df.loc[df.index >= t-self.ma_window]
+        if _is_timedelta(self.rolling):
+            df = df.loc[df.index >= t-self.rolling]
 
-        # If EWM, compute weights here
-        if _is_timedelta(self.ema_half_life):
-            ewm_weights = self._ewm_weights(df.index, t)
+        # If EMW, compute weights here
+        if _is_timedelta(self.half_life):
+            emw_weights = self._emw_weights(df.index, t)
         else:
-            ewm_weights = None
+            emw_weights = None
 
-        self._denominator = self._compute_denominator(df, ewm_weights)
+        self._denominator = self._compute_denominator(df, emw_weights)
         if np.min(self._denominator.values) == 0:
             raise ForecastError(
                 f'{self.__class__.__name__} is given a dataframe with '
                     + 'at least a column that has no values.')
-        self._numerator = self._compute_numerator(df, ewm_weights)
+        self._numerator = self._compute_numerator(df, emw_weights)
         self._last_time = t
 
         # used by covariance forecaster
-        return df, ewm_weights
+        return df, emw_weights
 
     def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
         """Update forecast from period before.
@@ -245,89 +290,88 @@ class BaseMeanVarForecast(BaseForecast):
         df = self._dataframe_selector(t=t, **kwargs)
         last_row = df.iloc[-1]
 
-        # if ewm discount past
-        if _is_timedelta(self.ema_half_life):
+        # if emw discount past
+        if _is_timedelta(self.half_life):
             time_passed_in_halflifes = (
-                self._last_time - t)/self.ema_half_life
+                self._last_time - t)/self.half_life
             discount_factor = np.exp(time_passed_in_halflifes * np.log(2))
             self._denominator *= discount_factor
             self._numerator *= discount_factor
         else:
             discount_factor = 1.
 
-        # for ewm we also need to discount last element
+        # for emw we also need to discount last element
         self._denominator += self._update_denominator(
             last_row) * discount_factor
         self._numerator += self._update_numerator(last_row) * discount_factor
 
         # Moving average window logic: subtract elements that have gone out
-        if _is_timedelta(self.ma_window):
-            observations_to_subtract, ewm_weights_of_subtract = \
+        if _is_timedelta(self.rolling):
+            observations_to_subtract, emw_weights_of_subtract = \
                 self._remove_part_gone_out_of_ma(df, t)
         else:
-            observations_to_subtract, ewm_weights_of_subtract = None, None
+            observations_to_subtract, emw_weights_of_subtract = None, None
 
         self._last_time = t
 
         # used by covariance forecaster
         return (
-            discount_factor, observations_to_subtract, ewm_weights_of_subtract)
+            discount_factor, observations_to_subtract, emw_weights_of_subtract)
 
     def _remove_part_gone_out_of_ma(self, df, t):
-        """Subtract from numerator and denominator the observations not in MW.
-        """
+        """Subtract from numerator and denominator too old observations."""
 
         observations_to_subtract = df.loc[
-            (df.index >= (self._last_time - self.ma_window))
-            & (df.index < (t - self.ma_window))]
+            (df.index >= (self._last_time - self.rolling))
+            & (df.index < (t - self.rolling))]
 
-        # If EWM, compute weights here
-        if _is_timedelta(self.ema_half_life):
-            ewm_weights = self._ewm_weights(observations_to_subtract.index, t)
+        # If EMW, compute weights here
+        if _is_timedelta(self.half_life):
+            emw_weights = self._emw_weights(observations_to_subtract.index, t)
         else:
-            ewm_weights = None
+            emw_weights = None
 
         self._denominator -= self._compute_denominator(
-            observations_to_subtract, ewm_weights)
+            observations_to_subtract, emw_weights)
         if np.min(self._denominator.values) == 0:
             raise ForecastError(
                 f'{self.__class__.__name__} is given a dataframe with '
                 + 'at least a column that has no values.')
         self._numerator -= self._compute_numerator(
-            observations_to_subtract, ewm_weights).fillna(0.)
+            observations_to_subtract, emw_weights).fillna(0.)
 
         # used by covariance forecaster
-        return observations_to_subtract, ewm_weights
+        return observations_to_subtract, emw_weights
 
 
 @dataclass(unsafe_hash=True)
 class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
     """This class contains the logic common to the mean forecasters."""
 
-    def _compute_numerator(self, df, ewm_weights):
+    def _compute_numerator(self, df, emw_weights):
         """Exponential moving window (optional) numerator."""
-        if ewm_weights is None:
+        if emw_weights is None:
             return df.sum()
-        return df.multiply(ewm_weights, axis=0).sum()
+        return df.multiply(emw_weights, axis=0).sum()
 
-    def _compute_denominator(self, df, ewm_weights):
+    def _compute_denominator(self, df, emw_weights):
         """Exponential moving window (optional) denominator."""
-        if ewm_weights is None:
+        if emw_weights is None:
             return df.count()
         ones = (~df.isnull()) * 1.
-        return ones.multiply(ewm_weights, axis=0).sum()
+        return ones.multiply(emw_weights, axis=0).sum()
 
     def _update_numerator(self, last_row):
         """Update with last observation.
 
-        Ewm (if any) is applied upstream.
+        Emw (if any) is applied upstream.
         """
         return last_row.fillna(0.)
 
     def _update_denominator(self, last_row):
         """Update with last observation.
 
-        Ewm (if any) is applied upstream.
+        Emw (if any) is applied upstream.
         """
         return ~(last_row.isnull())
 
@@ -361,8 +405,8 @@ class HistoricalVariance(BaseMeanForecast):
     def __post_init__(self):
         if not self.kelly:
             self.meanforecaster = HistoricalMeanReturn(
-                ema_half_life=self.ema_half_life,
-                ma_window=self.ma_window)
+                half_life=self.half_life,
+                rolling=self.rolling)
         super().__post_init__()
 
     def values_in_time(self, **kwargs):
@@ -440,26 +484,26 @@ class HistoricalCovariance(BaseMeanVarForecast):
         super().__post_init__()
         self._joint_mean = None
 
-    def _compute_numerator(self, df, ewm_weights):
+    def _compute_numerator(self, df, emw_weights):
         """Exponential moving window (optional) numerator."""
         filled = df.fillna(0.)
-        if ewm_weights is None:
+        if emw_weights is None:
             return filled.T @ filled
-        tmp = filled.multiply(ewm_weights, axis=0)
+        tmp = filled.multiply(emw_weights, axis=0)
         return tmp.T @ filled
 
-    def _compute_denominator(self, df, ewm_weights):
+    def _compute_denominator(self, df, emw_weights):
         """Exponential moving window (optional) denominator."""
         ones = (~df.isnull()) * 1.
-        if ewm_weights is None:
+        if emw_weights is None:
             return ones.T @ ones
-        tmp = ones.multiply(ewm_weights, axis=0)
+        tmp = ones.multiply(emw_weights, axis=0)
         return tmp.T @ ones
 
     def _update_denominator(self, last_row):
         """Update with last observation.
 
-        Ewm (if any) is applied upstream.
+        Emw (if any) is applied upstream.
         """
         nonnull = ~(last_row.isnull())
         return np.outer(nonnull, nonnull)
@@ -467,7 +511,7 @@ class HistoricalCovariance(BaseMeanVarForecast):
     def _update_numerator(self, last_row):
         """Update with last observation.
 
-        Ewm (if any) is applied upstream.
+        Emw (if any) is applied upstream.
         """
         filled = last_row.fillna(0.)
         return np.outer(filled, filled)
@@ -477,13 +521,13 @@ class HistoricalCovariance(BaseMeanVarForecast):
         """Return dataframe to compute the historical covariance of."""
         return past_returns.iloc[:, :-1]
 
-    def _compute_joint_mean(self, df, ewm_weights):
+    def _compute_joint_mean(self, df, emw_weights):
         r"""Compute precursor of :math:`\Sigma_{i,j} =
         \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
         nonnull = (~df.isnull()) * 1.
-        if ewm_weights is None:
+        if emw_weights is None:
             return nonnull.T @ df.fillna(0.)
-        return nonnull.T @ df.fillna(0.).multiply(ewm_weights, axis=0)
+        return nonnull.T @ df.fillna(0.).multiply(emw_weights, axis=0)
 
     def _update_joint_mean(self, last_row):
         r"""Update precursor of :math:`\Sigma_{i,j} =
@@ -494,31 +538,33 @@ class HistoricalCovariance(BaseMeanVarForecast):
     def _initial_compute(self, **kwargs):
         """Compute from scratch, taking care of non-Kelly correction."""
 
-        df, ewm_weights = super()._initial_compute(**kwargs)
+        df, emw_weights = super()._initial_compute(**kwargs)
 
         if not self.kelly:
-            self._joint_mean = self._compute_joint_mean(df, ewm_weights)
+            self._joint_mean = self._compute_joint_mean(df, emw_weights)
 
     def _online_update(self, **kwargs):
         """Update from last observation."""
 
-        discount_factor, observations_to_subtract, ewm_weights_of_subtract = \
+        discount_factor, observations_to_subtract, emw_weights_of_subtract = \
             super()._online_update(**kwargs)
         df = self._dataframe_selector(**kwargs)
         last_row = df.iloc[-1]
 
         if not self.kelly:
 
+            # discount past if EMW
             if discount_factor != 1.:
                 self._joint_mean *= discount_factor
 
+            # add last anyways
             self._joint_mean += self._update_joint_mean(
                 last_row) * discount_factor
 
-            # MA update
+            # if MW, update by removing old observations
             if observations_to_subtract is not None:
                 self._joint_mean -= self._compute_joint_mean(
-                    observations_to_subtract, ewm_weights_of_subtract)
+                    observations_to_subtract, emw_weights_of_subtract)
 
     def values_in_time( # pylint: disable=arguments-differ
             self, **kwargs):

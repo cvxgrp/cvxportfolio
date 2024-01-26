@@ -36,12 +36,12 @@ class TestForecast(CvxportfolioTest):
     def test_vector_fc_syntax(self):
         """Test syntax of vector forecasters."""
         with self.assertRaises(ValueError):
-            forecaster = HistoricalMeanReturn(ma_window=3)
+            forecaster = HistoricalMeanReturn(rolling=3)
             forecaster.values_in_time_recursive(
                 t=pd.Timestamp.today(), past_returns=self.returns)
 
         with self.assertRaises(ValueError):
-            forecaster = HistoricalMeanReturn(ma_window=pd.Timedelta('0d'))
+            forecaster = HistoricalMeanReturn(rolling=pd.Timedelta('0d'))
             forecaster.values_in_time_recursive(
                 t=pd.Timestamp.today(), past_returns=self.returns)
 
@@ -54,7 +54,7 @@ class TestForecast(CvxportfolioTest):
 
         # test that update throws exception when moving window results
         # in invalid data
-        forecaster = HistoricalMeanReturn(ma_window=pd.Timedelta('10d'))
+        forecaster = HistoricalMeanReturn(rolling=pd.Timedelta('10d'))
         returns = pd.DataFrame(self.returns, copy=True)
         returns.iloc[20:, 3:10] = np.nan
         last_valid_t = 25
@@ -122,27 +122,27 @@ class TestForecast(CvxportfolioTest):
         prevents from doing so (see below).
         """
 
-        # EWM
+        # EMW
         if half_life is not None:
             index_in_halflifes = (
                 past_returns_noncash.index - past_returns_noncash.index[-1]
                     ) / half_life
-            ewm_weights = np.exp(index_in_halflifes * np.log(2))
+            emw_weights = np.exp(index_in_halflifes * np.log(2))
         else:
-            ewm_weights = pd.Series(1., past_returns_noncash.index)
+            emw_weights = pd.Series(1., past_returns_noncash.index)
 
         _ = past_returns_noncash.fillna(0.)
-        num = _.T @ _.multiply(ewm_weights, axis=0)
+        num = _.T @ _.multiply(emw_weights, axis=0)
         _ = (~past_returns_noncash.isnull()) * 1.
-        den = _.T @ _.multiply(ewm_weights, axis=0)
+        den = _.T @ _.multiply(emw_weights, axis=0)
 
         return num / den
 
-    def _nokelly_covariance_ewm_nonans(self, past_returns_noncash, half_life):
+    def _nokelly_covariance_emw_nonans(self, past_returns_noncash, half_life):
         """This is only without nans."""
         result = self._kelly_covariance(
             past_returns_noncash, half_life=half_life)
-        means = self._mean_ewm(past_returns_noncash, half_life)
+        means = self._mean_emw(past_returns_noncash, half_life)
         return result - np.outer(means, means)
 
     def test_cov_update(self):
@@ -154,13 +154,13 @@ class TestForecast(CvxportfolioTest):
 
     def test_cov_update_nokelly(self):
         """Test the covariance forecaster without Kelly correction.
-        
+
         Due to a bug in pandas, we can compare with Pandas' DataFrame.cov
         only if the df has no NaNs.
         """
 
         self._base_test_vector_update(
-            HistoricalCovariance, {'kelly': False}, 'cov', {'ddof':0},
+            HistoricalCovariance, {'kelly': False}, 'cov', {'ddof': 0},
             with_nans=False)
 
     def _base_test_moving_window_vector_update(
@@ -170,7 +170,7 @@ class TestForecast(CvxportfolioTest):
         """Base test for vector quantities using a moving window."""
 
         window = pd.Timedelta('20d')
-        forecaster = forecaster(**fc_kwargs, ma_window=window)
+        forecaster = forecaster(**fc_kwargs, rolling=window)
 
         returns = pd.DataFrame(self.returns, copy=True)
         if with_nans:
@@ -229,7 +229,7 @@ class TestForecast(CvxportfolioTest):
         """Test the covariance forecaster with moving window without Kelly."""
 
         self._base_test_moving_window_vector_update(
-            HistoricalCovariance, {'kelly': False}, 'cov', {'ddof':0},
+            HistoricalCovariance, {'kelly': False}, 'cov', {'ddof': 0},
             with_nans=False)
 
     def _base_test_exponential_moving_window_vector_update(
@@ -237,7 +237,7 @@ class TestForecast(CvxportfolioTest):
         """Base test for vector quantities using an exponential moving window,
         and an exponential moving window in combination with a moving window."""
         half_life = pd.Timedelta('20d')
-        inst_forecaster = forecaster(**fc_kwargs, ema_half_life=half_life)
+        inst_forecaster = forecaster(**fc_kwargs, half_life=half_life)
         returns = pd.DataFrame(self.returns, copy=True)
         if with_nans:
             returns.iloc[:40, 3:10] = np.nan
@@ -260,7 +260,7 @@ class TestForecast(CvxportfolioTest):
         half_life = pd.Timedelta('10d')
         window = pd.Timedelta('20d')
         inst_forecaster = forecaster(
-            **fc_kwargs, ma_window = window, ema_half_life=half_life)
+            **fc_kwargs, rolling = window, half_life=half_life)
         returns = pd.DataFrame(self.returns, copy=True)
         if with_nans:
             returns.iloc[:40, 3:10] = np.nan
@@ -279,7 +279,7 @@ class TestForecast(CvxportfolioTest):
                     past_returns_window.iloc[:, :-1], half_life)))
 
     @staticmethod
-    def _mean_ewm(past_returns_noncash, half_life):
+    def _mean_emw(past_returns_noncash, half_life):
         return past_returns_noncash.ewm(
             halflife=half_life, times=past_returns_noncash.index
             ).mean().iloc[-1]
@@ -288,29 +288,29 @@ class TestForecast(CvxportfolioTest):
         """Test the mean forecaster with exponential moving window."""
 
         self._base_test_exponential_moving_window_vector_update(
-            HistoricalMeanReturn, {}, self._mean_ewm)
+            HistoricalMeanReturn, {}, self._mean_emw)
 
     @staticmethod
-    def _var_ewm(past_returns_noncash, half_life):
-        """We need to do this b/c pandas.DataFrame.ewm.var doesn't support
+    def _var_emw(past_returns_noncash, half_life):
+        """We need to do this b/c pandas.DataFrame.emw.var doesn't support
         the ddof=0 option."""
         return (past_returns_noncash**2).ewm(
                 halflife=half_life, times=past_returns_noncash.index
-                ).mean().iloc[-1] - TestForecast._mean_ewm(
+                ).mean().iloc[-1] - TestForecast._mean_emw(
                     past_returns_noncash, half_life)**2
 
     def test_variance_update_exponential_moving_window(self):
         """Test the var forecaster with exponential moving window."""
 
         self._base_test_exponential_moving_window_vector_update(
-            HistoricalVariance, {'kelly': False}, self._var_ewm)
+            HistoricalVariance, {'kelly': False}, self._var_emw)
 
     def test_stddev_update_exponential_moving_window(self):
         """Test the std forecaster with exponential moving window."""
-        def _std_ewm(*args):
-            return np.sqrt(self._var_ewm(*args))
+        def _std_emw(*args):
+            return np.sqrt(self._var_emw(*args))
         self._base_test_exponential_moving_window_vector_update(
-            HistoricalStandardDeviation, {'kelly': False}, _std_ewm)
+            HistoricalStandardDeviation, {'kelly': False}, _std_emw)
 
     def test_cov_update_exponential_moving_window(self):
         """Test the covariance forecaster with exponential moving window."""
@@ -324,7 +324,7 @@ class TestForecast(CvxportfolioTest):
 
         self._base_test_exponential_moving_window_vector_update(
             HistoricalCovariance, {'kelly': False},
-            df_callable=self._nokelly_covariance_ewm_nonans, with_nans=False)
+            df_callable=self._nokelly_covariance_emw_nonans, with_nans=False)
 
     def test_counts_matrix(self):
         """Test internal method(s) of HistoricalFactorizedCovariance."""
