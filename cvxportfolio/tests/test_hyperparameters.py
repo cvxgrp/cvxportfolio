@@ -47,7 +47,8 @@ class TestHyperparameters(CvxportfolioTest):
             'ReturnsForecast(r_hat=HistoricalMeanReturn(ema_half_life=inf,'
             + ' ma_window=inf), decay=1.0)'
             + '- Gamma(current_value=1.0) * FullCovariance('
-            + 'Sigma=HistoricalFactorizedCovariance(kelly=True))'
+            + 'Sigma=HistoricalFactorizedCovariance(ema_half_life=inf,'
+            + ' ma_window=inf, kelly=True))'
             + '- Gamma(current_value=1.0) * StocksTransactionCost('
             + 'a=0.0, pershare_cost=0.005, b=1.0, exponent=1.5)')
 

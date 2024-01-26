@@ -141,11 +141,10 @@ def _is_timedelta(value):
         ' pandas Timedeltas or np.inf.')
 
 
-
 @dataclass(unsafe_hash=True)
 class BaseMeanVarForecast(BaseForecast):
     """This class contains logic common to mean and (co)variance forecasters.
-    
+
     It implements both moving average and exponential moving average, which
     can be used at the same time (e.g., ignore observations older than 5
     years and weight exponentially with half-life of 1 year the recent ones).
@@ -172,20 +171,25 @@ class BaseMeanVarForecast(BaseForecast):
         raise NotImplementedError # pragma: no cover
 
     def _update_numerator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied in this class.
+        """Update with last observation.
+
+        Ewm (if any) is applied in this class.
         """
         raise NotImplementedError # pragma: no cover
 
     def _update_denominator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied in this class.
+        """Update with last observation.
+
+        Ewm (if any) is applied in this class.
         """
         raise NotImplementedError # pragma: no cover
 
     def _dataframe_selector(self, **kwargs):
-        """Return dataframe we work with
-        
+        """Return dataframe we work with.
+
         This method receives the **kwargs passed to :meth:`values_in_time`.
-        ."""
+        .
+        """
         raise NotImplementedError # pragma: no cover
 
     def values_in_time( # pylint: disable=arguments-differ
@@ -207,7 +211,7 @@ class BaseMeanVarForecast(BaseForecast):
 
     def _initial_compute(self, t, **kwargs): # pylint: disable=arguments-differ
         """Make forecast from scratch.
-        
+
         This method receives the **kwargs passed to :meth:`values_in_time`.
         """
         df = self._dataframe_selector(t=t, **kwargs)
@@ -235,7 +239,7 @@ class BaseMeanVarForecast(BaseForecast):
 
     def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
         """Update forecast from period before.
-        
+
         This method receives the **kwargs passed to :meth:`values_in_time`.
         """
         df = self._dataframe_selector(t=t, **kwargs)
@@ -269,10 +273,8 @@ class BaseMeanVarForecast(BaseForecast):
         return (
             discount_factor, observations_to_subtract, ewm_weights_of_subtract)
 
-
     def _remove_part_gone_out_of_ma(self, df, t):
-        """Subtract from numerator and denominator the observations not in MW.
-        """
+        """Subtract from numerator and denominator the observations not in MW."""
 
         observations_to_subtract = df.loc[
             (df.index >= (self._last_time - self.ma_window))
@@ -315,11 +317,17 @@ class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
         return ones.multiply(ewm_weights, axis=0).sum()
 
     def _update_numerator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied upstream."""
+        """Update with last observation.
+
+        Ewm (if any) is applied upstream.
+        """
         return last_row.fillna(0.)
-    
+
     def _update_denominator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied upstream."""
+        """Update with last observation.
+
+        Ewm (if any) is applied upstream.
+        """
         return ~(last_row.isnull())
 
 
@@ -369,19 +377,12 @@ class HistoricalVariance(BaseMeanForecast):
         if not self.kelly:
             result -= self.meanforecaster.current_value**2
         return result
-    
+
     # pylint: disable=arguments-differ
     def _dataframe_selector(self, past_returns, **kwargs):
         """Return dataframe to compute the historical means of."""
         return past_returns.iloc[:, :-1]**2
 
-
-## HOW TO DO COVARIANCE
-## Factor out non-kelly part in dedicated forecaster (like it's done for var)
-## initial compute is good
-## ewm_weights is good
-## ewm_num and ewm_denum to override
-## online update needs to be refactored in BaseMean
 
 @dataclass(unsafe_hash=True)
 class HistoricalStandardDeviation(HistoricalVariance):
@@ -430,8 +431,7 @@ class HistoricalMeanError(HistoricalVariance):
 
 @dataclass(unsafe_hash=True)
 class HistoricalCovariance(BaseMeanVarForecast):
-    r"""Historical covariance matrix
-    """
+    r"""Historical covariance matrix."""
 
     kelly: bool = True
 
@@ -456,12 +456,18 @@ class HistoricalCovariance(BaseMeanVarForecast):
         return tmp.T @ ones
 
     def _update_denominator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied upstream."""
+        """Update with last observation.
+
+        Ewm (if any) is applied upstream.
+        """
         nonnull = ~(last_row.isnull())
         return np.outer(nonnull, nonnull)
 
     def _update_numerator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied upstream."""
+        """Update with last observation.
+
+        Ewm (if any) is applied upstream.
+        """
         filled = last_row.fillna(0.)
         return np.outer(filled, filled)
 
@@ -503,7 +509,6 @@ class HistoricalCovariance(BaseMeanVarForecast):
         ewm_weights = super()._initial_compute(**kwargs)
         df = self._dataframe_selector(**kwargs)
 
-
         #df = past_returns.iloc[:, :-1]
         #self._denominator = self._compute_denominator(df, None)
         #self._numerator = self._compute_numerator(df, None)
@@ -531,10 +536,10 @@ class HistoricalCovariance(BaseMeanVarForecast):
             self._joint_mean += self._update_joint_mean(
                 last_row) * discount_factor
 
-        # MA update
-        if observations_to_subtract is not None:
-            self._joint_mean -= self._compute_joint_mean(
-                observations_to_subtract, ewm_weights_of_subtract)
+            # MA update
+            if observations_to_subtract is not None:
+                self._joint_mean -= self._compute_joint_mean(
+                    observations_to_subtract, ewm_weights_of_subtract)
 
     def values_in_time( # pylint: disable=arguments-differ
             self, **kwargs):
