@@ -140,20 +140,52 @@ def _is_timedelta(value):
         '(Exponential) moving average window can only be'
         ' pandas Timedeltas or np.inf.')
 
+
+
 @dataclass(unsafe_hash=True)
-class BaseMeanForecast(BaseForecast):
-    """Base forecaster for means."""
+class BaseMeanVarForecast(BaseForecast):
+    """This class contains logic common to mean and (co)variance forecasters.
+    
+    It implements both moving average and exponential moving average, which
+    can be used at the same time (e.g., ignore observations older than 5
+    years and weight exponentially with half-life of 1 year the recent ones).
+
+    Then, it implements the "online update" vs "compute from scratch" model,
+    and updating with a new observations is much cheaper than computing from
+    scratch (especially for covariances).
+    """
 
     ema_half_life: pd.Timedelta = np.inf
     ma_window: pd.Timedelta = np.inf
 
     def __post_init__(self):
         self._last_time = None
-        self._last_counts = None
-        self._last_sum = None
+        self._denominator = None
+        self._numerator = None
+
+    def _compute_numerator(self, df, t, ewm_weights):
+        """Exponential moving window (optional) numerator."""
+        raise NotImplementedError # pragma: no cover
+
+    def _compute_denominator(self, df, t, ewm_weights):
+        """Exponential moving window (optional) denominator."""
+        raise NotImplementedError # pragma: no cover
+
+    def _update_numerator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied in this class.
+        """
+        raise NotImplementedError # pragma: no cover
+
+    def _update_denominator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied in this class.
+        """
+        raise NotImplementedError # pragma: no cover
 
     def _dataframe_selector(self, **kwargs):
-        """Return dataframe to compute the historical means of."""
+        """Return dataframe we work with
+        
+        This method receives the **kwargs passed to :meth:`values_in_time`.
+        ."""
         raise NotImplementedError # pragma: no cover
 
     def values_in_time( # pylint: disable=arguments-differ
@@ -167,41 +199,16 @@ class BaseMeanForecast(BaseForecast):
         :rtype: numpy.array
         """
         self._agnostic_update(**kwargs)
-        return (self._last_sum / self._last_counts).values
+        return (self._numerator / self._denominator).values
 
     def _ewm_weights(self, index, t):
         index_in_halflifes = (index - t) / self.ema_half_life
         return np.exp(index_in_halflifes * np.log(2))
 
-    def _ewm_numerator(self, df, t):
-        """Exponential moving window (optional) numerator."""
-        if not _is_timedelta(self.ema_half_life):
-            return df.sum()
-        weighter = self._ewm_weights(df.index, t)
-        filled = df.fillna(0.)
-        return filled.multiply(weighter, axis=0).sum()
-
-    def _ewm_denominator(self, df, t):
-        """Exponential moving window (optional) denominator."""
-        if not _is_timedelta(self.ema_half_life):
-            return df.count()
-
-        weighter = self._ewm_weights(df.index, t)
-        ones = (~df.isnull()) * 1.
-        return ones.multiply(weighter, axis=0).sum()
-
-    def _update_numerator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied below."""
-        return last_row.fillna(0.)
-    
-    def _update_denominator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied below."""
-        return ~(last_row.isnull())
-
     def _initial_compute(self, t, **kwargs): # pylint: disable=arguments-differ
         """Make forecast from scratch.
         
-        This is designed to also work for the covariance forecaster.
+        This method receives the **kwargs passed to :meth:`values_in_time`.
         """
         df = self._dataframe_selector(t=t, **kwargs)
 
@@ -209,18 +216,24 @@ class BaseMeanForecast(BaseForecast):
         if _is_timedelta(self.ma_window):
             df = df.loc[df.index >= t-self.ma_window]
 
-        self._last_counts = self._ewm_denominator(df, t)
-        if self._last_counts.min() == 0:
+        # If EWM, compute weights here
+        if _is_timedelta(self.ema_half_life):
+            ewm_weights = self._ewm_weights(df.index, t)
+        else:
+            ewm_weights = None
+
+        self._denominator = self._compute_denominator(df, t, ewm_weights)
+        if self._denominator.min() == 0:
             raise ForecastError(
                 f'{self.__class__.__name__} is given a dataframe with '
                     + 'at least a column that has no values.')
-        self._last_sum = self._ewm_numerator(df, t)
+        self._numerator = self._compute_numerator(df, t, ewm_weights)
         self._last_time = t
 
     def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
         """Update forecast from period before.
         
-        This is designed to also work for the covariance forecaster.
+        This method receives the **kwargs passed to :meth:`values_in_time`.
         """
         df = self._dataframe_selector(t=t, **kwargs)
         last_row = df.iloc[-1]
@@ -230,30 +243,71 @@ class BaseMeanForecast(BaseForecast):
             time_passed_in_halflifes = (
                 self._last_time - t)/self.ema_half_life
             discount_factor = np.exp(time_passed_in_halflifes * np.log(2))
-            self._last_counts *= discount_factor
-            self._last_sum *= discount_factor
+            self._denominator *= discount_factor
+            self._numerator *= discount_factor
         else:
             discount_factor = 1.
 
         # for ewm we also need to discount last element
-        self._last_counts += self._update_denominator(
+        self._denominator += self._update_denominator(
             last_row) * discount_factor
-        self._last_sum += self._update_numerator(last_row) * discount_factor
+        self._numerator += self._update_numerator(last_row) * discount_factor
 
-        # Moving average window logic
+        # Moving average window logic: subtract elements that have gone out
         if _is_timedelta(self.ma_window):
-            skips = df.loc[
-                (df.index >= (self._last_time - self.ma_window))
-                & (df.index < (t - self.ma_window))
-            ]
-            self._last_counts -= self._ewm_denominator(skips, t)
-            if self._last_counts.min() == 0:
-                raise ForecastError(
-                    f'{self.__class__.__name__} is given a dataframe with '
-                    + 'at least a column that has no values.')
-            self._last_sum -= self._ewm_numerator(skips, t).fillna(0.)
+            self._remove_part_gone_out_of_ma(df, t)
 
         self._last_time = t
+
+    def _remove_part_gone_out_of_ma(self, df, t):
+        """Subtract from numerator and denominator the observations not in MW.
+        """
+
+        observations_to_subtract = df.loc[
+            (df.index >= (self._last_time - self.ma_window))
+            & (df.index < (t - self.ma_window))]
+
+        # If EWM, compute weights here
+        if _is_timedelta(self.ema_half_life):
+            ewm_weights = self._ewm_weights(observations_to_subtract.index, t)
+        else:
+            ewm_weights = None
+
+        self._denominator -= self._compute_denominator(
+            observations_to_subtract, t, ewm_weights)
+        if self._denominator.min() == 0:
+            raise ForecastError(
+                f'{self.__class__.__name__} is given a dataframe with '
+                + 'at least a column that has no values.')
+        self._numerator -= self._compute_numerator(
+            observations_to_subtract, t, ewm_weights).fillna(0.)
+
+
+@dataclass(unsafe_hash=True)
+class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
+    """This class contains the logic common to the mean forecasters."""
+
+    def _compute_numerator(self, df, t, ewm_weights):
+        """Exponential moving window (optional) numerator."""
+        if ewm_weights is None:
+            return df.sum()
+        return df.multiply(ewm_weights, axis=0).sum()
+
+    def _compute_denominator(self, df, t, ewm_weights):
+        """Exponential moving window (optional) denominator."""
+        if ewm_weights is None:
+            return df.count()
+        ones = (~df.isnull()) * 1.
+        return ones.multiply(ewm_weights, axis=0).sum()
+
+    def _update_numerator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied upstream."""
+        return last_row.fillna(0.)
+    
+    def _update_denominator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied upstream."""
+        return ~(last_row.isnull())
+
 
 @dataclass(unsafe_hash=True)
 class HistoricalMeanReturn(BaseMeanForecast):
@@ -357,7 +411,7 @@ class HistoricalMeanError(HistoricalVariance):
         :rtype: numpy.array
         """
         variance = super().values_in_time(**kwargs)
-        return np.sqrt(variance / self._last_counts.values)
+        return np.sqrt(variance / self._denominator.values)
 
 
 @dataclass(unsafe_hash=True)
@@ -471,26 +525,13 @@ def project_on_psd_cone_and_factorize(covariance):
     eigval = np.maximum(eigval, 0.)
     return eigvec @ np.diag(np.sqrt(eigval))
 
-@dataclass(unsafe_hash=True)
-class HistoricalFactorizedCovariance(BaseMeanForecast):
-    r"""Historical covariance matrix, sqrt factorized.
 
-    :param kelly: if ``True`` compute each
-        :math:`\Sigma_{i,j} = \overline{r^{i} r^{j}}`, else
-        :math:`\overline{r^{i} r^{j}} - \overline{r^{i}}\overline{r^{j}}`.
-        The second case corresponds to the classic definition of covariance,
-        while the first is what is obtained by Taylor approximation of
-        the Kelly gambling objective. (See page 28 of the book.)
-        In the second case, the estimated covariance is the same
-        as what is returned by ``pandas.DataFrame.cov(ddof=0)``, *i.e.*,
-        we use the same logic to handle missing data.
-    :type kelly: bool
+@dataclass(unsafe_hash=True)
+class HistoricalCovariance(BaseMeanVarForecast):
+    r"""Historical covariance matrix
     """
 
     kelly: bool = True
-
-    # this is used by FullCovariance
-    FACTORIZED = True
 
     def __post_init__(self):
         super().__post_init__()
@@ -502,7 +543,7 @@ class HistoricalFactorizedCovariance(BaseMeanForecast):
         return past_returns.iloc[:, :-1]
 
 
-    def _ewm_numerator(self, df, t):
+    def _compute_numerator(self, df, t):
         """Exponential moving window (optional) numerator."""
         if not _is_timedelta(self.ema_half_life):
             return df.sum()
@@ -510,7 +551,7 @@ class HistoricalFactorizedCovariance(BaseMeanForecast):
         filled = df.fillna(0.)
         return filled.multiply(weighter, axis=0).sum()
 
-    def _ewm_denominator(self, df, t):
+    def _compute_denominator(self, df, t):
         """Exponential moving window (optional) denominator."""
         ones = (~df.isnull()) * 1.
         if not _is_timedelta(self.ema_half_life):
@@ -528,8 +569,6 @@ class HistoricalFactorizedCovariance(BaseMeanForecast):
     def _update_denominator(self, last_row):
         """Update with last observation. Ewm (if any) is applied below."""
         return ~(last_row.isnull())
-
-
 
     @staticmethod
     def _get_count_matrix(past_returns): # -> _ewn_denominator
@@ -552,9 +591,9 @@ class HistoricalFactorizedCovariance(BaseMeanForecast):
 
     # pylint: disable=arguments-differ
     def _initial_compute(self, t, past_returns, **kwargs):
-        self._last_counts = self._get_count_matrix(past_returns).values
+        self._denominator = self._get_count_matrix(past_returns).values
         filled = past_returns.iloc[:, :-1].fillna(0.).values
-        self._last_sum = filled.T @ filled
+        self._numerator = filled.T @ filled
         if not self.kelly:
             self._joint_mean = self._get_initial_joint_mean(past_returns)
 
@@ -562,12 +601,59 @@ class HistoricalFactorizedCovariance(BaseMeanForecast):
 
     def _online_update(self, t, past_returns, **kwargs):
         nonnull = ~(past_returns.iloc[-1, :-1].isnull())
-        self._last_counts += np.outer(nonnull, nonnull)
+        self._denominator += np.outer(nonnull, nonnull)
         last_ret = past_returns.iloc[-1, :-1].fillna(0.)
-        self._last_sum += np.outer(last_ret, last_ret)
+        self._numerator += np.outer(last_ret, last_ret)
         self._last_time = t
         if not self.kelly:
             self._joint_mean += last_ret
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, **kwargs):
+        """Obtain current value of the covariance estimate.
+
+        :param t: Current time period (possibly of simulation).
+        :type t: pandas.Timestamp
+        :param kwargs: All arguments passed to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :raises cvxportfolio.errors.ForecastError: The procedure failed,
+            typically because there are too many missing values (*e.g.*, some
+            asset has only missing values).
+
+        :returns: Square root factorized covariance matrix (excludes cash).
+        :rtype: numpy.array
+        """
+
+        self._agnostic_update(t=t, **kwargs)
+        covariance = self._numerator / self._denominator
+
+        if not self.kelly:
+            tmp = self._joint_mean / self._denominator
+            covariance -= tmp.T * tmp
+
+        return covariance
+
+
+
+@dataclass(unsafe_hash=True)
+class HistoricalFactorizedCovariance(HistoricalCovariance):
+    r"""Historical covariance matrix, sqrt factorized.
+
+    :param kelly: if ``True`` compute each
+        :math:`\Sigma_{i,j} = \overline{r^{i} r^{j}}`, else
+        :math:`\overline{r^{i} r^{j}} - \overline{r^{i}}\overline{r^{j}}`.
+        The second case corresponds to the classic definition of covariance,
+        while the first is what is obtained by Taylor approximation of
+        the Kelly gambling objective. (See page 28 of the book.)
+        In the second case, the estimated covariance is the same
+        as what is returned by ``pandas.DataFrame.cov(ddof=0)``, *i.e.*,
+        we use the same logic to handle missing data.
+    :type kelly: bool
+    """
+
+    # this is used by FullCovariance
+    FACTORIZED = True
 
     @online_cache
     def values_in_time( # pylint: disable=arguments-differ
@@ -587,12 +673,8 @@ class HistoricalFactorizedCovariance(BaseMeanForecast):
         :rtype: numpy.array
         """
 
-        self._agnostic_update(t=t, **kwargs)
-        covariance = self._last_sum / self._last_counts
+        covariance = super().values_in_time(t=t, **kwargs)
 
-        if not self.kelly:
-            tmp = self._joint_mean / self._last_counts
-            covariance -= tmp.T * tmp
         try:
             return project_on_psd_cone_and_factorize(covariance)
         except np.linalg.LinAlgError as exc:
