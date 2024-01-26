@@ -456,27 +456,32 @@ class HistoricalCovariance(BaseMeanVarForecast):
         """Return dataframe to compute the historical covariance of."""
         return past_returns.iloc[:, :-1]
 
-    @staticmethod
-    def _get_count_matrix(past_returns): # -> _ewn_denominator
-        r"""We obtain the matrix of non-null joint counts:
+    # @staticmethod
+    # def _get_count_matrix(past_returns): # -> _ewn_denominator
+    #     r"""We obtain the matrix of non-null joint counts:
 
-        .. math::
+    #     .. math::
 
-            \text{Count}\left(r^{i}r^{j} \neq \texttt{nan}\right).
-        """
-        df = past_returns.iloc[:, :-1]
-        return HistoricalCovariance._compute_denominator(None, df, None)
+    #         \text{Count}\left(r^{i}r^{j} \neq \texttt{nan}\right).
+    #     """
+    #     df = past_returns.iloc[:, :-1]
+    #     return HistoricalCovariance._compute_denominator(None, df, None)
 
-        # tmp = (~past_returns.iloc[:, :-1].isnull()) * 1.
-        # return tmp.T @ tmp
+    #     # tmp = (~past_returns.iloc[:, :-1].isnull()) * 1.
+    #     # return tmp.T @ tmp
 
-    @staticmethod
-    def _get_initial_joint_mean(df):
+    def _compute_joint_mean(self, df, ewm_weights):
         r"""Compute precursor of :math:`\Sigma_{i,j} =
         \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
+        # TODO: ewm
         nonnull = (~df.isnull()) * 1.
         tmp = nonnull.T @ df.fillna(0.)
         return tmp  # * tmp.T
+
+    def _update_joint_mean(self, last_row):
+        r"""Update precursor of :math:`\Sigma_{i,j} =
+        \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
+        return last_row.fillna(0.)
 
     # pylint: disable=arguments-differ
     def _initial_compute(self, **kwargs):
@@ -490,7 +495,7 @@ class HistoricalCovariance(BaseMeanVarForecast):
         #self._numerator = self._compute_numerator(df, None)
 
         if not self.kelly:
-            self._joint_mean = self._get_initial_joint_mean(df)
+            self._joint_mean = self._compute_joint_mean(df, None)
 
         #self._last_time = kwargs['t']
 
@@ -508,7 +513,9 @@ class HistoricalCovariance(BaseMeanVarForecast):
         # # self._numerator += np.outer(last_ret, last_ret)
         # self._last_time = t
         if not self.kelly:
-            self._joint_mean += last_row.fillna(0.)
+            self._joint_mean += self._update_joint_mean(last_row)
+
+        # TODO: refactor ma_subtract to also manage joint mean, or re-implement here
 
     def values_in_time( # pylint: disable=arguments-differ
             self, **kwargs):

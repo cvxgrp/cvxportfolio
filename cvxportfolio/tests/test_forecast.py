@@ -251,7 +251,7 @@ class TestForecast(CvxportfolioTest):
         returns.iloc[10:15, 10:20] = np.nan
 
         # pylint: disable=protected-access
-        count_matrix = forecaster._get_count_matrix(returns)
+        count_matrix = forecaster._compute_denominator(returns.iloc[:,:-1], None)
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
                 (7, 24), (1, 15), (13, 22)]:
