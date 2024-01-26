@@ -279,11 +279,11 @@ class TestForecast(CvxportfolioTest):
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
                 (7, 24), (1, 15), (13, 22)]:
             print()
-            print(sum_matrix[indexes[0], indexes[1]])
+            print(sum_matrix.iloc[indexes[0], indexes[1]])
             print((returns.iloc[:, indexes[0]] *
                   returns.iloc[:, indexes[1]]).sum())
             self.assertTrue(np.isclose(
-                sum_matrix[indexes[0], indexes[1]],
+                sum_matrix.iloc[indexes[0], indexes[1]],
                 (returns.iloc[:, indexes[0]] *
                  returns.iloc[:, indexes[1]]).sum()
             ))

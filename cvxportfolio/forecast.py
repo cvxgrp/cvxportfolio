@@ -163,11 +163,11 @@ class BaseMeanVarForecast(BaseForecast):
         self._denominator = None
         self._numerator = None
 
-    def _compute_numerator(self, df, t, ewm_weights):
+    def _compute_numerator(self, df, ewm_weights):
         """Exponential moving window (optional) numerator."""
         raise NotImplementedError # pragma: no cover
 
-    def _compute_denominator(self, df, t, ewm_weights):
+    def _compute_denominator(self, df, ewm_weights):
         """Exponential moving window (optional) denominator."""
         raise NotImplementedError # pragma: no cover
 
@@ -222,12 +222,12 @@ class BaseMeanVarForecast(BaseForecast):
         else:
             ewm_weights = None
 
-        self._denominator = self._compute_denominator(df, t, ewm_weights)
-        if self._denominator.min() == 0:
+        self._denominator = self._compute_denominator(df, ewm_weights)
+        if np.min(self._denominator.values) == 0:
             raise ForecastError(
                 f'{self.__class__.__name__} is given a dataframe with '
                     + 'at least a column that has no values.')
-        self._numerator = self._compute_numerator(df, t, ewm_weights)
+        self._numerator = self._compute_numerator(df, ewm_weights)
         self._last_time = t
 
     def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
@@ -274,26 +274,26 @@ class BaseMeanVarForecast(BaseForecast):
             ewm_weights = None
 
         self._denominator -= self._compute_denominator(
-            observations_to_subtract, t, ewm_weights)
-        if self._denominator.min() == 0:
+            observations_to_subtract, ewm_weights)
+        if np.min(self._denominator.values) == 0:
             raise ForecastError(
                 f'{self.__class__.__name__} is given a dataframe with '
                 + 'at least a column that has no values.')
         self._numerator -= self._compute_numerator(
-            observations_to_subtract, t, ewm_weights).fillna(0.)
+            observations_to_subtract, ewm_weights).fillna(0.)
 
 
 @dataclass(unsafe_hash=True)
 class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
     """This class contains the logic common to the mean forecasters."""
 
-    def _compute_numerator(self, df, t, ewm_weights):
+    def _compute_numerator(self, df, ewm_weights):
         """Exponential moving window (optional) numerator."""
         if ewm_weights is None:
             return df.sum()
         return df.multiply(ewm_weights, axis=0).sum()
 
-    def _compute_denominator(self, df, t, ewm_weights):
+    def _compute_denominator(self, df, ewm_weights):
         """Exponential moving window (optional) denominator."""
         if ewm_weights is None:
             return df.count()
@@ -415,6 +415,182 @@ class HistoricalMeanError(HistoricalVariance):
 
 
 @dataclass(unsafe_hash=True)
+class HistoricalCovariance(BaseMeanVarForecast):
+    r"""Historical covariance matrix
+    """
+
+    kelly: bool = True
+
+    def __post_init__(self):
+        super().__post_init__()
+        self._joint_mean = None
+
+    def _compute_numerator(self, df, ewm_weights):
+        """Exponential moving window (optional) numerator."""
+        filled = df.fillna(0.)
+        if ewm_weights is None:
+            return filled.T @ filled
+        tmp = filled.multiply(ewm_weights, axis=0)
+        return tmp.T @ filled
+
+    def _compute_denominator(self, df, ewm_weights):
+        """Exponential moving window (optional) denominator."""
+        ones = (~df.isnull()) * 1.
+        if ewm_weights is None:
+            return ones.T @ ones
+        tmp = ones.multiply(ewm_weights, axis=0)
+        return tmp.T @ ones
+
+    def _update_denominator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied upstream."""
+        nonnull = ~(last_row.isnull())
+        return np.outer(nonnull, nonnull)
+
+    def _update_numerator(self, last_row):
+        """Update with last observation. Ewm (if any) is applied upstream."""
+        filled = last_row.fillna(0.)
+        return np.outer(filled, filled)
+
+    # pylint: disable=arguments-differ
+    def _dataframe_selector(self, past_returns, **kwargs):
+        """Return dataframe to compute the historical covariance of."""
+        return past_returns.iloc[:, :-1]
+
+    @staticmethod
+    def _get_count_matrix(past_returns): # -> _ewn_denominator
+        r"""We obtain the matrix of non-null joint counts:
+
+        .. math::
+
+            \text{Count}\left(r^{i}r^{j} \neq \texttt{nan}\right).
+        """
+        df = past_returns.iloc[:, :-1]
+        return HistoricalCovariance._compute_denominator(None, df, None)
+
+        # tmp = (~past_returns.iloc[:, :-1].isnull()) * 1.
+        # return tmp.T @ tmp
+
+    @staticmethod
+    def _get_initial_joint_mean(df):
+        r"""Compute precursor of :math:`\Sigma_{i,j} =
+        \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
+        nonnull = (~df.isnull()) * 1.
+        tmp = nonnull.T @ df.fillna(0.)
+        return tmp  # * tmp.T
+
+    # pylint: disable=arguments-differ
+    def _initial_compute(self, **kwargs):
+
+        super()._initial_compute(**kwargs)
+        df = self._dataframe_selector(**kwargs)
+
+
+        #df = past_returns.iloc[:, :-1]
+        #self._denominator = self._compute_denominator(df, None)
+        #self._numerator = self._compute_numerator(df, None)
+
+        if not self.kelly:
+            self._joint_mean = self._get_initial_joint_mean(df)
+
+        #self._last_time = kwargs['t']
+
+    def _online_update(self, **kwargs):
+        """Update from last observation."""
+
+        super()._online_update(**kwargs)
+        df = self._dataframe_selector(**kwargs)
+        last_row = df.iloc[-1]
+
+        # last_row = past_returns.iloc[-1, :-1]
+        # self._denominator += self._update_denominator(last_row)
+        # self._numerator += self._update_numerator(last_row)
+        # # last_ret = past_returns.iloc[-1, :-1].fillna(0.)
+        # # self._numerator += np.outer(last_ret, last_ret)
+        # self._last_time = t
+        if not self.kelly:
+            self._joint_mean += last_row.fillna(0.)
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Obtain current value of the covariance estimate.
+
+        :param kwargs: All arguments passed to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Covariance matrix (excludes cash).
+        :rtype: numpy.array
+        """
+
+        covariance = super().values_in_time(**kwargs)
+
+        if not self.kelly:
+            tmp = self._joint_mean / self._denominator
+            covariance -= tmp.T * tmp
+
+        return covariance
+
+def project_on_psd_cone_and_factorize(covariance):
+    """Factorize matrix and remove negative eigenvalues.
+
+    :param covariance: Square (symmetric) approximate covariance matrix, can
+         have negative eigenvalues.
+    :type covariance: numpy.array
+
+    :returns: Square root factorization with negative eigenvalues removed.
+    :rtype: numpy.array
+    """
+    eigval, eigvec = np.linalg.eigh(covariance)
+    eigval = np.maximum(eigval, 0.)
+    return eigvec @ np.diag(np.sqrt(eigval))
+
+@dataclass(unsafe_hash=True)
+class HistoricalFactorizedCovariance(HistoricalCovariance):
+    r"""Historical covariance matrix, sqrt factorized.
+
+    :param kelly: if ``True`` compute each
+        :math:`\Sigma_{i,j} = \overline{r^{i} r^{j}}`, else
+        :math:`\overline{r^{i} r^{j}} - \overline{r^{i}}\overline{r^{j}}`.
+        The second case corresponds to the classic definition of covariance,
+        while the first is what is obtained by Taylor approximation of
+        the Kelly gambling objective. (See page 28 of the book.)
+        In the second case, the estimated covariance is the same
+        as what is returned by ``pandas.DataFrame.cov(ddof=0)``, *i.e.*,
+        we use the same logic to handle missing data.
+    :type kelly: bool
+    """
+
+    # this is used by FullCovariance
+    FACTORIZED = True
+
+    @online_cache
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, **kwargs):
+        """Obtain current value of the covariance estimate.
+
+        :param t: Current time period (possibly of simulation).
+        :type t: pandas.Timestamp
+        :param kwargs: All arguments passed to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :raises cvxportfolio.errors.ForecastError: The procedure failed,
+            typically because there are too many missing values (*e.g.*, some
+            asset has only missing values).
+
+        :returns: Square root factorized covariance matrix (excludes cash).
+        :rtype: numpy.array
+        """
+
+        covariance = super().values_in_time(t=t, **kwargs)
+
+        try:
+            return project_on_psd_cone_and_factorize(covariance)
+        except np.linalg.LinAlgError as exc:
+            raise ForecastError(f'Covariance estimation at time {t} failed;'
+                + ' there are (probably) too many missing values in the'
+                + ' past returns.') from exc
+
+
+@dataclass(unsafe_hash=True)
 class HistoricalLowRankCovarianceSVD(Estimator):
     """Build factor model covariance using truncated SVD."""
 
@@ -509,175 +685,3 @@ class HistoricalLowRankCovarianceSVD(Estimator):
         return self.build_low_rank_model(past_returns.iloc[:, :-1],
             num_factors=self.num_factors,
             iters=self.svd_iters, svd=self.svd)
-
-
-def project_on_psd_cone_and_factorize(covariance):
-    """Factorize matrix and remove negative eigenvalues.
-
-    :param covariance: Square (symmetric) approximate covariance matrix, can
-         have negative eigenvalues.
-    :type covariance: numpy.array
-
-    :returns: Square root factorization with negative eigenvalues removed.
-    :rtype: numpy.array
-    """
-    eigval, eigvec = np.linalg.eigh(covariance)
-    eigval = np.maximum(eigval, 0.)
-    return eigvec @ np.diag(np.sqrt(eigval))
-
-
-@dataclass(unsafe_hash=True)
-class HistoricalCovariance(BaseMeanVarForecast):
-    r"""Historical covariance matrix
-    """
-
-    kelly: bool = True
-
-    def __post_init__(self):
-        super().__post_init__()
-        self._joint_mean = None
-
-    # pylint: disable=arguments-differ
-    def _dataframe_selector(self, past_returns, **kwargs):
-        """Return dataframe to compute the historical covariance of."""
-        return past_returns.iloc[:, :-1]
-
-
-    def _compute_numerator(self, df, t):
-        """Exponential moving window (optional) numerator."""
-        if not _is_timedelta(self.ema_half_life):
-            return df.sum()
-        weighter = self._ewm_weights(df.index, t)
-        filled = df.fillna(0.)
-        return filled.multiply(weighter, axis=0).sum()
-
-    def _compute_denominator(self, df, t):
-        """Exponential moving window (optional) denominator."""
-        ones = (~df.isnull()) * 1.
-        if not _is_timedelta(self.ema_half_life):
-            return ones.T @ ones
-
-        weighter = self._ewm_weights(df.index, t)
-        ones = (~df.isnull()) * 1.
-        tmp = ones.multiply(weighter, axis=0)
-        return tmp.T @ tmp
-
-    def _update_numerator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied below."""
-        return last_row.fillna(0.)
-    
-    def _update_denominator(self, last_row):
-        """Update with last observation. Ewm (if any) is applied below."""
-        return ~(last_row.isnull())
-
-    @staticmethod
-    def _get_count_matrix(past_returns): # -> _ewn_denominator
-        r"""We obtain the matrix of non-null joint counts:
-
-        .. math::
-
-            \text{Count}\left(r^{i}r^{j} \neq \texttt{nan}\right).
-        """
-        tmp = (~past_returns.iloc[:, :-1].isnull()) * 1.
-        return tmp.T @ tmp
-
-    @staticmethod
-    def _get_initial_joint_mean(past_returns):
-        r"""Compute precursor of :math:`\Sigma_{i,j} =
-        \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
-        nonnull = (~past_returns.iloc[:, :-1].isnull()) * 1.
-        tmp = nonnull.T @ past_returns.iloc[:, :-1].fillna(0.)
-        return tmp  # * tmp.T
-
-    # pylint: disable=arguments-differ
-    def _initial_compute(self, t, past_returns, **kwargs):
-        self._denominator = self._get_count_matrix(past_returns).values
-        filled = past_returns.iloc[:, :-1].fillna(0.).values
-        self._numerator = filled.T @ filled
-        if not self.kelly:
-            self._joint_mean = self._get_initial_joint_mean(past_returns)
-
-        self._last_time = t
-
-    def _online_update(self, t, past_returns, **kwargs):
-        nonnull = ~(past_returns.iloc[-1, :-1].isnull())
-        self._denominator += np.outer(nonnull, nonnull)
-        last_ret = past_returns.iloc[-1, :-1].fillna(0.)
-        self._numerator += np.outer(last_ret, last_ret)
-        self._last_time = t
-        if not self.kelly:
-            self._joint_mean += last_ret
-
-    def values_in_time( # pylint: disable=arguments-differ
-            self, t, **kwargs):
-        """Obtain current value of the covariance estimate.
-
-        :param t: Current time period (possibly of simulation).
-        :type t: pandas.Timestamp
-        :param kwargs: All arguments passed to :meth:`values_in_time`.
-        :type kwargs: dict
-
-        :raises cvxportfolio.errors.ForecastError: The procedure failed,
-            typically because there are too many missing values (*e.g.*, some
-            asset has only missing values).
-
-        :returns: Square root factorized covariance matrix (excludes cash).
-        :rtype: numpy.array
-        """
-
-        self._agnostic_update(t=t, **kwargs)
-        covariance = self._numerator / self._denominator
-
-        if not self.kelly:
-            tmp = self._joint_mean / self._denominator
-            covariance -= tmp.T * tmp
-
-        return covariance
-
-
-
-@dataclass(unsafe_hash=True)
-class HistoricalFactorizedCovariance(HistoricalCovariance):
-    r"""Historical covariance matrix, sqrt factorized.
-
-    :param kelly: if ``True`` compute each
-        :math:`\Sigma_{i,j} = \overline{r^{i} r^{j}}`, else
-        :math:`\overline{r^{i} r^{j}} - \overline{r^{i}}\overline{r^{j}}`.
-        The second case corresponds to the classic definition of covariance,
-        while the first is what is obtained by Taylor approximation of
-        the Kelly gambling objective. (See page 28 of the book.)
-        In the second case, the estimated covariance is the same
-        as what is returned by ``pandas.DataFrame.cov(ddof=0)``, *i.e.*,
-        we use the same logic to handle missing data.
-    :type kelly: bool
-    """
-
-    # this is used by FullCovariance
-    FACTORIZED = True
-
-    @online_cache
-    def values_in_time( # pylint: disable=arguments-differ
-            self, t, **kwargs):
-        """Obtain current value of the covariance estimate.
-
-        :param t: Current time period (possibly of simulation).
-        :type t: pandas.Timestamp
-        :param kwargs: All arguments passed to :meth:`values_in_time`.
-        :type kwargs: dict
-
-        :raises cvxportfolio.errors.ForecastError: The procedure failed,
-            typically because there are too many missing values (*e.g.*, some
-            asset has only missing values).
-
-        :returns: Square root factorized covariance matrix (excludes cash).
-        :rtype: numpy.array
-        """
-
-        covariance = super().values_in_time(t=t, **kwargs)
-
-        try:
-            return project_on_psd_cone_and_factorize(covariance)
-        except np.linalg.LinAlgError as exc:
-            raise ForecastError(f'Covariance estimation at time {t} failed;'
-                + ' there are (probably) too many missing values in the'
-                + ' past returns.') from exc
