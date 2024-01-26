@@ -6,7 +6,12 @@ Forecasters
 .. py:module:: cvxportfolio.forecast
      :noindex:
 
+Documentation
+~~~~~~~~~~~~~
+
 .. autoclass:: HistoricalMeanReturn
+
+.. autoclass:: HistoricalMeanVolume
 
 .. autoclass:: HistoricalVariance
 

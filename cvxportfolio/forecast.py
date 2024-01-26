@@ -69,6 +69,33 @@ available automatically next time the user runs a back-test on the same market
 data (and same universe). This is especially useful when doing hyper-parameter
 optimization, so that expensive computations like evaluating large covariance
 matrices are only done once.
+
+How to use them
+~~~~~~~~~~~~~~~
+
+These forecasters are each the default option of some Cvxportfolio optimization
+term, for example :class:`HistoricalMeanReturn` is the default used by
+:class:`cvxportfolio.ReturnsForecast`. In this way each is used with its
+default options. If you want to change the options you can simply pass
+the relevant forecaster class, instantiated with the options of your choice,
+to the Cvxportfolio object. For example
+
+.. code-block::
+
+    import cvxportfolio as cvx
+    from cvxportfolio.forecast import HistoricalMeanReturn
+    import pandas as pd
+
+    SOLAR_YEAR_IN_DAYS = 365.24
+
+    returns_forecast = cvx.ReturnsForecast(
+        r_hat = HistoricalMeanReturn(
+            half_life=pd.Timedelta(days=SOLAR_YEAR_IN_DAYS),
+            rolling=pd.Timedelta(days=SOLAR_YEAR_IN_DAYS*5)))
+
+if you want to apply exponential smoothing to the mean returns forecaster with
+half-life of 1 year, and skip over all observations older than 5 years. Both
+are relative to each point in time at which the policy is evaluated.
 """
 
 import logging
@@ -406,6 +433,23 @@ class HistoricalMeanReturn(BaseMeanForecast):
         """Return dataframe to compute the historical means of."""
         return past_returns.iloc[:, :-1]
 
+@dataclass(unsafe_hash=True)
+class HistoricalMeanVolume(BaseMeanForecast):
+    r"""Historical means of traded volume in units of value (e.g., dollars).
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    """
+    # pylint: disable=arguments-differ
+    def _dataframe_selector(self, past_volumes, **kwargs):
+        """Return dataframe to compute the historical means of."""
+        return past_volumes
 
 @dataclass(unsafe_hash=True)
 class HistoricalVariance(BaseMeanForecast):
