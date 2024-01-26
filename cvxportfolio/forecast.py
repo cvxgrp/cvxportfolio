@@ -230,6 +230,9 @@ class BaseMeanVarForecast(BaseForecast):
         self._numerator = self._compute_numerator(df, ewm_weights)
         self._last_time = t
 
+        # used by covariance forecaster
+        return ewm_weights
+
     def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
         """Update forecast from period before.
         
@@ -255,9 +258,17 @@ class BaseMeanVarForecast(BaseForecast):
 
         # Moving average window logic: subtract elements that have gone out
         if _is_timedelta(self.ma_window):
-            self._remove_part_gone_out_of_ma(df, t)
+            observations_to_subtract, ewm_weights_of_subtract = \
+                self._remove_part_gone_out_of_ma(df, t)
+        else:
+            observations_to_subtract, ewm_weights_of_subtract = None, None
 
         self._last_time = t
+
+        # used by covariance forecaster
+        return (
+            discount_factor, observations_to_subtract, ewm_weights_of_subtract)
+
 
     def _remove_part_gone_out_of_ma(self, df, t):
         """Subtract from numerator and denominator the observations not in MW.
@@ -281,6 +292,9 @@ class BaseMeanVarForecast(BaseForecast):
                 + 'at least a column that has no values.')
         self._numerator -= self._compute_numerator(
             observations_to_subtract, ewm_weights).fillna(0.)
+
+        # used by covariance forecaster
+        return observations_to_subtract, ewm_weights
 
 
 @dataclass(unsafe_hash=True)
@@ -486,7 +500,7 @@ class HistoricalCovariance(BaseMeanVarForecast):
     # pylint: disable=arguments-differ
     def _initial_compute(self, **kwargs):
 
-        super()._initial_compute(**kwargs)
+        ewm_weights = super()._initial_compute(**kwargs)
         df = self._dataframe_selector(**kwargs)
 
 
@@ -495,14 +509,15 @@ class HistoricalCovariance(BaseMeanVarForecast):
         #self._numerator = self._compute_numerator(df, None)
 
         if not self.kelly:
-            self._joint_mean = self._compute_joint_mean(df, None)
+            self._joint_mean = self._compute_joint_mean(df, ewm_weights)
 
         #self._last_time = kwargs['t']
 
     def _online_update(self, **kwargs):
         """Update from last observation."""
 
-        super()._online_update(**kwargs)
+        discount_factor, observations_to_subtract, ewm_weights_of_subtract = \
+            super()._online_update(**kwargs)
         df = self._dataframe_selector(**kwargs)
         last_row = df.iloc[-1]
 
@@ -513,9 +528,13 @@ class HistoricalCovariance(BaseMeanVarForecast):
         # # self._numerator += np.outer(last_ret, last_ret)
         # self._last_time = t
         if not self.kelly:
-            self._joint_mean += self._update_joint_mean(last_row)
+            self._joint_mean += self._update_joint_mean(
+                last_row) * discount_factor
 
-        # TODO: refactor ma_subtract to also manage joint mean, or re-implement here
+        # MA update
+        if observations_to_subtract is not None:
+            self._joint_mean -= self._compute_joint_mean(
+                observations_to_subtract, ewm_weights_of_subtract)
 
     def values_in_time( # pylint: disable=arguments-differ
             self, **kwargs):
