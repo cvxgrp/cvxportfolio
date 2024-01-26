@@ -150,7 +150,7 @@ class BaseMeanVarForecast(BaseForecast):
     years and weight exponentially with half-life of 1 year the recent ones).
 
     Then, it implements the "online update" vs "compute from scratch" model,
-    and updating with a new observations is much cheaper than computing from
+    updating with a new observations is much cheaper than computing from
     scratch (especially for covariances).
     """
 
@@ -235,7 +235,7 @@ class BaseMeanVarForecast(BaseForecast):
         self._last_time = t
 
         # used by covariance forecaster
-        return ewm_weights
+        return df, ewm_weights
 
     def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
         """Update forecast from period before.
@@ -274,7 +274,8 @@ class BaseMeanVarForecast(BaseForecast):
             discount_factor, observations_to_subtract, ewm_weights_of_subtract)
 
     def _remove_part_gone_out_of_ma(self, df, t):
-        """Subtract from numerator and denominator the observations not in MW."""
+        """Subtract from numerator and denominator the observations not in MW.
+        """
 
         observations_to_subtract = df.loc[
             (df.index >= (self._last_time - self.ma_window))
@@ -476,27 +477,13 @@ class HistoricalCovariance(BaseMeanVarForecast):
         """Return dataframe to compute the historical covariance of."""
         return past_returns.iloc[:, :-1]
 
-    # @staticmethod
-    # def _get_count_matrix(past_returns): # -> _ewn_denominator
-    #     r"""We obtain the matrix of non-null joint counts:
-
-    #     .. math::
-
-    #         \text{Count}\left(r^{i}r^{j} \neq \texttt{nan}\right).
-    #     """
-    #     df = past_returns.iloc[:, :-1]
-    #     return HistoricalCovariance._compute_denominator(None, df, None)
-
-    #     # tmp = (~past_returns.iloc[:, :-1].isnull()) * 1.
-    #     # return tmp.T @ tmp
-
     def _compute_joint_mean(self, df, ewm_weights):
         r"""Compute precursor of :math:`\Sigma_{i,j} =
         \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
-        # TODO: ewm
         nonnull = (~df.isnull()) * 1.
-        tmp = nonnull.T @ df.fillna(0.)
-        return tmp  # * tmp.T
+        if ewm_weights is None:
+            return nonnull.T @ df.fillna(0.)
+        return nonnull.T @ df.fillna(0.).multiply(ewm_weights, axis=0)
 
     def _update_joint_mean(self, last_row):
         r"""Update precursor of :math:`\Sigma_{i,j} =
@@ -505,18 +492,12 @@ class HistoricalCovariance(BaseMeanVarForecast):
 
     # pylint: disable=arguments-differ
     def _initial_compute(self, **kwargs):
+        """Compute from scratch, taking care of non-Kelly correction."""
 
-        ewm_weights = super()._initial_compute(**kwargs)
-        df = self._dataframe_selector(**kwargs)
-
-        #df = past_returns.iloc[:, :-1]
-        #self._denominator = self._compute_denominator(df, None)
-        #self._numerator = self._compute_numerator(df, None)
+        df, ewm_weights = super()._initial_compute(**kwargs)
 
         if not self.kelly:
             self._joint_mean = self._compute_joint_mean(df, ewm_weights)
-
-        #self._last_time = kwargs['t']
 
     def _online_update(self, **kwargs):
         """Update from last observation."""
@@ -526,13 +507,11 @@ class HistoricalCovariance(BaseMeanVarForecast):
         df = self._dataframe_selector(**kwargs)
         last_row = df.iloc[-1]
 
-        # last_row = past_returns.iloc[-1, :-1]
-        # self._denominator += self._update_denominator(last_row)
-        # self._numerator += self._update_numerator(last_row)
-        # # last_ret = past_returns.iloc[-1, :-1].fillna(0.)
-        # # self._numerator += np.outer(last_ret, last_ret)
-        # self._last_time = t
         if not self.kelly:
+
+            if discount_factor != 1.:
+                self._joint_mean *= discount_factor
+
             self._joint_mean += self._update_joint_mean(
                 last_row) * discount_factor
 

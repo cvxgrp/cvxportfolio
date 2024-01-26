@@ -69,12 +69,14 @@ class TestForecast(CvxportfolioTest):
 
     def _base_test_vector_update(
             # pylint: disable=too-many-arguments
-            self, forecaster, fc_kwargs, df_attr, pd_kwargs, df_callable=None):
+            self, forecaster, fc_kwargs, df_attr, pd_kwargs, df_callable=None,
+            with_nans=True):
         """Base function to test vector updates (mean, std, var)."""
         forecaster = forecaster(**fc_kwargs)
 
         returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:40, 3:10] = np.nan
+        if with_nans:
+            returns.iloc[:40, 3:10] = np.nan
 
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
@@ -136,6 +138,13 @@ class TestForecast(CvxportfolioTest):
 
         return num / den
 
+    def _nokelly_covariance_ewm_nonans(self, past_returns_noncash, half_life):
+        """This is only without nans."""
+        result = self._kelly_covariance(
+            past_returns_noncash, half_life=half_life)
+        means = self._mean_ewm(past_returns_noncash, half_life)
+        return result - np.outer(means, means)
+
     def test_cov_update(self):
         """Test the covariance forecaster."""
 
@@ -143,16 +152,29 @@ class TestForecast(CvxportfolioTest):
             HistoricalCovariance, {'kelly': True}, None, None,
             df_callable=self._kelly_covariance)
 
+    def test_cov_update_nokelly(self):
+        """Test the covariance forecaster without Kelly correction.
+        
+        Due to a bug in pandas, we can compare with Pandas' DataFrame.cov
+        only if the df has no NaNs.
+        """
+
+        self._base_test_vector_update(
+            HistoricalCovariance, {'kelly': False}, 'cov', {'ddof':0},
+            with_nans=False)
+
     def _base_test_moving_window_vector_update(
             # pylint: disable=too-many-arguments
-            self, forecaster, fc_kwargs, df_attr, pd_kwargs, df_callable=None):
+            self, forecaster, fc_kwargs, df_attr, pd_kwargs, df_callable=None,
+            with_nans=True):
         """Base test for vector quantities using a moving window."""
 
         window = pd.Timedelta('20d')
         forecaster = forecaster(**fc_kwargs, ma_window=window)
 
         returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:40, 3:10] = np.nan
+        if with_nans:
+            returns.iloc[:40, 3:10] = np.nan
 
         for tidx in [50, 51, 52, 55, 56, 57]:
             t = returns.index[tidx]
@@ -163,12 +185,13 @@ class TestForecast(CvxportfolioTest):
                 t=t, past_returns=past_returns)
 
             self.assertFalse(np.any(np.isnan(cvx_val)))
-            self.assertTrue(np.allclose(
-                cvx_val,
-                df_callable(past_returns_window.iloc[:, :-1])
+
+            test_val = (df_callable(past_returns_window.iloc[:, :-1])
                     if df_callable is not None else
                     getattr(past_returns_window.iloc[:, :-1],
-                        df_attr)(**pd_kwargs)))
+                        df_attr)(**pd_kwargs))
+
+            self.assertTrue(np.allclose(cvx_val, test_val))
 
     def test_mean_update_moving_window(self):
         """Test the mean forecaster with moving window."""
@@ -202,14 +225,22 @@ class TestForecast(CvxportfolioTest):
             HistoricalCovariance, {'kelly': True}, None, None,
             df_callable=self._kelly_covariance)
 
+    def test_cov_update_moving_window_nokelly(self):
+        """Test the covariance forecaster with moving window without Kelly."""
+
+        self._base_test_moving_window_vector_update(
+            HistoricalCovariance, {'kelly': False}, 'cov', {'ddof':0},
+            with_nans=False)
+
     def _base_test_exponential_moving_window_vector_update(
-            self, forecaster, fc_kwargs, df_callable=None):
+            self, forecaster, fc_kwargs, df_callable=None, with_nans=True):
         """Base test for vector quantities using an exponential moving window,
         and an exponential moving window in combination with a moving window."""
         half_life = pd.Timedelta('20d')
         inst_forecaster = forecaster(**fc_kwargs, ema_half_life=half_life)
         returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:40, 3:10] = np.nan
+        if with_nans:
+            returns.iloc[:40, 3:10] = np.nan
 
         for tidx in [50, 51, 52, 55, 56, 57, 58, 59, 60]:
             t = returns.index[tidx]
@@ -231,7 +262,8 @@ class TestForecast(CvxportfolioTest):
         inst_forecaster = forecaster(
             **fc_kwargs, ma_window = window, ema_half_life=half_life)
         returns = pd.DataFrame(self.returns, copy=True)
-        returns.iloc[:40, 3:10] = np.nan
+        if with_nans:
+            returns.iloc[:40, 3:10] = np.nan
 
         for tidx in [50, 51, 52, 55, 56, 57, 58, 59, 60]:
             t = returns.index[tidx]
@@ -275,7 +307,6 @@ class TestForecast(CvxportfolioTest):
 
     def test_stddev_update_exponential_moving_window(self):
         """Test the std forecaster with exponential moving window."""
-
         def _std_ewm(*args):
             return np.sqrt(self._var_ewm(*args))
         self._base_test_exponential_moving_window_vector_update(
@@ -287,6 +318,13 @@ class TestForecast(CvxportfolioTest):
         self._base_test_exponential_moving_window_vector_update(
             HistoricalCovariance, {'kelly': True},
             df_callable=self._kelly_covariance)
+
+    def test_cov_update_exponential_moving_window_nokelly(self):
+        """Test the covariance forecaster with exponential moving window."""
+
+        self._base_test_exponential_moving_window_vector_update(
+            HistoricalCovariance, {'kelly': False},
+            df_callable=self._nokelly_covariance_ewm_nonans, with_nans=False)
 
     def test_counts_matrix(self):
         """Test internal method(s) of HistoricalFactorizedCovariance."""
@@ -334,7 +372,7 @@ class TestForecast(CvxportfolioTest):
                  returns.iloc[:, indexes[1]]).sum()
             ))
 
-    def test_covariance_update(self):
+    def test_covariance_update_withnans(self):
         """Test covariance forecast estimator."""
 
         forecaster = HistoricalFactorizedCovariance()
@@ -366,7 +404,7 @@ class TestForecast(CvxportfolioTest):
             self.assertTrue(
                 np.allclose(Sigma, _compute_covariance(past_returns)))
 
-    def test_covariance_update_nokelly(self):
+    def test_covariance_update_nokelly_withnans(self):
         """Test covariance forecast estimator.
 
         NOTE: due to a bug in pandas we can't test against
