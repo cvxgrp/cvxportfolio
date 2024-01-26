@@ -225,6 +225,46 @@ class Estimator:
         return lhs + core + rhs
 
 
+class SimulatorEstimator(Estimator):
+    """Base class for estimators that are used by the market simulator."""
+
+    _current_simulator_value = None
+
+    @property
+    def current_simulator_value(self):
+        """Current value of this instance for the market simulator.
+
+        :returns: Current value for the market simulator, which can be any
+            object.
+        :rtype: numpy.array, pandas.Series, pandas.DataFrame, ...
+        """
+        return self._current_simulator_value
+
+    def simulate(self, *args, **kwargs):
+        """Compute current simulator value."""
+        raise NotImplementedError
+
+    def simulate_recursive(self, **kwargs):
+        """Evaluate simulator value(s) recursively on sub-estimators.
+
+        :param kwargs: All parameters to :meth:`simulate` that are passed
+            to all elements contained in a simulator cost object.
+        :type kwargs: dict
+
+        :returns: The current simulator value evaluated by this instance, if it
+            implements the :meth:`simulate` method and it returns
+            something there.
+        :rtype: numpy.array, pandas.Series, pandas.DataFrame, ...
+        """
+        for _, subestimator in self.__dict__.items():
+            if hasattr(subestimator, "simulate_recursive"):
+                subestimator.simulate_recursive(**kwargs)
+        if hasattr(self, "simulate"):
+            # pylint: disable=assignment-from-no-return
+            self._current_simulator_value = self.simulate(**kwargs)
+            return self.current_simulator_value
+        return None
+
 class CvxpyExpressionEstimator(Estimator):
     """Base class for estimators that are Cvxpy expressions."""
 

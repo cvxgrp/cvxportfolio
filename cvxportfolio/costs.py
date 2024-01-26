@@ -31,7 +31,8 @@ from .constraints.base_constraints import (CostInequalityConstraint,
                                            EqualityConstraint,
                                            InequalityConstraint)
 from .errors import ConvexityError, ConvexSpecificationError
-from .estimator import CvxpyExpressionEstimator, DataEstimator
+from .estimator import (
+    CvxpyExpressionEstimator, DataEstimator, SimulatorEstimator)
 from .hyperparameters import HyperParameter
 from .utils import (average_periods_per_year,
                     periods_per_year_from_datetime_index, resample_returns)
@@ -318,7 +319,7 @@ def _annual_percent_to_per_period(value, ppy):
     return resample_returns(returns=value/100, periods=ppy)
 
 
-class SimulatorCost:
+class SimulatorCost(SimulatorEstimator):
     """Cost class that can be used by a MarketSimulator."""
 
     def simulate(self, *args, **kwargs):

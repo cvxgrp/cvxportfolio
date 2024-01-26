@@ -105,7 +105,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from .errors import ForecastError
+from .errors import ForecastError, DataError
 from .estimator import Estimator
 
 logger = logging.getLogger(__name__)
@@ -449,6 +449,10 @@ class HistoricalMeanVolume(BaseMeanForecast):
     # pylint: disable=arguments-differ
     def _dataframe_selector(self, past_volumes, **kwargs):
         """Return dataframe to compute the historical means of."""
+        if past_volumes is None:
+            raise DataError(
+                f"{self.__class__.__name__} can only be used if MarketData"
+                + " provides market volumes.")
         return past_volumes
 
 @dataclass(unsafe_hash=True)

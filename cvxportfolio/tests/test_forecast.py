@@ -20,6 +20,7 @@ import pandas as pd
 
 from cvxportfolio.forecast import (ForecastError, HistoricalCovariance,
                                    HistoricalFactorizedCovariance,
+                                   HistoricalMeanVolume,
                                    HistoricalLowRankCovarianceSVD,
                                    HistoricalMeanError, HistoricalMeanReturn,
                                    HistoricalStandardDeviation,
@@ -32,6 +33,26 @@ class TestForecast(CvxportfolioTest):
 
     In most cases we test against the relevant pandas function as reference.
     """
+
+    def test_historical_mean_volume(self):
+        """Test mean volume forecaster."""
+
+        forecaster = HistoricalMeanVolume()
+        for tidx in [20,21,22,25,26,27]:
+            cvx_val = forecaster.values_in_time_recursive(
+                t=self.volumes.index[tidx],
+                past_returns=self.returns.iloc[:tidx],
+                past_volumes=self.volumes.iloc[:tidx])
+
+            self.assertTrue(np.allclose(cvx_val,
+                self.volumes.iloc[:tidx].mean()))
+
+        with self.assertRaises(ValueError):
+            cvx_val = forecaster.values_in_time_recursive(
+                t=self.volumes.index[tidx],
+                past_returns=self.returns.iloc[:tidx],
+                past_volumes=None)
+
 
     def test_vector_fc_syntax(self):
         """Test syntax of vector forecasters."""
