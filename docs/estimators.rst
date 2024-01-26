@@ -1,8 +1,6 @@
 Estimators
 ===========
 
-*Work in progress.*
-
 .. automodule:: cvxportfolio.estimator
 
 .. py:module:: cvxportfolio.estimator

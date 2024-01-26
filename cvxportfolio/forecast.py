@@ -73,6 +73,7 @@ matrices are only done once.
 
 import logging
 from dataclasses import dataclass
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -199,8 +200,8 @@ class BaseMeanVarForecast(BaseForecast):
     scratch (especially for covariances).
     """
 
-    half_life: pd.Timedelta or float = np.inf
-    rolling: pd.Timedelta or float = np.inf
+    half_life: Union[pd.Timedelta, float] = np.inf
+    rolling: Union[pd.Timedelta, float] = np.inf
 
     def __post_init__(self):
         self._last_time = None
@@ -378,9 +379,27 @@ class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
 
 @dataclass(unsafe_hash=True)
 class HistoricalMeanReturn(BaseMeanForecast):
-    r"""Historical mean returns.
+    r"""Historical means of non-cash returns.
 
-    This ignores both the cash returns column and all missing values.
+    When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
+
+    .. code-block::
+
+        past_returns.iloc[:,:-1].mean()
+
+    where ``past_returns`` is a time-indexed dataframe containing the past
+    returns (if in back-test that's relative to each point in time, ), and its
+    last column, which we skip over, are the cash returns. We use the same
+    logic as Pandas to handle ``np.nan`` values.
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
     """
     # pylint: disable=arguments-differ
     def _dataframe_selector(self, past_returns, **kwargs):
@@ -392,11 +411,33 @@ class HistoricalMeanReturn(BaseMeanForecast):
 class HistoricalVariance(BaseMeanForecast):
     r"""Historical variances of non-cash returns.
 
+    When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
+
+    .. code-block::
+
+        past_returns.iloc[:,:-1].var(ddof=0)
+
+    if you set ``kelly=False`` and
+
+    .. code-block::
+
+        (past_returns**2).iloc[:,:-1].mean()
+
+    otherwise (we use the same logic to handle ``np.nan`` values).
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
     :param kelly: if ``True`` compute :math:`\mathbf{E}[r^2]`, else
         :math:`\mathbf{E}[r^2] - {\mathbf{E}[r]}^2`. The second corresponds
         to the classic definition of variance, while the first is what is
         obtained by Taylor approximation of the Kelly gambling objective.
-        (See page 28 of the book.)
+        See discussion above.
     :type kelly: bool
     """
 
@@ -431,7 +472,34 @@ class HistoricalVariance(BaseMeanForecast):
 
 @dataclass(unsafe_hash=True)
 class HistoricalStandardDeviation(HistoricalVariance):
-    """Historical standard deviation."""
+    """Historical standard deviation of non-cash returns.
+
+    When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
+
+    .. code-block::
+
+        past_returns.iloc[:,:-1].std(ddof=0)
+
+    if you set ``kelly=False`` and
+
+    .. code-block::
+
+        np.sqrt((past_returns**2).iloc[:,:-1].mean())
+
+    otherwise (we use the same logic to handle ``np.nan`` values).
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    :param kelly: Same as in :class:`cvxportfolio.forecast.HistoricalVariance`.
+        Default True.
+    :type kelly: bool
+    """
 
     kelly: bool = True
 
@@ -456,6 +524,18 @@ class HistoricalMeanError(HistoricalVariance):
     \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
     missing values we ignore them, both to compute the variance and the
     count.
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    :param kelly: Same as in :class:`cvxportfolio.forecast.HistoricalVariance`.
+        Default False.
+    :type kelly: bool
     """
 
     kelly: bool = False
@@ -516,8 +596,8 @@ class HistoricalCovariance(BaseMeanVarForecast):
         filled = last_row.fillna(0.)
         return np.outer(filled, filled)
 
-    # pylint: disable=arguments-differ
-    def _dataframe_selector(self, past_returns, **kwargs):
+    def _dataframe_selector( # pylint: disable=arguments-differ
+            self, past_returns, **kwargs):
         """Return dataframe to compute the historical covariance of."""
         return past_returns.iloc[:, :-1]
 
@@ -534,8 +614,8 @@ class HistoricalCovariance(BaseMeanVarForecast):
         \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
         return last_row.fillna(0.)
 
-    # pylint: disable=arguments-differ
-    def _initial_compute(self, **kwargs):
+    def _initial_compute( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Compute from scratch, taking care of non-Kelly correction."""
 
         df, emw_weights = super()._initial_compute(**kwargs)
@@ -543,7 +623,8 @@ class HistoricalCovariance(BaseMeanVarForecast):
         if not self.kelly:
             self._joint_mean = self._compute_joint_mean(df, emw_weights)
 
-    def _online_update(self, **kwargs):
+    def _online_update( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update from last observation."""
 
         discount_factor, observations_to_subtract, emw_weights_of_subtract = \
@@ -566,8 +647,7 @@ class HistoricalCovariance(BaseMeanVarForecast):
                 self._joint_mean -= self._compute_joint_mean(
                     observations_to_subtract, emw_weights_of_subtract)
 
-    def values_in_time( # pylint: disable=arguments-differ
-            self, **kwargs):
+    def values_in_time(self, **kwargs):
         """Obtain current value of the covariance estimate.
 
         :param kwargs: All arguments passed to :meth:`values_in_time`.
@@ -601,14 +681,33 @@ def project_on_psd_cone_and_factorize(covariance):
 
 @dataclass(unsafe_hash=True)
 class HistoricalFactorizedCovariance(HistoricalCovariance):
-    r"""Historical covariance matrix, sqrt factorized.
+    r"""Historical covariance matrix of non-cash returns, factorized.
 
-    :param kelly: if ``True`` compute each
-        :math:`\Sigma_{i,j} = \overline{r^{i} r^{j}}`, else
-        :math:`\overline{r^{i} r^{j}} - \overline{r^{i}}\overline{r^{j}}`.
+    When both ``half_life`` and ``rolling`` are infinity, this is equivalent
+    to, before factorization
+
+    .. code-block::
+
+        past_returns.iloc[:,:-1].cov(ddof=0)
+
+    if you set ``kelly=False``. We use the same logic to handle ``np.nan``
+    values. For ``kelly=True`` it is not possible to reproduce with one single
+    Pandas method (but we do test against Pandas in the unit tests).
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    :param kelly: if ``True`` each element of the covariance matrix
+        :math:`\Sigma_{i,j}` is equal to :math:`\mathbf{E} r^{i} r^{j}`,
+        otherwise it is
+        :math:`\mathbf{E} r^{i} r^{j} - \mathbf{E} r^{i} \mathbf{E} r^{j}`.
         The second case corresponds to the classic definition of covariance,
         while the first is what is obtained by Taylor approximation of
-        the Kelly gambling objective. (See page 28 of the book.)
+        the Kelly gambling objective. (See discussion above.)
         In the second case, the estimated covariance is the same
         as what is returned by ``pandas.DataFrame.cov(ddof=0)``, *i.e.*,
         we use the same logic to handle missing data.
@@ -648,7 +747,22 @@ class HistoricalFactorizedCovariance(HistoricalCovariance):
 
 @dataclass(unsafe_hash=True)
 class HistoricalLowRankCovarianceSVD(Estimator):
-    """Build factor model covariance using truncated SVD."""
+    """Build factor model covariance using truncated SVD.
+
+    .. note::
+
+        This forecaster is experimental and not covered by semantic versioning,
+        we may change it without warning.
+
+    :param num_factors: How many factors in the low rank model.
+    :type num_factors: int
+    :param svd_iters: How many iteration of truncated SVD to apply. If you
+        get a badly conditioned covariance you may to lower this.
+    :type svd_iters: int
+    :param svd: Which SVD routine to use, currently only dense (LAPACK) via
+        Numpy.
+    :type svd: str
+    """
 
     num_factors: int
     svd_iters: int = 10

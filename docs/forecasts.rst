@@ -1,8 +1,6 @@
 Forecasters
 ===========
 
-*Work in progress.*
-
 .. automodule:: cvxportfolio.forecast
 
 .. py:module:: cvxportfolio.forecast
@@ -16,6 +14,6 @@ Forecasters
 
 .. autoclass:: HistoricalMeanError
 
-.. autoclass:: HistoricalLowRankCovarianceSVD
-
 .. autoclass:: HistoricalFactorizedCovariance
+
+.. autoclass:: HistoricalLowRankCovarianceSVD
