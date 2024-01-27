@@ -27,7 +27,7 @@ import cvxpy as cp
 import numpy as np
 import pandas as pd
 
-from .constraints import (CostInequalityConstraint, EqualityConstraint,
+from .constraints.base_constraints import (CostInequalityConstraint, EqualityConstraint,
                           InequalityConstraint)
 from .errors import ConvexityError, ConvexSpecificationError
 from .estimator import CvxpyExpressionEstimator, DataEstimator

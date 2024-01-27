@@ -11,41 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Here we define many realistic constraints that apply to :ref:`portfolio
-optimization trading policies <optimization-policies-page>`.
-
-Some of them, like :class:`LongOnly`, are
-very simple to use. Some others are more advanced,
-for example :class:`FactorNeutral`
-takes time-varying factor exposures as parameters.
-
-For a minimal example we present the classic Markowitz allocation.
-
-.. code-block:: python
-
-    import cvxportfolio as cvx
-
-    objective = cvx.ReturnsForecast() - gamma_risk * cvx.FullCovariance()
-
-    # the policy takes a list of constraint instances
-    constraints = [cvx.LongOnly(applies_to_cash=True)]
-
-    policy = cvx.SinglePeriodOptimization(objective, constraints)
-    print(cvx.MarketSimulator(universe).backtest(policy))
-
-With this, we require that the optimal post-trade weights
-found by the single-period optimization policy are non-negative.
-In our formulation the full portfolio weights vector (which includes
-the cash account) sums to one,
-see equation :math:`(4.9)` at page 43 of
-`the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+"""This module defines user-facing constraints.
 """
 
 import cvxpy as cp
 import numpy as np
 
-from .estimator import CvxpyExpressionEstimator, DataEstimator, Estimator
-from .forecast import HistoricalFactorizedCovariance
+from ..estimator import DataEstimator, Estimator
+from ..forecast import HistoricalFactorizedCovariance
+from .base_constraints import Constraint, InequalityConstraint, EqualityConstraint
+from ..policies import MarketBenchmark
 
 __all__ = [
     "LongOnly",
@@ -70,124 +45,6 @@ __all__ = [
     "TurnoverLimit",
     "MinCashBalance"
 ]
-
-
-class Constraint(CvxpyExpressionEstimator):
-    """Base cvxpy constraint class."""
-
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy.
-
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
-        :returns: some cvxpy.constraints object, or list of those
-        :rtype: cvxpy.constraints, list
-        """
-        raise NotImplementedError # pragma: no cover
-
-
-class EqualityConstraint(Constraint):
-    """Base class for equality constraints.
-
-    This class is not exposed to the user, each equality
-    constraint inherits from this and overrides the
-    :func:`InequalityConstraint._compile_constr_to_cvxpy` and
-    :func:`InequalityConstraint._rhs` methods.
-
-    We factor this code in order to streamline the
-    design of :class:`SoftConstraint` costs.
-    """
-
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy.
-
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
-        :returns: Cvxpy constraints object.
-        :rtype: cvxpy.constraints
-        """
-        return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) ==\
-            self._rhs()
-
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Cvxpy expression of the left-hand side of the constraint."""
-        raise NotImplementedError # pragma: no cover
-
-    def _rhs(self):
-        """Cvxpy expression of the right-hand side of the constraint."""
-        raise NotImplementedError # pragma: no cover
-
-
-class InequalityConstraint(Constraint):
-    """Base class for inequality constraints.
-
-    This class is not exposed to the user, each inequality
-    constraint inherits from this and overrides the
-    :func:`InequalityConstraint._compile_constr_to_cvxpy` and
-    :func:`InequalityConstraint._rhs` methods.
-
-    We factor this code in order to streamline the
-    design of :class:`SoftConstraint` costs.
-    """
-
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy.
-
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
-        :returns: Cvxpy constraints object.
-        :rtype: cvxpy.constraints
-        """
-        return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) <=\
-            self._rhs()
-
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Cvxpy expression of the left-hand side of the constraint."""
-        raise NotImplementedError # pragma: no cover
-
-    def _rhs(self):
-        """Cvxpy expression of the right-hand side of the constraint."""
-        raise NotImplementedError # pragma: no cover
-
-
-class CostInequalityConstraint(InequalityConstraint):
-    """Linear inequality constraint applied to a cost term.
-
-    The user does not interact with this class directly,
-    it is returned by an expression such as ``cost <= value``
-    where ``cost`` is a :class:`Cost` instance and ``value``
-    is a scalar.
-    """
-
-    def __init__(self, cost, value):
-        self.cost = cost
-        self.value = DataEstimator(value, compile_parameter=True)
-
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy."""
-        return self.cost.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
-
-    def _rhs(self):
-        return self.value.parameter
-
-    def __repr__(self):
-        return self.cost.__repr__() + ' <= ' + self.value.__repr__()
-
 
 class NoCash(EqualityConstraint):
     """Require that the cash balance is zero at each period."""
