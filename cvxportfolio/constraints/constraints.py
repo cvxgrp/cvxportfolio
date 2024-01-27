@@ -73,8 +73,8 @@ class MarketNeutral(EqualityConstraint):
     .. versionadded:: 1.2.0
 
         This constraint's interface has been improved: now you can pass
-        any policy object as benchmark, and any covariance forecaster to
-        compute :math:`\Sigma_t`.
+        any policy object as benchmark, and give parameters to the forecaster
+        of :math:`\Sigma_t`.
 
     :param benchmark: Policy object whose target weights at each point in time
         are the benchmark weights we neutralize against. You can pass a class
@@ -82,26 +82,20 @@ class MarketNeutral(EqualityConstraint):
         parameters. Default is :class:`cvxportfolio.MarketBenchmark`, which are
         weights proportional to the previous year's total traded volumes.
     :type benchmark: cvx.Policy class or instance
-    :param covariance_forecaster: Cvxportfolio forecaster class or instance
-        that computes the :math:`\Sigma_t` matrix at each point in time.
-        You can pass a class or an instance. If you pass a class it is
-        instantiated with default parameters. Default is
-        :class:`cvxportfolio.forecast.HistoricalFactorizedCovariance`.
-    :type covariance_forecaster: cvx.forecast.BaseForecast
+    :param kwargs: Optional arguments passed to the initializer
+        of :class:`cvxportfolio.forecast.HistoricalFactorizedCovariance`,
+        like rolling window or exponential smoothing half life, for the
+        estimation of the covariance matrices :math:`\Sigma_t`. Default (no
+        other arguments) is to use its default parameters.
+    :type kwargs: dict
     """
 
-    def __init__(
-            self, benchmark=MarketBenchmark,
-            covariance_forecaster=HistoricalFactorizedCovariance):
+    def __init__(self, benchmark=MarketBenchmark, **kwargs):
 
         if isinstance(benchmark, type):
             benchmark = benchmark()
         self.benchmark = benchmark
-
-        if isinstance(covariance_forecaster, type):
-            covariance_forecaster = covariance_forecaster()
-        self.covariance_forecaster = covariance_forecaster
-
+        self.covariance_forecaster = HistoricalFactorizedCovariance(**kwargs)
         self._market_vector = None
 
     def initialize_estimator( # pylint: disable=arguments-differ
@@ -125,13 +119,7 @@ class MarketNeutral(EqualityConstraint):
         :type kwargs: dict
         """
 
-        if hasattr(self.covariance_forecaster, 'FACTORIZED'
-            ) and self.covariance_forecaster.FACTORIZED:
-            factorized_covariance = self.covariance_forecaster.current_value
-        else:
-            factorized_covariance = project_on_psd_cone_and_factorize(
-                self.covariance_forecaster.current_value)
-
+        factorized_covariance = self.covariance_forecaster.current_value
         bm = self.benchmark.current_value.iloc[:-1]
         self._market_vector.value = np.array(
             factorized_covariance @ (factorized_covariance.T @ bm))
