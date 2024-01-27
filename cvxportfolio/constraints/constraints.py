@@ -11,16 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module defines user-facing constraints.
-"""
+"""This module defines user-facing constraints."""
 
 import cvxpy as cp
 import numpy as np
 
 from ..estimator import DataEstimator, Estimator
-from ..forecast import HistoricalFactorizedCovariance
-from .base_constraints import Constraint, InequalityConstraint, EqualityConstraint
+from ..forecast import (HistoricalFactorizedCovariance,
+                        project_on_psd_cone_and_factorize)
 from ..policies import MarketBenchmark
+from .base_constraints import (Constraint, EqualityConstraint,
+                               InequalityConstraint)
 
 __all__ = [
     "LongOnly",
@@ -66,29 +67,42 @@ class MarketNeutral(EqualityConstraint):
     .. math::
         {(w_t^\text{b})}^T \Sigma_t (w_t + z_t) = 0
 
-    The benchmark portfolio weights are computed here, and are
-    proportional to the rolling averages of the market volumes over the
-    recent past.
+    The benchmark portfolio weights are given by a Policy object chosen by
+    the user.
 
-    .. note::
+    .. versionadded:: 1.2.0
 
-        This constraint's interface will improve; you will be able
-        to pass any Cvxportfolio policy object as benchmark weights.
+        This constraint's interface has been improved: now you can pass
+        any policy object as benchmark, and any covariance forecaster to
+        compute :math:`\Sigma_t`.
 
-    :param window: How many past observations of the volumes are used to
-        estimate the market benchmark.
-    :type window: int
+    :param benchmark: Policy object whose target weights at each point in time
+        are the benchmark weights we neutralize against. You can pass a class
+        or an instance. If you pass a class it is instantiated with default
+        parameters. Default is :class:`cvxportfolio.MarketBenchmark`, which are
+        weights proportional to the previous year's total traded volumes.
+    :type benchmark: cvx.Policy class or instance
+    :param covariance_forecaster: Cvxportfolio forecaster class or instance
+        that computes the :math:`\Sigma_t` matrix at each point in time.
+        You can pass a class or an instance. If you pass a class it is
+        instantiated with default parameters. Default is
+        :class:`cvxportfolio.forecast.HistoricalFactorizedCovariance`.
+    :type covariance_forecaster: cvx.forecast.BaseForecast
     """
-    # TODO: refactor code to import MarketBenchmark, now it causes circular
-    # imports
-    def __init__(self, window=250, #benchmark=MarketBenchmark
-        ):
-        self.covarianceforecaster = HistoricalFactorizedCovariance()
-        self.window = window
-        # if type(benchmark) is type:
-        #     benchmark = benchmark()
-        # self.benchmark = benchmark
-        self.market_vector = None
+
+    def __init__(
+            self, benchmark=MarketBenchmark,
+            covariance_forecaster=HistoricalFactorizedCovariance):
+
+        if isinstance(benchmark, type):
+            benchmark = benchmark()
+        self.benchmark = benchmark
+
+        if isinstance(covariance_forecaster, type):
+            covariance_forecaster = covariance_forecaster()
+        self.covariance_forecaster = covariance_forecaster
+
+        self._market_vector = None
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, universe, **kwargs):
@@ -99,7 +113,7 @@ class MarketNeutral(EqualityConstraint):
         :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-        self.market_vector = cp.Parameter(len(universe)-1)
+        self._market_vector = cp.Parameter(len(universe)-1)
 
     def values_in_time( # pylint: disable=arguments-differ
             self, past_volumes, **kwargs):
@@ -110,18 +124,21 @@ class MarketNeutral(EqualityConstraint):
         :param kwargs: Unused arguments passed to :meth:`values_in_time`.
         :type kwargs: dict
         """
-        tmp = past_volumes.iloc[-self.window:].mean()
-        tmp /= sum(tmp)
-        # tmp = self.benchmark.current_value.iloc[:-1]
 
-        tmp2 = self.covarianceforecaster.current_value @ (
-            self.covarianceforecaster.current_value.T @ tmp)
-        # print(tmp2)
-        self.market_vector.value = np.array(tmp2)
+        if hasattr(self.covariance_forecaster, 'FACTORIZED'
+            ) and self.covariance_forecaster.FACTORIZED:
+            factorized_covariance = self.covariance_forecaster.current_value
+        else:
+            factorized_covariance = project_on_psd_cone_and_factorize(
+                self.covariance_forecaster.current_value)
+
+        bm = self.benchmark.current_value.iloc[:-1]
+        self._market_vector.value = np.array(
+            factorized_covariance @ (factorized_covariance.T @ bm))
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile left hand side of the constraint expression."""
-        return w_plus[:-1].T @ self.market_vector
+        return w_plus[:-1].T @ self._market_vector
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""

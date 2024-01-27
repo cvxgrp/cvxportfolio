@@ -41,5 +41,5 @@ see equation :math:`(4.9)` at page 43 of
 `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
 """
 
-from .constraints import *
 from .base_constraints import *
+from .constraints import *

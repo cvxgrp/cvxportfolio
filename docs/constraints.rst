@@ -8,6 +8,8 @@ Constraints
 
 .. autoclass:: DollarNeutral
 
+.. autoclass:: MarketNeutral
+
 .. autoclass:: FactorMaxLimit
 
 .. autoclass:: FactorMinLimit

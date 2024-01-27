@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module defines base constraint classes.
-"""
+"""This module defines base constraint classes."""
 
 
 from ..estimator import CvxpyExpressionEstimator, DataEstimator
@@ -134,4 +133,3 @@ class CostInequalityConstraint(InequalityConstraint):
 
     def __repr__(self):
         return self.cost.__repr__() + ' <= ' + self.value.__repr__()
-
