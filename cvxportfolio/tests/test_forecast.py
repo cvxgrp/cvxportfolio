@@ -20,9 +20,9 @@ import pandas as pd
 
 from cvxportfolio.forecast import (ForecastError, HistoricalCovariance,
                                    HistoricalFactorizedCovariance,
-                                   HistoricalMeanVolume,
                                    HistoricalLowRankCovarianceSVD,
                                    HistoricalMeanError, HistoricalMeanReturn,
+                                   HistoricalMeanVolume,
                                    HistoricalStandardDeviation,
                                    HistoricalVariance)
 from cvxportfolio.tests import CvxportfolioTest
@@ -38,7 +38,7 @@ class TestForecast(CvxportfolioTest):
         """Test mean volume forecaster."""
 
         forecaster = HistoricalMeanVolume()
-        for tidx in [20,21,22,25,26,27]:
+        for tidx in [20, 21, 22, 25, 26, 27]:
             cvx_val = forecaster.values_in_time_recursive(
                 t=self.volumes.index[tidx],
                 past_returns=self.returns.iloc[:tidx],
@@ -52,7 +52,6 @@ class TestForecast(CvxportfolioTest):
                 t=self.volumes.index[tidx],
                 past_returns=self.returns.iloc[:tidx],
                 past_volumes=None)
-
 
     def test_vector_fc_syntax(self):
         """Test syntax of vector forecasters."""

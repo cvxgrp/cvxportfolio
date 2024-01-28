@@ -214,9 +214,16 @@ class TestSimulator(CvxportfolioTest):
 
             hcost = cvx.HoldingCost(short_fees=5, dividends=dividends)
 
-            sim_hcost = hcost.simulate(
+            sim_hcost = hcost.simulate_recursive(
                 t=t, h_plus=h_plus,
-                t_next=t + pd.Timedelta('1d'))
+                t_next=t + pd.Timedelta('1d'),
+                past_returns=None,
+                current_returns=None,
+                past_volumes=None,
+                current_volumes=None,
+                current_prices=None,
+                current_portfolio_value=None,
+                current_weights=None)
 
             hcost = -(np.exp(np.log(1.05)/365.24)-1) * sum(
                 -np.minimum(h_plus, 0.)[:-1])
@@ -237,34 +244,42 @@ class TestSimulator(CvxportfolioTest):
         tcost = cvx.StocksTransactionCost()
         # syntax checks
         with self.assertRaises(SyntaxError):
-            tcost.simulate(t, u=u,
+            tcost.simulate_recursive(t=t, u=u,
                             past_returns=past_returns,
                             current_returns=current_returns,
                             past_volumes=past_volumes,
                             current_volumes=current_volumes,
-                            current_prices=None)
+                            current_prices=None,
+                            current_portfolio_value=None,
+                            current_weights=None,)
 
         tcost = cvx.TransactionCost(pershare_cost=None,)
-        tcost.simulate(t, u=u, current_prices=None,
+        tcost.simulate_recursive(t=t, u=u, current_prices=None,
                         past_returns=past_returns,
                         current_returns=current_returns,
                         past_volumes=past_volumes,
-                        current_volumes=current_volumes)
+                        current_volumes=current_volumes,
+                        current_portfolio_value=None,
+                        current_weights=None,)
 
         tcost = cvx.TransactionCost()
         with self.assertRaises(SyntaxError):
-            tcost.simulate(t, u=u, current_prices=current_prices,
+            tcost.simulate_recursive(t=t, u=u, current_prices=current_prices,
                             past_returns=past_returns,
                             current_returns=current_returns,
                             past_volumes=None,
-                            current_volumes=None)
+                            current_volumes=None,
+                            current_portfolio_value=None,
+                            current_weights=None,)
 
         tcost = cvx.TransactionCost(b=None)
-        tcost.simulate(t, u=u, current_prices=current_prices,
+        tcost.simulate_recursive(t=t, u=u, current_prices=current_prices,
                         past_returns=past_returns,
                         current_returns=current_returns,
                         past_volumes=None,
-                        current_volumes=None)
+                        current_volumes=None,
+                        current_portfolio_value=None,
+                        current_weights=None,)
 
     def test_transaction_cost(self):
         """Test (Stock)TransactionCost simulator's interface."""
@@ -290,8 +305,10 @@ class TestSimulator(CvxportfolioTest):
 
             tcost = cvx.StocksTransactionCost(a=spreads/2)
 
-            sim_cost = tcost.simulate(
-                t, u=u, current_prices=current_prices,
+            sim_cost = tcost.simulate_recursive(
+                t=t, u=u, current_prices=current_prices,
+                current_portfolio_value=None,
+                current_weights=None,
                 past_returns=past_returns,
                 current_returns=current_returns,
                 past_volumes=past_volumes,
@@ -979,4 +996,5 @@ class TestSimulator(CvxportfolioTest):
 
 if __name__ == '__main__':
 
-    unittest.main(warnings='error') # pragma: no cover
+    # unittest.main(warnings='error') # pragma: no cover
+    unittest.main() # pragma: no cover

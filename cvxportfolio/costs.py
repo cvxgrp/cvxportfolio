@@ -31,8 +31,8 @@ from .constraints.base_constraints import (CostInequalityConstraint,
                                            EqualityConstraint,
                                            InequalityConstraint)
 from .errors import ConvexityError, ConvexSpecificationError
-from .estimator import (
-    CvxpyExpressionEstimator, DataEstimator, SimulatorEstimator)
+from .estimator import (CvxpyExpressionEstimator, DataEstimator,
+                        SimulatorEstimator)
 from .hyperparameters import HyperParameter
 from .utils import (average_periods_per_year,
                     periods_per_year_from_datetime_index, resample_returns)
@@ -549,14 +549,6 @@ class HoldingCost(Cost, SimulatorCost):
 
         cost = 0.
 
-        # TODO this is a temporary fix,
-        # we should plug this into a recursive tree
-        for est in [self.short_fees, self.long_fees, self.dividends]:
-            if est is not None:
-                est.initialize_estimator_recursive(universe=h_plus.index,
-                                              trading_calendar=[t])
-                est.values_in_time_recursive(t=t)
-
         if self.short_fees is not None:
             cost += np.sum(_annual_percent_to_per_period(
                 self.short_fees.current_value, year_divided_by_period) * (
@@ -602,7 +594,7 @@ class StocksHoldingCost(HoldingCost, SimulatorCost):
         super().__init__(short_fees=short_fees)
 
 
-class TransactionCost(Cost):
+class TransactionCost(Cost, SimulatorCost):
     """This is a generic model for transaction cost of financial assets.
 
     Currently it is not meant to be used directly. Look at
@@ -730,12 +722,11 @@ class TransactionCost(Cost):
                 raise SyntaxError(
                     "If you don't provide prices you should"
                     " set pershare_cost to None")
-            result += self.pershare_cost.values_in_time_recursive(t=t) * int(
+            result += self.pershare_cost.current_value * int(
                 sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
 
         if self.a is not None:
-            result += sum(self.a.values_in_time_recursive(t=t)
-                          * np.abs(u.iloc[:-1]))
+            result += sum(self.a.current_value * np.abs(u.iloc[:-1]))
 
         if self.b is not None:
 

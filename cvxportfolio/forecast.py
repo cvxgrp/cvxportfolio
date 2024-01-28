@@ -105,7 +105,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from .errors import ForecastError, DataError
+from .errors import DataError, ForecastError
 from .estimator import Estimator
 
 logger = logging.getLogger(__name__)

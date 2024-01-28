@@ -252,13 +252,15 @@ class MarketSimulator:
         h_plus = h + u
 
         # evaluate cost functions
-        realized_costs = {cost.__class__.__name__: cost.simulate(
+        realized_costs = {cost.__class__.__name__: cost.simulate_recursive(
             t=t, u=u,  h_plus=h_plus,
             past_volumes=past_volumes,
             current_volumes=current_volumes,
             past_returns=past_returns,
             current_returns=current_returns,
             current_prices=current_prices,
+            current_weights=current_weights,
+            current_portfolio_value=current_portfolio_value,
             t_next=t_next,
             periods_per_year=self.market_data.periods_per_year,
             windowsigma=self.market_data.periods_per_year)
@@ -284,6 +286,11 @@ class MarketSimulator:
         policy.initialize_estimator_recursive(
             universe=universe, trading_calendar=trading_calendar)
 
+        # we also initialize cost objects
+        for cost in self.costs:
+            cost.initialize_estimator_recursive(
+                universe=universe, trading_calendar=trading_calendar)
+
         # if policy uses a cache load it from disk
         if hasattr(policy, '_cache'):
             logger.info('Trying to load cache from disk...')
@@ -299,6 +306,9 @@ class MarketSimulator:
     def _finalize_policy(self, policy, universe):
 
         policy.finalize_estimator_recursive() # currently unused
+
+        for cost in self.costs:
+            cost.finalize_estimator_recursive() # currently unused
 
         if hasattr(policy, '_cache'):
             logger.info('Storing cache from policy to disk...')

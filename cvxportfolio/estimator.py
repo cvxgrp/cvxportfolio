@@ -242,7 +242,7 @@ class SimulatorEstimator(Estimator):
 
     def simulate(self, *args, **kwargs):
         """Compute current simulator value."""
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
     def simulate_recursive(self, **kwargs):
         """Evaluate simulator value(s) recursively on sub-estimators.
@@ -259,10 +259,26 @@ class SimulatorEstimator(Estimator):
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "simulate_recursive"):
                 subestimator.simulate_recursive(**kwargs)
+            elif hasattr(subestimator, "values_in_time_recursive"):
+                subestimator.values_in_time_recursive(
+                    t=kwargs['t'], current_weights=kwargs['current_weights'],
+                    current_portfolio_value=kwargs['current_portfolio_value'],
+                    past_returns=kwargs['past_returns'],
+                    past_volumes=kwargs['past_volumes'],
+                    current_prices=kwargs['current_prices']
+                )
         if hasattr(self, "simulate"):
             # pylint: disable=assignment-from-no-return
             self._current_simulator_value = self.simulate(**kwargs)
             return self.current_simulator_value
+        # if hasattr(self, 'values_in_time'):
+        #     # pylint: disable=assignment-from-no-return
+        #     self._current_simulator_value = self.values_in_time(
+        #         t=kwargs['t'], current_weights=kwargs['current_weights'],
+        #         current_portfolio_value=kwargs['current_portfolio_value'],
+        #         past_returns=kwargs['past_returns'],
+        #         past_volumes=kwargs['past_volumes'],
+        #         current_prices=kwargs['current_prices'])
         return None
 
 class CvxpyExpressionEstimator(Estimator):
