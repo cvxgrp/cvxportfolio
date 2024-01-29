@@ -256,17 +256,13 @@ class MarketSimulator:
                 # to support interface before 1.2.0
                 'simulate_recursive' if hasattr(cost, 'simulate_recursive')
                 else 'simulate')(
-            t=t, u=u,  h_plus=h_plus,
-            past_volumes=past_volumes,
-            current_volumes=current_volumes,
-            past_returns=past_returns,
-            current_returns=current_returns,
-            current_prices=current_prices,
-            current_weights=current_weights,
-            current_portfolio_value=current_portfolio_value,
-            t_next=t_next,
-            periods_per_year=self.market_data.periods_per_year,
-            windowsigma=self.market_data.periods_per_year)
+                    t=t, u=u,  h_plus=h_plus, past_volumes=past_volumes,
+                    current_volumes=current_volumes, past_returns=past_returns,
+                    current_returns=current_returns,
+                    current_prices=current_prices,
+                    current_weights=current_weights,
+                    current_portfolio_value=current_portfolio_value, 
+                    t_next=t_next)
                 for cost in self.costs}
 
         # initialize tomorrow's holdings
