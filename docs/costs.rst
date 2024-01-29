@@ -8,8 +8,8 @@ Cost models
 
 .. automodule:: cvxportfolio.costs
 
-Documentation
-~~~~~~~~~~~~~
+Costs Documentation
+~~~~~~~~~~~~~~~~~~~
 
 .. py:module:: cvxportfolio
     :noindex:
@@ -28,10 +28,9 @@ Documentation
 
 .. autoclass:: HcostModel
 
-
-Base classes (for defining your own objective terms)
-====================================================
-
-.. autoclass:: cvxportfolio.costs.Cost
+Base classes (for defining your costs)
+======================================
 
 .. autoclass:: cvxportfolio.costs.SimulatorCost
+
+    .. automethod:: simulate

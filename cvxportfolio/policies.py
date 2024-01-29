@@ -24,9 +24,9 @@ import pandas as pd
 from .errors import (ConvexityError, ConvexSpecificationError, DataError,
                      MissingTimesError, PortfolioOptimizationError)
 from .estimator import DataEstimator, Estimator
+from .forecast import HistoricalMeanVolume
 from .returns import CashReturn
 from .utils import flatten_heterogeneous_list
-from .forecast import HistoricalMeanVolume
 
 __all__ = [
     "AllCash",

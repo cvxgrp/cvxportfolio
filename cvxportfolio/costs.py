@@ -42,8 +42,8 @@ you do
 .. code-block:: python
 
     policy = cvx.SinglePeriodOptimization(
-        objective = cvx.ReturnsForecast() 
-            - 0.5 * cvx.FullCovariance() 
+        objective = cvx.ReturnsForecast()
+            - 0.5 * cvx.FullCovariance()
             - cvx.HoldingCost(short_fees=10),
         constraints = [cvx.LeverageLimit(3)])
 
@@ -61,54 +61,7 @@ Pandas DataFrame indexed by time and with the assets as columns; see the
     access to the realized market volumes, while the optimization costs
     operate on weight vectors and have only :doc:`forecasts <forecasts>` of the
     market volumes. See below for more details.
-    
 """
-# There are two ways to use this class. Either in the costs attribute
-# of a :class:`MarketSimulator`, in which case the costs are evaluated
-# on the post-trade dollar positions :math:`h^+_t`. Or,
-# as part of the objective function (or as a constraint!)
-# of a :class:`SinglePeriodOptimization`
-# or :class:`MultiPeriodOptimization` trading policy, in which case they
-# are evaluated on the post-trade weights :math:`w_t + z_t`. The mathematical
-# form is the same (see the discussion at pages 11-12 of the book).
-
-# This particular implementation represents the following objective terms
-# (expressed here in terms of the post-trade dollar positions):
-
-# .. math::
-
-#     s^T_t {(h^+_t)}_- + l^T_t {(h^+_t)}_+ - d^T_t h^+_t
-
-# where :math:`s_t` are the (short) borrowing fees,
-# :math:`l_t` are the fees on long positions,
-# and :math:`d_t` are dividend rates (their sign is flipped because
-# the costs are deducted from the cash account at each period). See
-# below for their precise definition.
-
-# Example usage as simulator cost:
-
-# .. code-block:: python
-
-#     borrow_fees = pd.Series([5, 10], index=['AAPL', 'ZM'])
-#     simulator = cvx.MarketSimulator(['AAPL', 'ZM'],
-#         costs=[cvx.HoldingCost(short_fees=borrow_fees)])
-
-# Example usage as trading policy cost:
-
-# .. code-block:: python
-
-#     objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance() \
-#         - cvx.HoldingCost(short_fees=10)
-#     constraints = [cvx.LeverageLimit(3)]
-#     policy = cvx.SinglePeriodOptimization(objective, constraints)
-
-
-# Currently these are two: :class:`StocksTransactionCost` and
-# :class:`StocksHoldingCost`.
-
-# The default parameters are chosen to approximate real costs for the stock
-# market as well as possible.
-# """
 
 import copy
 from numbers import Number
@@ -352,6 +305,10 @@ class CombinedCosts(Cost):
 class SoftConstraint(Cost):
     """Soft constraint cost.
 
+    This can be applied to most :doc:`constraint objects <constraints>`,
+    as discussed in :ref:`its section of the constraints documentation
+    <soft-constraints>`.
+
     :param constraint: Cvxportfolio constraint instance whose violation
         we penalize.
     :type constraint: cvxportfolio.constraints.EqualityConstraint or
@@ -410,21 +367,60 @@ def _annual_percent_to_per_period(value, ppy):
 
 
 class SimulatorCost(SimulatorEstimator):
-    """Cost class that can be used by a MarketSimulator."""
+    """Cost class that can be used by :class:`cvxportfolio.MarketSimulator`.
 
-    def simulate(self, *args, **kwargs):
-        """Simulate cost, used by market simulator.
+    You only need to define the :meth:`simulate` method. You should be
+    careful to inherit from this class in order to use the recursive evaluation
+    model.
+    """
 
-        Look at its invocation in ``MarketSimulator`` for its list of
-        arguments.
+    def simulate( # pylint: disable=arguments-differ
+        self, t, u, h_plus, past_volumes, current_volumes,
+        past_returns, current_returns, current_prices,
+        current_weights, current_portfolio_value, t_next, **kwargs):
+        """Simulate the cost in the market simulator (not optimization).
 
-        Cost classes that are meant to be used in the simulator
-        should implement this.
+        Cost classes that are meant to be used in the simulator should
+        implement this. The arguments to this are the same as for
+        :meth:`cvxportfolio.estimator.Estimator.values_in_time` plus the
+        realized returns and volumes in the period, and the trades requested
+        by the policy, ....
 
-        :param args: Positional arguments.
-        :type args: tuple
-        :param kwargs: Keyword arguments.
+        :param t: Current timestamp.
+        :type t: pandas.Timestamp
+        :param u: Trade vector in cash units requested by the policy.
+            If the market simulator implements rounding by number of shares
+            and/or canceling trades on assets whose volume for the period
+            is zero, this is after those transformations.
+        :type u: pandas.Series
+        :param h_plus: Post-trade holdings vector.
+        :type h_plus: pandas.Series
+        :param past_returns: Past market returns (including cash).
+        :type past_returns: pandas.DataFrame
+        :param current_returns: Current period's market returns (including
+            cash).
+        :type current_returns: pandas.Series
+        :param past_volumes: Past market volumes, or None if not available.
+        :type past_volumes: pandas.DataFrame or None
+        :param current_volumes: Current period's market volumes, or None if not
+            available.
+        :type current_volumes: pandas.Series or None
+        :param current_prices: Current (open) prices, or None if not available.
+        :type current_prices: pandas.Series or None
+        :param current_weights: Current allocation weights (before trading).
+        :type current_weights: pandas.Series
+        :param current_portfolio_value: Current total value of the portfolio
+            in cash units, before costs.
+        :type current_portfolio_value: float
+        :param t_next: Timestamp of the next trading period.
+        :type t_next: pandas.Timestamp
+
+        :param kwargs: Reserved for future expansion.
         :type kwargs: dict
+
+        :returns: Simulated cost. Typically a positive number: it is
+            subtracted from the cash account.
+        :rtype: float
         """
         raise NotImplementedError # pragma: no cover
 
