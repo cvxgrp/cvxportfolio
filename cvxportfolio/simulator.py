@@ -252,7 +252,10 @@ class MarketSimulator:
         h_plus = h + u
 
         # evaluate cost functions
-        realized_costs = {cost.__class__.__name__: cost.simulate_recursive(
+        realized_costs = {cost.__class__.__name__: getattr(cost,
+                # to support interface before 1.2.0
+                'simulate_recursive' if hasattr(cost, 'simulate_recursive')
+                else 'simulate')(
             t=t, u=u,  h_plus=h_plus,
             past_volumes=past_volumes,
             current_volumes=current_volumes,
@@ -288,8 +291,10 @@ class MarketSimulator:
 
         # we also initialize cost objects
         for cost in self.costs:
-            cost.initialize_estimator_recursive(
-                universe=universe, trading_calendar=trading_calendar)
+            if hasattr(cost, 'initialize_estimator_recursive'):
+                # to support interface before 1.2.0
+                cost.initialize_estimator_recursive(
+                    universe=universe, trading_calendar=trading_calendar)
 
         # if policy uses a cache load it from disk
         if hasattr(policy, '_cache'):
@@ -298,9 +303,6 @@ class MarketSimulator:
               signature=self.market_data.partial_universe_signature(universe),
               base_location=self.base_location)
 
-        # if hasattr(policy, 'compile_to_cvxpy'):
-        #     policy.compile_to_cvxpy()
-
         return policy
 
     def _finalize_policy(self, policy, universe):
@@ -308,7 +310,9 @@ class MarketSimulator:
         policy.finalize_estimator_recursive() # currently unused
 
         for cost in self.costs:
-            cost.finalize_estimator_recursive() # currently unused
+            if hasattr(cost, 'finalize_estimator_recursive'):
+                # to support interface before 1.2.0
+                cost.finalize_estimator_recursive() # currently unused
 
         if hasattr(policy, '_cache'):
             logger.info('Storing cache from policy to disk...')
