@@ -21,3 +21,11 @@ Cost models
 .. autoclass:: TcostModel
 
 .. autoclass:: HcostModel
+
+
+Base classes (for defining your own objective terms)
+====================================================
+
+.. autoclass:: cvxportfolio.costs.Cost
+
+.. autoclass:: cvxportfolio.costs.SimulatorCost

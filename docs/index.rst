@@ -69,9 +69,11 @@ Table of Contents
    hello_world
    quickstart
    manual
-   policies
    simulator
-   objective_terms
+   policies
+   returns
+   risks
+   costs
    constraints
    result
    data

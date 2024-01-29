@@ -370,7 +370,7 @@ class HoldingCost(Cost, SimulatorCost):
 
         borrow_fees = pd.Series([5, 10], index=['AAPL', 'ZM'])
         simulator = cvx.MarketSimulator(['AAPL', 'ZM'],
-            costs=cvx.HoldingCost(short_fees=borrow_fees))
+            costs=[cvx.HoldingCost(short_fees=borrow_fees)])
 
     Example usage as trading policy cost:
 
@@ -521,14 +521,10 @@ class HoldingCost(Cost, SimulatorCost):
 
         return expression
 
-    def simulate(self, t, h_plus, t_next, **kwargs):
+    def simulate(
+        # pylint: disable=arguments-differ
+        self, t, h_plus, t_next, **kwargs):
         """Simulate cost in a MarketSimulator.
-
-        TODO: make sure simulator cost sign convention is
-            the same as optimization cost! OK.
-        TODO: make sure DataEstimator returns np.array of correct size! ~OK
-        TODO: make sure simulator cost estimators are recursively evaluated!
-            ~OK
 
         :param t: Current time.
         :type t: pandas.Timestamp
@@ -576,11 +572,10 @@ class StocksHoldingCost(HoldingCost, SimulatorCost):
 
         s^T_t {(h^+_t)}_-
 
-    This class is a specialized version of :class:`HoldingCost`, and you should
-    read its documentation for all details. Here we
-    drop most of the parameters and use the default values explained above.
-    We use a default value of :math:`5\%` annualized borrowing
-    fee which is a rough (optimistic) approximation of the cost
+    This class is a simplified version of :class:`HoldingCost`.
+    We drop the ``long_fees`` and ``dividends`` parameters and keep only
+    ``short_fees`` with a default value of 5, *i.e.*, :math:`5\%` annualized
+    borrowing fee. That is a rough (optimistic) approximation of the cost
     of shorting liquid US stocks. This cost is included **by default**
     in :class:`StockMarketSimulator`, the market simulator specialized
     to US (liquid) stocks.
@@ -590,7 +585,6 @@ class StocksHoldingCost(HoldingCost, SimulatorCost):
     """
 
     def __init__(self, short_fees=5):
-
         super().__init__(short_fees=short_fees)
 
 
