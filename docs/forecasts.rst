@@ -19,6 +19,8 @@ Documentation
 
 .. autoclass:: HistoricalMeanError
 
+.. autoclass:: HistoricalMeanVolume
+
 .. autoclass:: HistoricalFactorizedCovariance
 
 .. autoclass:: HistoricalLowRankCovarianceSVD

@@ -26,6 +26,7 @@ from .errors import (ConvexityError, ConvexSpecificationError, DataError,
 from .estimator import DataEstimator, Estimator
 from .returns import CashReturn
 from .utils import flatten_heterogeneous_list
+from .forecast import HistoricalMeanVolume
 
 __all__ = [
     "AllCash",
@@ -169,17 +170,43 @@ class AllCash(Policy):
         return result
 
 class MarketBenchmark(Policy):
-    """Allocation weighted by last year's total market volumes."""
+    """Allocation weighted by last year's average market traded volumes.
+
+    This policy provides an approximation of a market capitalization-weighted
+    allocation, by using the average of traded volumes in units of value (e.g.,
+    USDOLLAR) over the previous year as proxy.
+
+    .. versionadded:: 1.2.0
+
+        We added the ``mean_volume_forecast`` parameter.
+
+    :param mean_volume_forecast: Forecaster class that computes the average
+        of historical volumes. You can also pass a DataFrame containing
+        your own forecasts computed externally. Default is
+        :class:`cvxportfolio.forecast.HistoricalMeanVolume` which is
+        instantiated with parameter ``rolling=pd.Timedelta('365.24d')``
+        (that's one solar year in number of days). If you
+        want to provide a different forecaster, or change the parameters (like
+        adding exponential smoothing) you should instantiate the forecaster
+        class and pass the instance.
+    :type mean_volume_forecast: pandas.DataFrame, cvx.forecast.BaseForecast
+        class or instance
+    """
+
+    def __init__(self, mean_volume_forecast=HistoricalMeanVolume):
+        if isinstance(mean_volume_forecast, type):
+            mean_volume_forecast = mean_volume_forecast(
+                rolling=pd.Timedelta('365.24d'))
+        self.mean_volume_forecast = DataEstimator(
+            mean_volume_forecast, data_includes_cash=False)
 
     def values_in_time( # pylint: disable=arguments-differ
-            self, past_returns, past_volumes, **kwargs):
+            self, past_returns, **kwargs):
         """Return market benchmark weights.
 
         :param past_returns: Past market returns (used to infer universe with
             cash).
         :type past_returns: pandas.DataFrame
-        :param past_volumes: Past market volumes.
-        :type past_volumes: pandas.DataFrame
         :param kwargs: Unused arguments to :meth:`values_in_time`.
         :type kwargs: dict
 
@@ -190,14 +217,9 @@ class MarketBenchmark(Policy):
         :rtype: pandas.Series
         """
 
-        if past_volumes is None:
-            raise DataError(
-                f"{self.__class__.__name__} can only be used if MarketData"
-                + " provides market volumes.")
-        sumvolumes = past_volumes.loc[past_volumes.index >= (
-            past_volumes.index[-1] - pd.Timedelta('365d'))].mean()
-        result = np.zeros(len(sumvolumes) + 1)
-        result[:-1] = sumvolumes / sum(sumvolumes)
+        meanvolumes = self.mean_volume_forecast.current_value
+        result = np.zeros(len(meanvolumes) + 1)
+        result[:-1] = meanvolumes / sum(meanvolumes)
         return pd.Series(result, index=past_returns.columns)
 
 class RankAndLongShort(Policy):
