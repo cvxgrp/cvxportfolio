@@ -6,8 +6,8 @@ Forecasters
 .. py:module:: cvxportfolio.forecast
      :noindex:
 
-Documentation
-~~~~~~~~~~~~~
+Forecasters Documentation
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: HistoricalMeanReturn
 

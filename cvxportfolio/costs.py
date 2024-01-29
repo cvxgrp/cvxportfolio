@@ -11,14 +11,104 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module implements cost functions used by optimization-based policies.
+"""This module defines cost models for both simulation and optimization.
 
-Currently these are two: :class:`StocksTransactionCost` and
-:class:`StocksHoldingCost`.
+We implement two types of costs, as discussed in the paper:
+:class:`TransactionCost`, defined in :paper:`section 2.3 <section.2.3>`, and
+:class:`HoldingCost`, defined in :paper:`section 2.4 <section.2.4>`. We also
+provide versions of each that are specialized to the stock market,
+:class:`StocksTransactionCost` and :class:`StocksHoldingCost`: these have a
+smaller set of parameters and have default values that are typical for liquid
+stocks in the US.
 
-The default parameters are chosen to approximate real costs for the stock
-market as well as possible.
+The latter two are included by default in
+:class:`cvxportfolio.StockMarketSimulator`, the market simulator specialized to
+the stock market, which is used throughout the :doc:`examples <examples>`. So,
+the example back-tests all include these costs, unless otherwise specified.
+
+The cost objects have the same user interface when you use them as simulator
+costs or optimization costs. For example, to include an annualized
+borrowing cost of 10% (as opposed to the default 5%) in a back-test, you do
+
+.. code-block:: python
+
+    simulator = cvx.MarketSimulator(
+        universe, costs=[cvx.HoldingCost(short_fees=10)])
+    backtest_result_with_borrow_fee = simulator.backtest(policy)
+
+And to include the same borrow cost penalty in an optimization-based policy,
+you do
+
+.. code-block:: python
+
+    policy = cvx.SinglePeriodOptimization(
+        objective = cvx.ReturnsForecast() 
+            - 0.5 * cvx.FullCovariance() 
+            - cvx.HoldingCost(short_fees=10),
+        constraints = [cvx.LeverageLimit(3)])
+
+As done throughout the library, you can pass data in the form of a Python
+scalar (like 10), a Pandas Series indexed by time, by the assets, or a
+Pandas DataFrame indexed by time and with the assets as columns; see the
+:ref:`manual page on passing data <passing-data>`.
+
+.. note::
+
+    While the mathematical formulations are unchanged, there are internal
+    differences in the way the costs are evaluated in the
+    market simulator or in an optimization-based policy. For instance,
+    simulator costs operate on the post-trade allocation vectors and have
+    access to the realized market volumes, while the optimization costs
+    operate on weight vectors and have only :doc:`forecasts <forecasts>` of the
+    market volumes. See below for more details.
+    
 """
+# There are two ways to use this class. Either in the costs attribute
+# of a :class:`MarketSimulator`, in which case the costs are evaluated
+# on the post-trade dollar positions :math:`h^+_t`. Or,
+# as part of the objective function (or as a constraint!)
+# of a :class:`SinglePeriodOptimization`
+# or :class:`MultiPeriodOptimization` trading policy, in which case they
+# are evaluated on the post-trade weights :math:`w_t + z_t`. The mathematical
+# form is the same (see the discussion at pages 11-12 of the book).
+
+# This particular implementation represents the following objective terms
+# (expressed here in terms of the post-trade dollar positions):
+
+# .. math::
+
+#     s^T_t {(h^+_t)}_- + l^T_t {(h^+_t)}_+ - d^T_t h^+_t
+
+# where :math:`s_t` are the (short) borrowing fees,
+# :math:`l_t` are the fees on long positions,
+# and :math:`d_t` are dividend rates (their sign is flipped because
+# the costs are deducted from the cash account at each period). See
+# below for their precise definition.
+
+# Example usage as simulator cost:
+
+# .. code-block:: python
+
+#     borrow_fees = pd.Series([5, 10], index=['AAPL', 'ZM'])
+#     simulator = cvx.MarketSimulator(['AAPL', 'ZM'],
+#         costs=[cvx.HoldingCost(short_fees=borrow_fees)])
+
+# Example usage as trading policy cost:
+
+# .. code-block:: python
+
+#     objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance() \
+#         - cvx.HoldingCost(short_fees=10)
+#     constraints = [cvx.LeverageLimit(3)]
+#     policy = cvx.SinglePeriodOptimization(objective, constraints)
+
+
+# Currently these are two: :class:`StocksTransactionCost` and
+# :class:`StocksHoldingCost`.
+
+# The default parameters are chosen to approximate real costs for the stock
+# market as well as possible.
+# """
 
 import copy
 from numbers import Number
@@ -428,6 +518,9 @@ class HoldingCost(Cost, SimulatorCost):
         self.dividends = None if dividends is None else DataEstimator(
             dividends)
         self.periods_per_year = periods_per_year
+        self._short_fees_parameter = None
+        self._long_fees_parameter = None
+        self._dividends_parameter = None
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, universe, **kwargs):
@@ -563,24 +656,26 @@ class HoldingCost(Cost, SimulatorCost):
 
 
 class StocksHoldingCost(HoldingCost, SimulatorCost):
-    r"""Holding cost specialized to stocks.
+    r"""Holding cost specialized to stocks (only borrow fee).
 
-    This implements the simple model describe at page 11 of the book, *i.e.*
-    the cost (in terms of the post-trade dollar positions):
+    This implements the simple model described in :paper:`section 2.4
+    <section.2.4>` of the paper, refer to that for more details. The cost is,
+    in terms of the post-trade dollar positions:
 
     .. math::
 
-        s^T_t {(h^+_t)}_-
+        s^T_t {(h^+_t)}_-,
 
-    This class is a simplified version of :class:`HoldingCost`.
-    We drop the ``long_fees`` and ``dividends`` parameters and keep only
-    ``short_fees`` with a default value of 5, *i.e.*, :math:`5\%` annualized
-    borrowing fee. That is a rough (optimistic) approximation of the cost
-    of shorting liquid US stocks. This cost is included **by default**
-    in :class:`StockMarketSimulator`, the market simulator specialized
-    to US (liquid) stocks.
+    *i.e.*, a simple borrow fee applies to the short positions. This class is a
+    simplified version of :class:`HoldingCost`: it drops the ``long_fees`` and
+    ``dividends`` parameters and keeps only ``short_fees`` with a default
+    value of 5, *i.e.*, :math:`5\%` annualized borrowing fee. That is a rough
+    (optimistic) approximation of the cost of shorting liquid US stocks. This
+    cost is included **by default** in :class:`StockMarketSimulator`, the
+    market simulator specialized to US (liquid) stocks.
 
-    :param short_fees: Same as in :class:`HoldingCost`.
+    :param short_fees: Same as in :class:`HoldingCost`: annualized borrow fee
+        in percent, can be asset- and/or period-specific. Default 5.
     :type short_fees: float, pd.Series, pd.DataFrame or None
     """
 
@@ -684,6 +779,7 @@ class TransactionCost(Cost, SimulatorCost):
                          (2 if self.exponent is None else self.exponent) - 1)
 
     def simulate(
+            # pylint: disable=arguments=differ
             self, t, u, past_returns, current_returns, current_volumes,
             current_prices, **kwargs):
         """Simulate transaction cost in cash units.

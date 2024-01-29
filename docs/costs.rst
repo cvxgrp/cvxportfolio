@@ -3,7 +3,13 @@
 Cost models
 -----------
 
+.. py:module:: cvxportfolio
+    :noindex:
+
 .. automodule:: cvxportfolio.costs
+
+Documentation
+~~~~~~~~~~~~~
 
 .. py:module:: cvxportfolio
     :noindex:

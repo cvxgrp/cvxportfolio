@@ -54,7 +54,8 @@ so that the resulting Markowitz-style optimization problem corresponds to
 the second order Taylor approximation of a (risk-constrained) Kelly objective,
 as is explained briefly :paper:`at page 28 of the paper <section.4.2>`, or with
 more detail (and hard-to-read math) in `section 6 of the Risk-Constrained Kelly
-Gambling paper <https://web.stanford.edu/~boyd/papers/pdf/kelly.pdf>`_.
+Gambling paper
+<https://web.stanford.edu/~boyd/papers/pdf/kelly.pdf#section.6>`_.
 
 Lastly, some forecasters implement a basic caching mechanism.
 This is used in two ways. First, online (e.g., in back-test): if multiple
