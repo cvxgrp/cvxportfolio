@@ -107,7 +107,7 @@ import numpy as np
 import pandas as pd
 
 from .errors import DataError, ForecastError
-from .estimator import Estimator
+from .estimator import Estimator, SimulatorEstimator
 
 logger = logging.getLogger(__name__)
 
@@ -520,7 +520,7 @@ class HistoricalVariance(BaseMeanForecast):
 
 
 @dataclass(unsafe_hash=True)
-class HistoricalStandardDeviation(HistoricalVariance):
+class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     """Historical standard deviation of non-cash returns.
 
     When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
@@ -564,6 +564,19 @@ class HistoricalStandardDeviation(HistoricalVariance):
         variances = \
             super().values_in_time(**kwargs)
         return np.sqrt(variances)
+
+    def simulate(self, **kwargs):
+        # TODO could take last return as well
+        return self.values_in_time(
+            t=kwargs['t'],
+            # These are not necessary with current design of
+            # DataEstimator
+            current_weights=kwargs['current_weights'],
+            current_portfolio_value=kwargs['current_portfolio_value'],
+            past_returns=kwargs['past_returns'],
+            past_volumes=kwargs['past_volumes'],
+            current_prices=kwargs['current_prices']
+        )
 
 @dataclass(unsafe_hash=True)
 class HistoricalMeanError(HistoricalVariance):

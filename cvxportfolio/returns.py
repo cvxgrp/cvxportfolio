@@ -15,6 +15,7 @@
 optimization policies and related objects."""
 
 import cvxpy as cp
+import numpy as np
 
 from .costs import Cost
 from .estimator import DataEstimator  # , ParameterEstimator
@@ -178,8 +179,9 @@ class ReturnsForecast(Cost):
         :param kwargs: All other parameters to :meth:`values_in_time`.
         :type kwargs: dict
         """
-        self._r_hat_parameter.value = self.r_hat.current_value *\
-            self.decay**(mpo_step)
+        self._r_hat_parameter.value = \
+            np.ones(self._r_hat_parameter.size) * \
+            self.r_hat.current_value * self.decay**(mpo_step)
 
     def compile_to_cvxpy(self,  w_plus, z, w_plus_minus_w_bm):
         """Compile to cvxpy expression.

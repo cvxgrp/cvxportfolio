@@ -228,18 +228,6 @@ class Estimator:
 class SimulatorEstimator(Estimator):
     """Base class for estimators that are used by the market simulator."""
 
-    _current_simulator_value = None
-
-    @property
-    def current_simulator_value(self):
-        """Current value of this instance for the market simulator.
-
-        :returns: Current value for the market simulator, which can be any
-            object.
-        :rtype: numpy.array, pandas.Series, pandas.DataFrame, ...
-        """
-        return self._current_simulator_value
-
     def simulate(self, *args, **kwargs):
         """Compute current simulator value."""
         raise NotImplementedError # pragma: no cover
@@ -259,21 +247,21 @@ class SimulatorEstimator(Estimator):
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "simulate_recursive"):
                 subestimator.simulate_recursive(**kwargs)
-            elif hasattr(subestimator, "values_in_time_recursive"):
-                subestimator.values_in_time_recursive(
-                    t=kwargs['t'], current_weights=kwargs['current_weights'],
-                    current_portfolio_value=kwargs['current_portfolio_value'],
-                    past_returns=kwargs['past_returns'],
-                    past_volumes=kwargs['past_volumes'],
-                    current_prices=kwargs['current_prices']
-                )
+            # elif hasattr(subestimator, "values_in_time_recursive"):
+            #     subestimator.values_in_time_recursive(
+            #         t=kwargs['t'], current_weights=kwargs['current_weights'],
+            #         current_portfolio_value=kwargs['current_portfolio_value'],
+            #         past_returns=kwargs['past_returns'],
+            #         past_volumes=kwargs['past_volumes'],
+            #         current_prices=kwargs['current_prices']
+            #     )
         if hasattr(self, "simulate"):
             # pylint: disable=assignment-from-no-return
-            self._current_simulator_value = self.simulate(**kwargs)
-            return self.current_simulator_value
+            self._current_value = self.simulate(**kwargs)
+            return self.current_value
         # if hasattr(self, 'values_in_time'):
         #     # pylint: disable=assignment-from-no-return
-        #     self._current_simulator_value = self.values_in_time(
+        #     self._current_value = self.values_in_time(
         #         t=kwargs['t'], current_weights=kwargs['current_weights'],
         #         current_portfolio_value=kwargs['current_portfolio_value'],
         #         past_returns=kwargs['past_returns'],
@@ -310,7 +298,7 @@ class CvxpyExpressionEstimator(Estimator):
         raise NotImplementedError
 
 # pylint: disable=too-many-arguments
-class DataEstimator(Estimator):
+class DataEstimator(SimulatorEstimator):
     """Estimator of point-in-time values from internal data.
 
     It also implements logic to check that no ``nan`` are returned
@@ -568,6 +556,18 @@ class DataEstimator(Estimator):
         if self.parameter is not None:
             self.parameter.value = result
         return result
+
+    def simulate(self, **kwargs):
+        return self.values_in_time(
+                    t=kwargs['t'],
+                    # These are not necessary with current design of
+                    # DataEstimator
+                    current_weights=kwargs['current_weights'],
+                    current_portfolio_value=kwargs['current_portfolio_value'],
+                    past_returns=kwargs['past_returns'],
+                    past_volumes=kwargs['past_volumes'],
+                    current_prices=kwargs['current_prices']
+                )
 
     def __repr__(self):
         """Pretty-print."""

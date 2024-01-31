@@ -64,6 +64,7 @@ Pandas DataFrame indexed by time and with the assets as columns; see the
 """
 
 import copy
+import warnings
 from numbers import Number
 
 import cvxpy as cp
@@ -74,8 +75,9 @@ from .constraints.base_constraints import (CostInequalityConstraint,
                                            EqualityConstraint,
                                            InequalityConstraint)
 from .errors import ConvexityError, ConvexSpecificationError
-from .estimator import (CvxpyExpressionEstimator, DataEstimator,
+from .estimator import (CvxpyExpressionEstimator, DataEstimator, Estimator,
                         SimulatorEstimator)
+from .forecast import HistoricalMeanVolume, HistoricalStandardDeviation
 from .hyperparameters import HyperParameter
 from .utils import (average_periods_per_year,
                     periods_per_year_from_datetime_index, resample_returns)
@@ -636,8 +638,8 @@ class HoldingCost(Cost, SimulatorCost):
 
         if self.short_fees is not None:
             cost += np.sum(_annual_percent_to_per_period(
-                self.short_fees.current_value, year_divided_by_period) * (
-                    -np.minimum(h_plus[:-1], 0.)))
+                self.short_fees.current_value,
+                    year_divided_by_period) * (-np.minimum(h_plus[:-1], 0.)))
 
         if self.long_fees is not None:
             cost += np.sum(_annual_percent_to_per_period(
@@ -646,7 +648,8 @@ class HoldingCost(Cost, SimulatorCost):
 
         if self.dividends is not None:
             # we have a minus sign because costs are deducted from PnL
-            cost -= np.sum(self.dividends.current_value * h_plus[:-1])
+            cost -= np.sum(
+                self.dividends.current_value * h_plus[:-1])
 
         return cost
 
@@ -680,27 +683,117 @@ class StocksHoldingCost(HoldingCost, SimulatorCost):
 
 
 class TransactionCost(Cost, SimulatorCost):
-    """This is a generic model for transaction cost of financial assets.
+    r"""This is a generic model for transaction cost of financial assets.
 
-    Currently it is not meant to be used directly. Look at
-    :class:`StocksTransactionCost` for its version specialized
-    to the stock market.
+    It was introduced by the authors; it is described in
+    :paper:`section 2.3 <section.2.3>` of the paper.
+
+    The model in simulation is, when separated on a single asset (equation 2.2
+    in the paper)
+
+    .. math ::
+
+        a | x | + b  \sigma \frac{{ | x |}^{3/2}}{V^{1/2}} + c x
+
+    where :math:`x` is the dollar traded quantity,
+    :math:`a` is a coefficient representing fees proportional to the absolute
+    value traded, like half the bid-ask spread,
+    :math:`b` is a coefficient that multiplies the market impact term,
+    typically of the order of 1,
+    :math:`\sigma` is an estimate of the volatility of the asset returns over
+    recent periods,
+    :math:`V` is the market volume traded over the period for the asset,
+    and :math:`c` is a coefficient used to introduce bias in the model,
+    for example the negative of open-to-close return (if transactions are
+    executed at close), or the negative of the open-to-VWAP return (if
+    transactions are executed at the volume-weighted average price).
+
+    In optimization the model is instead, referred to a single assets' trade
+    weight :math:`z_i` (equation 2.3 in the paper)
+
+    .. math ::
+
+        a_i | z_i |
+        + b_i  \sigma_i \frac{{ | z_i |}^{3/2}}{{(\hat V_i / v)}^{1/2}}
+        + c_i z_i
+
+    where instead we use the estimate :math:`\hat V_i` of the traded volume
+    for the asset in the period, and :math:`v` is the current portfolio value.
+
+    As done throughout the library, this implementation accepts either
+    :ref:`user-provided data <passing-data>` for the various parts of the
+    model, or uses built-in :doc:`forecaster classes <forecasts>` to do the
+    heavy-lifting.
+
+    :param a:
+    :type a: float, pd.Series, pd.DataFrame, or None
+    :param b:
+    :type b: float, pd.Series, pd.DataFrame, or None
+    :param volume_hat:
+    :type volume_hat: float, pd.Series, pd.DataFrame, cvx.forecast.BaseForecast
+        class or instance
+    :param sigma:
+    :type sigma: float, pd.Series, pd.DataFrame, cvx.forecast.BaseForecast
+        class or instance
+    :param exponent:
+    :type exponent: float
+    :param c:
+    :type c: float, pd.Series, pd.DataFrame, or None
     """
 
-    def __init__(self, a=None, pershare_cost=None, b=0., window_sigma_est=None,
-                 window_volume_est=None, exponent=None):
+    def __init__(self, a=0., b=None, volume_hat=HistoricalMeanVolume,
+                 sigma=HistoricalStandardDeviation, exponent=1.5, c=None):
 
         self.a = None if a is None else DataEstimator(a)
-        self.pershare_cost = None if pershare_cost is None else DataEstimator(
-            pershare_cost)
         self.b = None if b is None else DataEstimator(b)
-        self.window_sigma_est = window_sigma_est
-        self.window_volume_est = window_volume_est
-        self.exponent = exponent
+        self.c = None if c is None else DataEstimator(
+            c, compile_parameter=True)
 
-        # these are overwritten by parameters defined below
-        self.first_term_multiplier = None
-        self.second_term_multiplier = None
+        if self.b is not None:
+            if isinstance(volume_hat, type):
+                volume_hat = volume_hat(
+                    rolling=pd.Timedelta('365.24d'))
+            self.volume_hat = DataEstimator(volume_hat)
+
+            if isinstance(sigma, type):
+                sigma = sigma(
+                    rolling=pd.Timedelta('365.24d'))
+            self.sigma = DataEstimator(sigma)
+
+        if exponent < 1.:
+            raise SyntaxError(
+                'Exponent should be >=1, otherwise the'
+                ' transaction cost model is not convex.')
+        self.exponent = exponent
+        self._first_term_multiplier = None
+        self._second_term_multiplier = None
+
+        # if window_sigma_est is not None:
+        #     self.sigma = SimpleSigmaEst(window_sigma_est)
+
+        # if window_volume_est is not None:
+        #     self.volume_hat = SimpleVolumeEst(window_volume_est)
+
+        # TODO:
+        # this will evaluate the forecasters no matter what...
+
+        # if isinstance(window_sigma_est, Number) and window_sigma_est < np.inf:
+        #     warnings.warn(
+        #         "Passing a number to window_sigma_est is deprecated, "
+        #         "You should refer to the documentation of "
+        #         "HistoricalStandardDeviation and pass a value compatible to"
+        #         " its 'rolling' argument.",
+        #         DeprecationWarning)
+        # self.window_sigma_est = window_sigma_est
+
+        # if window_volume_est is not None:
+        #     warnings.warn(
+        #         "The window_volume_est parameter is deprecated and"
+        #         " will be removed in version 2.0.0.",
+        #         DeprecationWarning)
+        # self.window_volume_est = window_volume_est
+
+        # self.window_volume_est = window_volume_est
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, universe, **kwargs):
@@ -711,71 +804,91 @@ class TransactionCost(Cost, SimulatorCost):
         :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-        if self.a is not None or self.pershare_cost is not None:
-            self.first_term_multiplier = cp.Parameter(
+        if self.a is not None: # or self.pershare_cost is not None:
+            self._first_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
         if self.b is not None:
-            self.second_term_multiplier = cp.Parameter(
+            self._second_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
 
     def values_in_time( # pylint: disable=arguments-differ
-            self, current_portfolio_value, past_returns, past_volumes,
-            current_prices, **kwargs):
+            self, current_portfolio_value,
+            # past_returns, # past_volumes,
+            # current_prices,
+            **kwargs):
         """Update cvxpy parameters.
-
-        :raises SyntaxError: If the prices are missing from the market data.
 
         :param current_portfolio_value: Current total value of the portfolio.
         :type current_portfolio_value: float
-        :param past_returns: Past market returns (includes cash).
-        :type past_returns: pandas.DataFrame
-        :param past_volumes: Past market volumes.
-        :type past_volumes: pandas.DataFrame
-        :param current_prices: Current open prices.
-        :type current_prices: pandas.Series
         :param kwargs: Other unused arguments to :meth:`values_in_time`.
         :type kwargs: dict
         """
+        # """Update cvxpy parameters.
 
-        tmp = 0.
+        # :raises SyntaxError: If the prices are missing from the market data.
 
-        if self.a is not None:
-            _ = self.a.current_value
-            tmp += _ *\
-                np.ones(past_returns.shape[1]-1) if np.isscalar(_) else _
-        if self.pershare_cost is not None:
-            if current_prices is None:
-                raise SyntaxError("If you don't provide prices you",
-                                  " should set pershare_cost to None")
-            assert not np.any(current_prices.isnull())
-            # assert not np.any(current_prices == 0.)
-            tmp += self.pershare_cost.current_value / current_prices.values
+        # :param current_portfolio_value: Current total value of the portfolio.
+        # :type current_portfolio_value: float
+        # :param past_returns: Past market returns (includes cash).
+        # :type past_returns: pandas.DataFrame
+        # :param past_volumes: Past market volumes.
+        # :type past_volumes: pandas.DataFrame
+        # :param current_prices: Current open prices.
+        # :type current_prices: pandas.Series
+        # :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        # :type kwargs: dict
+        # """
 
-        if self.a is not None or self.pershare_cost is not None:
-            self.first_term_multiplier.value = tmp
+        # tmp = 0.
+
+        # if self.a is not None:
+        #     _ = self.a.current_value
+        #     tmp += _ *\
+        #         np.ones(past_returns.shape[1]-1) if np.isscalar(_) else _
+        # if self.pershare_cost is not None:
+        #     if current_prices is None:
+        #         raise SyntaxError("If you don't provide prices you",
+        #                           " should set pershare_cost to None")
+        #     assert not np.any(current_prices.isnull())
+        #     # assert not np.any(current_prices == 0.)
+        #     tmp += self.pershare_cost.current_value / current_prices.values
+
+        if self.a is not None: # or self.pershare_cost is not None:
+            self._first_term_multiplier.value = np.ones(
+                self._first_term_multiplier.size) * self.a.current_value
 
         if self.b is not None:
 
-            if (self.window_sigma_est is None) or\
-                    (self.window_volume_est is None):
-                ppy = periods_per_year_from_datetime_index(past_returns.index)
-            windowsigma = ppy if (
-                self.window_sigma_est is None) else self.window_sigma_est
-            windowvolume = ppy if (
-                self.window_volume_est is None) else self.window_volume_est
+            # print('b', self.b.current_value)
+            # print('sigma', self.sigma.current_value)
+            # print('current_portfolio_value', current_portfolio_value)
+            # print('volume_hat', self.volume_hat.current_value)
+            self._second_term_multiplier.value =\
+                self.b.current_value * self.sigma.current_value * (
+                    current_portfolio_value
+                    / self.volume_hat.current_value + 1E-8) ** (
+                        self.exponent - 1)
 
-            # TODO refactor this with forecast.py logic
-            sigma_est = np.sqrt(
-                (past_returns.iloc[-windowsigma:, :-1]**2).mean()).values
-            volume_est = past_volumes.iloc[-windowvolume:].mean().values + 1E-8
+            # if (self.window_sigma_est is None) or\
+            #         (self.window_volume_est is None):
+            #     ppy = periods_per_year_from_datetime_index(past_returns.index)
+            # windowsigma = ppy if (
+            #     self.window_sigma_est is None) else self.window_sigma_est
+            # windowvolume = ppy if (
+            #     self.window_volume_est is None) else self.window_volume_est
 
-            self.second_term_multiplier.value =\
-                self.b.current_value * sigma_est * (current_portfolio_value /
-                     volume_est) ** (
-                         (2 if self.exponent is None else self.exponent) - 1)
+            # # TODO refactor this with forecast.py logic
+            # sigma_est = np.sqrt(
+            #     (past_returns.iloc[-windowsigma:, :-1]**2).mean()).values
+            # volume_est = past_volumes.iloc[-windowvolume:].mean().values + 1E-8
+
+            # self._second_term_multiplier.value =\
+            #     self.b.current_value * sigma_est * (current_portfolio_value /
+            #          volume_est) ** (
+            #              (2 if self.exponent is None else self.exponent) - 1)
 
     def simulate(
-            # pylint: disable=arguments=differ
+            # pylint: disable=arguments=differ, too-many-arguments
             self, t, u, past_returns, current_returns, current_volumes,
             current_prices, **kwargs):
         """Simulate transaction cost in cash units.
@@ -803,41 +916,48 @@ class TransactionCost(Cost, SimulatorCost):
         """
 
         result = 0.
-        if self.pershare_cost is not None:
-            if current_prices is None:
-                raise SyntaxError(
-                    "If you don't provide prices you should"
-                    " set pershare_cost to None")
-            result += self.pershare_cost.current_value * int(
-                sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
+        # if self.pershare_cost is not None:
+        #     if current_prices is None:
+        #         raise SyntaxError(
+        #             "If you don't provide prices you should"
+        #             " set pershare_cost to None")
+        #     result += self.pershare_cost.current_value * int(
+        #         sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
 
         if self.a is not None:
             result += sum(self.a.current_value * np.abs(u.iloc[:-1]))
 
         if self.b is not None:
 
-            if self.window_sigma_est is None:
-                windowsigma = average_periods_per_year(
-                    num_periods=len(past_returns)+1,
-                    first_time=past_returns.index[0], last_time=t)
-            else:
-                windowsigma = self.window_sigma_est
+            assert self.volume_hat.current_value is None
+            assert self.volume_hat.current_value is None
 
-            exponent = (1.5 if self.exponent is None else self.exponent)
+            # if self.window_sigma_est is None:
+            #     windowsigma = average_periods_per_year(
+            #         num_periods=len(past_returns)+1,
+            #         first_time=past_returns.index[0], last_time=t)
+            # else:
+            #     windowsigma = self.window_sigma_est
 
-            sigma = np.std(pd.concat(
-                [past_returns.iloc[-windowsigma + 1:, :-1],
-                pd.DataFrame(current_returns.iloc[:-1]).T], axis=0), axis=0)
+            # exponent = (1.5 if self.exponent is None else self.exponent)
+
+            # sigma = np.std(pd.concat(
+            #     [past_returns.iloc[-windowsigma + 1:, :-1],
+            #     pd.DataFrame(current_returns.iloc[:-1]).T], axis=0), axis=0)
             if current_volumes is None:
                 raise SyntaxError(
                     "If you don't provide volumes you should set b to None"
                     f" in the {self.__class__.__name__} simulator cost")
             # we add 1E-8 to the volumes to prevent 0 volumes error
             # (trades are cancelled on 0 volumes)
-            result += (np.abs(u.iloc[:-1])**exponent) @ (
-                self.b.values_in_time_recursive(t=t) *
-                sigma / ((current_volumes + 1E-8) ** (
-                exponent - 1)))
+            result += (np.abs(u.iloc[:-1])**self.exponent) @ (
+                # self.b.current_value * self.sigma.current_value
+                self.b.current_value
+                    * self.sigma.current_value / (
+                        (current_volumes + 1E-8) ** (self.exponent - 1)))
+
+        if self.c is not None:
+            result += sum(self.c.current_value * u.iloc[:-1])
 
         assert not np.isnan(result)
         assert not np.isinf(result)
@@ -859,16 +979,113 @@ class TransactionCost(Cost, SimulatorCost):
         :rtype: cvxpy.expression
         """
         expression = 0
-        if self.a is not None or self.pershare_cost is not None:
-            expression += cp.abs(z[:-1]).T @ self.first_term_multiplier
+        if self.a is not None: # or self.pershare_cost is not None:
+            expression += cp.abs(z[:-1]) @ self._first_term_multiplier
             assert expression.is_convex()
         if self.b is not None:
-            expression += (cp.abs(z[:-1]) ** (
-                2 if self.exponent is None else self.exponent)
-            ).T @ self.second_term_multiplier
+            expression += (
+                cp.abs(z[:-1]) ** (self.exponent)
+                    ) @ self._second_term_multiplier
             assert expression.is_convex()
+        if self.c is not None:
+            expression += cp.sum(z[:-1] * self.c.parameter)
         return expression
 
+# Backward compatibility before 1.2.0
+
+class SimpleSigmaEst(SimulatorEstimator):
+    """Simple estimator of sigma for backward compatibility."""
+
+    def __init__(self, window_sigma_est):
+        warnings.warn(
+            "Passing a number to window_sigma_est is deprecated, "
+            "You should use a forecaster like the default "
+            "HistoricalStandardDeviation, instantiating with"
+            " its 'rolling' argument to choose the length of estimation.",
+            DeprecationWarning)
+
+        self.window_sigma_est = window_sigma_est
+
+    def values_in_time(
+        # pylint: disable=arguments-differ
+        self, past_returns, **kwargs):
+        """Compute historical sigma.
+
+        :param past_returns:
+        :type past_returns: pd.DataFrame
+        :param kwargs:
+        :type kwargs: dict
+
+        :returns: Estimated sigma
+        :rtype: np.array
+        """
+
+        return np.sqrt(
+            (past_returns.iloc[-self.window_sigma_est:, :-1]**2).mean()).values
+
+    def simulate(
+        # pylint: disable=arguments-differ
+        self, current_returns, past_returns, **kwargs):
+        """Compute historical sigma.
+
+        :param current_returns:
+        :type current_returns: pd.Series
+        :param past_returns:
+        :type past_returns: pd.DataFrame
+        :param kwargs:
+        :type kwargs: dict
+
+        :returns: Estimated sigma
+        :rtype: np.array
+        """
+
+        return np.std(pd.concat(
+            [past_returns.iloc[-self.window_sigma_est + 1:, :-1],
+            pd.DataFrame(current_returns.iloc[:-1]).T], axis=0), axis=0)
+
+        # sum = (past_returns.iloc[-self.window_sigma_est-1:, :-1]**2).sum()
+        # count = past_returns.iloc[-self.window_sigma_est-1:, :-1].count()
+        # sum += current_returns**2
+        # count += ~current_returns.isnull()
+        # return np.sqrt(sum / count).values
+
+# Backward compatibility before 1.2.0
+
+class SimpleVolumeEst(Estimator):
+    """Simple estimator of volume for backward compatibility."""
+
+    def __init__(self, window_volume_est):
+        warnings.warn(
+            "Passing a number to window_volume_est is deprecated, "
+            "You should use a forecaster like the default "
+            "HistoricalMeanVolume, instantiating with"
+            " its 'rolling' argument to choose the length of estimation.",
+            DeprecationWarning)
+
+        self.window_volume_est = window_volume_est
+
+    def values_in_time(
+        # pylint: disable=arguments-differ
+        self, past_volumes, **kwargs):
+        """Compute historical sigma.
+
+        :param past_volumes:
+        :type past_volumes: pd.DataFrame
+        :param kwargs:
+        :type kwargs: dict
+
+        :raises SyntaxError: If the market data does not contain volumes.
+
+        :returns: Estimated volume
+        :rtype: np.array
+        """
+
+        if past_volumes is None:
+            raise SyntaxError(
+                "If you don't provide market volumes you can not use the"
+                " market impact term of the transaction cost model.")
+
+        return past_volumes.iloc[-self.window_volume_est:].mean().values
 
 class StocksTransactionCost(TransactionCost):
     """A model for transaction costs of stocks.
@@ -900,7 +1117,7 @@ class StocksTransactionCost(TransactionCost):
         simulator version of this which uses the actual volume. If None (the
         default) it uses a length of 1 year (approximated with the data
         provided).
-    :type window_volume_est: int
+    :type window_volume_est: int or None
     :param exponent: exponent of the non-linear term, defaults (if set to
         ``None``) to 1.5 for the simulator version, and 2 for the optimization
         version (because it is more efficient numerically and the difference is
@@ -908,13 +1125,57 @@ class StocksTransactionCost(TransactionCost):
     :type exponent: float or None
     """
 
-    def __init__(self, a=0., pershare_cost=0.005, b=1.0, window_sigma_est=None,
-                 window_volume_est=None, exponent=1.5):
+    def __init__(self, a=0., pershare_cost=0.005, b=1.0,
+                 volume_hat=HistoricalMeanVolume,
+                 sigma=HistoricalStandardDeviation, exponent=1.5,
+                 c=None, window_sigma_est=None, window_volume_est=None):
 
-        super().__init__(a=a, pershare_cost=pershare_cost, b=b,
-                         window_sigma_est=window_sigma_est,
-                         window_volume_est=window_volume_est,
-                         exponent=exponent)
+        super().__init__(# because we update it with pershare_cost
+                         a= 0. if a is None else a,
+                         b=b, c=c, exponent=exponent,
+                         volume_hat=HistoricalMeanVolume,
+                         sigma=HistoricalStandardDeviation,
+                         # window_sigma_est=window_sigma_est,
+                         # window_volume_est=window_volume_est
+                         )
+
+        self.pershare_cost = DataEstimator(pershare_cost)\
+            if pershare_cost is not None else None
+
+        if window_sigma_est is not None:
+            self.sigma = SimpleSigmaEst(window_sigma_est)
+
+        if window_volume_est is not None:
+            self.volume_hat = SimpleVolumeEst(window_volume_est)
+
+    def values_in_time( # pylint: disable=arguments-renamed
+            self, current_prices, **kwargs):
+        """Update linear cost with per-share cost."""
+
+        super().values_in_time(current_prices=current_prices, **kwargs)
+
+        if self.pershare_cost is not None:
+            if current_prices is None:
+                raise SyntaxError("If the market data don't contain prices",
+                                  " you should set pershare_cost to None")
+            assert not np.any(current_prices.isnull())
+            # assert not np.any(current_prices == 0.)
+            self._first_term_multiplier.value += \
+                self.pershare_cost.current_value / current_prices.values
+
+    def simulate( # pylint: disable=arguments-renamed
+            self, u, current_prices, **kwargs):
+
+        result = super().simulate(u=u, current_prices=current_prices, **kwargs)
+        if self.pershare_cost is not None:
+            if current_prices is None:
+                raise SyntaxError(
+                    "If you don't provide prices you should"
+                    " set pershare_cost to None")
+            result += self.pershare_cost.current_value * int(
+                sum(np.abs(u.iloc[:-1] + 1E-6) / current_prices.values))
+
+        return result
 
 # Aliases
 

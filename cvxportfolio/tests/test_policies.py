@@ -308,7 +308,7 @@ class TestPolicies(CvxportfolioTest):
         risk_forecast = cvx.FullCovariance(
             HistoricalFactorizedCovariance(kelly=False))
         tcost = cvx.TransactionCost(
-            a=1E-3/2, pershare_cost=0., b=None, exponent=2)
+            a=1E-3/2, b=None, exponent=2)
 
         policy = cvx.SinglePeriodOptimization(
             return_forecast
@@ -371,7 +371,7 @@ class TestPolicies(CvxportfolioTest):
         policy = cvx.SinglePeriodOptimization(
             return_forecast
             - 2 * risk_forecast
-            - cvx.TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.),
+            - cvx.TransactionCost(a=5 * 1E-4, b=0.),
             constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
             # verbose=True,
             solver=self.default_socp_solver)
@@ -417,7 +417,7 @@ class TestPolicies(CvxportfolioTest):
         policy = cvx.SinglePeriodOptimization(
             return_forecast
             - 2 * risk_forecast
-            - cvx.TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.),
+            - cvx.TransactionCost(a=5 * 1E-4, b=0.),
             constraints=[cvx.LongOnly(), cvx.LeverageLimit(1),
                 cvx.MaxWeights(-1)],
             # verbose=True,
@@ -520,7 +520,7 @@ class TestPolicies(CvxportfolioTest):
                 return_forecast
                 - 10 * risk_forecast
                 # - TcostModel(half_spread=5 * 1E-4)  # , power=2)
-                - cvx.TransactionCost(a=25 * 1E-4, pershare_cost=0., b=0.),
+                - cvx.TransactionCost(a=25 * 1E-4, b=0.),
                 constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
                 # verbose=True,
                 planning_horizon=planning_horizon,
@@ -576,7 +576,7 @@ class TestPolicies(CvxportfolioTest):
                 return_forecast
                 - 10 * risk_forecast
                 # , power=2)
-                - cvx.TransactionCost(a=5 * 1E-4, pershare_cost=0., b=0.),
+                - cvx.TransactionCost(a=5 * 1E-4, b=0.),
                 constraints=[cvx.LongOnly(), cvx.LeverageLimit(1)],
                 # verbose=True,
                 terminal_constraint=benchmark,

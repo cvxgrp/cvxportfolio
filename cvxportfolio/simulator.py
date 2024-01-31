@@ -261,7 +261,7 @@ class MarketSimulator:
                     current_returns=current_returns,
                     current_prices=current_prices,
                     current_weights=current_weights,
-                    current_portfolio_value=current_portfolio_value, 
+                    current_portfolio_value=current_portfolio_value,
                     t_next=t_next)
                 for cost in self.costs}
 

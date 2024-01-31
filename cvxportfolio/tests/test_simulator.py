@@ -253,7 +253,7 @@ class TestSimulator(CvxportfolioTest):
                             current_portfolio_value=None,
                             current_weights=None,)
 
-        tcost = cvx.TransactionCost(pershare_cost=None,)
+        tcost = cvx.TransactionCost()
         tcost.simulate_recursive(t=t, u=u, current_prices=None,
                         past_returns=past_returns,
                         current_returns=current_returns,
@@ -262,7 +262,7 @@ class TestSimulator(CvxportfolioTest):
                         current_portfolio_value=None,
                         current_weights=None,)
 
-        tcost = cvx.TransactionCost()
+        tcost = cvx.TransactionCost(b=0.)
         with self.assertRaises(SyntaxError):
             tcost.simulate_recursive(t=t, u=u, current_prices=current_prices,
                             past_returns=past_returns,
@@ -303,7 +303,8 @@ class TestSimulator(CvxportfolioTest):
             # pylint: disable=protected-access
             u = MarketSimulator._round_trade_vector(u, current_prices)
 
-            tcost = cvx.StocksTransactionCost(a=spreads/2)
+            tcost = cvx.StocksTransactionCost(
+                a=spreads/2, window_sigma_est=252)
 
             sim_cost = tcost.simulate_recursive(
                 t=t, u=u, current_prices=current_prices,
