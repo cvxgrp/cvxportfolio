@@ -252,6 +252,7 @@ class TestSimulator(CvxportfolioTest):
                 universe=current_returns.index, trading_calendar=[t])
             tcost.simulate_recursive(t=t, u=u,
                             past_returns=past_returns,
+                            t_next=None, h_plus=pd.Series(1., u.index),
                             current_returns=current_returns,
                             past_volumes=past_volumes,
                             current_volumes=current_volumes,
@@ -322,6 +323,7 @@ class TestSimulator(CvxportfolioTest):
 
             sim_cost = tcost.simulate_recursive(
                 t=t, u=u, current_prices=current_prices,
+                t_next=None, h_plus=pd.Series(1000., u.index),
                 current_portfolio_value=1E4,
                 current_weights=None,
                 past_returns=past_returns,

@@ -228,8 +228,52 @@ class Estimator:
 class SimulatorEstimator(Estimator):
     """Base class for estimators that are used by the market simulator."""
 
-    def simulate(self, *args, **kwargs):
-        """Compute current simulator value."""
+    def simulate( # pylint: disable=too-many-arguments
+        self, t, t_next, u, h_plus, past_volumes,
+        past_returns, current_prices, current_returns, current_volumes,
+        current_weights, current_portfolio_value, **kwargs):
+        """Evaluate the estimator as part of a Market Simulator back-test loop.
+
+        Cost classes that are meant to be used in the simulator can
+        implement this. The arguments to this are the same as for
+        :meth:`cvxportfolio.estimator.Estimator.values_in_time` plus the
+        realized returns and volumes in the period, and the trades requested
+        by the policy, ....
+
+        :param t: Current timestamp.
+        :type t: pandas.Timestamp
+        :param u: Trade vector in cash units requested by the policy.
+            If the market simulator implements rounding by number of shares
+            and/or canceling trades on assets whose volume for the period
+            is zero, this is after those transformations.
+        :type u: pandas.Series
+        :param h_plus: Post-trade holdings vector.
+        :type h_plus: pandas.Series
+        :param past_returns: Past market returns (including cash).
+        :type past_returns: pandas.DataFrame
+        :param current_returns: Current period's market returns (including
+            cash).
+        :type current_returns: pandas.Series
+        :param past_volumes: Past market volumes, or None if not available.
+        :type past_volumes: pandas.DataFrame or None
+        :param current_volumes: Current period's market volumes, or None if not
+            available.
+        :type current_volumes: pandas.Series or None
+        :param current_prices: Current (open) prices, or None if not available.
+        :type current_prices: pandas.Series or None
+        :param current_weights: Current allocation weights (before trading).
+        :type current_weights: pandas.Series
+        :param current_portfolio_value: Current total value of the portfolio
+            in cash units, before costs.
+        :type current_portfolio_value: float
+        :param t_next: Timestamp of the next trading period.
+        :type t_next: pandas.Timestamp
+        :param kwargs: Reserved for future expansion.
+        :type kwargs: dict
+
+        :returns: The current value of this instance.
+        :rtype: any object
+        """
         raise NotImplementedError # pragma: no cover
 
     def simulate_recursive(self, **kwargs):
@@ -247,26 +291,9 @@ class SimulatorEstimator(Estimator):
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "simulate_recursive"):
                 subestimator.simulate_recursive(**kwargs)
-            # elif hasattr(subestimator, "values_in_time_recursive"):
-            #     subestimator.values_in_time_recursive(
-            #         t=kwargs['t'], current_weights=kwargs['current_weights'],
-            #         current_portfolio_value=kwargs['current_portfolio_value'],
-            #         past_returns=kwargs['past_returns'],
-            #         past_volumes=kwargs['past_volumes'],
-            #         current_prices=kwargs['current_prices']
-            #     )
         if hasattr(self, "simulate"):
-            # pylint: disable=assignment-from-no-return
             self._current_value = self.simulate(**kwargs)
             return self.current_value
-        # if hasattr(self, 'values_in_time'):
-        #     # pylint: disable=assignment-from-no-return
-        #     self._current_value = self.values_in_time(
-        #         t=kwargs['t'], current_weights=kwargs['current_weights'],
-        #         current_portfolio_value=kwargs['current_portfolio_value'],
-        #         past_returns=kwargs['past_returns'],
-        #         past_volumes=kwargs['past_volumes'],
-        #         current_prices=kwargs['current_prices'])
         return None
 
 class CvxpyExpressionEstimator(Estimator):
