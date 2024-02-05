@@ -557,11 +557,24 @@ class DataEstimator(SimulatorEstimator):
             self.parameter.value = result
         return result
 
-    def simulate(self, **kwargs):
+    def simulate( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Evaluate in simulation (e.g., TransactionCost).
+
+        :param kwargs: All arguments to :meth:`SimulatorEstimator.simulate`,
+            we only need the subset of those that are also the arguments to
+            :meth:`Estimator.values_in_time`.
+        :type kwargs: dict
+
+        :returns: The  value from this
+            :class:`cvxportfolio.estimator.DataEstimator` at current time.
+        :rtype: int, float, numpy.ndarray
+        """
+        # We need to pass the full list of arguments to values_in_time
+        # because there is an edge case above where the DataEstimator
+        # instance actually calls values_in_time of self.data
         return self.values_in_time(
                     t=kwargs['t'],
-                    # These are not necessary with current design of
-                    # DataEstimator
                     current_weights=kwargs['current_weights'],
                     current_portfolio_value=kwargs['current_portfolio_value'],
                     past_returns=kwargs['past_returns'],

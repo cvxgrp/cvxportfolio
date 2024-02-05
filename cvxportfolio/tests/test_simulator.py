@@ -214,15 +214,19 @@ class TestSimulator(CvxportfolioTest):
 
             hcost = cvx.HoldingCost(short_fees=5, dividends=dividends)
 
+            hcost.initialize_estimator_recursive(
+                universe=h_plus.index, trading_calendar=[t])
+
             sim_hcost = hcost.simulate_recursive(
                 t=t, h_plus=h_plus,
+                u=pd.Series(1., h_plus.index),
                 t_next=t + pd.Timedelta('1d'),
                 past_returns=None,
                 current_returns=None,
                 past_volumes=None,
                 current_volumes=None,
                 current_prices=None,
-                current_portfolio_value=None,
+                current_portfolio_value=sum(h_plus),
                 current_weights=None)
 
             hcost = -(np.exp(np.log(1.05)/365.24)-1) * sum(
@@ -244,22 +248,27 @@ class TestSimulator(CvxportfolioTest):
         tcost = cvx.StocksTransactionCost()
         # syntax checks
         with self.assertRaises(SyntaxError):
+            tcost.initialize_estimator_recursive(
+                universe=current_returns.index, trading_calendar=[t])
             tcost.simulate_recursive(t=t, u=u,
                             past_returns=past_returns,
                             current_returns=current_returns,
                             past_volumes=past_volumes,
                             current_volumes=current_volumes,
                             current_prices=None,
-                            current_portfolio_value=None,
+                            current_portfolio_value=1000,
                             current_weights=None,)
 
         tcost = cvx.TransactionCost()
+        tcost.initialize_estimator_recursive(
+                universe=current_returns.index, trading_calendar=[t])
         tcost.simulate_recursive(t=t, u=u, current_prices=None,
+                        t_next=None, h_plus=pd.Series(1., u.index),
                         past_returns=past_returns,
                         current_returns=current_returns,
                         past_volumes=past_volumes,
                         current_volumes=current_volumes,
-                        current_portfolio_value=None,
+                        current_portfolio_value=1000,
                         current_weights=None,)
 
         tcost = cvx.TransactionCost(b=0.)
@@ -273,12 +282,15 @@ class TestSimulator(CvxportfolioTest):
                             current_weights=None,)
 
         tcost = cvx.TransactionCost(b=None)
+        tcost.initialize_estimator_recursive(
+                universe=current_returns.index, trading_calendar=[t])
         tcost.simulate_recursive(t=t, u=u, current_prices=current_prices,
+                        t_next=None, h_plus=pd.Series(1., u.index),
                         past_returns=past_returns,
                         current_returns=current_returns,
                         past_volumes=None,
                         current_volumes=None,
-                        current_portfolio_value=None,
+                        current_portfolio_value=1000,
                         current_weights=None,)
 
     def test_transaction_cost(self):
@@ -305,10 +317,12 @@ class TestSimulator(CvxportfolioTest):
 
             tcost = cvx.StocksTransactionCost(
                 a=spreads/2, window_sigma_est=252)
+            tcost.initialize_estimator_recursive(
+                universe=current_returns.index, trading_calendar=[t])
 
             sim_cost = tcost.simulate_recursive(
                 t=t, u=u, current_prices=current_prices,
-                current_portfolio_value=None,
+                current_portfolio_value=1E4,
                 current_weights=None,
                 past_returns=past_returns,
                 current_returns=current_returns,
@@ -382,13 +396,22 @@ class TestSimulator(CvxportfolioTest):
                     start_time, end_time, include_end=False)
             )
 
+            for cost in simulator.costs:
+                cost.initialize_estimator_recursive(
+                universe=simulator.market_data.full_universe,
+                trading_calendar=simulator.market_data.trading_calendar(
+                    start_time, end_time, include_end=False)
+            )
+
             for (i, t) in enumerate(simulator.market_data.returns.index[
                     (simulator.market_data.returns.index >= start_time) & (
                     simulator.market_data.returns.index <= end_time)]):
-                t_next = simulator.market_data.returns.index[i+1]
+                t_next = simulator.market_data.returns.index[
+                    simulator.market_data.returns.index.get_loc(t) + 1]
                 oldcash = h.iloc[-1]
                 past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
+                # import code; code.interact(local=locals())
                 h, _, _, costs, _ = simulator.simulate(
                     t=t, h=h, policy=policy, t_next=t_next,
                     past_returns=past_returns, current_returns=current_returns,
@@ -397,8 +420,8 @@ class TestSimulator(CvxportfolioTest):
                 tcost, hcost = costs['StocksTransactionCost'
                     ], costs['StocksHoldingCost']
                 assert tcost == 0.
-                # if np.all(h0[:2] > 0):
-                #    assert hcost == 0.
+                if np.all(h0[:2] > 0):
+                    assert hcost == 0.
                 assert np.isclose(
                     (oldcash - hcost) * (1+simulator.market_data.returns.loc[
                         t, 'USDOLLAR']), h.iloc[-1])
@@ -429,7 +452,8 @@ class TestSimulator(CvxportfolioTest):
             for i, t in enumerate(simulator.market_data.returns.index[
                     (simulator.market_data.returns.index >= start_time) &
                         (simulator.market_data.returns.index <= end_time)]):
-                t_next = simulator.market_data.returns.index[i+1]
+                t_next = simulator.market_data.returns.index[
+                    simulator.market_data.returns.index.get_loc(t) + 1]
                 oldcash = h.iloc[-1]
                 past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
