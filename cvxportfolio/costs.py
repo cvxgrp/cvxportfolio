@@ -372,10 +372,10 @@ class SimulatorCost( # pylint: disable=abstract-method
 
     def initialize_estimator( # pylint: disable=arguments-differ
         self, universe, **kwargs):
-        """Initialize cost by compiling its cvxpy expression (if applies).
+        """Initialize cost by compiling its CVXPY expression (if applies).
 
         This must be called by derived classes if you want to use
-        an internal Cvxpy expression to evaluate the simulator cost.
+        an internal CVXPY expression to evaluate the simulator cost.
 
         :param universe: Current trading universe.
         :type universe: pd.Index
@@ -391,7 +391,7 @@ class SimulatorCost( # pylint: disable=abstract-method
                 w_plus = self._w_plus, z = self._z,
                 w_plus_minus_w_bm = self._w_plus_minus_w_bm)
 
-    def simulate( # pylint: disable=arguments-differ
+    def simulate( # pylint: disable=arguments-differ,too-many-arguments
         self, t, u, h_plus, past_volumes,
         past_returns, current_prices,
         current_weights, current_portfolio_value, **kwargs):
@@ -400,8 +400,7 @@ class SimulatorCost( # pylint: disable=abstract-method
         Cost classes that are meant to be used in the simulator can
         implement this. The arguments to this are the same as for
         :meth:`cvxportfolio.estimator.Estimator.values_in_time` plus the
-        realized returns and volumes in the period, and the trades requested
-        by the policy, ....
+        trades vector and post-trade allocations.
 
         :param t: Current timestamp.
         :type t: pandas.Timestamp
@@ -423,8 +422,8 @@ class SimulatorCost( # pylint: disable=abstract-method
         :param current_portfolio_value: Current total value of the portfolio
             in cash units, before costs.
         :type current_portfolio_value: float
-
-        :param kwargs: Reserved for future expansion.
+        :param kwargs: Other unused arguments to
+            :meth:`cvxportfolio.estimator.SimulatorEstimator.simulate`.
         :type kwargs: dict
 
         :returns: Simulated realized value of the cost, in cash accounting
@@ -731,8 +730,7 @@ class TransactionCost(SimulatorCost):
 
     It is described in :paper:`section 2.3 <section.2.3>` of the paper.
 
-    The model in simulation is, when separated on a single asset (equation 2.2
-    in the paper)
+    The model is, separated on a single asset (equation 2.2 in the paper)
 
     .. math ::
 
@@ -746,11 +744,13 @@ class TransactionCost(SimulatorCost):
     :math:`\sigma` is an estimate of the volatility of the asset returns over
     recent periods,
     :math:`V` is the market volume traded over the period for the asset
-    (in optimization we use a forecast instead)
     and :math:`c` is a coefficient used to introduce bias in the model,
     for example the negative of open-to-close return (if transactions are
     executed at close), or the negative of the open-to-VWAP return (if
     transactions are executed at the volume-weighted average price).
+
+    In optimization the realized market volume :math:`V` is not known and
+    we use its forecast :math:`\hat V` instead.
 
     As done throughout the library, this implementation accepts either
     :ref:`user-provided data <passing-data>` for the various parts of the
@@ -835,7 +835,7 @@ class TransactionCost(SimulatorCost):
             self._second_term_multiplier = cp.Parameter(
                 len(universe)-1, nonneg=True)
 
-        # SimulatorEstimator
+        # SimulatorCost
         super().initialize_estimator(universe=universe, **kwargs)
 
     def values_in_time( # pylint: disable=arguments-differ
@@ -904,9 +904,9 @@ class SimpleSigmaEst(SimulatorEstimator):
         self, past_returns, **kwargs):
         """Compute historical sigma.
 
-        :param past_returns:
+        :param past_returns: Past market returns.
         :type past_returns: pd.DataFrame
-        :param kwargs:
+        :param kwargs: Other unused arguments.
         :type kwargs: dict
 
         :returns: Estimated sigma
@@ -921,11 +921,11 @@ class SimpleSigmaEst(SimulatorEstimator):
         self, current_returns, past_returns, **kwargs):
         """Compute historical sigma.
 
-        :param current_returns:
+        :param current_returns: Current market returns.
         :type current_returns: pd.Series
-        :param past_returns:
+        :param past_returns: Past market returns.
         :type past_returns: pd.DataFrame
-        :param kwargs:
+        :param kwargs: Other unused arguments.
         :type kwargs: dict
 
         :returns: Estimated sigma
@@ -960,11 +960,11 @@ class SimpleVolumeEst(Estimator):
     def values_in_time(
         # pylint: disable=arguments-differ
         self, past_volumes, **kwargs):
-        """Compute historical sigma.
+        """Compute historical mean of volumes.
 
-        :param past_volumes:
+        :param past_volumes: Past market volumes
         :type past_volumes: pd.DataFrame
-        :param kwargs:
+        :param kwargs: Other unused arguments.
         :type kwargs: dict
 
         :raises SyntaxError: If the market data does not contain volumes.

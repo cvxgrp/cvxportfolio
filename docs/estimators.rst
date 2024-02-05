@@ -20,6 +20,12 @@ Estimators
 
      .. automethod:: finalize_estimator_recursive
 
+.. autoclass:: SimulatorEstimator
+
+     .. automethod:: simulate
+
+     .. automethod:: simulate_recursive
+
 .. autoclass:: CvxpyExpressionEstimator
 
      .. automethod:: compile_to_cvxpy
