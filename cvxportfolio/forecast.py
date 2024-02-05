@@ -659,6 +659,10 @@ class HistoricalCovariance(BaseMeanVarForecast):
         # super().__post_init__()
         self._joint_mean = None
 
+    def initialize_estimator(self, **kwargs):
+        super().initialize_estimator(**kwargs)
+        self._joint_mean = None
+
     def _compute_numerator(self, df, emw_weights):
         """Exponential moving window (optional) numerator."""
         filled = df.fillna(0.)
