@@ -100,8 +100,8 @@ are relative to each point in time at which the policy is evaluated.
 """
 
 import logging
-from dataclasses import dataclass
-from typing import Union
+# from dataclasses import dataclass
+# from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -145,19 +145,19 @@ def online_cache(values_in_time):
         if cache is None:  # temporary to not change tests
             cache = {}
 
-        if not self in cache:
-            cache[self] = {}
+        if not str(self) in cache:
+            cache[str(self)] = {}
 
-        if t in cache[self]:
+        if t in cache[str(self)]:
             logger.debug(
                 '%s.values_in_time at time %s is retrieved from cache.',
                 self, t)
-            result = cache[self][t]
+            result = cache[str(self)][t]
         else:
             result = values_in_time(self, t=t, cache=cache, **kwargs)
             logger.debug('%s.values_in_time at time %s is stored in cache.',
                 self, t)
-            cache[self][t] = result
+            cache[str(self)][t] = result
         return result
 
     return wrapped
@@ -168,8 +168,12 @@ class BaseForecast(Estimator):
 
     _last_time = None
 
-    def __post_init__(self):
-        raise NotImplementedError # pragma: no cover
+    # def __hash__(self):
+    #     """Same as the unsafe_hash of dataclass."""
+    #     return self.__repr__()
+
+    # def __post_init__(self):
+    #     raise NotImplementedError # pragma: no cover
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, **kwargs):
@@ -178,7 +182,7 @@ class BaseForecast(Estimator):
         :param kwargs: Unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-        self.__post_init__()
+        self._last_time = None
 
     def _agnostic_update(self, t, past_returns, **kwargs):
         """Choose whether to make forecast from scratch or update last one."""
@@ -215,7 +219,7 @@ def _is_timedelta(value):
         ' pandas Timedeltas or np.inf.')
 
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class BaseMeanVarForecast(BaseForecast):
     """This class contains logic common to mean and (co)variance forecasters.
 
@@ -228,11 +232,29 @@ class BaseMeanVarForecast(BaseForecast):
     scratch (especially for covariances).
     """
 
-    half_life: Union[pd.Timedelta, float] = np.inf
-    rolling: Union[pd.Timedelta, float] = np.inf
+    def __init__(self, half_life=np.inf, rolling=np.inf):
+        self.half_life = half_life
+        self.rolling = rolling
+        self._denominator = None
+        self._numerator = None
 
-    def __post_init__(self):
-        self._last_time = None
+    # half_life: Union[pd.Timedelta, float] = np.inf
+    # rolling: Union[pd.Timedelta, float] = np.inf
+    # regressors: Union[pd.DataFrame, None] = None
+
+    # def __post_init__(self):
+    #     self._last_time = None
+    #     self._denominator = None
+    #     self._numerator = None
+
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Re-initialize whenever universe changes.
+
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
+        """
+        super().initialize_estimator(**kwargs)
         self._denominator = None
         self._numerator = None
 
@@ -373,7 +395,7 @@ class BaseMeanVarForecast(BaseForecast):
         return observations_to_subtract, emw_weights
 
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
     """This class contains the logic common to the mean forecasters."""
 
@@ -405,7 +427,7 @@ class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
         return ~(last_row.isnull())
 
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class HistoricalMeanReturn(BaseMeanForecast):
     r"""Historical means of non-cash returns.
 
@@ -434,7 +456,7 @@ class HistoricalMeanReturn(BaseMeanForecast):
         """Return dataframe to compute the historical means of."""
         return past_returns.iloc[:, :-1]
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class HistoricalMeanVolume(BaseMeanForecast):
     r"""Historical means of traded volume in units of value (e.g., dollars).
 
@@ -456,7 +478,7 @@ class HistoricalMeanVolume(BaseMeanForecast):
                 + " provides market volumes.")
         return past_volumes
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class HistoricalVariance(BaseMeanForecast):
     r"""Historical variances of non-cash returns.
 
@@ -490,14 +512,18 @@ class HistoricalVariance(BaseMeanForecast):
     :type kelly: bool
     """
 
-    kelly: bool = True
+    def __init__(self, rolling=np.inf, half_life=np.inf, kelly=True):
+        super().__init__(rolling=rolling, half_life=half_life)
+        self.kelly=kelly
 
-    def __post_init__(self):
+    # kelly: bool = True
+
+    # def __post_init__(self):
         if not self.kelly:
             self.meanforecaster = HistoricalMeanReturn(
                 half_life=self.half_life,
                 rolling=self.rolling)
-        super().__post_init__()
+        # super().__post_init__()
 
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
@@ -519,7 +545,7 @@ class HistoricalVariance(BaseMeanForecast):
         return past_returns.iloc[:, :-1]**2
 
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     """Historical standard deviation of non-cash returns.
 
@@ -550,7 +576,7 @@ class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     :type kelly: bool
     """
 
-    kelly: bool = True
+    # kelly: bool = True
 
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
@@ -578,7 +604,7 @@ class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
             current_prices=kwargs['current_prices']
         )
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class HistoricalMeanError(HistoricalVariance):
     r"""Historical standard deviations of the mean of non-cash returns.
 
@@ -600,7 +626,10 @@ class HistoricalMeanError(HistoricalVariance):
     :type kelly: bool
     """
 
-    kelly: bool = False
+    def __init__(self, rolling=np.inf, half_life=np.inf, kelly=False):
+        super().__init__(rolling=rolling, half_life=half_life, kelly=kelly)
+
+    # kelly: bool = False
 
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
@@ -616,14 +645,18 @@ class HistoricalMeanError(HistoricalVariance):
         return np.sqrt(variance / self._denominator.values)
 
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class HistoricalCovariance(BaseMeanVarForecast):
     r"""Historical covariance matrix."""
 
-    kelly: bool = True
+    # kelly: bool = True
 
-    def __post_init__(self):
-        super().__post_init__()
+    def __init__(self, rolling=np.inf, half_life=np.inf, kelly=True):
+        super().__init__(rolling=rolling, half_life=half_life)
+        self.kelly=kelly
+
+    # def __post_init__(self):
+        # super().__post_init__()
         self._joint_mean = None
 
     def _compute_numerator(self, df, emw_weights):
@@ -741,7 +774,7 @@ def project_on_psd_cone_and_factorize(covariance):
     eigval = np.maximum(eigval, 0.)
     return eigvec @ np.diag(np.sqrt(eigval))
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class HistoricalFactorizedCovariance(HistoricalCovariance):
     r"""Historical covariance matrix of non-cash returns, factorized.
 
@@ -807,7 +840,7 @@ class HistoricalFactorizedCovariance(HistoricalCovariance):
                 + ' past returns.') from exc
 
 
-@dataclass(unsafe_hash=True)
+# @dataclass()#unsafe_hash=True)
 class HistoricalLowRankCovarianceSVD(Estimator):
     """Build factor model covariance using truncated SVD.
 
@@ -826,9 +859,14 @@ class HistoricalLowRankCovarianceSVD(Estimator):
     :type svd: str
     """
 
-    num_factors: int
-    svd_iters: int = 10
-    svd: str = 'numpy'
+    def __init__(self, num_factors, svd_iters=10, svd='numpy'):
+        self.num_factors=num_factors
+        self.svd_iters=svd_iters
+        self.svd=svd
+
+    # num_factors: int
+    # svd_iters: int = 10
+    # svd: str = 'numpy'
 
     # brought back from old commit;
     #
