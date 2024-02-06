@@ -68,7 +68,7 @@ from .errors import ConvexityError, ConvexSpecificationError
 from .estimator import (CvxpyExpressionEstimator, DataEstimator, Estimator,
                         SimulatorEstimator)
 from .forecast import HistoricalMeanVolume, HistoricalStandardDeviation
-from .hyperparameters import HyperParameter
+from .hyperparameters import HyperParameter, _resolve_hyperpar
 from .utils import periods_per_year_from_datetime_index, resample_returns
 
 __all__ = ["HoldingCost", "TransactionCost", "SoftConstraint",
@@ -242,8 +242,7 @@ class CombinedCosts(Cost):
         """
         expression = 0
         for multiplier, cost in zip(self.multipliers, self.costs):
-            add = (multiplier.current_value
-                if hasattr(multiplier, 'current_value') else multiplier) *\
+            add = _resolve_hyperpar(multiplier) *\
                     cost.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
             if not add.is_dcp():
                 raise ConvexSpecificationError(cost * multiplier)

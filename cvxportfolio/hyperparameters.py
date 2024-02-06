@@ -21,6 +21,7 @@ optimized over) automatically.
 from numbers import Number
 
 import numpy as np
+import pandas as pd
 
 # GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]
 # GAMMA_COST_RANGE = [0., .1, .2, .5, 1., 2., 5., 10.]
@@ -28,6 +29,12 @@ import numpy as np
 
 __all__ = ['Gamma', 'RangeHyperParameter']
 
+
+def _resolve_hyperpar(possible_hyperpar):
+    """Return current value if input is hyper-parameter, or input itself."""
+    if isinstance(possible_hyperpar, HyperParameter):
+        return possible_hyperpar.current_value
+    return possible_hyperpar
 
 class HyperParameter:
     """Base Hyper Parameter class.
@@ -40,7 +47,8 @@ class HyperParameter:
     """
 
     def __mul__(self, other):
-        if np.isscalar(other) or isinstance(other, HyperParameter):
+        if np.isscalar(other) or isinstance(other, HyperParameter) \
+                or isinstance(other, pd.Timedelta):
             return CombinedHyperParameter([self], [other])
         return NotImplemented
 
@@ -82,7 +90,7 @@ class HyperParameter:
         """Current value of the hyper-parameter.
 
         :returns: Current value.
-        :rtype: int or float
+        :rtype: int, float, pd.Timedelta
         """
         raise NotImplementedError # pragma: no cover
 
@@ -104,10 +112,15 @@ class CombinedHyperParameter(HyperParameter):
         :returns: Current value.
         :rtype: int or float
         """
-        return sum((
+        # we unroll the sum() to support non-numeric (Timedeltas, ...)
+        summands = list(
             (le.current_value if hasattr(le, 'current_value') else le)
             * (ri.current_value if hasattr(ri, 'current_value') else ri)
-            for le, ri in zip(self.left, self.right)))
+            for le, ri in zip(self.left, self.right))
+        result = summands[0]
+        for el in summands[1:]:
+            result += el
+        return result
 
     def collect_hyperparameters(self):
         """Collect (not combined) hyper-parameters.

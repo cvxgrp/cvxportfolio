@@ -108,6 +108,7 @@ import pandas as pd
 
 from .errors import DataError, ForecastError
 from .estimator import Estimator, SimulatorEstimator
+from .hyperparameters import _resolve_hyperpar
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +281,7 @@ class BaseMeanVarForecast(BaseForecast):
 
     def _emw_weights(self, index, t):
         """Get weights to apply to the past obs for EMW."""
-        index_in_halflifes = (index - t) / self.half_life
+        index_in_halflifes = (index - t) / _resolve_hyperpar(self.half_life)
         return np.exp(index_in_halflifes * np.log(2))
 
     def _initial_compute(self, t, **kwargs): # pylint: disable=arguments-differ
@@ -291,11 +292,11 @@ class BaseMeanVarForecast(BaseForecast):
         df = self._dataframe_selector(t=t, **kwargs)
 
         # Moving average window logic
-        if _is_timedelta(self.rolling):
-            df = df.loc[df.index >= t-self.rolling]
+        if _is_timedelta(_resolve_hyperpar(self.rolling)):
+            df = df.loc[df.index >= t-_resolve_hyperpar(self.rolling)]
 
         # If EMW, compute weights here
-        if _is_timedelta(self.half_life):
+        if _is_timedelta(_resolve_hyperpar(self.half_life)):
             emw_weights = self._emw_weights(df.index, t)
         else:
             emw_weights = None
@@ -320,9 +321,9 @@ class BaseMeanVarForecast(BaseForecast):
         last_row = df.iloc[-1]
 
         # if emw discount past
-        if _is_timedelta(self.half_life):
+        if _is_timedelta(_resolve_hyperpar(self.half_life)):
             time_passed_in_halflifes = (
-                self._last_time - t)/self.half_life
+                self._last_time - t)/_resolve_hyperpar(self.half_life)
             discount_factor = np.exp(time_passed_in_halflifes * np.log(2))
             self._denominator *= discount_factor
             self._numerator *= discount_factor
@@ -335,7 +336,7 @@ class BaseMeanVarForecast(BaseForecast):
         self._numerator += self._update_numerator(last_row) * discount_factor
 
         # Moving average window logic: subtract elements that have gone out
-        if _is_timedelta(self.rolling):
+        if _is_timedelta(_resolve_hyperpar(self.rolling)):
             observations_to_subtract, emw_weights_of_subtract = \
                 self._remove_part_gone_out_of_ma(df, t)
         else:
@@ -351,11 +352,11 @@ class BaseMeanVarForecast(BaseForecast):
         """Subtract from numerator and denominator too old observations."""
 
         observations_to_subtract = df.loc[
-            (df.index >= (self._last_time - self.rolling))
-            & (df.index < (t - self.rolling))]
+            (df.index >= (self._last_time - _resolve_hyperpar(self.rolling)))
+            & (df.index < (t - _resolve_hyperpar(self.rolling)))]
 
         # If EMW, compute weights here
-        if _is_timedelta(self.half_life):
+        if _is_timedelta(_resolve_hyperpar(self.half_life)):
             emw_weights = self._emw_weights(observations_to_subtract.index, t)
         else:
             emw_weights = None
@@ -495,8 +496,8 @@ class HistoricalVariance(BaseMeanForecast):
     def __post_init__(self):
         if not self.kelly:
             self.meanforecaster = HistoricalMeanReturn(
-                half_life=self.half_life,
-                rolling=self.rolling)
+                half_life=_resolve_hyperpar(self.half_life),
+                rolling=_resolve_hyperpar(self.rolling))
         super().__post_init__()
 
     def values_in_time(self, **kwargs):
