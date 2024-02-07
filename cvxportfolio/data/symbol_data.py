@@ -559,7 +559,8 @@ class YahooFinance(OHLCVTR):
                 + 'Json output:', str(res.json()))
 
         if res.status_code != 200:
-            raise DataError(f'Yahoo finance download of {ticker} failed. Json:',
+            raise DataError(
+                f'Yahoo finance download of {ticker} failed. Json:',
                 str(res.json())) # pragma: no cover
 
         data = res.json()['chart']['result'][0]
@@ -576,16 +577,25 @@ class YahooFinance(OHLCVTR):
             raise DataError(f'Yahoo finance download of {ticker} failed.'
                 + ' Json:', str(res.json())) from exc # pragma: no cover
 
-        # last timestamp is probably broken (not timed to market open)
-        # we set its time to same as the day before, but this is wrong
-        # on days of DST switch. It's fine though because that line will be
-        # overwritten next update
-        if df_result.index[-1].time() != df_result.index[-2].time():
-            tm1 = df_result.index[-2].time()
-            newlast = df_result.index[-1].replace(
-                hour=tm1.hour, minute=tm1.minute, second=tm1.second)
-            df_result.index = pd.DatetimeIndex(
-                list(df_result.index[:-1]) + [newlast])
+        # last timestamp could be not timed to market open
+        this_periods_open_time = _timestamp_convert(
+            data['meta']['currentTradingPeriod']['regular']['start'])
+
+        if df_result.index[-1] > this_periods_open_time:
+            index = df_result.index.to_numpy()
+            index[-1] = this_periods_open_time
+            df_result.index = pd.DatetimeIndex(index)
+
+        # # last timestamp is probably broken (not timed to market open)
+        # # we set its time to same as the day before, but this is wrong
+        # # on days of DST switch. It's fine though because that line will be
+        # # overwritten next update
+        # if df_result.index[-1].time() != df_result.index[-2].time():
+        #     tm1 = df_result.index[-2].time()
+        #     newlast = df_result.index[-1].replace(
+        #         hour=tm1.hour, minute=tm1.minute, second=tm1.second)
+        #     df_result.index = pd.DatetimeIndex(
+        #         list(df_result.index[:-1]) + [newlast])
 
         return df_result[
             ['open', 'low', 'high', 'close', 'adjclose', 'volume']]
