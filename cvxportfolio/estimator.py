@@ -309,7 +309,7 @@ class SimulatorEstimator(Estimator):
         if hasattr(self, "simulate"):
             self._current_value = self.simulate(**kwargs)
             return self.current_value
-        return None
+        return None # pragma: no cover
 
 class CvxpyExpressionEstimator(Estimator):
     """Base class for estimators that are Cvxpy expressions."""

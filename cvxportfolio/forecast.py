@@ -822,7 +822,7 @@ class HistoricalFactorizedCovariance(HistoricalCovariance):
 
         try:
             return project_on_psd_cone_and_factorize(covariance)
-        except np.linalg.LinAlgError as exc:
+        except np.linalg.LinAlgError as exc: # pragma: no cover
             raise ForecastError(f'Covariance estimation at time {t} failed;'
                 + ' there are (probably) too many missing values in the'
                 + ' past returns.') from exc

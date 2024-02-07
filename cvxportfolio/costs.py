@@ -1033,6 +1033,12 @@ class StocksTransactionCost(TransactionCost):
         volume_hat=HistoricalMeanVolume, sigma=HistoricalStandardDeviation,
         exponent=1.5, c=None, window_sigma_est=None, window_volume_est=None):
 
+        if window_sigma_est is not None:
+            sigma = SimpleSigmaEst(window_sigma_est)
+
+        if window_volume_est is not None:
+            volume_hat = SimpleVolumeEst(window_volume_est)
+
         super().__init__(# because we update it with pershare_cost
                          a= 0. if a is None else a,
                          b=b, c=c, exponent=exponent,
@@ -1042,12 +1048,6 @@ class StocksTransactionCost(TransactionCost):
 
         self.pershare_cost = DataEstimator(pershare_cost)\
             if pershare_cost is not None else None
-
-        if window_sigma_est is not None:
-            self.sigma = SimpleSigmaEst(window_sigma_est)
-
-        if window_volume_est is not None:
-            self.volume_hat = SimpleVolumeEst(window_volume_est)
 
     def values_in_time( # pylint: disable=arguments-renamed
             self, current_prices, **kwargs):
@@ -1070,7 +1070,7 @@ class StocksTransactionCost(TransactionCost):
                 raise SyntaxError("If the market data doesn't contain prices"
                                   " you should set pershare_cost to None")
             assert not np.any(current_prices.isnull())
-            # assert not np.any(current_prices == 0.)
+            assert not np.any(current_prices == 0.)
             self._first_term_multiplier.value += \
                 self.pershare_cost.current_value / current_prices.values
 

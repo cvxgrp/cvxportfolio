@@ -282,6 +282,18 @@ class TestSimulator(CvxportfolioTest):
                             current_portfolio_value=None,
                             current_weights=None,)
 
+        tcost = cvx.StocksTransactionCost(window_volume_est=252)
+        with self.assertRaises(SyntaxError):
+            tcost.values_in_time_recursive(t=t,
+                current_prices=current_prices,
+                past_returns=past_returns,
+                past_volumes=None,
+                current_portfolio_value=1000,
+                current_weights=None,)
+
+        with self.assertRaises(SyntaxError):
+            _ = cvx.TransactionCost(b=1, exponent=.9)
+
         tcost = cvx.TransactionCost(b=None)
         tcost.initialize_estimator_recursive(
                 universe=current_returns.index, trading_calendar=[t])
