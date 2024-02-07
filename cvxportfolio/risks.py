@@ -63,7 +63,7 @@ class FullCovariance(Cost):
         covariance, at each point in time of a back-test, from past returns.
         (It also factorizes it to ease the optimization and caches it on
         disk.) It is instantiated with default parameters, if instead you
-        wish to change them you can pass an instance with you choices of
+        wish to change them you can pass an instance with your choices of
         parameters (like ``rolling`` for moving average and ``half_life``
         for exponential smoothing). You can also pass any other forecaster
         estimator that computes a covariance matrix from the past returns.
@@ -192,7 +192,16 @@ class RiskForecastError(Cost):
 
 
 class DiagonalCovariance(Cost):
-    """Diagonal covariance matrix, user-provided or fit from data.
+    r"""Diagonal covariance matrix, user-provided or fit from data.
+
+    It represents the objective term:
+
+    .. math::
+        {(w^+_t - w^\text{b}_t )}^T \mathbf{diag}(\sigma_t^2)
+        (w^+_t - w^\text{b}_t)
+
+    where :math:`w^+_t` and :math:`w^\text{b}_t` are the post-trade
+    and the benchmark weights, respectively, at time :math:`t`.
 
     :param sigma_squares: Per-asset variances, either constant
         (Pandas series) or changing in time (time-indexed Pandas dataframe)
@@ -362,7 +371,8 @@ class FactorModelCovariance(Cost):
             if self.Sigma_F is None:
                 self.factor_exposures_parameter = self.F.parameter
             else:
-                # we could refactor the code here so we don't create duplicate parameters
+                # we could refactor the code here
+                # so we don't create duplicate parameters
                 self.factor_exposures_parameter = cp.Parameter(
                     self.F.parameter.shape)
 

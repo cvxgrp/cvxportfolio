@@ -18,8 +18,7 @@ We implement two types of costs, as discussed in the paper:
 :class:`HoldingCost`, defined in :paper:`section 2.4 <section.2.4>`. We also
 provide versions of each that are specialized to the stock market,
 :class:`StocksTransactionCost` and :class:`StocksHoldingCost`: these have a
-smaller set of parameters and have default values that are typical for liquid
-stocks in the US.
+default values that are typical for liquid stocks in the US.
 
 The latter two are included by default in
 :class:`cvxportfolio.StockMarketSimulator`, the market simulator specialized to
@@ -535,7 +534,7 @@ class HoldingCost(SimulatorCost):
         assets but varying in time) or by assets' names (constant in time
         but varying across assets), or a :class:`pd.DataFrame` indexed by
         time and whose columns are the assets' names, if varying both
-        in time and across assets. See :ref:` the manual page on passing data
+        in time and across assets. See :ref:`the manual page on passing data
         <passing-data>`. If `None` (the default) the term is
         ignored.
     :type short_fees: float, pd.Series, pd.DataFrame or None
@@ -544,16 +543,19 @@ class HoldingCost(SimulatorCost):
     :type long_fees: float, pd.Series, pd.DataFrame or None
     :param dividends: Dividend rates per period. Same conventions as above.
         Our default data interface already includes the dividend rates in the
-        market returns (*i.e.*, uses total returns, based on adjusted close
+        market returns (*i.e.*, uses total returns, from the adjusted
         prices). If, however, you provide your own market returns that do not
         include dividends, you may use this. Default None, which disables the
         term.
     :type dividends: float, pd.Series, pd.DataFrame or None
     :param periods_per_year: Number of trading period per year, used to obtain
         the holding cost per-period from the annualized percentages. Only
-        relevant in optimization (we know the exact duration of each period
-        in simulation). If left to the default, None, uses the estimated
-        average length of each period from the historical data.
+        relevant in optimization, since in simulation we know the exact
+        duration of each period. If left to the default, None, uses the
+        estimated average length of each period from the historical data.
+        Note that, in simulation, the holding cost is applied to the actual
+        length of the period between trading times, so for example it will
+        be higher over a weekend than between weekdays.
     :type periods_per_year: float or None
     """
 
@@ -743,6 +745,11 @@ class VolumeHatOrRealized(SimulatorEstimator):
 class TransactionCost(SimulatorCost):
     r"""This is a generic model for transaction cost of financial assets.
 
+    .. versionadded:: 1.2.0
+
+        This was significantly improved with new options; it was undocumented
+        before.
+
     It is described in :paper:`section 2.3 <section.2.3>` of the paper.
 
     The model is, separated on a single asset (equation 2.2 in the paper)
@@ -800,9 +807,12 @@ class TransactionCost(SimulatorCost):
     :type sigma: float, pd.Series, pd.DataFrame, cvx.forecast.BaseForecast
         class or instance
     :param exponent: Exponent of the second term of the model, default
-        :math:`3/2`. You can use any float larger than 1.
+        :math:`3/2`. (In the model above, this exponent applies to
+        :math:`|z|`, and this exponent minus 1 applies to the denominator
+        term :math:`V`). You can use any float larger than 1.
     :type exponent: float
     :param c: Coefficients of the third term of the transaction cost model.
+        If None, the default, the term is ignored.
     :type c: float, pd.Series, pd.DataFrame, or None
     """
 
@@ -998,13 +1008,22 @@ class SimpleVolumeEst(Estimator):
 class StocksTransactionCost(TransactionCost):
     """Simplified version of :class:`TransactionCost` for stocks.
 
+    .. versionadded:: 1.2.0
+
+        We added the ``sigma`` and ``volume_hat`` parameters to support
+        user-provided values as well as forecasters with various parameters.
+        We deprecated the old way (``window_sigma_est`` and
+        ``window_volume_est``) in which that was done before.
+
     This is included as a simulator cost by default (with default arguments) in
     :class:`cvxportfolio.StockMarketSimulator`.
 
     :param a: Same as in :class:`TransactionCost`, default 0.
     :type a: float or pd.Series or pd.DataFrame
     :param pershare_cost: Per-share cost: cash paid for each share traded.
-        Default 0.005.
+        Requires to know the prices of the stocks (they are present in the
+        default market data server
+        :class:`cvxportfolio.data.DownloadedMarketData`). Default 0.005.
     :type pershare_cost: float or pd.Series or pd.DataFrame
     :param b: Same as in :class:`TransactionCost`, default 1.
     :type b: float or pd.Series or pd.DataFrame
