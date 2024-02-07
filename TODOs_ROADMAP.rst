@@ -21,7 +21,7 @@ their planned release.
 ----------------------
 
 - [ ] Not part of public API; to be redesigned and probably dropped. Should use
-  ``_loader_*`` and ``_storer_*`` from ``cvxportfolio.data``. Target ``1.1.0``.
+  ``_loader_*`` and ``_storer_*`` from ``cvxportfolio.data``. 
 
 ``cvxportfolio.forecast``
 -------------------------
@@ -29,23 +29,22 @@ their planned release.
 - cache logic needs improvement, not easily exposable to third-parties now with ``dataclass.__hash__``
 
   - drop decorator
-  - drop dataclass
+  - drop dataclass, PR #133
   - cache IO logic should be managed by forecaster not by simulator, could be done by ``initialize_estimator``; maybe enough to just
     define it in the base class of forecasters
 - improve names of internal methods, clean them (lots of stuff can be re-used at universe change, ...)
 - generalize the mean estimator:
 
-  - use same code for ``past_returns``, ``past_returns**2``, ``past_volumes``, ...
-  - add rolling window option, should be in ``pd.Timedelta``
-  - add exponential moving avg, should be in half-life ``pd.Timedelta``
-- add same extras to the covariance estimator
+  - [X] use same code for ``past_returns``, ``past_returns**2``, ``past_volumes``, .... Done in #126, target ``1.2.0``
+  - [X] add rolling window option, should be in ``pd.Timedelta``. Done in #126, target ``1.2.0``
+  - [X] add exponential moving avg, should be in half-life ``pd.Timedelta``. Done in #126, target ``1.2.0``
+- [X] add same extras to the covariance estimator. Done in #126, target ``1.2.0``
 - goal: make this module crystal clear; third-party ML models should use it (at least for caching)
 
 ``cvxportfolio.estimator``
 --------------------------
 
-- [ ] ``DataEstimator`` needs refactoring, too long and complex methods. Target 
-  ``1.1.1``. 
+- [ ] ``DataEstimator`` needs refactoring, too long and complex methods.
 - ``Estimator`` could define base logic for on-disk caching. By itself it
   wouldn't do anything, actual functionality implemented by forecasters' base
   class.
@@ -65,8 +64,8 @@ their planned release.
   YF), total returns like other data sources, or neither for non-stocks assets.
   This would implement all data cleaning process as sequence of small steps
   in separate methods, with good logging. It would also implement data quality
-  check in the ``preload`` method to give feedback to the user. PR #125
-- [ ] Factor ``data.py`` in ``data/`` submodule. PR #125
+  check in the ``preload`` method to give feedback to the user. PR #127
+- [ ] Factor ``data.py`` in ``data/`` submodule. PR #127
 
 ``cvxportfolio.simulator``
 --------------------------
@@ -85,11 +84,12 @@ Partially public; only ``cvx.Gamma()`` (no arguments) and ``optimize_hyperparame
 (simple usage) are public, all the rest is not.
 
 - [ ] Clean up interface w/ ``MarketSimulator``, right now it calls private 
-  methods, maybe enough to make them public. Target ``1.1.1``.
+  methods, maybe enough to make them public.
 - [ ] Add risk/fine default ``GammaTrade``, ``GammaRisk`` (which are
   ``RangeHyperParameter``) modeled after original examples from paper.
-- [ ] Add ``Constant`` internal object throughout the library, also in ``DataEstimator``
+- [X] Add ``Constant`` internal object throughout the library, also in ``DataEstimator``
   in the case of scalar; it resolves to ``current_value`` if you pass a hyper-parameter.
+    Replaced with _resolve_hyperpar in #126.
 - [ ] Distinguish integer and positive hyper-parameters (also enforced by Constant).
 - [ ] Consider changing the increment/decrement model; hyperparameter object
   could instead return a ``neighbors`` set at each point. Probably cleaner.
@@ -98,7 +98,7 @@ Partially public; only ``cvx.Gamma()`` (no arguments) and ``optimize_hyperparame
 -------------------------
 
 - [ ] Add `AllIn` policy, which allocates all to a single name (like 
-  ``AllCash``). Target ``1.1.0``.
+  ``AllCash``).
 
 Optimization policies
 ~~~~~~~~~~~~~~~~~~~~~
@@ -115,7 +115,7 @@ Optimization policies
 ----------------------------
 
 - [ ] Add missing constraints from the paper.
-- [ ] Make ``MarketNeutral`` accept arbitrary benchmark (policy object).
+- [X] Make ``MarketNeutral`` accept arbitrary benchmark (policy object). Done in #126.
 
 ``cvxportfolio.result``
 -----------------------
@@ -144,7 +144,7 @@ Development & testing
 
 - [ ] Add extra pylint checkers. 
   
-  - [ ] Code complexity. Target ``1.1.1``. 
+  - [ ] Code complexity.
 - [ ] Consider removing downloaded data from ``test_simulator.py``,
   so only ``test_data.py`` requires internet. 
 

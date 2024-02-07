@@ -31,6 +31,9 @@ Costs Documentation
 Base classes (for defining your costs)
 ======================================
 
+
+.. autoclass:: cvxportfolio.costs.Cost
+
 .. autoclass:: cvxportfolio.costs.SimulatorCost
 
     .. automethod:: simulate

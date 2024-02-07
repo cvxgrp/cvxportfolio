@@ -107,34 +107,42 @@ class TestCosts(CvxportfolioTest):
         """Test holding cost model."""
         dividends = pd.Series(np.random.randn(self.N-1),
                               self.returns.columns[:-1])
-        hcost = cvx.HoldingCost(short_fees=5, long_fees=3, dividends=dividends)
 
-        t = 100  # this is picked so that periods_per_year evaluates to 252
-        hcost.initialize_estimator_recursive(
-            universe=self.returns.columns, trading_calendar=self.returns.index)
-        expression = hcost.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
-        hcost.values_in_time_recursive(
-            t=self.returns.index[t], past_returns=self.returns.iloc[:t])
+        for hcost, t in [
+            [cvx.HoldingCost(short_fees=5, long_fees=3, dividends=dividends),
+            100], # this is picked so that periods_per_year evaluates to 252
+            [cvx.HoldingCost(
+                periods_per_year=252, short_fees=5, long_fees=3,
+                dividends=dividends),
+            123],
+        ]:
 
-        for _ in range(10):
-            self.w_plus.value = np.random.randn(self.N)
-            self.w_plus.value[-1] = 1 - np.sum(self.w_plus.value[:-1])
+            hcost.initialize_estimator_recursive(
+                universe=self.returns.columns,
+                trading_calendar=self.returns.index)
+            expression = hcost.compile_to_cvxpy(
+                self.w_plus, self.z, self.w_plus_minus_w_bm)
+            hcost.values_in_time_recursive(
+                t=self.returns.index[t], past_returns=self.returns.iloc[:t])
 
-            print(expression.value)
+            for _ in range(10):
+                self.w_plus.value = np.random.randn(self.N)
+                self.w_plus.value[-1] = 1 - np.sum(self.w_plus.value[:-1])
 
-            self.assertTrue(
-                np.isclose(expression.value,
-                    # short fees
-                    - np.sum(np.minimum(
-                    self.w_plus.value[:-1], 0.))
-                    * (np.exp(np.log(1.05)/252) - 1)
-                    # long fees
-                    + np.sum(np.maximum(
-                    self.w_plus.value[:-1], 0.))
-                    * (np.exp(np.log(1.03)/252) - 1)
-                    # dividends
-                    - self.w_plus.value[:-1].T @ dividends))
+                print(expression.value)
+
+                self.assertTrue(
+                    np.isclose(expression.value,
+                        # short fees
+                        - np.sum(np.minimum(
+                        self.w_plus.value[:-1], 0.))
+                        * (np.exp(np.log(1.05)/252) - 1)
+                        # long fees
+                        + np.sum(np.maximum(
+                        self.w_plus.value[:-1], 0.))
+                        * (np.exp(np.log(1.03)/252) - 1)
+                        # dividends
+                        - self.w_plus.value[:-1].T @ dividends))
 
     def test_softconstraint(self):
         """Test code of SoftConstraints that is not covered elsewhere."""
@@ -230,6 +238,40 @@ class TestCosts(CvxportfolioTest):
         print(expression.value)
         self.assertTrue(np.isclose(expression.value,
                         est_tcost_lin+est_tcost_nonnlin))
+
+        # also c
+        tcost = cvx.StocksTransactionCost(
+            a=0.001/2, pershare_cost=pershare_cost,
+            b=b, window_sigma_est=250, window_volume_est=250, c=0.001,
+             exponent=1.5)
+        tcost.initialize_estimator_recursive(
+            universe=self.returns.columns, trading_calendar=self.returns.index)
+        expression = tcost.compile_to_cvxpy(
+            self.w_plus, self.z, self.w_plus_minus_w_bm)
+
+        tcost.values_in_time_recursive(
+            t=self.returns.index[34],
+            current_portfolio_value=value,
+            past_returns=self.returns.iloc[:34],
+            past_volumes=self.volumes.iloc[:34],
+            current_prices=pd.Series(np.ones(self.returns.shape[1]-1),
+                self.returns.columns[:-1]))
+
+        self.z.value = np.random.randn(self.returns.shape[1])
+        self.z.value[-1] = -np.sum(self.z.value[:-1])
+
+        est_tcost_lin = sum(np.abs(self.z.value[:-1]) * 0.0005)
+        volumes_est = self.volumes.iloc[:34].mean().values
+        sigmas_est = np.sqrt((self.returns.iloc[:34, :-1]**2).mean()).values
+        est_tcost_nonnlin = (
+            np.abs(self.z.value[:-1])**(3/2)) @ (
+                sigmas_est * np.sqrt(value / volumes_est))
+        est_tcost_c = np.sum(self.z.value[:-1] * 0.001)
+        print(est_tcost_lin)
+        print(est_tcost_nonnlin)
+        print(expression.value)
+        self.assertTrue(np.isclose(expression.value,
+                        est_tcost_lin+est_tcost_nonnlin+est_tcost_c))
 
 
 if __name__ == '__main__':

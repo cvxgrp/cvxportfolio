@@ -113,19 +113,20 @@ class ReturnsForecast(Cost):
     must be supplied for all assets excluding cash. See the :ref:`passing-data`
     manual page for more information on how these are passed.
 
-    :param r_hat: constant or time varying returns estimates, provided in the
-        form of a pandas DataFrame indexed by timestamps of trading period and
-        whose columns are all non-cash assets. Alternatively it can be a pandas
-        Series indexed by the assets' names (so it is constant in time), a
-        pandas Series indexed by time (so it is constant across assets), or a 
-        float (constant for all times and assets). Alternatively you can
-        provide a :class:`cvxportfolio.estimator.Estimator` subclass that 
-        implements the logic to compute the returns forecast given the past
-        market data, like the default 
+
+    :param r_hat: constant or time varying returns estimates, either
+        user-provided (see :ref:`the manual page on passing data
+        <passing-data>` or computed internally by a forecaster class or
+        instance. The default is
         :class:`cvxportfolio.forecast.HistoricalMeanReturn` which computes the
         historical means of the past returns, at each point in the back-test.
-    :type r_hat: pd.Series or pd.DataFrame or float or 
-        :class:`cvxportfolio.estimator.Estimator`
+        It is instantiated internally with default parameters, so it computes
+        the full historical means at each point in time. If you prefer
+        to change that (e.g., do rolling mean or exponential moving window)
+        you can instantiate :class:`cvxportfolio.forecast.HistoricalMeanReturn`
+        with your chosen parameters and pass the instance.
+    :type r_hat: pd.Series, pd.DataFrame, float,
+        :class:`cvxportfolio.forecast.BaseForecast` class or instance
     :param decay: decay factor used in 
         :class:`cvxportfolio.MultiPeriodOptimization` policies. It is as a 
         number in :math:`[0,1]`. At step :math:`\tau` of the MPO policy, where 
@@ -134,6 +135,8 @@ class ReturnsForecast(Cost):
         zero models a `fast` signal while ``decay`` close to one a `slow`
         signal. The default value is 1.    
     :type decay: float
+
+
 
     :Example:
 
@@ -146,6 +149,22 @@ class ReturnsForecast(Cost):
     :math:`\hat{r}_t` are the full average of past returns at each point in 
     time and the risk model is the full covariance, also computed from the past 
     returns.
+
+    :Example:
+
+    >>> my_forecasts = pd.DataFrame(...)
+    >>> returns_model = cvx.ReturnsForecast(r_hat=my_forecasts)
+
+    With user-provided forecasts.
+
+    :Example:
+
+    >>> from cvxportfolio.forecast import HistoricalMeanReturn
+    >>> returns_model = cvx.ReturnsForecast(
+            r_hat=HistoricalMeanReturn(rolling = pd.Timedelta('365d')))
+
+    Instead of the default (full historical means at each point in time),
+    use rolling means of 1 year.
     """
 
     def __init__(self, r_hat=HistoricalMeanReturn, decay=1.):

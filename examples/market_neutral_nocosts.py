@@ -26,7 +26,8 @@ import numpy as np
 
 import cvxportfolio as cvx
 from cvxportfolio.result import LOG_FORMAT, RECORD_LOGS
-from .universes import SP500, DOW30, NDX100
+
+from .universes import DOW30, NDX100, SP500
 
 logging.basicConfig(level=RECORD_LOGS, format=LOG_FORMAT)
 

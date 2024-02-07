@@ -50,7 +50,7 @@ class TestHyperparameters(CvxportfolioTest):
             + 'Sigma=HistoricalFactorizedCovariance(half_life=inf,'
             + ' rolling=inf, kelly=True))'
             + '- Gamma(current_value=1.0) * StocksTransactionCost(a=0.0, '
-            + 'b=1.0, market_volumes=VolumePredictor('
+            + 'b=1.0, market_volumes=VolumeHatOrRealized('
             + 'volume_hat=HistoricalMeanVolume(half_life=inf, '
             + "rolling=Timedelta('365 days 05:45:36'))), "
             + "sigma=HistoricalStandardDeviation(half_life=inf, "
