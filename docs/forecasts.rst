@@ -22,3 +22,11 @@ Forecasters Documentation
 .. autoclass:: HistoricalFactorizedCovariance
 
 .. autoclass:: HistoricalLowRankCovarianceSVD
+
+
+Base forecaster classes
+~~~~~~~~~~~~~~~~~~~~~~~
+
+*Work in progress.*
+
+.. autoclass:: BaseForecast

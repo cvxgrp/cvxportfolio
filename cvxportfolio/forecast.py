@@ -27,7 +27,7 @@ Most of our forecasters implement both a rolling window and exponential moving
 average logic. These are specified by the ``rolling`` and ``half_life``
 parameters respectively, which are either Pandas Timedeltas or ``np.inf``.
 The latter is the default, and means that the whole past is used, with no
-exponential smoothing. Note that it's possible to use both, e.g.,
+exponential smoothing. Note that it's possible to use both, *e.g.*,
 estimate covariance matrices ignoring past returns older than 5 years and
 smoothing the recent ones using an exponential kernel with half-life of 1 year.
 
@@ -87,12 +87,10 @@ to the Cvxportfolio object. For example
     from cvxportfolio.forecast import HistoricalMeanReturn
     import pandas as pd
 
-    SOLAR_YEAR_IN_DAYS = 365.24
-
     returns_forecast = cvx.ReturnsForecast(
         r_hat = HistoricalMeanReturn(
-            half_life=pd.Timedelta(days=SOLAR_YEAR_IN_DAYS),
-            rolling=pd.Timedelta(days=SOLAR_YEAR_IN_DAYS*5)))
+            half_life=pd.Timedelta(days=365),
+            rolling=pd.Timedelta(days=365*5)))
 
 if you want to apply exponential smoothing to the mean returns forecaster with
 half-life of 1 year, and skip over all observations older than 5 years. Both
@@ -410,6 +408,10 @@ class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
 class HistoricalMeanReturn(BaseMeanForecast):
     r"""Historical means of non-cash returns.
 
+    .. versionadded:: 1.2.0
+
+        Added the ``half_life`` and ``rolling`` parameters.
+
     When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
 
     .. code-block::
@@ -439,6 +441,8 @@ class HistoricalMeanReturn(BaseMeanForecast):
 class HistoricalMeanVolume(BaseMeanForecast):
     r"""Historical means of traded volume in units of value (e.g., dollars).
 
+    .. versionadded:: 1.2.0
+
     :param half_life: Half-life of exponential smoothing, expressed as
         Pandas Timedelta. If in back-test, that is with respect to each point
         in time. Default ``np.inf``, meaning no exponential smoothing.
@@ -460,6 +464,10 @@ class HistoricalMeanVolume(BaseMeanForecast):
 @dataclass(unsafe_hash=True)
 class HistoricalVariance(BaseMeanForecast):
     r"""Historical variances of non-cash returns.
+
+    .. versionadded:: 1.2.0
+
+        Added the ``half_life`` and ``rolling`` parameters.
 
     When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
 
@@ -524,6 +532,10 @@ class HistoricalVariance(BaseMeanForecast):
 class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     """Historical standard deviation of non-cash returns.
 
+    .. versionadded:: 1.2.0
+
+        Added the ``half_life`` and ``rolling`` parameters.
+
     When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
 
     .. code-block::
@@ -582,6 +594,10 @@ class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
 @dataclass(unsafe_hash=True)
 class HistoricalMeanError(HistoricalVariance):
     r"""Historical standard deviations of the mean of non-cash returns.
+
+    .. versionadded:: 1.2.0
+
+        Added the ``half_life`` and ``rolling`` parameters.
 
     For a given time series of past returns :math:`r_{t-1}, r_{t-2},
     \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
@@ -745,6 +761,10 @@ def project_on_psd_cone_and_factorize(covariance):
 @dataclass(unsafe_hash=True)
 class HistoricalFactorizedCovariance(HistoricalCovariance):
     r"""Historical covariance matrix of non-cash returns, factorized.
+
+    .. versionadded:: 1.2.0
+
+        Added the ``half_life`` and ``rolling`` parameters.
 
     When both ``half_life`` and ``rolling`` are infinity, this is equivalent
     to, before factorization

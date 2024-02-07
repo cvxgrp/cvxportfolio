@@ -366,11 +366,11 @@ class SimulatorCost( # pylint: disable=abstract-method
     """Cost class that can be used by :class:`cvxportfolio.MarketSimulator`.
 
     This is the base class of both :class:`HoldingCost` and
-    :class:`TransactionCost`. 
+    :class:`TransactionCost`.
 
-    This class derives from :class:`Cost` and 
-    :class:`cvxportfolio.estimator.SimulatorEstimator`. 
-    It implements the :meth:`simulate` method (which is abstract in 
+    This class derives from :class:`Cost` and
+    :class:`cvxportfolio.estimator.SimulatorEstimator`.
+    It implements the :meth:`simulate` method (which is abstract in
     :class:`cvxportfolio.estimator.SimulatorEstimator`). The implementation
     uses the CVXPY compiled expression of the (optimization) cost to evaluate
     the cost in simulation, so we're sure the algebra is (exactly) the same.
