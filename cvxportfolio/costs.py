@@ -366,7 +366,23 @@ class SimulatorCost( # pylint: disable=abstract-method
     """Cost class that can be used by :class:`cvxportfolio.MarketSimulator`.
 
     This is the base class of both :class:`HoldingCost` and
-    :class:`TransactionCost`.
+    :class:`TransactionCost`. 
+
+    This class derives from :class:`Cost` and 
+    :class:`cvxportfolio.estimator.SimulatorEstimator`. 
+    It implements the :meth:`simulate` method (which is abstract in 
+    :class:`cvxportfolio.estimator.SimulatorEstimator`). The implementation
+    uses the CVXPY compiled expression of the (optimization) cost to evaluate
+    the cost in simulation, so we're sure the algebra is (exactly) the same.
+    Of course the CVXPY expression operates on weights, so holdings and trades
+    are divided by the portfolio value, and the result is multiplied by the
+    portfolio value. If you implement a custom simulator's cost and prefer
+    to implement the cost expression directly you can derive straight from
+    :class:`cvxportfolio.estimator.SimulatorEstimator`. Look at the
+    code of the cost classes we implement if in doubt. Every operation that
+    is different in simulation and in optimization is wrapped in a
+    :class:`cvxportfolio.estimator.SimulatorEstimator` which implements
+    different :meth:`values_in_time` and :meth:`simulate` respectively.
     """
 
     def initialize_estimator( # pylint: disable=arguments-differ
@@ -674,7 +690,7 @@ class StocksHoldingCost(HoldingCost):
         super().__init__(short_fees=short_fees)
 
 
-class VolumePredictor(SimulatorEstimator):
+class VolumeHatOrRealized(SimulatorEstimator):
     r"""Predictor of market volumes used by :class:`TransactionCost`.
 
     This is used to model the different behaviors in optimization and
@@ -803,7 +819,7 @@ class TransactionCost(SimulatorCost):
             if isinstance(volume_hat, type):
                 volume_hat = volume_hat(
                     rolling=pd.Timedelta('365.24d'))
-            self.market_volumes = VolumePredictor(DataEstimator(volume_hat))
+            self.market_volumes = VolumeHatOrRealized(DataEstimator(volume_hat))
 
             if isinstance(sigma, type):
                 sigma = sigma(

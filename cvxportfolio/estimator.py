@@ -226,7 +226,22 @@ class Estimator:
 
 
 class SimulatorEstimator(Estimator):
-    """Base class for estimators that are used by the market simulator."""
+    """Base class for estimators that are used by the market simulator.
+
+    .. versionadded:: 1.2.0
+
+    This is currently used as the base class for
+    :class:`cvxportfolio.costs.SimulatorCost` but could implement in future
+    versions more operations done as part of a simulation (back-test) loop,
+    like filtering out trades (rejecting small ones, ...), or more. It allows
+    for nested evaluation like it's done by :meth:`values_in_time` and
+    :meth:`values_in_time_recursive`. Estimators that are used in the market
+    simulator should derive from this. Some examples are
+    :class:`DataEstimator`, which is used to select values (like borrow costs)
+    in simulations as well as in optimization, and
+    :class:`cvxportfolio.forecast.HistoricalStandardDeviation`, which is used
+    also in simulation by :class:`cvxportfolio.costs.TransactionCost`.
+    """
 
     def simulate( # pylint: disable=too-many-arguments
         self, t, t_next, u, h_plus, past_volumes,
@@ -523,6 +538,11 @@ class DataEstimator(SimulatorEstimator):
 
         # here (probably user-provided) we check
         if hasattr(self.data, "values_in_time"):
+            if len(kwargs) == 0:
+                raise ValueError(
+                    "It seems you're using a custom forecaster as part of a "
+                    "simulate_recursive evaluation, you should derive from "
+                    "SimulatorEstimator instead.")
             return self.value_checker(self._universe_subselect(
                 self.data.current_value if hasattr(self.data, 'current_value')
                 else self.data.values_in_time(t=t, **kwargs)))
@@ -585,29 +605,23 @@ class DataEstimator(SimulatorEstimator):
         return result
 
     def simulate( # pylint: disable=arguments-differ
-            self, **kwargs):
+            self, t, **kwargs):
         """Evaluate in simulation (e.g., TransactionCost).
 
-        :param kwargs: All arguments to :meth:`SimulatorEstimator.simulate`,
-            we only need the subset of those that are also the arguments to
-            :meth:`Estimator.values_in_time`.
+        :param t: Current timestamp.
+        :type t: pd.Timestamp
+        :param kwargs: All other unused arguments to
+            :meth:`SimulatorEstimator.simulate`.
         :type kwargs: dict
 
         :returns: The  value from this
             :class:`cvxportfolio.estimator.DataEstimator` at current time.
         :rtype: int, float, numpy.ndarray
         """
-        # We need to pass the full list of arguments to values_in_time
-        # because there is an edge case above where the DataEstimator
-        # instance actually calls values_in_time of self.data
-        return self.values_in_time(
-                    t=kwargs['t'],
-                    current_weights=kwargs['current_weights'],
-                    current_portfolio_value=kwargs['current_portfolio_value'],
-                    past_returns=kwargs['past_returns'],
-                    past_volumes=kwargs['past_volumes'],
-                    current_prices=kwargs['current_prices']
-                )
+        # We don't support evaluation inside DataEstimator in this case
+        # You should implement simulate/simulate_recursive in each
+        # SimulatorEstimator wrapped by DataEstimator
+        return self.values_in_time(t=t)
 
     def __repr__(self):
         """Pretty-print."""
