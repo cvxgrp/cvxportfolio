@@ -44,11 +44,18 @@ class TestHyperparameters(CvxportfolioTest):
             - cvx.Gamma() * cvx.StocksTransactionCost()
 
         self.assertTrue(str(obj) ==
-            'ReturnsForecast(r_hat=HistoricalMeanReturn(), decay=1.0)'
+            'ReturnsForecast(r_hat=HistoricalMeanReturn(half_life=inf,'
+            + ' rolling=inf), decay=1.0)'
             + '- Gamma(current_value=1.0) * FullCovariance('
-            + 'Sigma=HistoricalFactorizedCovariance(kelly=True))'
-            + '- Gamma(current_value=1.0) * StocksTransactionCost('
-            + 'a=0.0, pershare_cost=0.005, b=1.0, exponent=1.5)')
+            + 'Sigma=HistoricalFactorizedCovariance(half_life=inf,'
+            + ' rolling=inf, kelly=True))'
+            + '- Gamma(current_value=1.0) * StocksTransactionCost(a=0.0, '
+            + 'b=1.0, market_volumes=VolumeHatOrRealized('
+            + 'volume_hat=HistoricalMeanVolume(half_life=inf, '
+            + "rolling=Timedelta('365 days 05:45:36'))), "
+            + "sigma=HistoricalStandardDeviation(half_life=inf, "
+            + "rolling=Timedelta('365 days 05:45:36'), kelly=True), "
+            + 'exponent=1.5, pershare_cost=0.005)')
 
         print(cvx.Gamma() * cvx.Gamma())
         print(cvx.Gamma() - cvx.Gamma())

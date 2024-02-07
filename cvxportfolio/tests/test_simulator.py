@@ -214,9 +214,20 @@ class TestSimulator(CvxportfolioTest):
 
             hcost = cvx.HoldingCost(short_fees=5, dividends=dividends)
 
-            sim_hcost = hcost.simulate(
+            hcost.initialize_estimator_recursive(
+                universe=h_plus.index, trading_calendar=[t])
+
+            sim_hcost = hcost.simulate_recursive(
                 t=t, h_plus=h_plus,
-                t_next=t + pd.Timedelta('1d'))
+                u=pd.Series(1., h_plus.index),
+                t_next=t + pd.Timedelta('1d'),
+                past_returns=None,
+                current_returns=None,
+                past_volumes=None,
+                current_volumes=None,
+                current_prices=None,
+                current_portfolio_value=sum(h_plus),
+                current_weights=None)
 
             hcost = -(np.exp(np.log(1.05)/365.24)-1) * sum(
                 -np.minimum(h_plus, 0.)[:-1])
@@ -237,34 +248,63 @@ class TestSimulator(CvxportfolioTest):
         tcost = cvx.StocksTransactionCost()
         # syntax checks
         with self.assertRaises(SyntaxError):
-            tcost.simulate(t, u=u,
+            tcost.initialize_estimator_recursive(
+                universe=current_returns.index, trading_calendar=[t])
+            tcost.simulate_recursive(t=t, u=u,
                             past_returns=past_returns,
+                            t_next=None, h_plus=pd.Series(1., u.index),
                             current_returns=current_returns,
                             past_volumes=past_volumes,
                             current_volumes=current_volumes,
-                            current_prices=None)
+                            current_prices=None,
+                            current_portfolio_value=1000,
+                            current_weights=None,)
 
-        tcost = cvx.TransactionCost(pershare_cost=None,)
-        tcost.simulate(t, u=u, current_prices=None,
+        tcost = cvx.TransactionCost()
+        tcost.initialize_estimator_recursive(
+                universe=current_returns.index, trading_calendar=[t])
+        tcost.simulate_recursive(t=t, u=u, current_prices=None,
+                        t_next=None, h_plus=pd.Series(1., u.index),
                         past_returns=past_returns,
                         current_returns=current_returns,
                         past_volumes=past_volumes,
-                        current_volumes=current_volumes)
+                        current_volumes=current_volumes,
+                        current_portfolio_value=1000,
+                        current_weights=None,)
 
-        tcost = cvx.TransactionCost()
+        tcost = cvx.TransactionCost(b=0.)
         with self.assertRaises(SyntaxError):
-            tcost.simulate(t, u=u, current_prices=current_prices,
+            tcost.simulate_recursive(t=t, u=u, current_prices=current_prices,
                             past_returns=past_returns,
                             current_returns=current_returns,
                             past_volumes=None,
-                            current_volumes=None)
+                            current_volumes=None,
+                            current_portfolio_value=None,
+                            current_weights=None,)
+
+        tcost = cvx.StocksTransactionCost(window_volume_est=252)
+        with self.assertRaises(SyntaxError):
+            tcost.values_in_time_recursive(t=t,
+                current_prices=current_prices,
+                past_returns=past_returns,
+                past_volumes=None,
+                current_portfolio_value=1000,
+                current_weights=None,)
+
+        with self.assertRaises(SyntaxError):
+            _ = cvx.TransactionCost(b=1, exponent=.9)
 
         tcost = cvx.TransactionCost(b=None)
-        tcost.simulate(t, u=u, current_prices=current_prices,
+        tcost.initialize_estimator_recursive(
+                universe=current_returns.index, trading_calendar=[t])
+        tcost.simulate_recursive(t=t, u=u, current_prices=current_prices,
+                        t_next=None, h_plus=pd.Series(1., u.index),
                         past_returns=past_returns,
                         current_returns=current_returns,
                         past_volumes=None,
-                        current_volumes=None)
+                        current_volumes=None,
+                        current_portfolio_value=1000,
+                        current_weights=None,)
 
     def test_transaction_cost(self):
         """Test (Stock)TransactionCost simulator's interface."""
@@ -288,10 +328,16 @@ class TestSimulator(CvxportfolioTest):
             # pylint: disable=protected-access
             u = MarketSimulator._round_trade_vector(u, current_prices)
 
-            tcost = cvx.StocksTransactionCost(a=spreads/2)
+            tcost = cvx.StocksTransactionCost(
+                a=spreads/2, window_sigma_est=252)
+            tcost.initialize_estimator_recursive(
+                universe=current_returns.index, trading_calendar=[t])
 
-            sim_cost = tcost.simulate(
-                t, u=u, current_prices=current_prices,
+            sim_cost = tcost.simulate_recursive(
+                t=t, u=u, current_prices=current_prices,
+                t_next=None, h_plus=pd.Series(1000., u.index),
+                current_portfolio_value=1E4,
+                current_weights=None,
                 past_returns=past_returns,
                 current_returns=current_returns,
                 past_volumes=past_volumes,
@@ -364,13 +410,22 @@ class TestSimulator(CvxportfolioTest):
                     start_time, end_time, include_end=False)
             )
 
+            for cost in simulator.costs:
+                cost.initialize_estimator_recursive(
+                universe=simulator.market_data.full_universe,
+                trading_calendar=simulator.market_data.trading_calendar(
+                    start_time, end_time, include_end=False)
+            )
+
             for (i, t) in enumerate(simulator.market_data.returns.index[
                     (simulator.market_data.returns.index >= start_time) & (
                     simulator.market_data.returns.index <= end_time)]):
-                t_next = simulator.market_data.returns.index[i+1]
+                t_next = simulator.market_data.returns.index[
+                    simulator.market_data.returns.index.get_loc(t) + 1]
                 oldcash = h.iloc[-1]
                 past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
+                # import code; code.interact(local=locals())
                 h, _, _, costs, _ = simulator.simulate(
                     t=t, h=h, policy=policy, t_next=t_next,
                     past_returns=past_returns, current_returns=current_returns,
@@ -379,8 +434,8 @@ class TestSimulator(CvxportfolioTest):
                 tcost, hcost = costs['StocksTransactionCost'
                     ], costs['StocksHoldingCost']
                 assert tcost == 0.
-                # if np.all(h0[:2] > 0):
-                #    assert hcost == 0.
+                if np.all(h0[:2] > 0):
+                    assert hcost == 0.
                 assert np.isclose(
                     (oldcash - hcost) * (1+simulator.market_data.returns.loc[
                         t, 'USDOLLAR']), h.iloc[-1])
@@ -411,7 +466,8 @@ class TestSimulator(CvxportfolioTest):
             for i, t in enumerate(simulator.market_data.returns.index[
                     (simulator.market_data.returns.index >= start_time) &
                         (simulator.market_data.returns.index <= end_time)]):
-                t_next = simulator.market_data.returns.index[i+1]
+                t_next = simulator.market_data.returns.index[
+                    simulator.market_data.returns.index.get_loc(t) + 1]
                 oldcash = h.iloc[-1]
                 past_returns, current_returns, past_volumes, current_volumes, \
                     current_prices = simulator.market_data.serve(t)
@@ -979,4 +1035,5 @@ class TestSimulator(CvxportfolioTest):
 
 if __name__ == '__main__':
 
-    unittest.main(warnings='error') # pragma: no cover
+    # unittest.main(warnings='error') # pragma: no cover
+    unittest.main() # pragma: no cover

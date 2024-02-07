@@ -22,7 +22,7 @@ Risk models
 
 
 Forecast error models
----------------------
+=====================
 
 .. autoclass:: ReturnsForecastError
 
