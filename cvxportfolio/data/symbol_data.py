@@ -250,44 +250,105 @@ def _timestamp_convert(unix_seconds_ts):
     """Convert a UNIX timestamp in seconds to a pandas.Timestamp."""
     return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
 
+# Windows for filtering extreme logreturns
+_WINDOWS = (10, 20, 50, 100, 200)
+
+def _median_scale_around(lrets, window):
+    """Median absolute logreturn in a window around each timestamp."""
+    return np.abs(lrets).rolling(window, center=True, min_periods=1).median()
+
+def _mean_scale_around(lrets, window):
+    """Root mean squared logreturn in a window around each timestamp."""
+    return np.sqrt(
+        (lrets**2).rolling(window, center=True, min_periods=1).mean())
+
+def _unlikeliness_score(
+        test_logreturns, reference_logreturns, scaler=_median_scale_around,
+        windows=_WINDOWS):
+    """Find problematic indexes for test logreturns compared w/ reference."""
+    scaled = [
+        np.abs(test_logreturns) / scaler(reference_logreturns, window)
+        for window in windows]
+    scaled = pd.DataFrame(scaled).T
+    return scaled.min(axis=1), scaled
+
+
 class OHLCV(SymbolData): # pylint: disable=abstract-method
-    """Base class for Open-High-Low-Close-Volume symbol data."""
+    """Base class for Open-High-Low-Close-Volume symbol data.
+
+    This operates on a dataframe with columns
+
+    .. code-block::
+
+        ['open', 'low', 'high', 'close', 'volume']
+
+    or
+
+    .. code-block::
+
+        ['open', 'low', 'high', 'close', 'volume', 'return']
+
+    in which case the ``'return'`` column is not processed. It only matters in
+    the :meth:`_preload`, method: if open-to-open returns are not present,
+    we compute them there. Otherwise these may be total returns (including
+    dividends, ...) and they're dealt with in derived classes.
+    """
 
     # TODO: factor quality check and clean into total-return related and non-
 
+    def _preload(self, data):
+        """Prepare data for use by Cvxportfolio.
+
+        We drop the `volume` column expressed in number of shares and
+        replace it with `valuevolume` which is an estimate of the (e.g.,
+        US dollar) value of the volume exchanged on the day.
+        """
+
+        # this is not used currently, but if we implement an interface to a
+        # pure OHLCV data source there is no need to store the open-to-open
+        # returns, they can be computed here
+        if not 'return' in data.columns:
+            data['return'] = data['open'].pct_change().shift(-1)
+
+        self._quality_check(data)
+        data["valuevolume"] = data["volume"] * data["open"]
+        del data["volume"]
+
+        return data
+
 class OHLCVTR(OHLCV): # pylint: disable=abstract-method
-    """Base class for Open-High-Low-Close-Volume-Total Return symbol data."""
+    """Open-High-Low-Close-Volume-TotalReturn symbol data."""
 
     # TODO: consider creating a OHLCVAC (adjusted closes) subclass
 
     # is open-high-low-close-volume-total return
     IS_OHLCVR = True
 
-    # rolstd windows for finding wrong logreturns
-    _ROLSTD_WINDOWS = [20, 60, 252]
+    # # rolstd windows for finding wrong logreturns
+    # _ROLSTD_WINDOWS = [20, 60, 252]
 
-    # threshold for finding wrong logreturns
-    _WRONG_LOGRET_THRESHOLD = 15
+    # # threshold for finding wrong logreturns
+    # _WRONG_LOGRET_THRESHOLD = 15
 
-    def _indexes_extreme_logrets_wrt_rolstddev(self, lrets, window, treshold):
-        """Get indexes of logreturns that are extreme wrt trailing stddev."""
-        trailing_stdev = np.sqrt((lrets**2).rolling(window).median().shift(1))
-        bad_indexes = lrets.index[np.abs(lrets / trailing_stdev) > treshold]
-        return bad_indexes
+    # def _indexes_extreme_logrets_wrt_rolstddev(self, lrets, window, treshold):
+    #     """Get indexes of logreturns that are extreme wrt trailing stddev."""
+    #     trailing_stdev = np.sqrt((lrets**2).rolling(window).median().shift(1))
+    #     bad_indexes = lrets.index[np.abs(lrets / trailing_stdev) > treshold]
+    #     return bad_indexes
 
-    def _find_wrong_daily_logreturns(self, lrets):
-        """Find indexes of logreturns that are most probably data errors."""
-        bad_indexes = []
-        for window in self._ROLSTD_WINDOWS:
-            bad_indexes.append(
-                set(self._indexes_extreme_logrets_wrt_rolstddev(
-                lrets, window=window, treshold=self._WRONG_LOGRET_THRESHOLD)))
-            bad_indexes.append(
-                set(self._indexes_extreme_logrets_wrt_rolstddev(
-                lrets.iloc[::-1], window=window,
-                treshold=self._WRONG_LOGRET_THRESHOLD)))
-        bad_indexes = set.intersection(*bad_indexes)
-        return bad_indexes
+    # def _find_wrong_daily_logreturns(self, lrets):
+    #     """Find indexes of logreturns that are most probably data errors."""
+    #     bad_indexes = []
+    #     for window in self._ROLSTD_WINDOWS:
+    #         bad_indexes.append(
+    #             set(self._indexes_extreme_logrets_wrt_rolstddev(
+    #             lrets, window=window, treshold=self._WRONG_LOGRET_THRESHOLD)))
+    #         bad_indexes.append(
+    #             set(self._indexes_extreme_logrets_wrt_rolstddev(
+    #             lrets.iloc[::-1], window=window,
+    #             treshold=self._WRONG_LOGRET_THRESHOLD)))
+    #     bad_indexes = set.intersection(*bad_indexes)
+    #     return bad_indexes
 
     # TODO: plan
     # ffill adj closes & compute adj close logreturns
@@ -442,7 +503,7 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         # print(data)
         # print(data.isnull().sum())
 
-    def _clean(self, data):
+    def _process(self, data):
         """Clean Yahoo Finance open-close-high-low-volume-adjclose data."""
 
         self._nan_impossible(data)
@@ -501,7 +562,18 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         open2low = np.log(data['low']) - np.log(data['open']).dropna()
         print_extreme(open2low, 'open to low returns')
 
-class YahooFinance(OHLCVTR):
+
+class OHLCVAC(OHLCVTR):
+    """Open-High-Low-Close-Volume-AdjustedClose data.
+
+    This is modeled after the data returned by Yahoo Finance. It implements
+    the transformation required to conform to the
+    Open-High-Low-Close-Volume-TotalReturn model, that is, compute
+    returns from the adjusted closes, and do some error checks.
+    """
+
+
+class YahooFinance(OHLCVAC):
     """Yahoo Finance symbol data.
 
     :param symbol: The symbol that we downloaded.
@@ -633,6 +705,7 @@ class YahooFinance(OHLCVTR):
         Returns:
             updated (pandas.DataFrame): updated DataFrame for the symbol
         """
+        # TODO this could be put at a much lower class hierarchy
         if overlap < 2:
             raise SyntaxError(
                 f'{self.__class__.__name__} with overlap smaller than 2'
@@ -640,7 +713,7 @@ class YahooFinance(OHLCVTR):
         if (current is None) or (len(current) < overlap):
             updated = self._get_data_yahoo(symbol, **kwargs)
             logger.info('Downloading from the start.')
-            result = self._clean(updated)
+            result = self._process(updated)
             # we remove first row if it contains NaNs
             if np.any(result.iloc[0].isnull()):
                 result = result.iloc[1:]
@@ -651,22 +724,9 @@ class YahooFinance(OHLCVTR):
                 'Skipping download because stored data is recent enough.')
             return current
         new = self._get_data_yahoo(symbol, start=current.index[-overlap])
-        new = self._clean(new)
+        new = self._process(new)
         return pd.concat([current.iloc[:-overlap], new])
 
-    def _preload(self, data):
-        """Prepare data for use by Cvxportfolio.
-
-        We drop the `volume` column expressed in number of stocks and
-        replace it with `valuevolume` which is an estimate of the (e.g.,
-        US dollar) value of the volume exchanged on the day.
-        """
-
-        self._quality_check(data)
-        data["valuevolume"] = data["volume"] * data["open"]
-        del data["volume"]
-
-        return data
 
 #
 # Fred.

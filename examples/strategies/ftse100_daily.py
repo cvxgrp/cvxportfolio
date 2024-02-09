@@ -67,6 +67,7 @@ if __name__ == '__main__':
 
     else:
         import matplotlib.pyplot as plt
+
         #INDEX_ETF = 'DIA'
 
         research_sim = cvx.StockMarketSimulator(FTSE100, cash_key='GBPOUND')

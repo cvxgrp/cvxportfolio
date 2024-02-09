@@ -132,8 +132,8 @@ if __name__ == '__main__':
         'ftse100': {
             'page': 'https://en.wikipedia.org/wiki/FTSE_100_Index',
             'table_number': -1,
-            'column_number':1,
-            'suffix':'.L',
+            'column_number': 1,
+            'suffix': '.L',
         }
     }
 
