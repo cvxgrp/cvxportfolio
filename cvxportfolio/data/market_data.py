@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from ..errors import DataError
-from ..utils import (hash_, periods_per_year_from_datetime_index,
+from ..utils import (hash_, make_numeric, periods_per_year_from_datetime_index,
                      resample_returns)
 from .symbol_data import *
 
@@ -524,11 +524,12 @@ class UserProvidedMarketData(MarketDataInMemory):
         self.base_location = Path(base_location)
         self.cash_key = cash_key
 
-        self.returns = pd.DataFrame(returns, copy=copy_dataframes)
+        self.returns = pd.DataFrame(
+            make_numeric(returns), copy=copy_dataframes)
         self.volumes = volumes if volumes is None else\
-            pd.DataFrame(volumes, copy=copy_dataframes)
+            pd.DataFrame(make_numeric(volumes), copy=copy_dataframes)
         self.prices = prices if prices is None else\
-            pd.DataFrame(prices, copy=copy_dataframes)
+            pd.DataFrame(make_numeric(prices), copy=copy_dataframes)
 
         if cash_key != returns.columns[-1]:
             self._add_cash_column(cash_key, grace_period=grace_period)

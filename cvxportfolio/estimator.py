@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from .errors import DataError, MissingAssetsError, MissingTimesError, NaNError
-from .utils import repr_numpy_pandas
+from .utils import make_numeric, repr_numpy_pandas
 
 
 class Estimator:
@@ -395,7 +395,7 @@ class DataEstimator(SimulatorEstimator):
             compile_parameter=False, non_negative=False,
             positive_semi_definite=False, data_includes_cash=False,
             ignore_shape_check=False):
-        self.data = data
+        self.data = make_numeric(data)
         self._use_last_available_time = use_last_available_time
         self._allow_nans = allow_nans
         self._compile_parameter = compile_parameter

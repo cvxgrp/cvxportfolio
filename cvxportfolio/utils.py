@@ -14,9 +14,12 @@
 """This module contains miscellaneous functions."""
 
 import hashlib
+from numbers import Number
 
 import numpy as np
 import pandas as pd
+
+from .errors import DataError
 
 TRUNCATE_REPR_HASH = 10  # probability of conflict is 1e-16
 
@@ -69,6 +72,37 @@ def resample_returns(returns, periods):
     :rtype: pandas.Series
     """
     return np.exp(np.log(1 + returns) / periods) - 1
+
+def make_numeric(np_or_pd):
+    """Coerce Pandas or Numpy object to numeric.
+
+    :param np_or_pd: User-provided data.
+    :type np_or_pd: np.array, pd.Series, pd.DataFrame, object
+
+    :raises DataError: If input data could not be casted to numeric.
+
+    :returns: Same object, casted to numeric if necessary
+    :rtype: np.array, pd.Series, pd.DataFrame, object
+    """
+
+    try:
+        if isinstance(np_or_pd, np.ndarray):
+            if not np.issubdtype(np_or_pd.dtype, np.number):
+                return np_or_pd.astype(float)
+
+        if isinstance(np_or_pd, pd.Series):
+            if not np.issubdtype(np_or_pd.dtype, np.number):
+                return pd.to_numeric(np_or_pd)
+
+        if isinstance(np_or_pd, pd.DataFrame):
+            if not np.all(
+                [np.issubdtype(el, np.number) for el in set(np_or_pd.dtypes)]):
+                return np_or_pd.astype(float)
+
+    except ValueError as exc:
+        raise DataError("Input data could not be cast to numeric.") from exc
+
+    return np_or_pd
 
 
 def flatten_heterogeneous_list(li):
