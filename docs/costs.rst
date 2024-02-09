@@ -3,7 +3,13 @@
 Cost models
 -----------
 
+.. py:module:: cvxportfolio
+    :noindex:
+
 .. automodule:: cvxportfolio.costs
+
+Costs Documentation
+~~~~~~~~~~~~~~~~~~~
 
 .. py:module:: cvxportfolio
     :noindex:
@@ -21,3 +27,13 @@ Cost models
 .. autoclass:: TcostModel
 
 .. autoclass:: HcostModel
+
+Base classes (for defining your costs)
+======================================
+
+
+.. autoclass:: cvxportfolio.costs.Cost
+
+.. autoclass:: cvxportfolio.costs.SimulatorCost
+
+    .. automethod:: simulate

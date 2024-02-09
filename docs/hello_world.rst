@@ -9,6 +9,7 @@ and show the results. This example script is
 
 .. literalinclude:: ../examples/hello_world.py
    :language: python
+   :lines: 14-
 
 This is the output printed to screen when executing this script. You can see
 many statistics of the back-tests. The timestamps of the back-test are the

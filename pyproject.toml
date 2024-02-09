@@ -1,6 +1,6 @@
 [project]
 name = "cvxportfolio"
-version = "1.1.0"
+version = "1.1.1"
 description = "Portfolio optimization and back-testing."
 readme = "README.rst"
 license = {text = "Apache License (2.0)"}

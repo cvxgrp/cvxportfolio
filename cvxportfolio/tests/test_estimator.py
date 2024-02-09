@@ -47,20 +47,27 @@ class TestEstimator(unittest.TestCase):
         """Test DataEstimator with an internal Estimator."""
         estimator = DataEstimator(PlaceholderCallable(1.0))
         time = pd.Timestamp("2022-01-01")
-        self.assertEqual(estimator.values_in_time_recursive(t=time), 1.0)
+        self.assertEqual(estimator.values_in_time_recursive(
+            t=time, current_portfolio_value=1000), 1.0)
 
         estimator = DataEstimator(PlaceholderCallable(np.nan))
         with self.assertRaises(NaNError):
-            estimator.values_in_time_recursive(t=time)
+            estimator.values_in_time_recursive(
+                t=time, current_portfolio_value=1000)
 
         data = np.arange(10.0)
         estimator = DataEstimator(PlaceholderCallable(data))
         self.assertTrue(
-            np.all(estimator.values_in_time_recursive(t=time) == data))
+            np.all(estimator.values_in_time_recursive(
+                t=time, current_portfolio_value=1000) == data))
+
+        with self.assertRaises(ValueError):
+            estimator.simulate_recursive(t=time, current_portfolio_value=1000)
 
         data[1] = np.nan
         with self.assertRaises(NaNError):
-            estimator.values_in_time_recursive(t=time)
+            estimator.values_in_time_recursive(
+                t=time, current_portfolio_value=1000)
 
     def test_scalar(self):
         """Test DataEstimator with a scalar."""

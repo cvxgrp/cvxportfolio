@@ -1,8 +1,6 @@
 Estimators
 ===========
 
-*Work in progress.*
-
 .. automodule:: cvxportfolio.estimator
 
 .. py:module:: cvxportfolio.estimator
@@ -21,6 +19,12 @@ Estimators
      .. automethod:: finalize_estimator
 
      .. automethod:: finalize_estimator_recursive
+
+.. autoclass:: SimulatorEstimator
+
+     .. automethod:: simulate
+
+     .. automethod:: simulate_recursive
 
 .. autoclass:: CvxpyExpressionEstimator
 
