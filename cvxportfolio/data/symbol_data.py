@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module defines the :class:`SymbolData` abstraction and derived classes."""
+"""This module defines :class:`SymbolData` and derived classes."""
+
 import datetime
 import logging
 import sqlite3
@@ -303,8 +304,8 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
     #
     # compute open-open total returns, then check with same logic for errors
     #
-    # when doing append, make past data adhere to same format: recompute adj close
-    #
+    # when doing append, make past data adhere to same format: recompute adj
+    # close
     # could use volumes as well, if there are jumps in price due to
     # splits not recorded, then price * volume should be more stable
     #
@@ -521,7 +522,20 @@ class YahooFinance(OHLCVTR):
 
     @staticmethod
     def _get_data_yahoo(ticker, start='1900-01-01', end='2100-01-01'):
-        """Get 1 day OHLC from Yahoo finance.
+        """Get 1-day OHLC-AC-V from Yahoo finance.
+
+        This is roughly equivalent to
+
+        .. code-block::
+
+            import yfinance as yf
+            yf.download(ticker)
+
+        But it does no caching of any sort; only a single request call,
+        error checking (which result in exceptions going all the way to the
+        user, in the current design), json parsing, and a minimal effort to
+        restore the last timestamp. All processing and cleaning is done
+        elsewhere.
 
         Result is timestamped with the open time (time-zoned) of the
         instrument.
@@ -597,6 +611,7 @@ class YahooFinance(OHLCVTR):
         #     df_result.index = pd.DatetimeIndex(
         #         list(df_result.index[:-1]) + [newlast])
 
+        # these are all the columns, we simply re-order them
         return df_result[
             ['open', 'low', 'high', 'close', 'adjclose', 'volume']]
 
