@@ -144,7 +144,7 @@ class TestData(CvxportfolioTest):
             base_location=self.datadir)
 
     def test_yahoo_finance_removefirstline(self):
-        """Test that the first line of OHLCV is removed if there are NaNs."""
+        """Test that the first line of OLHCV is removed if there are NaNs."""
 
         # this symbol was found to have NaNs in the first line
         _ = YahooFinance(

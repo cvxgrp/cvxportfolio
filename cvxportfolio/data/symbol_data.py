@@ -273,8 +273,8 @@ def _unlikeliness_score(
     return scaled.min(axis=1), scaled
 
 
-class OHLCV(SymbolData): # pylint: disable=abstract-method
-    """Base class for Open-High-Low-Close-Volume symbol data.
+class OLHCV(SymbolData): # pylint: disable=abstract-method
+    """Base class for Open-Low-High-Close-Volume symbol data.
 
     This operates on a dataframe with columns
 
@@ -294,6 +294,159 @@ class OHLCV(SymbolData): # pylint: disable=abstract-method
     dividends, ...) and they're dealt with in derived classes.
     """
 
+    def _process(self, new_data, saved_data=None):
+        """Base method for processing (cleaning) data.
+
+        It operates on the ``new_data`` dataframe, which is the newly
+        downloaded data. The ``saved_data`` dataframe is provided as well
+        (None if there is none). It has the same columns, older timestamps
+        with possible overlap with new_data at its end, and is **read only**:
+        it is used as reference to help with the cleaning, it has already
+        been cleaned.
+
+        The method is composed of the following steps, split between child
+        classes at the appropriate hierarchy level.
+
+        #. :meth:`_nan_impossible`: Nan-out impossible values in ``new_data``.
+        #. :meth:`_specific_process`: Do processing specific to the class,
+            before the following step (*e.g.,*, because we might want unlikely
+            values to still be there).
+        #. :meth:`_nan_unlikely`: Nan-out values that are (highly) unlikely,
+            with threshold-based testing.
+        #. :meth:`_fill`: Fill nans.
+        #. :meth:`_post_process`: Do final processing specific to the class.
+
+        With this factoring we should have the flexibility to handle various
+        data sources, by choosing at each level if each method calls
+        the parent's before or after its own processing.
+        """
+
+        self._nan_impossible(new_data, saved_data=saved_data)
+        self._specific_process(new_data, saved_data=saved_data)
+        self._nan_unlikely(new_data, saved_data=saved_data)
+        self._fill(new_data, saved_data=saved_data)
+        self._post_process(new_data, saved_data=saved_data)
+
+        return new_data
+
+    def _specific_process(self, new_data, saved_data=None):
+        """Specific process, do nothing."""
+        # return new_data
+
+    def _post_process(self, new_data, saved_data=None):
+        """Post process, do nothing."""
+        # return new_data
+
+    def _nan_unlikely(self, new_data, saved_data=None):
+        """Nan-out unlikely values."""
+        # return new_data
+
+    def _fill(self, new_data, saved_data=None):
+        """Make easy fills."""
+
+        # TODO: simplify
+
+        # print(data)
+        # print(data.isnull().sum())
+
+        # fill volumes with zeros (safest choice)
+        new_data['volume'] = new_data['volume'].fillna(0.)
+
+        # fill close price with open price
+        new_data['close'] = new_data['close'].fillna(new_data['open'])
+
+        # fill open price with close from day(s) before
+        # repeat as long as it helps (up to 1 year)
+        for shifter in range(252):
+            logger.info(
+                "Filling opens with close from %s days before", shifter)
+            orig_missing_opens = new_data['open'].isnull().sum()
+            new_data['open'] = new_data['open'].fillna(new_data['close'].shift(
+                shifter+1))
+            new_missing_opens = new_data['open'].isnull().sum()
+            if orig_missing_opens == new_missing_opens:
+                break
+
+        # fill close price with same day's open
+        new_data['close'] = new_data['close'].fillna(new_data['open'])
+
+        # fill high price with max
+        new_data['high'] = new_data['high'].fillna(new_data[['open', 'close']].max(1))
+
+        # fill low price with max
+        new_data['low'] = new_data['low'].fillna(new_data[['open', 'close']].min(1))
+
+        # print(data)
+        # print(data.isnull().sum())
+
+    def _nan_nonpositive_prices(self, data, prices_name):
+        """Set non-positive prices (chosen column) to NaN, in-place."""
+
+        bad_indexes = data.index[data[prices_name] <= 0]
+        if len(bad_indexes) > 0:
+            logger.warning(
+                '%s("%s") has non-positive %s prices on timestamps: %s,'
+                + ' setting to nan',
+                self.__class__.__name__, self.symbol, prices_name, bad_indexes)
+            data.loc[bad_indexes, prices_name] = np.nan
+
+    def _nan_negative_volumes(self, data):
+        """Set negative volumes to NaN, in-place."""
+
+        bad_indexes = data.index[data["volume"] < 0]
+        if len(bad_indexes) > 0:
+            logger.warning(
+                '%s("%s") has negative volumes on timestamps: %s,'
+                + ' setting to nan',
+                self.__class__.__name__, self.symbol, bad_indexes)
+            data.loc[bad_indexes, "volume"] = np.nan
+
+    def _set_infty_to_nan(self, data):
+        """Set all +/- infty elements of data to NaN, in-place."""
+
+        if np.isinf(data).sum().sum() > 0:
+            logger.warning(
+                '%s("%s") has +/- infinity values, setting those to nan',
+                self.__class__.__name__, self.symbol)
+            data.iloc[:, :] = np.nan_to_num(
+                data.values, copy=True, nan=np.nan, posinf=np.nan,
+                neginf=np.nan)
+
+    def _nan_impossible(self, new_data, saved_data=None):
+        """Set some impossible values of new_data to NaN, in-place."""
+
+        # nan-out nonpositive prices
+        for column in ["open", "close", "high", "low"]:
+            self._nan_nonpositive_prices(new_data, column)
+
+        # nan-out negative volumes
+        self._nan_negative_volumes(new_data)
+
+        # all infinity values are nans
+        self._set_infty_to_nan(new_data)
+
+        # TODO: these can be made smarter (sometimes the open is clearly wrong)
+
+        # if low is not the lowest, set it to nan
+        bad_indexes = new_data.index[
+            new_data['low'] > new_data[['open', 'high', 'close']].min(1)]
+        if len(bad_indexes) > 0:
+            logger.warning(
+                '%s("%s") low prices are not the lowest on timestamps: %s,'
+                + ' setting to nan',
+                self.__class__.__name__, self.symbol, bad_indexes)
+            new_data.loc[bad_indexes, "low"] = np.nan
+
+        # if high is not the highest, set it to nan
+        bad_indexes = new_data.index[
+            new_data['high'] < new_data[['open', 'high', 'close']].max(1)]
+        if len(bad_indexes) > 0:
+            logger.warning(
+                '%s("%s") high prices are not the highest on timestamps: %s,'
+                + ' setting to nan',
+                self.__class__.__name__, self.symbol, bad_indexes)
+            new_data.loc[bad_indexes, "high"] = np.nan
+
     # TODO: factor quality check and clean into total-return related and non-
 
     def _preload(self, data):
@@ -305,7 +458,7 @@ class OHLCV(SymbolData): # pylint: disable=abstract-method
         """
 
         # this is not used currently, but if we implement an interface to a
-        # pure OHLCV data source there is no need to store the open-to-open
+        # pure OLHCV data source there is no need to store the open-to-open
         # returns, they can be computed here
         if not 'return' in data.columns:
             data['return'] = data['open'].pct_change().shift(-1)
@@ -316,13 +469,12 @@ class OHLCV(SymbolData): # pylint: disable=abstract-method
 
         return data
 
-class OHLCVTR(OHLCV): # pylint: disable=abstract-method
-    """Open-High-Low-Close-Volume-TotalReturn symbol data."""
+class OLHCVTR(OLHCV): # pylint: disable=abstract-method
+    """Open-Low-High-Close-Volume-TotalReturn symbol data."""
 
-    # TODO: consider creating a OHLCVAC (adjusted closes) subclass
-
+    # TODO: this becomes a isinstance(OLHC) in the caller
     # is open-high-low-close-volume-total return
-    IS_OHLCVR = True
+    IS_OLHCVR = True
 
     # # rolstd windows for finding wrong logreturns
     # _ROLSTD_WINDOWS = [20, 60, 252]
@@ -372,104 +524,6 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
     #
     #
 
-    def _nan_impossible(self, data):
-        """Set impossible values to NaN."""
-
-        # print(data)
-        # print(data.isnull().sum())
-
-        # nan-out nonpositive prices
-        for column in ["open", "close", "high", "low", "adjclose"]:
-            bad_indexes = data.index[data[column] <= 0]
-            if len(bad_indexes) > 0:
-                logger.warning(
-                    '%s("%s") has non-positive %s prices on timestamps: %s,'
-                    + ' setting to nan',
-                    self.__class__.__name__, self.symbol, column, bad_indexes)
-                data.loc[bad_indexes, column] = np.nan
-
-        # nan-out negative volumes
-        bad_indexes = data.index[data["volume"] < 0]
-        if len(bad_indexes) > 0:
-            logger.warning(
-                '%s("%s") has negative volumes on timestamps: %s,'
-                + ' setting to nan',
-                self.__class__.__name__, self.symbol, bad_indexes)
-            data.loc[bad_indexes, "volume"] = np.nan
-
-        # all infinity values are nans
-        if np.isinf(data).sum().sum() > 0:
-            logger.warning(
-                '%s("%s") has +/- infinity values, setting those to nan',
-                self.__class__.__name__, self.symbol)
-            data.iloc[:, :] = np.nan_to_num(
-                data.values, copy=True, nan=np.nan, posinf=np.nan,
-                neginf=np.nan)
-
-        # print(data)
-        # print(data.isnull().sum())
-
-        # TODO: these can be made smarter (sometimes the open is clearly wrong)
-
-        # if low is not the lowest, set it to nan
-        bad_indexes = data.index[
-            data['low'] > data[['open', 'high', 'close']].min(1)]
-        if len(bad_indexes) > 0:
-            logger.warning(
-                '%s("%s") low prices are not the lowest on timestamps: %s,'
-                + ' setting to nan',
-                self.__class__.__name__, self.symbol, bad_indexes)
-            data.loc[bad_indexes, "low"] = np.nan
-
-        # if high is not the highest, set it to nan
-        bad_indexes = data.index[
-            data['high'] < data[['open', 'high', 'close']].max(1)]
-        if len(bad_indexes) > 0:
-            logger.warning(
-                '%s("%s") high prices are not the highest on timestamps: %s,'
-                + ' setting to nan',
-                self.__class__.__name__, self.symbol, bad_indexes)
-            data.loc[bad_indexes, "high"] = np.nan
-
-        # print(data)
-        # print(data.isnull().sum())
-
-    def _fill_easy(self, data):
-        """Make easy fills."""
-
-        # print(data)
-        # print(data.isnull().sum())
-
-        # fill volumes with zeros (safest choice)
-        data['volume'] = data['volume'].fillna(0.)
-
-        # fill close price with open price
-        data['close'] = data['close'].fillna(data['open'])
-
-        # fill open price with close from day(s) before
-        # repeat as long as it helps (up to 1 year)
-        for shifter in range(252):
-            logger.info(
-                "Filling opens with close from %s days before", shifter)
-            orig_missing_opens = data['open'].isnull().sum()
-            data['open'] = data['open'].fillna(data['close'].shift(
-                shifter+1))
-            new_missing_opens = data['open'].isnull().sum()
-            if orig_missing_opens == new_missing_opens:
-                break
-
-        # fill close price with same day's open
-        data['close'] = data['close'].fillna(data['open'])
-
-        # fill high price with max
-        data['high'] = data['high'].fillna(data[['open', 'close']].max(1))
-
-        # fill low price with max
-        data['low'] = data['low'].fillna(data[['open', 'close']].min(1))
-
-        # print(data)
-        # print(data.isnull().sum())
-
     def _compute_total_returns(self, data):
         """Compute total open-to-open returns."""
 
@@ -503,26 +557,38 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         # print(data)
         # print(data.isnull().sum())
 
-    def _process(self, data):
-        """Clean Yahoo Finance open-close-high-low-volume-adjclose data."""
+    def _post_process(self, new_data, saved_data=None):
+        """Temporary."""
 
-        self._nan_impossible(data)
-
-        self._fill_easy(data)
-
-        self._compute_total_returns(data)
+        self._compute_total_returns(new_data)
 
         # eliminate adjclose column
-        del data["adjclose"]
+        del new_data["adjclose"]
 
         # eliminate last period's intraday data
-        data.loc[data.index[-1],
+        new_data.loc[new_data.index[-1],
             ["high", "low", "close", "return", "volume"]] = np.nan
 
-        return data
+    # def _process(self, data):
+    #     """Clean Yahoo Finance open-low-high-close-volume-adjclose data."""
+
+    #     self._nan_impossible(data)
+
+    #     self._fill(data)
+
+    #     self._compute_total_returns(data)
+
+    #     # eliminate adjclose column
+    #     del data["adjclose"]
+
+    #     # eliminate last period's intraday data
+    #     data.loc[data.index[-1],
+    #         ["high", "low", "close", "return", "volume"]] = np.nan
+
+    #     return data
 
     def _quality_check(self, data):
-        """Analyze quality of the OHLCV-TR data."""
+        """Analyze quality of the OLHCV-TR data."""
 
         # zero volume
         zerovol_idx = data.index[data.volume == 0]
@@ -563,7 +629,7 @@ class OHLCVTR(OHLCV): # pylint: disable=abstract-method
         print_extreme(open2low, 'open to low returns')
 
 
-class OHLCVAC(OHLCVTR):
+class OLHCVAC(OLHCVTR):
     """Open-High-Low-Close-Volume-AdjustedClose data.
 
     This is modeled after the data returned by Yahoo Finance. It implements
@@ -572,8 +638,25 @@ class OHLCVAC(OHLCVTR):
     returns from the adjusted closes, and do some error checks.
     """
 
+    def _nan_impossible(self, new_data, saved_data=None):
+        """Set impossible values to NaN."""
 
-class YahooFinance(OHLCVAC):
+        # call the OLHCV method
+        super()._nan_impossible(new_data)
+
+        # also do it on adjclose
+        self._nan_nonpositive_prices(new_data, "adjclose")
+
+    # def _process(self, data):
+    #     """Obtain total returns and call parent's method."""
+
+    #     # data['total_return'] = data['adjclose'].ffill().pct_change()
+
+    #     # Then continue with OLHCVTR processing
+    #     return super()._process(data)
+
+
+class YahooFinance(OLHCVAC):
     """Yahoo Finance symbol data.
 
     :param symbol: The symbol that we downloaded.
@@ -594,7 +677,7 @@ class YahooFinance(OHLCVAC):
 
     @staticmethod
     def _get_data_yahoo(ticker, start='1900-01-01', end='2100-01-01'):
-        """Get 1-day OHLC-AC-V from Yahoo finance.
+        """Get 1-day OLHC-AC-V from Yahoo finance.
 
         This is roughly equivalent to
 
@@ -705,7 +788,7 @@ class YahooFinance(OHLCVAC):
         Returns:
             updated (pandas.DataFrame): updated DataFrame for the symbol
         """
-        # TODO this could be put at a much lower class hierarchy
+        # TODO this could be put at a lower class hierarchy
         if overlap < 2:
             raise SyntaxError(
                 f'{self.__class__.__name__} with overlap smaller than 2'
