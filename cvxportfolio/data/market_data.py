@@ -24,6 +24,7 @@ from ..errors import DataError
 from ..utils import (hash_, make_numeric, periods_per_year_from_datetime_index,
                      resample_returns)
 from .symbol_data import *
+from .symbol_data import OLHCV
 
 logger = logging.getLogger(__name__)
 
@@ -631,7 +632,7 @@ class DownloadedMarketData(MarketDataInMemory):
                 grace_period=grace_period, storage_backend=storage_backend)
         print()
 
-        if hasattr(self.datasource, 'IS_OLHCVR') and self.datasource.IS_OLHCVR:
+        if issubclass(self.datasource, OLHCV):
             self.returns = pd.DataFrame(
                 {stock: database_accesses[stock].data['return']
                 for stock in universe})

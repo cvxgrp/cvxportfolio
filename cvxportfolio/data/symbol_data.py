@@ -379,6 +379,9 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # print(data)
         # print(data.isnull().sum())
 
+    def _nan_indexes(self, data, bad_indexes, columns, message):
+        pass
+
     def _nan_nonpositive_prices(self, data, prices_name):
         """Set non-positive prices (chosen column) to NaN, in-place."""
 
@@ -460,8 +463,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # this is not used currently, but if we implement an interface to a
         # pure OLHCV data source there is no need to store the open-to-open
         # returns, they can be computed here
-        if not 'return' in data.columns:
-            data['return'] = data['open'].pct_change().shift(-1)
+        #if not 'return' in data.columns:
+        #    data['return'] = data['open'].pct_change().shift(-1)
 
         self._quality_check(data)
         data["valuevolume"] = data["volume"] * data["open"]
@@ -469,12 +472,22 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         return data
 
-class OLHCVTR(OLHCV): # pylint: disable=abstract-method
-    """Open-Low-High-Close-Volume-TotalReturn symbol data."""
+class OLHCVAC(OLHCV):
+    """Open-High-Low-Close-Volume-AdjustedClose data.
+
+    This is modeled after the data returned by Yahoo Finance.
+    """
+#     It implements
+#     the transformation required to conform to the
+#     Open-High-Low-Close-Volume-TotalReturn model, that is, compute
+#     returns from the adjusted closes, and do some error checks.
+#     """
+# class OLHCVTR(OLHCV): # pylint: disable=abstract-method
+#     """Open-Low-High-Close-Volume-TotalReturn symbol data."""
 
     # TODO: this becomes a isinstance(OLHC) in the caller
     # is open-high-low-close-volume-total return
-    IS_OLHCVR = True
+    # IS_OLHCVR = True
 
     # # rolstd windows for finding wrong logreturns
     # _ROLSTD_WINDOWS = [20, 60, 252]
@@ -567,15 +580,18 @@ class OLHCVTR(OLHCV): # pylint: disable=abstract-method
         # open2open_total = close2close_total - open2close + open2close.shift(1)
         # alt = (np.exp(open2open_total) - 1).shift(-1)
 
-        close_div_open = new_data['close'] / new_data['open']
-        alt = ((1 + new_data['total_return']) / close_div_open) * close_div_open.shift(1) - 1
-        alt = alt.shift(-1)
+        # close_div_open = new_data['close'] / new_data['open']
+        # open_to_open_total = (
+        #     (1 + new_data['total_return']) / close_div_open
+        #         ) * close_div_open.shift(1) - 1
 
         # import code; code.interact(local=locals())
 
-        assert np.allclose(new_data['return'].dropna(), alt.dropna())
+        # assert np.allclose(new_data['return'].dropna(), open_to_open_total.shift(-1).dropna())
 
-        new_data['return'] = alt
+        # new_data['return'] = open_to_open_total.shift(-1)
+
+        # del new_data['total_return']
 
         # eliminate adjclose column
         del new_data["adjclose"]
@@ -643,16 +659,6 @@ class OLHCVTR(OLHCV): # pylint: disable=abstract-method
         open2low = np.log(data['low']) - np.log(data['open']).dropna()
         print_extreme(open2low, 'open to low returns')
 
-
-class OLHCVAC(OLHCVTR):
-    """Open-High-Low-Close-Volume-AdjustedClose data.
-
-    This is modeled after the data returned by Yahoo Finance. It implements
-    the transformation required to conform to the
-    Open-High-Low-Close-Volume-TotalReturn model, that is, compute
-    returns from the adjusted closes, and do some error checks.
-    """
-
     def _nan_impossible(self, new_data, saved_data=None):
         """Set impossible values to NaN."""
 
@@ -670,7 +676,7 @@ class OLHCVAC(OLHCVTR):
         # Here today's return uses yesterday close and today close, while
         # today's returns in Cvxportfolio use today open and tomorrow open.
         # However this is the format more common among data vendors.
-        new_data['total_return'] = new_data['adjclose'].ffill().pct_change()
+        # new_data['total_return'] = new_data['adjclose'].ffill().pct_change()
 
         # We don't need this any more.
         # del new_data['adjclose']
