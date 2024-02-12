@@ -322,20 +322,20 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         """
 
         self._nan_impossible(new_data, saved_data=saved_data)
-        self._specific_process(new_data, saved_data=saved_data)
+        # self._specific_process(new_data, saved_data=saved_data)
         self._nan_unlikely(new_data, saved_data=saved_data)
         self._fill(new_data, saved_data=saved_data)
-        self._post_process(new_data, saved_data=saved_data)
+        # self._post_process(new_data, saved_data=saved_data)
 
         return new_data
 
-    def _specific_process(self, new_data, saved_data=None):
-        """Specific process, do nothing."""
-        # return new_data
+    # def _specific_process(self, new_data, saved_data=None):
+    #     """Specific process, do nothing."""
+    #     # return new_data
 
-    def _post_process(self, new_data, saved_data=None):
-        """Post process, do nothing."""
-        # return new_data
+    # def _post_process(self, new_data, saved_data=None):
+    #     """Post process, do nothing."""
+    #     # return new_data
 
     def _nan_unlikely(self, new_data, saved_data=None):
         """Nan-out unlikely values."""
@@ -379,30 +379,86 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # print(data)
         # print(data.isnull().sum())
 
-    def _nan_indexes(self, data, bad_indexes, columns, message):
-        pass
+    def _nan_values(self, data, condition, columns_to_nan, message):
+        """Set to NaN in-place on indexing condition chosen columns."""
 
-    def _nan_nonpositive_prices(self, data, prices_name):
-        """Set non-positive prices (chosen column) to NaN, in-place."""
-
-        bad_indexes = data.index[data[prices_name] <= 0]
+        bad_indexes = data.index[condition]
         if len(bad_indexes) > 0:
             logger.warning(
-                '%s("%s") has non-positive %s prices on timestamps: %s,'
+                '%s("%s") has %s on timestamps: %s,'
                 + ' setting to nan',
-                self.__class__.__name__, self.symbol, prices_name, bad_indexes)
-            data.loc[bad_indexes, prices_name] = np.nan
+                self.__class__.__name__, self.symbol, message, bad_indexes)
+            data.loc[bad_indexes, columns_to_nan] = np.nan
+
+    def _nan_nonpositive_prices(self, data, prices_name):
+        """Set non-positive prices (chosen price name) to NaN, in-place."""
+        self._nan_values(
+            data=data, condition = data[prices_name] <= 0,
+            columns_to_nan = prices_name,
+            message = f'non-positive {prices_name} prices')
 
     def _nan_negative_volumes(self, data):
         """Set negative volumes to NaN, in-place."""
+        self._nan_values(
+            data=data, condition = data["volume"] < 0,
+            columns_to_nan = "volume", message = 'negative volumes')
 
-        bad_indexes = data.index[data["volume"] < 0]
-        if len(bad_indexes) > 0:
-            logger.warning(
-                '%s("%s") has negative volumes on timestamps: %s,'
-                + ' setting to nan',
-                self.__class__.__name__, self.symbol, bad_indexes)
-            data.loc[bad_indexes, "volume"] = np.nan
+    def _nan_open_lower_low(self, data):
+        """Set open price to NaN if lower than low, in-place."""
+        self._nan_values(
+            data=data, condition = data['open'] < data['low'],
+            columns_to_nan = "open",
+            message = 'open price lower than low price')
+
+    def _nan_open_higher_high(self, data):
+        """Set open price to NaN if higher than high, in-place."""
+        self._nan_values(
+            data=data, condition = data['open'] > data['high'],
+            columns_to_nan = "open",
+            message = 'open price higher than high price')
+
+    def _nan_incompatible_low_high(self, data):
+        """Set low and high to NaN if low is higher, in-place."""
+        self._nan_values(
+            data=data, condition = data['low'] > data['high'],
+            columns_to_nan = ["low", "high"],
+            message = 'low price higher than high price')
+
+    def _nan_high_lower_close(self, data):
+        """Set high price to NaN if lower than close, in-place."""
+        self._nan_values(
+            data=data, condition = data['high'] < data['close'],
+            columns_to_nan = "high",
+            message = 'high price lower than close price')
+
+    def _nan_low_higher_close(self, data):
+        """Set low price to NaN if higher than close, in-place."""
+        self._nan_values(
+            data=data, condition = data['low'] > data['close'],
+            columns_to_nan = "low",
+            message = 'low price higher than close price')
+
+    # def _nan_nonpositive_prices(self, data, prices_name):
+    #     """Set non-positive prices (chosen column) to NaN, in-place."""
+
+    #     bad_indexes = data.index[data[prices_name] <= 0]
+    #     if len(bad_indexes) > 0:
+    #         logger.warning(
+    #             '%s("%s") has non-positive %s prices on timestamps: %s,'
+    #             + ' setting to nan',
+    #             self.__class__.__name__, self.symbol, prices_name, bad_indexes)
+    #         data.loc[bad_indexes, prices_name] = np.nan
+
+    # def _nan_negative_volumes(self, data):
+    #     """Set negative volumes to NaN, in-place."""
+
+    #     bad_indexes = data.index[data["volume"] < 0]
+    #     if len(bad_indexes) > 0:
+    #         logger.warning(
+    #             '%s("%s") has negative volumes on timestamps: %s,'
+    #             + ' setting to nan',
+    #             self.__class__.__name__, self.symbol, bad_indexes)
+    #         data.loc[bad_indexes, "volume"] = np.nan
 
     def _set_infty_to_nan(self, data):
         """Set all +/- infty elements of data to NaN, in-place."""
@@ -428,27 +484,34 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # all infinity values are nans
         self._set_infty_to_nan(new_data)
 
+        # more
+        self._nan_open_lower_low(new_data)
+        self._nan_open_higher_high(new_data)
+        self._nan_incompatible_low_high(new_data)
+        self._nan_high_lower_close(new_data)
+        self._nan_low_higher_close(new_data)
+
         # TODO: these can be made smarter (sometimes the open is clearly wrong)
 
-        # if low is not the lowest, set it to nan
-        bad_indexes = new_data.index[
-            new_data['low'] > new_data[['open', 'high', 'close']].min(1)]
-        if len(bad_indexes) > 0:
-            logger.warning(
-                '%s("%s") low prices are not the lowest on timestamps: %s,'
-                + ' setting to nan',
-                self.__class__.__name__, self.symbol, bad_indexes)
-            new_data.loc[bad_indexes, "low"] = np.nan
+        # # if low is not the lowest, set it to nan
+        # bad_indexes = new_data.index[
+        #     new_data['low'] > new_data[['open', 'high', 'close']].min(1)]
+        # if len(bad_indexes) > 0:
+        #     logger.warning(
+        #         '%s("%s") low prices are not the lowest on timestamps: %s,'
+        #         + ' setting to nan',
+        #         self.__class__.__name__, self.symbol, bad_indexes)
+        #     new_data.loc[bad_indexes, "low"] = np.nan
 
-        # if high is not the highest, set it to nan
-        bad_indexes = new_data.index[
-            new_data['high'] < new_data[['open', 'high', 'close']].max(1)]
-        if len(bad_indexes) > 0:
-            logger.warning(
-                '%s("%s") high prices are not the highest on timestamps: %s,'
-                + ' setting to nan',
-                self.__class__.__name__, self.symbol, bad_indexes)
-            new_data.loc[bad_indexes, "high"] = np.nan
+        # # if high is not the highest, set it to nan
+        # bad_indexes = new_data.index[
+        #     new_data['high'] < new_data[['open', 'high', 'close']].max(1)]
+        # if len(bad_indexes) > 0:
+        #     logger.warning(
+        #         '%s("%s") high prices are not the highest on timestamps: %s,'
+        #         + ' setting to nan',
+        #         self.__class__.__name__, self.symbol, bad_indexes)
+        #     new_data.loc[bad_indexes, "high"] = np.nan
 
     # TODO: factor quality check and clean into total-return related and non-
 
@@ -463,8 +526,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # this is not used currently, but if we implement an interface to a
         # pure OLHCV data source there is no need to store the open-to-open
         # returns, they can be computed here
-        #if not 'return' in data.columns:
-        #    data['return'] = data['open'].pct_change().shift(-1)
+        if not 'return' in data.columns:
+           data['return'] = data['open'].pct_change().shift(-1)
 
         self._quality_check(data)
         data["valuevolume"] = data["volume"] * data["open"]
@@ -552,6 +615,10 @@ class OLHCVAC(OLHCV):
         # non-market log returns (dividends, splits)
         non_market_lr = log_adjustment_ratio.diff().shift(-1)
 
+        # dividend_return = (data['adjclose'] /  data['close']).pct_change().shift(-1)
+
+        # import code; code.interact(local=locals())
+
         # full open-to-open returns
         open_to_open = np.log(data["open"]).diff().shift(-1)
         data['return'] = np.exp(open_to_open + non_market_lr) - 1
@@ -570,9 +637,10 @@ class OLHCVAC(OLHCV):
         # print(data)
         # print(data.isnull().sum())
 
-    def _post_process(self, new_data, saved_data=None):
+    def _process(self, new_data, saved_data=None):
         """Temporary."""
 
+        super()._process(new_data, saved_data=saved_data)
         self._compute_total_returns(new_data)
 
         # close2close_total = np.log(1 + new_data['total_return'])
@@ -599,6 +667,8 @@ class OLHCVAC(OLHCV):
         # eliminate last period's intraday data
         new_data.loc[new_data.index[-1],
             ["high", "low", "close", "return", "volume"]] = np.nan
+
+        return new_data
 
     # def _process(self, data):
     #     """Clean Yahoo Finance open-low-high-close-volume-adjclose data."""
@@ -668,18 +738,18 @@ class OLHCVAC(OLHCV):
         # also do it on adjclose
         self._nan_nonpositive_prices(new_data, "adjclose")
 
-    def _specific_process(self, new_data, saved_data=None):
-        """Specific process, compute total returns."""
+    # def _specific_process(self, new_data, saved_data=None):
+    #     """Specific process, compute total returns."""
 
-        # Close-to-close total return, so we can delegate to parent class.
-        # Note that this uses different time alignment than Cvxportfolio,
-        # Here today's return uses yesterday close and today close, while
-        # today's returns in Cvxportfolio use today open and tomorrow open.
-        # However this is the format more common among data vendors.
-        # new_data['total_return'] = new_data['adjclose'].ffill().pct_change()
+    #     # Close-to-close total return, so we can delegate to parent class.
+    #     # Note that this uses different time alignment than Cvxportfolio,
+    #     # Here today's return uses yesterday close and today close, while
+    #     # today's returns in Cvxportfolio use today open and tomorrow open.
+    #     # However this is the format more common among data vendors.
+    #     # new_data['total_return'] = new_data['adjclose'].ffill().pct_change()
 
-        # We don't need this any more.
-        # del new_data['adjclose']
+    #     # We don't need this any more.
+    #     # del new_data['adjclose']
 
 
 class YahooFinance(OLHCVAC):
