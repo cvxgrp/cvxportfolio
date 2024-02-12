@@ -300,7 +300,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         It operates on the ``new_data`` dataframe, which is the newly
         downloaded data. The ``saved_data`` dataframe is provided as well
         (None if there is none). It has the same columns, older timestamps
-        with possible overlap with new_data at its end, and is **read only**:
+        (possibly overlapping with new_data at the end), and is **read only**:
         it is used as reference to help with the cleaning, it has already
         been cleaned.
 
@@ -562,6 +562,21 @@ class OLHCVTR(OLHCV): # pylint: disable=abstract-method
 
         self._compute_total_returns(new_data)
 
+        # close2close_total = np.log(1 + new_data['total_return'])
+        # open2close = np.log(new_data['close']) - np.log(new_data['open'])
+        # open2open_total = close2close_total - open2close + open2close.shift(1)
+        # alt = (np.exp(open2open_total) - 1).shift(-1)
+
+        close_div_open = new_data['close'] / new_data['open']
+        alt = ((1 + new_data['total_return']) / close_div_open) * close_div_open.shift(1) - 1
+        alt = alt.shift(-1)
+
+        # import code; code.interact(local=locals())
+
+        assert np.allclose(new_data['return'].dropna(), alt.dropna())
+
+        new_data['return'] = alt
+
         # eliminate adjclose column
         del new_data["adjclose"]
 
@@ -647,13 +662,18 @@ class OLHCVAC(OLHCVTR):
         # also do it on adjclose
         self._nan_nonpositive_prices(new_data, "adjclose")
 
-    # def _process(self, data):
-    #     """Obtain total returns and call parent's method."""
+    def _specific_process(self, new_data, saved_data=None):
+        """Specific process, compute total returns."""
 
-    #     # data['total_return'] = data['adjclose'].ffill().pct_change()
+        # Close-to-close total return, so we can delegate to parent class.
+        # Note that this uses different time alignment than Cvxportfolio,
+        # Here today's return uses yesterday close and today close, while
+        # today's returns in Cvxportfolio use today open and tomorrow open.
+        # However this is the format more common among data vendors.
+        new_data['total_return'] = new_data['adjclose'].ffill().pct_change()
 
-    #     # Then continue with OLHCVTR processing
-    #     return super()._process(data)
+        # We don't need this any more.
+        # del new_data['adjclose']
 
 
 class YahooFinance(OLHCVAC):
