@@ -29,7 +29,6 @@ __all__ = ['periods_per_year_from_datetime_index', 'resample_returns',
            'average_periods_per_year']
 
 
-@staticmethod
 def set_pd_read_only(df_or_ser):
     """Set numpy array contained in dataframe or series to read only.
 
