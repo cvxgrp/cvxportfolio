@@ -330,13 +330,118 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         the parent's before or after its own processing.
         """
 
-        self._nan_impossible(new_data, saved_data=saved_data)
-        # self._specific_process(new_data, saved_data=saved_data)
-        self._nan_unlikely(new_data, saved_data=saved_data)
-        self._fill(new_data, saved_data=saved_data)
-        # self._post_process(new_data, saved_data=saved_data)
+
+        ## Preliminaries
+        ## Eliminate non-positive prices, infinity values.
+        
+        # NaN nonpositive prices
+        for column in ["open", "close", "high", "low"]:
+            self._nan_nonpositive_prices(new_data, column)
+
+        # all infinity values to NaN
+        self._set_infty_to_nan(new_data)
+
+
+        ## Close price.
+        ## We believe them (for now). We forward fill them if unavailable.
+
+        # forward-fill close
+        self._fillna_and_message(
+            new_data, 'close', 'last available', filler='ffill')
+
+
+        ## Volumes.
+        ## We set negative to NaN, and fill with zeros.
+
+        # NaN negative volumes
+        self._nan_negative_volumes(new_data)
+
+        # fill with zeros
+        self._fillna_and_message(
+            new_data, 'volume', 'zeros', filler='fillna', filler_arg=0.)
+
+
+        ## Open price.
+        ## We remove if lower than low, higher than high, or open to close
+        ## logreturn is anomalous. Then we fill with close from day before.
+
+        # NaN open if lower than low
+        self._nan_open_lower_low(new_data)
+
+        # NaN open if higher than high
+        self._nan_open_higher_high(new_data)
+
+        # NaN anomalous open prices
+        self._nan_anomalous_prices(
+            new_data, 'open', threshold=self.THRESHOLD_OPEN_TO_CLOSE)
+
+        # fill open with close from day before
+        self._fillna_and_message(
+            new_data, 'open', 'close from period before', filler='fillna',
+            filler_arg=new_data['close'].shift(1))
+
+
+        ## Low price.
+        ## We remove if higher than close or anomalous low to close logreturn.
+        ## We fill them with min of open and close.
+
+        # NaN low if higher than close
+        self._nan_low_higher_close(new_data)
+
+        # NaN low if higher than open (cleaned)
+        self._nan_low_higher_open(new_data)
+
+        # NaN anomalous low prices
+        self._nan_anomalous_prices(
+            new_data, 'low', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE)
+
+        # fill low with min of open and close
+        self._fillna_and_message(
+            new_data, 'low', 'min of open and close', filler='fillna',
+            filler_arg=new_data[['open', 'close']].min(axis=1))
+
+
+        ## High price.
+        ## We remove if lower than close or anomalous low to close logreturn.
+        ## We fill them with max of open and close.
+
+        # NaN high if lower than close
+        self._nan_high_lower_close(new_data)
+
+        # NaN high if lower than open (cleaned)
+        self._nan_high_lower_open(new_data)
+
+        # NaN anomalous high prices
+        self._nan_anomalous_prices(
+            new_data, 'high', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE)
+
+        # fill high with max of open and close
+        self._fillna_and_message(
+            new_data, 'high', 'max of open and close', filler='fillna',
+            filler_arg=new_data[['open', 'close']].max(axis=1))
+
+
+        ## Some asserts
+        assert new_data.iloc[1:].isnull().sum().sum() == 0
+        assert np.all(
+            new_data['low'].fillna(0.) <= new_data[
+                ['open', 'high', 'close']].min(1))
+        assert np.all(
+            new_data['high'].fillna(np.inf) >= new_data[
+                ['open', 'low', 'close']].max(1))
 
         return new_data
+
+    def _fillna_and_message(
+        self, data, col_name, message, filler='fillna', filler_arg=None):
+        """Fill NaNs in column with chosen method and arg."""
+        bad_indexes = data.index[data[col_name].isnull()]
+        if len(bad_indexes) > 0:
+            logger.warning(
+                '%s("%s").data["%s"] has NaNs on timestamps: %s,'
+                + ' filling them with %s.', self.__class__.__name__,
+                self.symbol, col_name, bad_indexes, message)
+            data[col_name] = getattr(data[col_name], filler)(filler_arg)
 
     def _nan_anomalous_prices(self, data, price_name, threshold):
         """Set to NaN given price name on its anomalous logrets to close."""
@@ -351,58 +456,44 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
             data, condition = score > threshold,
             columns_to_nan=price_name, message=f'anomalous {price_name} price')
 
-    def _nan_unlikely(self, new_data, saved_data=None):
-        """Nan-out unlikely values."""
 
-        # NaN anomalous open prices
-        self._nan_anomalous_prices(
-            new_data, 'open', threshold=self.THRESHOLD_OPEN_TO_CLOSE)
+    # def _fill(self, new_data, saved_data=None):
+    #     """Make easy fills."""
 
-        # NaN anomalous high prices
-        self._nan_anomalous_prices(
-            new_data, 'high', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE)
+    #     # TODO: simplify
 
-        # NaN anomalous low prices
-        self._nan_anomalous_prices(
-            new_data, 'low', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE)
+    #     # print(data)
+    #     # print(data.isnull().sum())
 
-    def _fill(self, new_data, saved_data=None):
-        """Make easy fills."""
+    #     # fill volumes with zeros (safest choice)
+    #     new_data['volume'] = new_data['volume'].fillna(0.)
 
-        # TODO: simplify
+    #     # fill close price with open price
+    #     new_data['close'] = new_data['close'].fillna(new_data['open'])
 
-        # print(data)
-        # print(data.isnull().sum())
+    #     # fill open price with close from day(s) before
+    #     # repeat as long as it helps (up to 1 year)
+    #     for shifter in range(252):
+    #         logger.info(
+    #             "Filling opens with close from %s days before", shifter)
+    #         orig_missing_opens = new_data['open'].isnull().sum()
+    #         new_data['open'] = new_data['open'].fillna(new_data['close'].shift(
+    #             shifter+1))
+    #         new_missing_opens = new_data['open'].isnull().sum()
+    #         if orig_missing_opens == new_missing_opens:
+    #             break
 
-        # fill volumes with zeros (safest choice)
-        new_data['volume'] = new_data['volume'].fillna(0.)
+    #     # fill close price with same day's open
+    #     new_data['close'] = new_data['close'].fillna(new_data['open'])
 
-        # fill close price with open price
-        new_data['close'] = new_data['close'].fillna(new_data['open'])
+    #     # fill high price with max
+    #     new_data['high'] = new_data['high'].fillna(new_data[['open', 'close']].max(1))
 
-        # fill open price with close from day(s) before
-        # repeat as long as it helps (up to 1 year)
-        for shifter in range(252):
-            logger.info(
-                "Filling opens with close from %s days before", shifter)
-            orig_missing_opens = new_data['open'].isnull().sum()
-            new_data['open'] = new_data['open'].fillna(new_data['close'].shift(
-                shifter+1))
-            new_missing_opens = new_data['open'].isnull().sum()
-            if orig_missing_opens == new_missing_opens:
-                break
+    #     # fill low price with max
+    #     new_data['low'] = new_data['low'].fillna(new_data[['open', 'close']].min(1))
 
-        # fill close price with same day's open
-        new_data['close'] = new_data['close'].fillna(new_data['open'])
-
-        # fill high price with max
-        new_data['high'] = new_data['high'].fillna(new_data[['open', 'close']].max(1))
-
-        # fill low price with max
-        new_data['low'] = new_data['low'].fillna(new_data[['open', 'close']].min(1))
-
-        # print(data)
-        # print(data.isnull().sum())
+    #     # print(data)
+    #     # print(data.isnull().sum())
 
     def _nan_values(self, data, condition, columns_to_nan, message):
         """Set to NaN in-place for indexing condition and chosen columns."""
@@ -456,12 +547,26 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
             columns_to_nan = "high",
             message = 'high price lower than close price')
 
+    def _nan_high_lower_open(self, data):
+        """Set high price to NaN if lower than open, in-place."""
+        self._nan_values(
+            data=data, condition = data['high'] < data['open'],
+            columns_to_nan = "high",
+            message = 'high price lower than open price')
+
     def _nan_low_higher_close(self, data):
         """Set low price to NaN if higher than close, in-place."""
         self._nan_values(
             data=data, condition = data['low'] > data['close'],
             columns_to_nan = "low",
             message = 'low price higher than close price')
+
+    def _nan_low_higher_open(self, data):
+        """Set low price to NaN if higher than open, in-place."""
+        self._nan_values(
+            data=data, condition = data['low'] > data['open'],
+            columns_to_nan = "low",
+            message = 'low price higher than open price')
 
     def _set_infty_to_nan(self, data):
         """Set all +/- infty elements of data to NaN, in-place."""
@@ -474,33 +579,33 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
                 data.values, copy=True, nan=np.nan, posinf=np.nan,
                 neginf=np.nan)
 
-    def _nan_impossible(self, new_data, saved_data=None):
-        """Set some impossible values of new_data to NaN, in-place."""
+    # def _nan_impossible(self, new_data, saved_data=None):
+    #     """Set some impossible values of new_data to NaN, in-place."""
 
-        # nan-out nonpositive prices
-        for column in ["open", "close", "high", "low"]:
-            self._nan_nonpositive_prices(new_data, column)
+    #     # nan-out nonpositive prices
+    #     for column in ["open", "close", "high", "low"]:
+    #         self._nan_nonpositive_prices(new_data, column)
 
-        # nan-out negative volumes
-        self._nan_negative_volumes(new_data)
+    #     # nan-out negative volumes
+    #     self._nan_negative_volumes(new_data)
 
-        # all infinity values are nans
-        self._set_infty_to_nan(new_data)
+    #     # all infinity values are nans
+    #     self._set_infty_to_nan(new_data)
 
-        # more
-        self._nan_high_lower_close(new_data)
-        self._nan_low_higher_close(new_data)
-        self._nan_open_lower_low(new_data)
-        self._nan_open_higher_high(new_data)
+    #     # more
+    #     self._nan_high_lower_close(new_data)
+    #     self._nan_low_higher_close(new_data)
+    #     self._nan_open_lower_low(new_data)
+    #     self._nan_open_higher_high(new_data)
 
-        assert np.all(
-            new_data['low'].fillna(0.) <= new_data[
-                ['open', 'high', 'close']].min(1))
-        assert np.all(
-            new_data['high'].fillna(np.inf) >= new_data[
-                ['open', 'low', 'close']].max(1))
+    #     assert np.all(
+    #         new_data['low'].fillna(0.) <= new_data[
+    #             ['open', 'high', 'close']].min(1))
+    #     assert np.all(
+    #         new_data['high'].fillna(np.inf) >= new_data[
+    #             ['open', 'low', 'close']].max(1))
 
-        # self._nan_incompatible_low_high(new_data)
+    #     # self._nan_incompatible_low_high(new_data)
 
     # TODO: factor quality check and clean into total-return related and non-
 
@@ -618,6 +723,8 @@ class OLHCVAC(OLHCV):
     def _process(self, new_data, saved_data=None):
         """Temporary."""
 
+        self._nan_nonpositive_prices(new_data, "adjclose")
+
         super()._process(new_data, saved_data=saved_data)
         self._compute_total_returns(new_data)
 
@@ -689,14 +796,14 @@ class OLHCVAC(OLHCV):
         open2low = np.log(data['low']) - np.log(data['open']).dropna()
         print_extreme(open2low, 'open to low returns')
 
-    def _nan_impossible(self, new_data, saved_data=None):
-        """Set impossible values to NaN."""
+    # def _nan_impossible(self, new_data, saved_data=None):
+    #     """Set impossible values to NaN."""
 
-        # call the OLHCV method
-        super()._nan_impossible(new_data)
+    #     # call the OLHCV method
+    #     super()._nan_impossible(new_data)
 
-        # also do it on adjclose
-        self._nan_nonpositive_prices(new_data, "adjclose")
+    #     # also do it on adjclose
+    #     self._nan_nonpositive_prices(new_data, "adjclose")
 
     # def _specific_process(self, new_data, saved_data=None):
     #     """Specific process, compute total returns."""

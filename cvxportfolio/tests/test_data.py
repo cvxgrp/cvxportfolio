@@ -485,8 +485,11 @@ class TestData(CvxportfolioTest):
             'low price higher than close price')
 
         # high lower close
-        _test_warning(
-            'data.iloc[3,2] = data.iloc[3].close * .9',
+        _test_warning( # had to fix it otherwise open cleaner kicks in
+            'close = data.iloc[3].close;'
+            'data.iloc[3,0] = close * .95;' # open
+            'data.iloc[3,1] = close * .95;' # low
+            'data.iloc[3,2] = close * .975', # high
             'high price lower than close price')
 
         # extreme low price
