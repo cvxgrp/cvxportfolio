@@ -218,10 +218,11 @@ class SymbolData:
                             f"{self.__class__.__name__} update"
                             + f" of {self.symbol} changed last value!")
                         self._print_difference(current, updated)
-        except KeyError: # this should have become superflous
+        # this should have become superflous
+        except KeyError: # pragma: no cover
             logger.error("%s update of %s could not be checked for"
                 + " append-only edits. Was there a DST change?",
-                self.__class__.__name__, self.symbol)
+                self.__class__.__name__, self.symbol) # pragma: no cover
         self._store(updated)
 
     def _download(self, symbol, current, grace_period, **kwargs):
@@ -264,10 +265,10 @@ def _median_scale_around(lrets, window):
     """Median absolute logreturn in a window around each timestamp."""
     return np.abs(lrets).rolling(window, center=True, min_periods=1).median()
 
-def _mean_scale_around(lrets, window):
-    """Root mean squared logreturn in a window around each timestamp."""
-    return np.sqrt(
-        (lrets**2).rolling(window, center=True, min_periods=1).mean())
+# def _mean_scale_around(lrets, window):
+#     """Root mean squared logreturn in a window around each timestamp."""
+#     return np.sqrt(
+#         (lrets**2).rolling(window, center=True, min_periods=1).mean())
 
 def _unlikeliness_score(
         test_logreturns, reference_logreturns, scaler, windows):
@@ -364,7 +365,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         # NaN anomalous open prices
         self._nan_anomalous_prices(
-            new_data, 'open', threshold=self.THRESHOLD_OPEN_TO_CLOSE)
+            new_data, 'open', threshold=self.THRESHOLD_OPEN_TO_CLOSE,
+            saved_data=saved_data)
 
         # fill open with close from day before
         self._fillna_and_message(
@@ -383,7 +385,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         # NaN anomalous low prices
         self._nan_anomalous_prices(
-            new_data, 'low', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE)
+            new_data, 'low', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE,
+            saved_data=saved_data)
 
         # fill low with min of open and close
         self._fillna_and_message(
@@ -402,7 +405,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         # NaN anomalous high prices
         self._nan_anomalous_prices(
-            new_data, 'high', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE)
+            new_data, 'high', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE,
+            saved_data=saved_data)
 
         # fill high with max of open and close
         self._fillna_and_message(
@@ -431,17 +435,36 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
                 self.symbol, col_name, bad_indexes, message)
             data[col_name] = getattr(data[col_name], filler)(filler_arg)
 
-    def _nan_anomalous_prices(self, data, price_name, threshold):
+    def _nan_anomalous_prices(
+            self, new_data, price_name, threshold, saved_data=None):
         """Set to NaN given price name on its anomalous logrets to close."""
-        lr_to_close = np.log(data['close']) - np.log(data[price_name])
+        new_lr_to_close =\
+            np.log(new_data['close']) - np.log(new_data[price_name])
+
+        # if there is saved data, we use it to compute the logrets
+        # also on the past, but we only NaN (if necessary) elements of
+        # new data, so the scores computed on the past are not used
+        if saved_data is None:
+            all_lr_to_close = new_lr_to_close
+        else:
+            old_lr_to_close =\
+                np.log(saved_data['close']) - np.log(saved_data[price_name])
+            all_lr_to_close = pd.concat(
+                [old_lr_to_close.loc[
+                    old_lr_to_close.index < new_lr_to_close.index[0]],
+                new_lr_to_close])
+            # drop old data which we don't need
+            all_lr_to_close = all_lr_to_close.iloc[
+                -len(new_data) - max(self.FILTERING_WINDOWS):]
+
         # with this we skip over exact zeros (which come from some upstream
         # cleaning) and would throw the median off
-        lr_to_close.loc[lr_to_close == 0] = np.nan
+        all_lr_to_close.loc[all_lr_to_close == 0] = np.nan
         score = _unlikeliness_score(
-                lr_to_close, lr_to_close, scaler=_median_scale_around,
+                all_lr_to_close, all_lr_to_close, scaler=_median_scale_around,
                 windows=self.FILTERING_WINDOWS)
         self._nan_values(
-            data, condition = score > threshold,
+            new_data, condition = score.loc[new_data.index] > threshold,
             columns_to_nan=price_name, message=f'anomalous {price_name} price')
 
     def _nan_values(self, data, condition, columns_to_nan, message):
@@ -753,7 +776,7 @@ class YahooFinance(OLHCV):
                 data['indicators']['quote'][0], index=index)
             df_result['adjclose'] = data[
                 'indicators']['adjclose'][0]['adjclose']
-        except KeyError as exc:
+        except KeyError as exc: # pragma: no cover
             raise DataError(f'Yahoo finance download of {ticker} failed.'
                 + ' Json:', str(res.json())) from exc # pragma: no cover
 

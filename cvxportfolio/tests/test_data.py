@@ -156,7 +156,8 @@ class TestData(CvxportfolioTest):
         and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
     def test_sqlite3_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        self._base_test_series(_loader_sqlite, _storer_sqlite)
+        with self.assertWarns(UserWarning):
+            self._base_test_series(_loader_sqlite, _storer_sqlite)
 
     @unittest.skipIf(sys.version_info.major == 3
         and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
@@ -196,6 +197,9 @@ class TestData(CvxportfolioTest):
         """Test storing and retrieving of a Series with datetime index."""
 
         for data in [
+            pd.Series(
+                0.0, pd.date_range("2020-01-01", "2020-01-10"),
+                name="test0"),
             pd.Series(
                 0.0, pd.date_range("2020-01-01", "2020-01-10", tz='UTC-05:00'),
                 name="test1"),
@@ -507,6 +511,17 @@ class TestData(CvxportfolioTest):
                 # check all NaNs have been filled
                 self.assertTrue(_cleaned.iloc[:-1].isnull().sum().sum() == 0)
 
+        def _test_warning_update(data_transformation, part_of_message):
+            """Test that warning is raised w/ message containing some word."""
+            new_data = pd.DataFrame(raw_data.iloc[-20:], copy=True)
+            saved_data = pd.DataFrame(raw_data.iloc[:-15], copy=True)
+            exec(data_transformation) # pylint: disable=exec-used
+            with self.assertLogs(level='WARNING') as _:
+                _cleaned = empty_instance._process(new_data, saved_data)
+                self.assertTrue(part_of_message in _.output[0])
+                # check all NaNs have been filled
+                self.assertTrue(_cleaned.iloc[:-1].isnull().sum().sum() == 0)
+
         # infty
         _test_warning(
             'data.iloc[2,2] = np.inf',
@@ -599,6 +614,16 @@ class TestData(CvxportfolioTest):
         _test_warning(
             'data.iloc[20,0] = data.iloc[20,0] * 0.5;'
             + 'data.iloc[20,1] = data.iloc[20,0]',
+            'anomalous open price')
+
+        # extreme open update
+        _test_warning_update(
+            'new_data.iloc[-1,0] = new_data.iloc[-1,0] * 1.75;'
+            + 'new_data.iloc[-1,2] = new_data.iloc[-1,0]',
+            'anomalous open price')
+        _test_warning_update(
+            'new_data.iloc[-1,0] = new_data.iloc[-1,0] *  0.5;'
+            + 'new_data.iloc[-1,1] = new_data.iloc[-1,0]',
             'anomalous open price')
 
     # def test_yahoo_finance_wrong_last_time(self):
@@ -788,6 +813,25 @@ class TestMarketData(CvxportfolioTest):
             UserProvidedMarketData(returns=self.returns, volumes=used_volumes,
                        prices=self.prices, cash_key='cash',
                        min_history=pd.Timedelta('0d'))
+
+        with self.assertRaises(NotImplementedError):
+            UserProvidedMarketData(returns=self.returns, volumes=used_volumes,
+                prices=self.prices, cash_key='NOTSUPPORTED',
+                min_history=pd.Timedelta('0d'))
+
+        with self.assertRaises(ValueError):
+            UserProvidedMarketData(returns=self.returns, volumes=used_volumes,
+                prices=self.prices, cash_key='USDOLLAR',
+                min_history=pd.Timedelta('0d'))
+
+        md = UserProvidedMarketData(
+            returns=self.returns, volumes=self.volumes,
+            prices=self.prices, cash_key='cash',
+            min_history=pd.Timedelta('60d'))
+
+        # try to serve when there's not enough min_history
+        with self.assertRaises(ValueError):
+            md.serve(t=self.returns.index[20])
 
     def test_market_data_full(self):
         """Test serve method of DownloadedMarketData."""

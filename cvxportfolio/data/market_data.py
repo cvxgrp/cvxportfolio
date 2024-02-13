@@ -636,10 +636,10 @@ class DownloadedMarketData(MarketDataInMemory):
         """
 
         if self.prices.iloc[-5:].isnull().any().any():
-            logger.debug(
+            logger.warning(
                 'Removing some recent lines because there are missing values.')
             drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
-            logger.debug('Dropping at index %s', drop_at)
+            logger.warning('Dropping at index %s', drop_at)
             self.returns = self.returns.loc[self.returns.index < drop_at]
             if self.prices is not None:
                 self.prices = self.prices.loc[self.prices.index < drop_at]
