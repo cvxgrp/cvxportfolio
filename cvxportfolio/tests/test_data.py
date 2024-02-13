@@ -435,7 +435,11 @@ class TestData(CvxportfolioTest):
         self.assertLess(data['return'].max(), 0.75)
 
         # this stock had some extreme returns but they were legitimate
-        with self.assertNoLogs(level='WARNING'):
+        # only available on py<3.10
+        if hasattr(self, 'assertNoLogs'):
+            with self.assertNoLogs(level='WARNING'):
+                data = YahooFinance('GME', base_location=self.datadir).data
+        else:
             data = YahooFinance('GME', base_location=self.datadir).data
         self.assertGreater(data['return'].min(), -0.75)
         self.assertGreater(data['return'].max(), 3)
