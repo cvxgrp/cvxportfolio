@@ -22,7 +22,7 @@ import pandas as pd
 
 from ..errors import DataError
 from ..utils import (hash_, make_numeric, periods_per_year_from_datetime_index,
-                     resample_returns)
+                     resample_returns, set_pd_read_only)
 from .symbol_data import *
 from .symbol_data import OLHCV
 
@@ -150,25 +150,25 @@ class MarketDataInMemory(MarketData):
             logger.info("Masking internal %s dataframes.",
                 self.__class__.__name__)
             colmask = self.returns.columns[mask]
-            # self._masked_returns = self._df_or_ser_set_read_only(
+            # self._masked_returns = set_pd_read_only(
             #     pd.DataFrame(self.returns.iloc[:, mask], copy=True))
-            self._masked_returns = self._df_or_ser_set_read_only(
+            self._masked_returns = set_pd_read_only(
                pd.DataFrame(self.returns.loc[:, colmask], copy=True))
-            # self._masked_returns = self._df_or_ser_set_read_only(
+            # self._masked_returns = set_pd_read_only(
             #     pd.DataFrame(np.array(self.returns.values[:, mask]),
             #         index=self.returns.index, columns=colmask))
             if not self.volumes is None:
-                # self._masked_volumes = self._df_or_ser_set_read_only(
+                # self._masked_volumes = set_pd_read_only(
                 #     pd.DataFrame(self.volumes.iloc[:, mask[:-1]], copy=True))
-                self._masked_volumes = self._df_or_ser_set_read_only(
+                self._masked_volumes = set_pd_read_only(
                     pd.DataFrame(self.volumes.loc[:, colmask[:-1]], copy=True))
-                # self._masked_volumes = self._df_or_ser_set_read_only(
+                # self._masked_volumes = set_pd_read_only(
                 #     pd.DataFrame(np.array(self.volumes.values[:, mask[:-1]]),
                 #         index=self.volumes.index, columns=colmask[:-1]))
             if not self.prices is None:
-                # self._masked_prices = self._df_or_ser_set_read_only(
+                # self._masked_prices = set_pd_read_only(
                 #     pd.DataFrame(self.prices.iloc[:, mask[:-1]], copy=True))
-                self._masked_prices = self._df_or_ser_set_read_only(
+                self._masked_prices = set_pd_read_only(
                     pd.DataFrame(self.prices.loc[:, colmask[:-1]], copy=True))
             self._mask = mask
 
@@ -197,16 +197,16 @@ class MarketDataInMemory(MarketData):
         self._mask_dataframes(mask)
 
         tidx = self.returns.index.get_loc(t)
-        past_returns = self._df_or_ser_set_read_only(
+        past_returns = set_pd_read_only(
             pd.DataFrame(self._masked_returns.iloc[:tidx]))
-        current_returns = self._df_or_ser_set_read_only(
+        current_returns = set_pd_read_only(
             pd.Series(self._masked_returns.iloc[tidx]))
 
         if not self.volumes is None:
             tidx = self.volumes.index.get_loc(t)
-            past_volumes = self._df_or_ser_set_read_only(
+            past_volumes = set_pd_read_only(
                 pd.DataFrame(self._masked_volumes.iloc[:tidx]))
-            current_volumes = self._df_or_ser_set_read_only(
+            current_volumes = set_pd_read_only(
                 pd.Series(self._masked_volumes.iloc[tidx]))
         else:
             past_volumes = None
@@ -214,7 +214,7 @@ class MarketDataInMemory(MarketData):
 
         if not self.prices is None:
             tidx = self.prices.index.get_loc(t)
-            current_prices = self._df_or_ser_set_read_only(
+            current_prices = set_pd_read_only(
                 pd.Series(self._masked_prices.iloc[tidx]))
         else:
             current_prices = None
@@ -306,38 +306,16 @@ class MarketDataInMemory(MarketData):
                 + ' issues with missing data in the provided market returns.')
         return valid_universe_mask
 
-    @staticmethod
-    def _df_or_ser_set_read_only(df_or_ser):
-        """Set numpy array contained in dataframe to read only.
-
-        This is done on data store internally before it is served to the
-        policy or the simulator to ensure data consistency in case some
-        element of the pipeline accidentally corrupts the data.
-
-        This is enough to prevent direct assignement to the resulting
-        dataframe. However it could still be accidentally corrupted by
-        assigning to columns or indices that are not present in the
-        original. We avoid that case as well by returning a wrapped
-        dataframe (which doesn't copy data on creation) in
-        serve_data_policy and serve_data_simulator.
-        """
-        data = df_or_ser.values
-        data.flags.writeable = False
-        if hasattr(df_or_ser, 'columns'):
-            return pd.DataFrame(data, index=df_or_ser.index,
-                                columns=df_or_ser.columns)
-        return pd.Series(data, index=df_or_ser.index, name=df_or_ser.name)
-
     def _set_read_only(self):
         """Set internal dataframes to read-only."""
 
-        self.returns = self._df_or_ser_set_read_only(self.returns)
+        self.returns = set_pd_read_only(self.returns)
 
         if not self.prices is None:
-            self.prices = self._df_or_ser_set_read_only(self.prices)
+            self.prices = set_pd_read_only(self.prices)
 
         if not self.volumes is None:
-            self.volumes = self._df_or_ser_set_read_only(self.volumes)
+            self.volumes = set_pd_read_only(self.volumes)
 
     @property
     def _earliest_backtest_start(self):

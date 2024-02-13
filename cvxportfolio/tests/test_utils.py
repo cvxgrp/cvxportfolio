@@ -80,7 +80,7 @@ class TestUtils(unittest.TestCase):
                 np.array(['1', 2], dtype=object),
                 pd.Series([1, '2', 3], dtype=object),
                 pd.DataFrame([[1, '2.', 3], [4, '5.', 6]], dtype=object)]:
-            make_numeric(data)
+            self.assertTrue(np.all(data.astype(float) == make_numeric(data)))
 
         for data in [
                 np.array(['1a', 2], dtype=object),
