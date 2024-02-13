@@ -435,6 +435,58 @@ class TestData(CvxportfolioTest):
         self.assertGreater(data['return'].min(), -0.75)
         self.assertGreater(data['return'].max(), 3)
 
+    def test_yahoo_finance_preload_warnings(self):
+        """Test warnings on _preload if data has issues."""
+
+        # pylint: disable=protected-access
+
+        raw_data = YahooFinance._get_data_yahoo('ZM')
+        empty_instance = YahooFinance.__new__(YahooFinance)
+        empty_instance._symbol = 'ZM' # because the warnings use the symbol
+        cleaned = empty_instance._process(raw_data, None)
+
+        def _test_warning(data_transformation, part_of_message):
+            """Test that warning is raised w/ message containing some word."""
+            data = pd.DataFrame(cleaned, copy=True)
+            exec(data_transformation) # pylint: disable=exec-used
+            # print(data)
+            with self.assertLogs(level='WARNING') as _:
+                empty_instance._preload(data)
+                # print(_)
+                self.assertTrue(part_of_message in _.output[0])
+
+        # columns are: open low high close volume return
+
+        # high unexpected return
+        _test_warning(
+            'data.iloc[300,-1] = 1',
+            'dubious total open-to-open returns')
+
+        # low unexpected return
+        _test_warning(
+            'data.iloc[300,-1] = -0.5',
+            'dubious total open-to-open returns')
+
+        # low unexpected open
+        _test_warning(
+            'data.iloc[300,0] = data.iloc[300,0]*0.5',
+            'dubious open to close returns')
+
+        # high unexpected open
+        _test_warning(
+            'data.iloc[300,0] = data.iloc[300,0]*2',
+            'dubious open to close returns')
+
+        # low unexpected low
+        _test_warning(
+            'data.iloc[300,1] = data.iloc[300,1]*0.5',
+            'dubious open to low returns')
+
+        # high unexpected high
+        _test_warning(
+            'data.iloc[300,2] = data.iloc[300,2]*2',
+            'dubious open to high returns')
+
     def test_yahoo_finance_cleaning_granular(self):
         """Test each step of cleaning."""
 

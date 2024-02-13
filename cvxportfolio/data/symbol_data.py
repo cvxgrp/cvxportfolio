@@ -229,7 +229,7 @@ class SymbolData:
         :type current: pandas.Series or pandas.DataFrame or None
         :rtype: pandas.Series or pandas.DataFrame
         """
-        raise NotImplementedError #pragma: no cover
+        raise NotImplementedError # pragma: no cover
 
     def _preload(self, data):
         """Prepare data to serve to the user.
@@ -240,7 +240,7 @@ class SymbolData:
         :type data: pandas.Series or pandas.DataFrame
         :rtype: pandas.Series or pandas.DataFrame
         """
-        return data
+        return data # pragma: no cover
 
 
 #
@@ -251,7 +251,7 @@ def _timestamp_convert(unix_seconds_ts):
     """Convert a UNIX timestamp in seconds to a pandas.Timestamp."""
     return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
 
-# Windows for filtering extreme logreturns
+# Anomalous, extreme, dubious logreturns filtering.
 
 def _median_scale_around(lrets, window):
     """Median absolute logreturn in a window around each timestamp."""
@@ -289,7 +289,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
     in which case the ``'return'`` column is not processed. It only matters in
     the :meth:`_preload`, method: if open-to-open returns are not present,
-    we compute them there. Otherwise these may be total returns (including
+    we compute them there. Otherwise these may be total returns (which include
     dividends, ...) and they're dealt with in derived classes.
     """
 
@@ -304,8 +304,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
     THRESHOLD_LOWHIGH_TO_CLOSE = 20
 
     # log warning on _preload for abs logreturns (of 4 types) larger than this
-    # time the root squared mean absolute ones in FILTERING_WINDOWS around it
-    THRESHOLD_WARN_EXTREME_LOGRETS = 5
+    # time the median absolute ones in FILTERING_WINDOWS around it
+    THRESHOLD_WARN_EXTREME_LOGRETS = 17.5
 
     def _process(self, new_data, saved_data=None):
         """Base method for processing (cleaning) data.
@@ -524,10 +524,10 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
     def _warn_on_extreme_logreturns(self, logreturns, threshold, what):
         """Log warning if logreturns are extreme."""
         # with this we skip over exact zeros (which we assume come from some
-        # cleaning) and would bias the mean down
+        # cleaning) and would bias the median down
         logreturns.loc[logreturns == 0] = np.nan
         score = _unlikeliness_score(
-                logreturns, logreturns, scaler=_mean_scale_around,
+                logreturns, logreturns, scaler=_median_scale_around,
                 windows=self.FILTERING_WINDOWS)
         dubious_indexes = logreturns.index[score > threshold]
         if len(dubious_indexes) > 0:
@@ -585,189 +585,30 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         return data
 
-class OLHCVAC(OLHCV):
-    """Open-High-Low-Close-Volume-AdjustedClose data.
+# TODO: plan
+# ffill adj closes & compute adj close logreturns
+# use code above to get indexes of wrong ones, raise warnings, set to 0
+#
+# check close vs adj close, there should be only dividends (with y finance)
+#
+# throw out opens that are not in [low, high]
+#
+# apply similar logic (perhaps using total lrets for the stddev) for
+# open-close , close-high , close-low, throw out open/low/close not OK
+#
+# fill
+#
+# compute open-open total returns, then check with same logic for errors
+#
+# when doing append, make past data adhere to same format: recompute adj
+# close
+# could use volumes as well, if there are jumps in price due to
+# splits not recorded, then price * volume should be more stable
+#
+#
 
-    This is modeled after the data returned by Yahoo Finance.
-    """
 
-    # # rolstd windows for finding wrong logreturns
-    # _ROLSTD_WINDOWS = [20, 60, 252]
-
-    # # threshold for finding wrong logreturns
-    # _WRONG_LOGRET_THRESHOLD = 15
-
-    # def _indexes_extreme_logrets_wrt_rolstddev(self, lrets, window, treshold):
-    #     """Get indexes of logreturns that are extreme wrt trailing stddev."""
-    #     trailing_stdev = np.sqrt((lrets**2).rolling(window).median().shift(1))
-    #     bad_indexes = lrets.index[np.abs(lrets / trailing_stdev) > treshold]
-    #     return bad_indexes
-
-    # def _find_wrong_daily_logreturns(self, lrets):
-    #     """Find indexes of logreturns that are most probably data errors."""
-    #     bad_indexes = []
-    #     for window in self._ROLSTD_WINDOWS:
-    #         bad_indexes.append(
-    #             set(self._indexes_extreme_logrets_wrt_rolstddev(
-    #             lrets, window=window, treshold=self._WRONG_LOGRET_THRESHOLD)))
-    #         bad_indexes.append(
-    #             set(self._indexes_extreme_logrets_wrt_rolstddev(
-    #             lrets.iloc[::-1], window=window,
-    #             treshold=self._WRONG_LOGRET_THRESHOLD)))
-    #     bad_indexes = set.intersection(*bad_indexes)
-    #     return bad_indexes
-
-    # TODO: plan
-    # ffill adj closes & compute adj close logreturns
-    # use code above to get indexes of wrong ones, raise warnings, set to 0
-    #
-    # check close vs adj close, there should be only dividends (with y finance)
-    #
-    # throw out opens that are not in [low, high]
-    #
-    # apply similar logic (perhaps using total lrets for the stddev) for
-    # open-close , close-high , close-low, throw out open/low/close not OK
-    #
-    # fill
-    #
-    # compute open-open total returns, then check with same logic for errors
-    #
-    # when doing append, make past data adhere to same format: recompute adj
-    # close
-    # could use volumes as well, if there are jumps in price due to
-    # splits not recorded, then price * volume should be more stable
-    #
-    #
-
-    def _compute_total_returns(self, data):
-        """Compute total open-to-open returns."""
-
-        # print(data)
-        # print(data.isnull().sum())
-
-        # compute log of ratio between adjclose and close
-        log_adjustment_ratio = np.log(data['adjclose'] / data['close'])
-
-        # forward fill adjustment ratio
-        log_adjustment_ratio = log_adjustment_ratio.ffill()
-
-        # non-market log returns (dividends, splits)
-        non_market_lr = log_adjustment_ratio.diff().shift(-1)
-
-        # dividend_return = (data['adjclose'] /  data['close']).pct_change().shift(-1)
-
-        # import code; code.interact(local=locals())
-
-        # full open-to-open returns
-        open_to_open = np.log(data["open"]).diff().shift(-1)
-        data['return'] = np.exp(open_to_open + non_market_lr) - 1
-
-        # print(data)
-        # print(data.isnull().sum())
-
-        # intraday_logreturn = np.log(data["close"]) - np.log(data["open"])
-        # close_to_close_logreturn = np.log(data["adjclose"]).diff().shift(-1)
-        # open_to_open_logreturn = (
-        #     close_to_close_logreturn + intraday_logreturn -
-        #     intraday_logreturn.shift(-1)
-        # )
-        # data["return"] = np.exp(open_to_open_logreturn) - 1
-
-        # print(data)
-        # print(data.isnull().sum())
-
-    def _process(self, new_data, saved_data=None):
-        """Temporary."""
-
-        ## Here we only deal with the adjusted close prices.
-        ## All other operations are in the _process method of OLHCV
-
-        # all infinity values to NaN (repeat, but for adjclose)
-        self._set_infty_to_nan(new_data)
-
-        # NaN non-positive adj close
-        self._nan_nonpositive_prices(new_data, "adjclose")
-
-        # forward-fill adj close
-        self._fillna_and_message(
-            new_data, 'adjclose', 'last available', filler='ffill')
-
-        ## OLHCV._process treats all other than adjclose
-        super()._process(new_data, saved_data=saved_data)
-
-        # Compute total open-to-open returns
-        self._compute_total_returns(new_data)
-
-        # close2close_total = np.log(1 + new_data['total_return'])
-        # open2close = np.log(new_data['close']) - np.log(new_data['open'])
-        # open2open_total = close2close_total - open2close + open2close.shift(1)
-        # alt = (np.exp(open2open_total) - 1).shift(-1)
-
-        # close_div_open = new_data['close'] / new_data['open']
-        # open_to_open_total = (
-        #     (1 + new_data['total_return']) / close_div_open
-        #         ) * close_div_open.shift(1) - 1
-
-        # import code; code.interact(local=locals())
-
-        # assert np.allclose(new_data['return'].dropna(), open_to_open_total.shift(-1).dropna())
-
-        # new_data['return'] = open_to_open_total.shift(-1)
-
-        # del new_data['total_return']
-
-        # eliminate adjclose column
-        del new_data["adjclose"]
-
-        # eliminate last period's intraday data
-        # TODO this operation needs to be moved in preload
-        new_data.loc[new_data.index[-1],
-            ["high", "low", "close", "return", "volume"]] = np.nan
-
-        return new_data
-
-    # def _quality_check(self, data):
-    #     """Analyze quality of the OLHCV-TR data."""
-
-    #     # zero volume
-    #     zerovol_idx = data.index[data.volume == 0]
-    #     if len(zerovol_idx) > 0:
-    #         logger.warning(
-    #             '%s("%s") has volume equal to zero for timestamps: %s',
-    #             self.__class__.__name__, self.symbol, zerovol_idx)
-
-    #     def print_extreme(logreturns, name, sigmas=50):
-
-    #         # TODO: choose
-    #         m, s = logreturns.median(), np.sqrt((logreturns**2).median())
-    #         normalized = (logreturns - m)/s
-
-    #         # normalized = logreturns / logreturns.rolling(252).std().shift(1)
-
-    #         extremereturn_idx = normalized.index[np.abs(normalized) > sigmas]
-    #         if len(extremereturn_idx) > 0:
-    #             logger.warning(
-    #                 '%s("%s") has extreme %s (~%s sigmas) for timestamps: %s',
-    #                 self.__class__.__name__, self.symbol, name, sigmas,
-    #                 extremereturn_idx)
-
-    #     # extreme logreturns
-    #     logreturns = np.log(1 + data['return']).dropna()
-    #     print_extreme(logreturns, 'total returns')
-
-    #     # extreme open2close
-    #     open2close = np.log(data['close']) - np.log(data['open']).dropna()
-    #     print_extreme(open2close, 'open to close returns')
-
-    #     # extreme open2high
-    #     open2high = np.log(data['high']) - np.log(data['open']).dropna()
-    #     print_extreme(open2high, 'open to high returns')
-
-    #     # extreme open2low
-    #     open2low = np.log(data['low']) - np.log(data['open']).dropna()
-    #     print_extreme(open2low, 'open to low returns')
-
-class YahooFinance(OLHCVAC):
+class YahooFinance(OLHCV):
     """Yahoo Finance symbol data.
 
     :param symbol: The symbol that we downloaded.
@@ -785,6 +626,56 @@ class YahooFinance(OLHCVAC):
     :attribute data: The downloaded, and cleaned, data for the symbol.
     :type data: pandas.DataFrame
     """
+
+    def _process(self, new_data, saved_data=None):
+        """Process Yahoo Finance specific data, call parent's.
+
+        Here we deal with the adjclose column, call OLHCV._process method, and
+        compute total open-to-open returns.
+        """
+
+        ## Treat adjclose. We believe them (unless impossible).
+
+        # all infinity values to NaN (repeat, but for adjclose)
+        self._set_infty_to_nan(new_data)
+
+        # NaN non-positive adj close
+        self._nan_nonpositive_prices(new_data, "adjclose")
+
+        # forward-fill adj close
+        self._fillna_and_message(
+            new_data, 'adjclose', 'last available', filler='ffill')
+
+        ## OLHCV._process treats all columns other than adjclose
+        super()._process(new_data, saved_data=saved_data)
+
+        ## Compute total open-to-open returns
+
+        # intraday logreturn
+        intraday_logreturn = np.log(
+            new_data["close"]) - np.log(new_data["open"])
+
+        # close to close total logreturn
+        close_to_close_total_logreturn = np.log(
+            new_data["adjclose"]).diff().shift(-1)
+
+        # open to open total logreturn
+        open_to_open_total_logreturn = \
+            close_to_close_total_logreturn + intraday_logreturn \
+            - intraday_logreturn.shift(-1)
+
+        # open to open total return
+        new_data['return'] = np.exp(open_to_open_total_logreturn) - 1
+
+        # eliminate adjclose column
+        del new_data["adjclose"]
+
+        # eliminate last period's intraday data
+        # TODO this operation needs to be moved in preload
+        new_data.loc[new_data.index[-1],
+            ["high", "low", "close", "return", "volume"]] = np.nan
+
+        return new_data
 
     @staticmethod
     def _get_data_yahoo(ticker, start='1900-01-01', end='2100-01-01'):
