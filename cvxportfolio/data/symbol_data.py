@@ -410,12 +410,12 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
             columns_to_nan = "open",
             message = 'open price higher than high price')
 
-    def _nan_incompatible_low_high(self, data):
-        """Set low and high to NaN if low is higher, in-place."""
-        self._nan_values(
-            data=data, condition = data['low'] > data['high'],
-            columns_to_nan = ["low", "high"],
-            message = 'low price higher than high price')
+    # def _nan_incompatible_low_high(self, data):
+    #     """Set low and high to NaN if low is higher, in-place."""
+    #     self._nan_values(
+    #         data=data, condition = data['low'] > data['high'],
+    #         columns_to_nan = ["low", "high"],
+    #         message = 'low price higher than high price')
 
     def _nan_high_lower_close(self, data):
         """Set high price to NaN if lower than close, in-place."""
@@ -456,11 +456,11 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         self._set_infty_to_nan(new_data)
 
         # more
-        self._nan_open_lower_low(new_data)
-        self._nan_open_higher_high(new_data)
-        self._nan_incompatible_low_high(new_data)
         self._nan_high_lower_close(new_data)
         self._nan_low_higher_close(new_data)
+        self._nan_open_lower_low(new_data)
+        self._nan_open_higher_high(new_data)
+        # self._nan_incompatible_low_high(new_data)
 
     # TODO: factor quality check and clean into total-return related and non-
 
