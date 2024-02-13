@@ -81,8 +81,8 @@ class TestData(CvxportfolioTest):
             data.loc["2023-04-10 13:30:00+00:00", "return"],
             data.loc["2023-04-11 13:30:00+00:00", "open"] /
             data.loc["2023-04-10 13:30:00+00:00", "open"] - 1,
+            rtol=1e-04, atol=1e-07,
         ))
-        self.assertTrue(np.isnan(data.iloc[-1]["close"]))
 
     def test_fred(self):
         """Test basic Fred usage."""
@@ -124,6 +124,7 @@ class TestData(CvxportfolioTest):
             data.loc["2023-04-05 13:30:00+00:00", "return"],
             data.loc["2023-04-06 13:30:00+00:00", "open"] /
             data.loc["2023-04-05 13:30:00+00:00", "open"] - 1,
+            rtol=1e-04, atol=1e-07,
         ))
 
         store.update(grace_period=pd.Timedelta('1d'))

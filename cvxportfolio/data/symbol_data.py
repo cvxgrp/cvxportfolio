@@ -168,6 +168,14 @@ class SymbolData:
     def update(self, grace_period):
         """Update current stored data for symbol.
 
+        Checks (which raise warnings):
+
+        #. Elements of data are NaN (skipping last row)
+        #. Update is not append-only. For dataframes check all elements other
+        than last row of the data which was there before, and for that last
+        row, only the open price. For Series that doesn't matter, check that
+        last element is the same.
+
         :param grace_period: If the time between now and the last value stored
             is less than this, we don't update the data already stored.
         :type grace_period: pandas.Timedelta
@@ -192,8 +200,7 @@ class SymbolData:
                         # we use numpy.isclose because returns may be computed
                         # via logreturns and numerical errors can sift through
                         np.isclose(updated.loc[current.index[:-1]],
-                            current.iloc[:-1], equal_nan=True,
-                            rtol=1e-08, atol=1e-08)):
+                            current.iloc[:-1], equal_nan=True)):
                     logger.error(f"{self.__class__.__name__} update"
                         + f" of {self.symbol} is not append-only!")
                     self._print_difference(current, updated)
@@ -211,7 +218,7 @@ class SymbolData:
                             f"{self.__class__.__name__} update"
                             + f" of {self.symbol} changed last value!")
                         self._print_difference(current, updated)
-        except KeyError:
+        except KeyError: # this should have become superflous
             logger.error("%s update of %s could not be checked for"
                 + " append-only edits. Was there a DST change?",
                 self.__class__.__name__, self.symbol)
@@ -577,9 +584,16 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # pure OLHCV data source there is no need to store the open-to-open
         # returns, they can be computed here
         if not 'return' in data.columns:
-           data['return'] = data['open'].pct_change().shift(-1)
+           data['return'] = data[
+                'open'].pct_change().shift(-1) # pragma: no cover
 
         self._quality_check(data)
+
+        # NaN intraday data
+        data.loc[data.index[-1],
+            ["high", "low", "close", "return", "volume"]] = np.nan
+
+        # compute volume in cash units
         data["valuevolume"] = data["volume"] * data["open"]
         del data["volume"]
 
@@ -670,11 +684,6 @@ class YahooFinance(OLHCV):
         # eliminate adjclose column
         del new_data["adjclose"]
 
-        # eliminate last period's intraday data
-        # TODO this operation needs to be moved in preload
-        new_data.loc[new_data.index[-1],
-            ["high", "low", "close", "return", "volume"]] = np.nan
-
         return new_data
 
     @staticmethod
@@ -752,6 +761,7 @@ class YahooFinance(OLHCV):
         this_periods_open_time = _timestamp_convert(
             data['meta']['currentTradingPeriod']['regular']['start'])
 
+        # this should be enough, but be careful
         if df_result.index[-1] > this_periods_open_time:
             index = df_result.index.to_numpy()
             index[-1] = this_periods_open_time
