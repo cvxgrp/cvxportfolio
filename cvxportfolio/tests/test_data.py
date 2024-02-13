@@ -424,6 +424,11 @@ class TestData(CvxportfolioTest):
         self.assertTrue((data.valuevolume == 0).sum() > 0)
         self.assertTrue(data.iloc[:-1].isnull().sum().sum() == 0)
 
+        # this stock was found to have phony open/low/high prices
+        data = YahooFinance('NWG.L', base_location=self.datadir).data
+        self.assertGreater(data['return'].min(), -0.75)
+        self.assertLess(data['return'].max(), 0.75)
+
     def test_yahoo_finance_cleaning_granular(self):
         """Test each step of cleaning."""
 
@@ -483,6 +488,56 @@ class TestData(CvxportfolioTest):
         _test_warning(
             'data.iloc[3,2] = data.iloc[3].close * .9',
             'high price lower than close price')
+
+        # extreme low price
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .01',
+            'anomalous low price')
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .02',
+            'anomalous low price')
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .05',
+            'anomalous low price')
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .1',
+            'anomalous low price')
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .2',
+            'anomalous low price')
+        _test_warning( # changed dtindex until found one that works
+            'data.iloc[20,1] = data.iloc[20,1] * .5',
+            'anomalous low price')
+
+        # extreme high price
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 100',
+            'anomalous high price')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 50',
+            'anomalous high price')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 20',
+            'anomalous high price')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 10',
+            'anomalous high price')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 5',
+            'anomalous high price')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 2',
+            'anomalous high price')
+
+        # extreme open price
+        _test_warning(
+            'data.iloc[3,0] = data.iloc[3,0] * 1.75;'
+            + 'data.iloc[3,2] = data.iloc[3,0]',
+            'anomalous open price')
+        _test_warning(
+            'data.iloc[20,0] = data.iloc[20,0] * 0.5;'
+            + 'data.iloc[20,1] = data.iloc[20,0]',
+            'anomalous open price')
 
     # def test_yahoo_finance_wrong_last_time(self):
     #     """Test that we correct last time if intraday."""

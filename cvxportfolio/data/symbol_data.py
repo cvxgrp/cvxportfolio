@@ -252,7 +252,6 @@ def _timestamp_convert(unix_seconds_ts):
     return pd.Timestamp(unix_seconds_ts*1E9, tz='UTC')
 
 # Windows for filtering extreme logreturns
-_WINDOWS = (10, 20, 50, 100, 200)
 
 def _median_scale_around(lrets, window):
     """Median absolute logreturn in a window around each timestamp."""
@@ -264,14 +263,13 @@ def _mean_scale_around(lrets, window):
         (lrets**2).rolling(window, center=True, min_periods=1).mean())
 
 def _unlikeliness_score(
-        test_logreturns, reference_logreturns, scaler=_median_scale_around,
-        windows=_WINDOWS):
+        test_logreturns, reference_logreturns, scaler, windows):
     """Find problematic indexes for test logreturns compared w/ reference."""
     scaled = [
         np.abs(test_logreturns) / scaler(reference_logreturns, window)
         for window in windows]
     scaled = pd.DataFrame(scaled).T
-    return scaled.min(axis=1), scaled
+    return scaled.min(axis=1)
 
 
 class OLHCV(SymbolData): # pylint: disable=abstract-method
@@ -294,6 +292,16 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
     we compute them there. Otherwise these may be total returns (including
     dividends, ...) and they're dealt with in derived classes.
     """
+
+    FILTERING_WINDOWS = (10, 20, 50, 100, 200)
+
+    # remove open prices when open to close abs logreturn is larger than
+    # this time the median absolute ones in FILTERING_WINDOWS around it
+    THRESHOLD_OPEN_TO_CLOSE = 15
+
+    # remove low/high prices when low/high to close abs logreturn larger than
+    # this time the median absolute ones in FILTERING_WINDOWS around it
+    THRESHOLD_LOWHIGH_TO_CLOSE = 20
 
     def _process(self, new_data, saved_data=None):
         """Base method for processing (cleaning) data.
@@ -330,9 +338,33 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         return new_data
 
+    def _nan_anomalous_prices(self, data, price_name, threshold):
+        """Set to NaN given price name on its anomalous logrets to close."""
+        lr_to_close = np.log(data['close']) - np.log(data[price_name])
+        # with this we skip over exact zeros (which come from some upstream
+        # cleaning) and would throw the median off
+        lr_to_close.loc[lr_to_close == 0] = np.nan
+        score = _unlikeliness_score(
+                lr_to_close, lr_to_close, scaler=_median_scale_around,
+                windows=self.FILTERING_WINDOWS)
+        self._nan_values(
+            data, condition = score > threshold,
+            columns_to_nan=price_name, message=f'anomalous {price_name} price')
+
     def _nan_unlikely(self, new_data, saved_data=None):
         """Nan-out unlikely values."""
-        # return new_data
+
+        # NaN anomalous open prices
+        self._nan_anomalous_prices(
+            new_data, 'open', threshold=self.THRESHOLD_OPEN_TO_CLOSE)
+
+        # NaN anomalous high prices
+        self._nan_anomalous_prices(
+            new_data, 'high', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE)
+
+        # NaN anomalous low prices
+        self._nan_anomalous_prices(
+            new_data, 'low', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE)
 
     def _fill(self, new_data, saved_data=None):
         """Make easy fills."""
@@ -460,6 +492,14 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         self._nan_low_higher_close(new_data)
         self._nan_open_lower_low(new_data)
         self._nan_open_higher_high(new_data)
+
+        assert np.all(
+            new_data['low'].fillna(0.) <= new_data[
+                ['open', 'high', 'close']].min(1))
+        assert np.all(
+            new_data['high'].fillna(np.inf) >= new_data[
+                ['open', 'low', 'close']].max(1))
+
         # self._nan_incompatible_low_high(new_data)
 
     # TODO: factor quality check and clean into total-return related and non-
