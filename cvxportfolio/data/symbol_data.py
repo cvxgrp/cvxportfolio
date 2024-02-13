@@ -265,10 +265,14 @@ def _median_scale_around(lrets, window):
     """Median absolute logreturn in a window around each timestamp."""
     return np.abs(lrets).rolling(window, center=True, min_periods=1).median()
 
-# def _mean_scale_around(lrets, window):
-#     """Root mean squared logreturn in a window around each timestamp."""
-#     return np.sqrt(
-#         (lrets**2).rolling(window, center=True, min_periods=1).mean())
+def _mean_scale_around(lrets, window):
+    """Root mean squared logreturn in a window around each timestamp.
+
+    We need a few operations because we skip the observation itself
+    """
+    sum = (lrets**2).rolling(window, center=True, min_periods=2).sum()
+    count = lrets.rolling(window, center=True, min_periods=2).count()
+    return np.sqrt((sum - lrets**2) / (count - 1))
 
 def _unlikeliness_score(
         test_logreturns, reference_logreturns, scaler, windows):
@@ -308,12 +312,13 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
     THRESHOLD_OPEN_TO_CLOSE = 15
 
     # remove low/high prices when low/high to close abs logreturn larger than
-    # this time the median absolute ones in FILTERING_WINDOWS around it
+    # this time the median absolute ones in FILTERING_WINDOWS centered on it
     THRESHOLD_LOWHIGH_TO_CLOSE = 20
 
     # log warning on _preload for abs logreturns (of 4 types) larger than this
-    # time the median absolute ones in FILTERING_WINDOWS around it
-    THRESHOLD_WARN_EXTREME_LOGRETS = 17.5
+    # time the root mean square in FILTERING_WINDOWS centered on it, without
+    # the given observation itself
+    THRESHOLD_WARN_EXTREME_LOGRETS = 10
 
     def _process(self, new_data, saved_data=None):
         """Base method for processing (cleaning) data.
@@ -554,10 +559,10 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
     def _warn_on_extreme_logreturns(self, logreturns, threshold, what):
         """Log warning if logreturns are extreme."""
         # with this we skip over exact zeros (which we assume come from some
-        # cleaning) and would bias the median down
+        # cleaning) and would bias the mean down
         logreturns.loc[logreturns == 0] = np.nan
         score = _unlikeliness_score(
-                logreturns, logreturns, scaler=_median_scale_around,
+                logreturns, logreturns, scaler=_mean_scale_around,
                 windows=self.FILTERING_WINDOWS)
         dubious_indexes = logreturns.index[score > threshold]
         if len(dubious_indexes) > 0:
