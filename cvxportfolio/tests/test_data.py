@@ -429,6 +429,12 @@ class TestData(CvxportfolioTest):
         self.assertGreater(data['return'].min(), -0.75)
         self.assertLess(data['return'].max(), 0.75)
 
+        # this stock had some extreme returns but they were legitimate
+        with self.assertNoLogs(level='WARNING'):
+            data = YahooFinance('GME', base_location=self.datadir).data
+        self.assertGreater(data['return'].min(), -0.75)
+        self.assertGreater(data['return'].max(), 3)
+
     def test_yahoo_finance_cleaning_granular(self):
         """Test each step of cleaning."""
 
