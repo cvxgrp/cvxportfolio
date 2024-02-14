@@ -513,8 +513,9 @@ class TestData(CvxportfolioTest):
             self.assertTrue(np.any(
                 'contiguous' in el.output for el in _))
 
-        with self.assertNoLogs(level='WARNING'):
-            YahooFinance('BATS.L', base_location=self.datadir)
+        if hasattr(self, 'assertNoLogs'):
+            with self.assertNoLogs(level='WARNING'):
+                YahooFinance('BATS.L', base_location=self.datadir)
 
     def test_adjcloses_logrets_removal(self):
         """Test method to remove adjcloses when its logrets are anomalous."""
