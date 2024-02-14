@@ -777,6 +777,11 @@ class YahooFinance(OLHCV):
         self._fillna_and_message(
             new_data, 'adjclose', 'last available', filler='ffill')
 
+        # eliminate (initial) rows where adjclose is NaN
+        nan_adjcloses = new_data.adjclose.isnull()
+        if np.any(nan_adjcloses):
+            new_data = pd.DataFrame(new_data.loc[~nan_adjcloses], copy=True)
+
         ## OLHCV._process treats all columns other than adjclose
         new_data = super()._process(new_data, saved_data=saved_data)
 
