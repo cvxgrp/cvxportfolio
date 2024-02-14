@@ -456,12 +456,13 @@ class TestData(CvxportfolioTest):
         empty_instance._symbol = 'ZM' # because the warnings use the symbol
         cleaned = empty_instance._process(raw_data, None)
 
-        def _test_warning(data_transformation, part_of_message):
+        def _test_warning(
+                data_transformation, part_of_message, level='WARNING'):
             """Test that warning is raised w/ message containing some word."""
             data = pd.DataFrame(cleaned, copy=True)
             exec(data_transformation) # pylint: disable=exec-used
             # print(data)
-            with self.assertLogs(level='WARNING') as _:
+            with self.assertLogs(level=level) as _:
                 empty_instance._preload(data)
                 # print(_)
                 self.assertTrue(part_of_message in _.output[0])
@@ -470,33 +471,37 @@ class TestData(CvxportfolioTest):
 
         # high unexpected return
         _test_warning(
-            'data.iloc[300,-1] = 1',
+            'data.iloc[300,-1] = 4',
             'dubious total open-to-open returns')
 
         # low unexpected return
         _test_warning(
-            'data.iloc[300,-1] = -0.5',
+            'data.iloc[300,-1] = -0.9',
             'dubious total open-to-open returns')
 
         # low unexpected open
         _test_warning(
-            'data.iloc[300,0] = data.iloc[300,0]*0.5',
-            'dubious open to close returns')
+            'data.iloc[300,0] = data.iloc[300,0]*0.1',
+            'dubious open to close returns',
+            level='INFO')
 
         # high unexpected open
         _test_warning(
-            'data.iloc[300,0] = data.iloc[300,0]*2',
-            'dubious open to close returns')
+            'data.iloc[300,0] = data.iloc[300,0]*5',
+            'dubious open to close returns',
+            level='INFO')
 
         # low unexpected low
         _test_warning(
-            'data.iloc[300,1] = data.iloc[300,1]*0.5',
-            'dubious open to low returns')
+            'data.iloc[300,1] = data.iloc[300,1]*0.1',
+            'dubious open to low returns',
+            level='INFO')
 
         # high unexpected high
         _test_warning(
-            'data.iloc[300,2] = data.iloc[300,2]*2',
-            'dubious open to high returns')
+            'data.iloc[300,2] = data.iloc[300,2]*5',
+            'dubious open to high returns',
+            level='INFO')
 
     def test_yahoo_finance_remove_on_many_bad_adjcloses(self):
         """Test remove old data when many adjcloses are invalid."""
@@ -508,14 +513,29 @@ class TestData(CvxportfolioTest):
             self.assertTrue(np.any(
                 'contiguous' in el.output for el in _))
 
+        with self.assertNoLogs(level='WARNING'):
+            YahooFinance('BATS.L', base_location=self.datadir)
+
     def test_adjcloses_logrets_removal(self):
         """Test method to remove adjcloses when its logrets are anomalous."""
+
+        # this stock had anomalous price changes in the 70s
+        with self.assertLogs(level='WARNING') as _:
+            d = YahooFinance("SMT.L", base_location=self.datadir).data
+            self.assertTrue(np.any([
+                    'anomalous adjclose prices' in el for el in _.output]))
+            self.assertTrue(d['return'].max() < 2)
 
         # this stock was found to have phony adjcloses
         with self.assertLogs(level='WARNING') as _:
             YahooFinance('BA.L', base_location=self.datadir)
-            self.assertTrue(np.any(
-                    'anomalous adjclose prices' in el.output for el in _))
+            self.assertTrue(np.any([
+                    'anomalous adjclose prices' in el for el in _.output]))
+
+        if hasattr(self, 'assertNoLogs'):
+            with self.assertNoLogs(level='WARNING'):
+                YahooFinance('BA.L', base_location=self.datadir)
+
 
     def test_yahoo_finance_cleaning_granular(self):
         """Test each step of cleaning."""

@@ -281,7 +281,7 @@ def _unlikeliness_score(
         np.abs(test_logreturns) / scaler(reference_logreturns, window)
         for window in windows]
     scaled = pd.DataFrame(scaled).T
-    return scaled.min(axis=1)
+    return scaled.min(axis=1, skipna=True)
 
 
 class OLHCV(SymbolData): # pylint: disable=abstract-method
@@ -558,7 +558,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
                 data.values, copy=True, nan=np.nan, posinf=np.nan,
                 neginf=np.nan)
 
-    def _warn_on_extreme_logreturns(self, logreturns, threshold, what):
+    def _warn_on_extreme_logreturns(
+            self, logreturns, threshold, what, level='warning'):
         """Log warning if logreturns are extreme."""
         # with this we skip over exact zeros (which we assume come from some
         # cleaning) and would bias the scale down
@@ -568,7 +569,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
                 windows=self.FILTERING_WINDOWS)
         dubious_indexes = logreturns.index[score > threshold]
         if len(dubious_indexes) > 0:
-            logger.warning(
+            getattr(logger, level)(
                 '%s("%s") has dubious %s for timestamps: %s',
                 self.__class__.__name__, self.symbol, what, dubious_indexes)
 
@@ -590,17 +591,20 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # extreme open2close
         self._warn_on_extreme_logreturns(
             np.log(data['close']) - np.log(data['open']),
-            self.THRESHOLD_WARN_EXTREME_LOGRETS, 'open to close returns')
+            self.THRESHOLD_WARN_EXTREME_LOGRETS, 'open to close returns',
+            level='info')
 
         # extreme open2high
         self._warn_on_extreme_logreturns(
             np.log(data['high']) - np.log(data['open']),
-            self.THRESHOLD_WARN_EXTREME_LOGRETS, 'open to high returns')
+            self.THRESHOLD_WARN_EXTREME_LOGRETS, 'open to high returns',
+            level='info')
 
         # extreme open2low
         self._warn_on_extreme_logreturns(
             np.log(data['low']) - np.log(data['open']),
-            self.THRESHOLD_WARN_EXTREME_LOGRETS, 'open to low returns')
+            self.THRESHOLD_WARN_EXTREME_LOGRETS, 'open to low returns',
+            level='info')
 
     def _preload(self, data):
         """Prepare data for use by Cvxportfolio.
@@ -674,12 +678,15 @@ class YahooFinance(OLHCV):
     # Maximum number of contiguous days on which an adjclose price can be
     # invalid (e.g., negative); if any such period is found, all data before
     # and including it is removed
-    MAX_CONTIGUOUS_MISSING_ADJCLOSES = 20
+    MAX_CONTIGUOUS_MISSING_ADJCLOSES = 10
 
     # remove all data (also one day before and after) when logrets implied by
-    # adjcloses are anomalous; abs value larger than median abs value time this
-    # in many windows around it
-    THRESHOLD_BAD_ADJCLOSE = 20
+    # adjcloses are anomalous: abs value larger than median abs value time this
+    # in many windows around it.
+    # this is redone iteratively up to the MAX_CONTIGUOUS_MISSING_ADJCLOSES,
+    # so unless the bad adjcloses are only for few days all data up to the
+    # anomalous event will be deleted
+    THRESHOLD_BAD_ADJCLOSE = 100
 
     def _throw_out_all_data_before_many_bad_adjcloses(self, new_data):
         """Throw out all data before many NaN on adjclose column."""
@@ -700,8 +707,13 @@ class YahooFinance(OLHCV):
 
     def _remove_data_on_bad_adjcloses(self, new_data):
         """Remove adjcloses if implied logreturns are highly anomalous."""
-        while True:
+        # worst case (if it goes to end of for loop)
+        # we throw out all data before the event
+        for _ in range(self.MAX_CONTIGUOUS_MISSING_ADJCLOSES + 1):
             logrets = np.log(new_data.adjclose.ffill()).diff()
+            # with this we skip over exact zeros (which we assume come from
+            # some cleaning) and would bias the scale down
+            # logrets.loc[logrets == 0.] = np.nan
             score = _unlikeliness_score(
                 logrets, logrets, scaler=_median_scale_around,
                 windows=self.FILTERING_WINDOWS)
@@ -710,7 +722,9 @@ class YahooFinance(OLHCV):
             # could be made less aggressive, but better to be safe
             bad_indexes = logrets.index[
                 (score > self.THRESHOLD_BAD_ADJCLOSE)
-                    | (score > self.THRESHOLD_BAD_ADJCLOSE).shift(-1)]
+                    | (score > self.THRESHOLD_BAD_ADJCLOSE).shift(-1)
+                    # | score.isnull() # TODO: this is not good, necessary for SMT.L
+                    ]
 
             if len(bad_indexes) == 0:
                 break
@@ -741,6 +755,9 @@ class YahooFinance(OLHCV):
 
         # Remove all data when highly anomalous adjclose prices are detected
         self._remove_data_on_bad_adjcloses(new_data)
+
+        # Repeat throw out all data before many NaN on adjclose
+        new_data = self._throw_out_all_data_before_many_bad_adjcloses(new_data)
 
         # forward-fill adj close
         self._fillna_and_message(
