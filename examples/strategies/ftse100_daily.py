@@ -67,10 +67,13 @@ if __name__ == '__main__':
 
     else:
         import matplotlib.pyplot as plt
+        import pandas as pd
 
         #INDEX_ETF = 'DIA'
 
-        research_sim = cvx.StockMarketSimulator(FTSE100, cash_key='GBPOUND')
+        md = cvx.DownloadedMarketData(
+            FTSE100, cash_key='GBPOUND', grace_period=pd.Timedelta('5d'))
+        research_sim = cvx.StockMarketSimulator(market_data = md)
 
         research_policy, _ = policy(1., 1.)
 

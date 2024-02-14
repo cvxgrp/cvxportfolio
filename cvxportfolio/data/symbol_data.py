@@ -316,9 +316,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
     THRESHOLD_LOWHIGH_TO_CLOSE = 20
 
     # log warning on _preload for abs logreturns (of 4 types) larger than this
-    # time the root mean square in FILTERING_WINDOWS centered on it, without
-    # the given observation itself
-    THRESHOLD_WARN_EXTREME_LOGRETS = 10
+    # this time the median absolute ones in FILTERING_WINDOWS centered on it
+    THRESHOLD_WARN_EXTREME_LOGRETS = 50
 
     def _process(self, new_data, saved_data=None):
         """Base method for processing (cleaning) data.
@@ -438,7 +437,10 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
                 '%s("%s").data["%s"] has NaNs on timestamps: %s,'
                 + ' filling them with %s.', self.__class__.__name__,
                 self.symbol, col_name, bad_indexes, message)
-            data[col_name] = getattr(data[col_name], filler)(filler_arg)
+            if filler == 'ffill':
+                data[col_name] = data[col_name].ffill()
+            else:
+                data[col_name] = getattr(data[col_name], filler)(filler_arg)
 
     def _nan_anomalous_prices(
             self, new_data, price_name, threshold, saved_data=None):
@@ -559,10 +561,10 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
     def _warn_on_extreme_logreturns(self, logreturns, threshold, what):
         """Log warning if logreturns are extreme."""
         # with this we skip over exact zeros (which we assume come from some
-        # cleaning) and would bias the mean down
+        # cleaning) and would bias the scale down
         logreturns.loc[logreturns == 0] = np.nan
         score = _unlikeliness_score(
-                logreturns, logreturns, scaler=_mean_scale_around,
+                logreturns, logreturns, scaler=_median_scale_around,
                 windows=self.FILTERING_WINDOWS)
         dubious_indexes = logreturns.index[score > threshold]
         if len(dubious_indexes) > 0:
@@ -669,6 +671,28 @@ class YahooFinance(OLHCV):
     :type data: pandas.DataFrame
     """
 
+    # Maximum number of contiguous days on which an adjclose price can be
+    # invalid (e.g., negative); if any such period is found, all data before
+    # and including it is removed
+    MAX_CONTIGUOUS_MISSING_ADJCLOSES = 20
+
+    def _throw_out_all_data_before_many_bad_adjcloses(self, new_data):
+        """Throw out all data before many NaN on adjclose column."""
+        invalid_indexes = new_data.index[
+            new_data.adjclose.isnull().rolling(
+                self.MAX_CONTIGUOUS_MISSING_ADJCLOSES
+                ).sum() == self.MAX_CONTIGUOUS_MISSING_ADJCLOSES]
+        if len(invalid_indexes) > 0:
+            last_invalid_index = invalid_indexes[-1]
+            logger.warning(
+                '%s("%s").data has invalid adjclose prices for more than'
+                + ' %s contiguous days until %s; removing all data until then',
+                self.__class__.__name__, self.symbol,
+                self.MAX_CONTIGUOUS_MISSING_ADJCLOSES, last_invalid_index)
+            new_data = pd.DataFrame(
+                new_data.loc[new_data.index > last_invalid_index], copy=True)
+        return new_data
+
     def _process(self, new_data, saved_data=None):
         """Process Yahoo Finance specific data, call parent's.
 
@@ -684,12 +708,15 @@ class YahooFinance(OLHCV):
         # NaN non-positive adj close
         self._nan_nonpositive_prices(new_data, "adjclose")
 
+        # Throw out data before many NaN on adjclose
+        new_data = self._throw_out_all_data_before_many_bad_adjcloses(new_data)
+
         # forward-fill adj close
         self._fillna_and_message(
             new_data, 'adjclose', 'last available', filler='ffill')
 
         ## OLHCV._process treats all columns other than adjclose
-        super()._process(new_data, saved_data=saved_data)
+        new_data = super()._process(new_data, saved_data=saved_data)
 
         ## Compute total open-to-open returns
 

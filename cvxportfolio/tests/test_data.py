@@ -498,6 +498,17 @@ class TestData(CvxportfolioTest):
             'data.iloc[300,2] = data.iloc[300,2]*2',
             'dubious open to high returns')
 
+    def test_yahoo_finance_remove_on_many_bad_adjcloses(self):
+        """Test remove old data when many adjcloses are invalid."""
+
+        # this stock was found to have bad (negative) adjcloses for many
+        # months at its start
+        # with self.assertLogs(level='WARNING') as _:
+        with self.assertLogs(level='WARNING') as _:
+            YahooFinance('BATS.L', base_location=self.datadir)
+            self.assertTrue(np.any(
+                'contiguous' in el.output for el in _))
+
     def test_yahoo_finance_cleaning_granular(self):
         """Test each step of cleaning."""
 
