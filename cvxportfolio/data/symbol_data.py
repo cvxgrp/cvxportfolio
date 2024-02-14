@@ -676,6 +676,11 @@ class YahooFinance(OLHCV):
     # and including it is removed
     MAX_CONTIGUOUS_MISSING_ADJCLOSES = 20
 
+    # remove all data (also one day before and after) when logrets implied by
+    # adjcloses are anomalous; abs value larger than median abs value time this
+    # in many windows around it
+    THRESHOLD_BAD_ADJCLOSE = 20
+
     def _throw_out_all_data_before_many_bad_adjcloses(self, new_data):
         """Throw out all data before many NaN on adjclose column."""
         invalid_indexes = new_data.index[
@@ -693,6 +698,29 @@ class YahooFinance(OLHCV):
                 new_data.loc[new_data.index > last_invalid_index], copy=True)
         return new_data
 
+    def _remove_data_on_bad_adjcloses(self, new_data):
+        """Remove adjcloses if implied logreturns are highly anomalous."""
+        while True:
+            logrets = np.log(new_data.adjclose.ffill()).diff()
+            score = _unlikeliness_score(
+                logrets, logrets, scaler=_median_scale_around,
+                windows=self.FILTERING_WINDOWS)
+
+            # we eliminate data 1 day before and after any anomalous event
+            # could be made less aggressive, but better to be safe
+            bad_indexes = logrets.index[
+                (score > self.THRESHOLD_BAD_ADJCLOSE)
+                    | (score > self.THRESHOLD_BAD_ADJCLOSE).shift(-1)]
+
+            if len(bad_indexes) == 0:
+                break
+            new_data.loc[bad_indexes] = np.nan
+            logger.warning(
+                '%s("%s").data has anomalous adjclose prices on timestamps'
+                + '(including one day before and after) %s; removing all'
+                + 'data (not just adjcloses) on those timestamps.',
+                self.__class__.__name__, self.symbol, bad_indexes)
+
     def _process(self, new_data, saved_data=None):
         """Process Yahoo Finance specific data, call parent's.
 
@@ -708,8 +736,11 @@ class YahooFinance(OLHCV):
         # NaN non-positive adj close
         self._nan_nonpositive_prices(new_data, "adjclose")
 
-        # Throw out data before many NaN on adjclose
+        # Throw out all data before many NaN on adjclose
         new_data = self._throw_out_all_data_before_many_bad_adjcloses(new_data)
+
+        # Remove all data when highly anomalous adjclose prices are detected
+        self._remove_data_on_bad_adjcloses(new_data)
 
         # forward-fill adj close
         self._fillna_and_message(

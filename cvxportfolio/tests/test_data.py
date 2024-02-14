@@ -503,11 +503,19 @@ class TestData(CvxportfolioTest):
 
         # this stock was found to have bad (negative) adjcloses for many
         # months at its start
-        # with self.assertLogs(level='WARNING') as _:
         with self.assertLogs(level='WARNING') as _:
             YahooFinance('BATS.L', base_location=self.datadir)
             self.assertTrue(np.any(
                 'contiguous' in el.output for el in _))
+
+    def test_adjcloses_logrets_removal(self):
+        """Test method to remove adjcloses when its logrets are anomalous."""
+
+        # this stock was found to have phony adjcloses
+        with self.assertLogs(level='WARNING') as _:
+            YahooFinance('BA.L', base_location=self.datadir)
+            self.assertTrue(np.any(
+                    'anomalous adjclose prices' in el.output for el in _))
 
     def test_yahoo_finance_cleaning_granular(self):
         """Test each step of cleaning."""
