@@ -536,7 +536,6 @@ class TestData(CvxportfolioTest):
             with self.assertNoLogs(level='WARNING'):
                 YahooFinance('BA.L', base_location=self.datadir)
 
-
     def test_yahoo_finance_cleaning_granular(self):
         """Test each step of cleaning."""
 

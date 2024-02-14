@@ -678,7 +678,7 @@ class YahooFinance(OLHCV):
     # Maximum number of contiguous days on which an adjclose price can be
     # invalid (e.g., negative); if any such period is found, all data before
     # and including it is removed
-    MAX_CONTIGUOUS_MISSING_ADJCLOSES = 10
+    MAX_CONTIGUOUS_MISSING_ADJCLOSES = 20
 
     # remove all data (also one day before and after) when logrets implied by
     # adjcloses are anomalous: abs value larger than median abs value time this
@@ -686,7 +686,16 @@ class YahooFinance(OLHCV):
     # this is redone iteratively up to the MAX_CONTIGUOUS_MISSING_ADJCLOSES,
     # so unless the bad adjcloses are only for few days all data up to the
     # anomalous event will be deleted
-    THRESHOLD_BAD_ADJCLOSE = 100
+    THRESHOLD_BAD_ADJCLOSE = 50
+
+    # assume any adjclose-to-adjclose log10-return larger than this in absolute
+    # value (1. is 10x) is false and eliminate both adjcloses around it
+    # this only applies before ASSUME_FALSE_BEFORE
+    THRESHOLD_FALSE_LOG10RETS = .5
+
+    # assume logreturns larger in abs value than threshold above are false
+    # ONLY before this date, otherwise don't filter them
+    ASSUME_FALSE_BEFORE = pd.Timestamp('2000-01-01', tz='UTC')
 
     def _throw_out_all_data_before_many_bad_adjcloses(self, new_data):
         """Throw out all data before many NaN on adjclose column."""
@@ -710,21 +719,26 @@ class YahooFinance(OLHCV):
         # worst case (if it goes to end of for loop)
         # we throw out all data before the event
         for _ in range(self.MAX_CONTIGUOUS_MISSING_ADJCLOSES + 1):
-            logrets = np.log(new_data.adjclose.ffill()).diff()
+            logrets = np.log10(new_data.adjclose.ffill()).diff()
+
             # with this we skip over exact zeros (which we assume come from
             # some cleaning) and would bias the scale down
-            # logrets.loc[logrets == 0.] = np.nan
+            logrets.loc[logrets == 0.] = np.nan
+
             score = _unlikeliness_score(
                 logrets, logrets, scaler=_median_scale_around,
                 windows=self.FILTERING_WINDOWS)
+            bad_score = score > self.THRESHOLD_BAD_ADJCLOSE
+
+            too_large_logreturns = np.abs(
+                logrets) > self.THRESHOLD_FALSE_LOG10RETS
+            too_large_logreturns &= logrets.index < self.ASSUME_FALSE_BEFORE
 
             # we eliminate data 1 day before and after any anomalous event
             # could be made less aggressive, but better to be safe
             bad_indexes = logrets.index[
-                (score > self.THRESHOLD_BAD_ADJCLOSE)
-                    | (score > self.THRESHOLD_BAD_ADJCLOSE).shift(-1)
-                    # | score.isnull() # TODO: this is not good, necessary for SMT.L
-                    ]
+                bad_score | bad_score.shift(-1) | too_large_logreturns
+                    | too_large_logreturns.shift(-1)]
 
             if len(bad_indexes) == 0:
                 break
