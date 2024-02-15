@@ -29,6 +29,35 @@ __all__ = ['periods_per_year_from_datetime_index', 'resample_returns',
            'average_periods_per_year']
 
 
+def set_pd_read_only(df_or_ser):
+    """Set numpy array contained in dataframe or series to read only.
+
+    This is done on data store internally before it is served to the
+    policy or the simulator to ensure data consistency in case some
+    element of the pipeline accidentally corrupts the data.
+
+    This is enough to prevent direct assignement to the resulting
+    dataframe. However it could still be accidentally corrupted by
+    assigning to columns or indices that are not present in the
+    original. We avoid that case as well by returning a wrapped
+    dataframe (which doesn't copy data on creation) in
+    serve_data_policy and serve_data_simulator.
+
+    :param df_or_ser: Series or Dataframe, only numeric (better if
+        homogeneous) dtype.
+    :type df_or_ser: pd.Series or pd.DataFrame
+
+    :returns: Pandas object set to read only.
+    :rtype: pd.Series or pd.DataFrame
+    """
+    data = df_or_ser.values
+    data.flags.writeable = False
+    if hasattr(df_or_ser, 'columns'):
+        return pd.DataFrame(data, index=df_or_ser.index,
+                            columns=df_or_ser.columns)
+    return pd.Series(data, index=df_or_ser.index, name=df_or_ser.name)
+
+
 def average_periods_per_year(num_periods, first_time, last_time):
     """Average periods per year of a datetime index (unpacked), rounded to int.
 
