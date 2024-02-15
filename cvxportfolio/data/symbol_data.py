@@ -345,7 +345,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         # forward-fill close
         self._fillna_and_message(
-            new_data, 'close', 'last available', filler='ffill')
+            new_data, 'close', 'last available', filler='ffill', level='info')
 
         ## Volumes.
         ## We set negative to NaN, and fill with zeros.
@@ -355,7 +355,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         # fill with zeros
         self._fillna_and_message(
-            new_data, 'volume', 'zeros', filler='fillna', filler_arg=0.)
+            new_data, 'volume', 'zeros', filler='fillna', filler_arg=0.,
+            level='info')
 
         ## Open price.
         ## We remove if lower than low, higher than high, or open to close
@@ -637,28 +638,6 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         del data["volume"]
 
         return data
-
-# TODO: plan
-# ffill adj closes & compute adj close logreturns
-# use code above to get indexes of wrong ones, raise warnings, set to 0
-#
-# check close vs adj close, there should be only dividends (with y finance)
-#
-# throw out opens that are not in [low, high]
-#
-# apply similar logic (perhaps using total lrets for the stddev) for
-# open-close , close-high , close-low, throw out open/low/close not OK
-#
-# fill
-#
-# compute open-open total returns, then check with same logic for errors
-#
-# when doing append, make past data adhere to same format: recompute adj
-# close
-# could use volumes as well, if there are jumps in price due to
-# splits not recorded, then price * volume should be more stable
-#
-#
 
 
 class YahooFinance(OLHCV):
