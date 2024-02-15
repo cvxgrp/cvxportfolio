@@ -38,7 +38,7 @@ logging.getLogger().setLevel(logging.WARNING)
 TEST_UNIVERSE = ['AAPL', 'GOOG', 'TSLA']
 
 # Some names with known issues:
-# TEST_UNIVERSE = ['SMT.L','NVR', 'HUBB', 'NWG.L']
+# TEST_UNIVERSE = ['SMT.L', 'NVR', 'HUBB', 'NWG.L']
 
 ALL_DROPPED_ROWS_PCT = pd.Series(dtype=float)
 ALL_MIN_LR = pd.Series(dtype=float)
@@ -104,8 +104,8 @@ for stock in TEST_UNIVERSE:
 print('\nCvxportfolio dropped rows %:')
 print(ALL_DROPPED_ROWS_PCT.sort_values().tail())
 
-print('\nnCvxportfolio min logreturns:')
+print('\nCvxportfolio min logreturns:')
 print(ALL_MIN_LR.sort_values().head())
 
-print('\nnCvxportfolio max logreturns:')
+print('\nCvxportfolio max logreturns:')
 print(ALL_MAX_LR.sort_values().tail())

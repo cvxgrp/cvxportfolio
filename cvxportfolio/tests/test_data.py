@@ -440,9 +440,6 @@ class TestData(CvxportfolioTest):
             with self.assertNoLogs(level='WARNING'): # pragma: no cover
                 # pragma: no cover
                 data = YahooFinance('GME', base_location=self.datadir).data
-        else:
-            # pragma: no cover
-            data = YahooFinance('GME', base_location=self.datadir).data
         self.assertGreater(data['return'].min(), -0.75)
         self.assertGreater(data['return'].max(), 3)
 
@@ -521,87 +518,97 @@ class TestData(CvxportfolioTest):
         """Test method to remove adjcloses when its logrets are anomalous."""
 
         # this stock had anomalous price changes in the 70s
-        with self.assertLogs(level='WARNING') as _:
+        with self.assertLogs(level='INFO') as _:
             d = YahooFinance("SMT.L", base_location=self.datadir).data
             self.assertTrue(np.any([
                     'anomalous adjclose prices' in el for el in _.output]))
             self.assertTrue(d['return'].max() < 2)
 
         # this stock was found to have phony adjcloses
-        with self.assertLogs(level='WARNING') as _:
+        with self.assertLogs(level='INFO') as _:
             YahooFinance('BA.L', base_location=self.datadir)
             self.assertTrue(np.any([
                     'anomalous adjclose prices' in el for el in _.output]))
 
-        if hasattr(self, 'assertNoLogs'):
-            with self.assertNoLogs(level='WARNING'):
-                YahooFinance('BA.L', base_location=self.datadir)
+        with self.assertLogs(level='INFO') as _:
+            YahooFinance('BA.L', base_location=self.datadir)
+            self.assertFalse(np.any([
+                    'anomalous adjclose prices' in el for el in _.output]))
 
     def test_yahoo_finance_cleaning_granular(self):
         """Test each step of cleaning."""
 
         # pylint: disable=protected-access
         raw_data = YahooFinance._get_data_yahoo('ZM')
-        print(raw_data)
+        # print(raw_data)
         empty_instance = YahooFinance.__new__(YahooFinance)
         empty_instance._symbol = 'ZM' # because the warnings use the symbol
 
-        def _test_warning(data_transformation, part_of_message):
+        def _test_warning(
+                data_transformation, part_of_message, level='WARNING'):
             """Test that warning is raised w/ message containing some word."""
             data = pd.DataFrame(raw_data, copy=True)
             exec(data_transformation) # pylint: disable=exec-used
-            with self.assertLogs(level='WARNING') as _:
+            with self.assertLogs(level=level) as _:
                 _cleaned = empty_instance._process(data, None)
-                self.assertTrue(part_of_message in _.output[0])
+                self.assertTrue(
+                    np.any([part_of_message in el for el in _.output]))
                 # check all NaNs have been filled
                 self.assertTrue(_cleaned.iloc[:-1].isnull().sum().sum() == 0)
 
-        def _test_warning_update(data_transformation, part_of_message):
+        def _test_warning_update(
+                data_transformation, part_of_message, level='WARNING'):
             """Test that warning is raised w/ message containing some word."""
             new_data = pd.DataFrame(raw_data.iloc[-20:], copy=True)
             saved_data = pd.DataFrame(raw_data.iloc[:-15], copy=True)
             exec(data_transformation) # pylint: disable=exec-used
-            with self.assertLogs(level='WARNING') as _:
+            with self.assertLogs(level=level) as _:
                 _cleaned = empty_instance._process(new_data, saved_data)
-                self.assertTrue(part_of_message in _.output[0])
+                self.assertTrue(
+                    np.any([part_of_message in el for el in _.output]))
                 # check all NaNs have been filled
                 self.assertTrue(_cleaned.iloc[:-1].isnull().sum().sum() == 0)
+
+        # missing initial adjclose
+        _test_warning(
+            'data.iloc[0,-2] = np.nan',
+            'adjclose price is missing', level='INFO')
 
         # infty
         _test_warning(
             'data.iloc[2,2] = np.inf',
-            'infinity')
+            'infinity', level='INFO')
 
         # non-pos price
         _test_warning(
             'data.iloc[2,0] = -1',
-            'non-positive open')
+            'non-positive open', level='INFO')
         _test_warning(
             'data.iloc[2,0] = 0',
-            'non-positive open')
+            'non-positive open', level='INFO')
         _test_warning(
             'data.iloc[4,2] = 0',
-            'non-positive high')
+            'non-positive high', level='INFO')
 
         # neg volume
         _test_warning(
             'data.iloc[2,-1] = -1',
-            'negative volumes')
+            'negative volumes', level='INFO')
 
         # open lower low
         _test_warning(
             'data.iloc[1,0] = data.iloc[1,1]*.9',
-            'open price lower than low price')
+            'open price lower than low price', level='INFO')
 
         # open higher high
         _test_warning(
             'data.iloc[1,0] = data.iloc[1,2]*1.1',
-            'open price higher than high price')
+            'open price higher than high price', level='INFO')
 
         # low higher close
         _test_warning(
             'data.iloc[3,1] = data.iloc[3].close * 1.1',
-            'low price higher than close price')
+            'low price higher than close price', level='INFO')
 
         # high lower close
         _test_warning( # had to fix it otherwise open cleaner kicks in
@@ -609,67 +616,67 @@ class TestData(CvxportfolioTest):
             'data.iloc[3,0] = close * .95;' # open
             'data.iloc[3,1] = close * .95;' # low
             'data.iloc[3,2] = close * .975', # high
-            'high price lower than close price')
+            'high price lower than close price', level='INFO')
 
         # extreme low price
         _test_warning(
             'data.iloc[3,1] = data.iloc[3,1] * .01',
-            'anomalous low price')
+            'anomalous low price', level='INFO')
         _test_warning(
             'data.iloc[3,1] = data.iloc[3,1] * .02',
-            'anomalous low price')
+            'anomalous low price', level='INFO')
         _test_warning(
             'data.iloc[3,1] = data.iloc[3,1] * .05',
-            'anomalous low price')
+            'anomalous low price', level='INFO')
         _test_warning(
             'data.iloc[3,1] = data.iloc[3,1] * .1',
-            'anomalous low price')
+            'anomalous low price', level='INFO')
         _test_warning(
             'data.iloc[3,1] = data.iloc[3,1] * .2',
-            'anomalous low price')
+            'anomalous low price', level='INFO')
         _test_warning( # changed dtindex until found one that works
             'data.iloc[20,1] = data.iloc[20,1] * .5',
-            'anomalous low price')
+            'anomalous low price', level='INFO')
 
         # extreme high price
         _test_warning(
             'data.iloc[3,2] = data.iloc[3,2] * 100',
-            'anomalous high price')
+            'anomalous high price', level='INFO')
         _test_warning(
             'data.iloc[3,2] = data.iloc[3,2] * 50',
-            'anomalous high price')
+            'anomalous high price', level='INFO')
         _test_warning(
             'data.iloc[3,2] = data.iloc[3,2] * 20',
-            'anomalous high price')
+            'anomalous high price', level='INFO')
         _test_warning(
             'data.iloc[3,2] = data.iloc[3,2] * 10',
-            'anomalous high price')
+            'anomalous high price', level='INFO')
         _test_warning(
             'data.iloc[3,2] = data.iloc[3,2] * 5',
-            'anomalous high price')
+            'anomalous high price', level='INFO')
         _test_warning(
             'data.iloc[3,2] = data.iloc[3,2] * 2',
-            'anomalous high price')
+            'anomalous high price', level='INFO')
 
         # extreme open price
         _test_warning(
             'data.iloc[3,0] = data.iloc[3,0] * 1.75;'
             + 'data.iloc[3,2] = data.iloc[3,0]',
-            'anomalous open price')
+            'anomalous open price', level='INFO')
         _test_warning(
             'data.iloc[20,0] = data.iloc[20,0] * 0.5;'
             + 'data.iloc[20,1] = data.iloc[20,0]',
-            'anomalous open price')
+            'anomalous open price', level='INFO')
 
         # extreme open update
         _test_warning_update(
             'new_data.iloc[-1,0] = new_data.iloc[-1,0] * 1.75;'
             + 'new_data.iloc[-1,2] = new_data.iloc[-1,0]',
-            'anomalous open price')
+            'anomalous open price', level='INFO')
         _test_warning_update(
             'new_data.iloc[-1,0] = new_data.iloc[-1,0] *  0.5;'
             + 'new_data.iloc[-1,1] = new_data.iloc[-1,0]',
-            'anomalous open price')
+            'anomalous open price', level='INFO')
 
     # def test_yahoo_finance_wrong_last_time(self):
     #     """Test that we correct last time if intraday."""

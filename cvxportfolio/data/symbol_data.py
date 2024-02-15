@@ -265,14 +265,14 @@ def _median_scale_around(lrets, window):
     """Median absolute logreturn in a window around each timestamp."""
     return np.abs(lrets).rolling(window, center=True, min_periods=1).median()
 
-def _mean_scale_around(lrets, window):
-    """Root mean squared logreturn in a window around each timestamp.
+# def _mean_scale_around(lrets, window):
+#     """Root mean squared logreturn in a window around each timestamp.
 
-    We need a few operations because we skip the observation itself
-    """
-    sum = (lrets**2).rolling(window, center=True, min_periods=2).sum()
-    count = lrets.rolling(window, center=True, min_periods=2).count()
-    return np.sqrt((sum - lrets**2) / (count - 1))
+#     We need a few operations because we skip the observation itself
+#     """
+#     sum = (lrets**2).rolling(window, center=True, min_periods=2).sum()
+#     count = lrets.rolling(window, center=True, min_periods=2).count()
+#     return np.sqrt((sum - lrets**2) / (count - 1))
 
 def _unlikeliness_score(
         test_logreturns, reference_logreturns, scaler, windows):
@@ -338,7 +338,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
             self._nan_nonpositive_prices(new_data, column)
 
         # all infinity values to NaN
-        self._set_infty_to_nan(new_data)
+        self._set_infty_to_nan(new_data, level='info')
 
         ## Close price.
         ## We believe them (for now). We forward fill them if unavailable.
@@ -370,12 +370,12 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # NaN anomalous open prices
         self._nan_anomalous_prices(
             new_data, 'open', threshold=self.THRESHOLD_OPEN_TO_CLOSE,
-            saved_data=saved_data)
+            saved_data=saved_data, level='info')
 
         # fill open with close from day before
         self._fillna_and_message(
             new_data, 'open', 'close from period before', filler='fillna',
-            filler_arg=new_data['close'].shift(1))
+            filler_arg=new_data['close'].shift(1), level='info')
 
         ## Low price.
         ## We remove if higher than close or anomalous low to close logreturn.
@@ -390,12 +390,12 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # NaN anomalous low prices
         self._nan_anomalous_prices(
             new_data, 'low', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE,
-            saved_data=saved_data)
+            saved_data=saved_data, level='info')
 
         # fill low with min of open and close
         self._fillna_and_message(
             new_data, 'low', 'min of open and close', filler='fillna',
-            filler_arg=new_data[['open', 'close']].min(axis=1))
+            filler_arg=new_data[['open', 'close']].min(axis=1), level='info')
 
         ## High price.
         ## We remove if lower than close or anomalous low to close logreturn.
@@ -410,12 +410,12 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # NaN anomalous high prices
         self._nan_anomalous_prices(
             new_data, 'high', threshold=self.THRESHOLD_LOWHIGH_TO_CLOSE,
-            saved_data=saved_data)
+            saved_data=saved_data, level='info')
 
         # fill high with max of open and close
         self._fillna_and_message(
             new_data, 'high', 'max of open and close', filler='fillna',
-            filler_arg=new_data[['open', 'close']].max(axis=1))
+            filler_arg=new_data[['open', 'close']].max(axis=1), level='info')
 
         ## Some asserts
         assert new_data.iloc[1:].isnull().sum().sum() == 0
@@ -429,11 +429,12 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         return new_data
 
     def _fillna_and_message(
-        self, data, col_name, message, filler='fillna', filler_arg=None):
+        self, data, col_name, message, filler='fillna', filler_arg=None,
+            level='warning'):
         """Fill NaNs in column with chosen method and arg."""
         bad_indexes = data.index[data[col_name].isnull()]
         if len(bad_indexes) > 0:
-            logger.warning(
+            getattr(logger, level)(
                 '%s("%s").data["%s"] has NaNs on timestamps: %s,'
                 + ' filling them with %s.', self.__class__.__name__,
                 self.symbol, col_name, bad_indexes, message)
@@ -443,7 +444,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
                 data[col_name] = getattr(data[col_name], filler)(filler_arg)
 
     def _nan_anomalous_prices(
-            self, new_data, price_name, threshold, saved_data=None):
+            self, new_data, price_name, threshold, saved_data=None,
+                level='warning'):
         """Set to NaN given price name on its anomalous logrets to close."""
         new_lr_to_close =\
             np.log(new_data['close']) - np.log(new_data[price_name])
@@ -472,14 +474,16 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
                 windows=self.FILTERING_WINDOWS)
         self._nan_values(
             new_data, condition = score.loc[new_data.index] > threshold,
-            columns_to_nan=price_name, message=f'anomalous {price_name} price')
+            columns_to_nan=price_name, message=f'anomalous {price_name} price',
+            level=level)
 
-    def _nan_values(self, data, condition, columns_to_nan, message):
+    def _nan_values(
+            self, data, condition, columns_to_nan, message, level='warning'):
         """Set to NaN in-place for indexing condition and chosen columns."""
 
         bad_indexes = data.index[condition]
         if len(bad_indexes) > 0:
-            logger.warning(
+            getattr(logger, level)(
                 '%s("%s") has %s on timestamps: %s,'
                 + ' setting to nan',
                 self.__class__.__name__, self.symbol, message, bad_indexes)
@@ -490,27 +494,28 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         self._nan_values(
             data=data, condition = data[prices_name] <= 0,
             columns_to_nan = prices_name,
-            message = f'non-positive {prices_name} prices')
+            message = f'non-positive {prices_name} prices', level='info')
 
     def _nan_negative_volumes(self, data):
         """Set negative volumes to NaN, in-place."""
         self._nan_values(
             data=data, condition = data["volume"] < 0,
-            columns_to_nan = "volume", message = 'negative volumes')
+            columns_to_nan = "volume", message = 'negative volumes',
+            level='info')
 
     def _nan_open_lower_low(self, data):
         """Set open price to NaN if lower than low, in-place."""
         self._nan_values(
             data=data, condition = data['open'] < data['low'],
             columns_to_nan = "open",
-            message = 'open price lower than low price')
+            message = 'open price lower than low price', level='info')
 
     def _nan_open_higher_high(self, data):
         """Set open price to NaN if higher than high, in-place."""
         self._nan_values(
             data=data, condition = data['open'] > data['high'],
             columns_to_nan = "open",
-            message = 'open price higher than high price')
+            message = 'open price higher than high price', level='info')
 
     # def _nan_incompatible_low_high(self, data):
     #     """Set low and high to NaN if low is higher, in-place."""
@@ -524,34 +529,34 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         self._nan_values(
             data=data, condition = data['high'] < data['close'],
             columns_to_nan = "high",
-            message = 'high price lower than close price')
+            message = 'high price lower than close price', level='info')
 
     def _nan_high_lower_open(self, data):
         """Set high price to NaN if lower than open, in-place."""
         self._nan_values(
             data=data, condition = data['high'] < data['open'],
             columns_to_nan = "high",
-            message = 'high price lower than open price')
+            message = 'high price lower than open price', level='info')
 
     def _nan_low_higher_close(self, data):
         """Set low price to NaN if higher than close, in-place."""
         self._nan_values(
             data=data, condition = data['low'] > data['close'],
             columns_to_nan = "low",
-            message = 'low price higher than close price')
+            message = 'low price higher than close price', level='info')
 
     def _nan_low_higher_open(self, data):
         """Set low price to NaN if higher than open, in-place."""
         self._nan_values(
             data=data, condition = data['low'] > data['open'],
             columns_to_nan = "low",
-            message = 'low price higher than open price')
+            message = 'low price higher than open price', level='info')
 
-    def _set_infty_to_nan(self, data):
+    def _set_infty_to_nan(self, data, level='warning'):
         """Set all +/- infty elements of data to NaN, in-place."""
 
         if np.isinf(data).sum().sum() > 0:
-            logger.warning(
+            getattr(logger, level)(
                 '%s("%s") has +/- infinity values, setting those to nan',
                 self.__class__.__name__, self.symbol)
             data.iloc[:, :] = np.nan_to_num(
@@ -586,7 +591,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # warn on extreme logreturns
         self._warn_on_extreme_logreturns(
             np.log(1 + data['return']), self.THRESHOLD_WARN_EXTREME_LOGRETS,
-            'total open-to-open returns')
+            'total open-to-open returns', level='warning')
 
         # extreme open2close
         self._warn_on_extreme_logreturns(
@@ -697,7 +702,8 @@ class YahooFinance(OLHCV):
     # ONLY before this date, otherwise don't filter them
     ASSUME_FALSE_BEFORE = pd.Timestamp('2000-01-01', tz='UTC')
 
-    def _throw_out_all_data_before_many_bad_adjcloses(self, new_data):
+    def _throw_out_all_data_before_many_bad_adjcloses(
+            self, new_data, level='warning'):
         """Throw out all data before many NaN on adjclose column."""
         invalid_indexes = new_data.index[
             new_data.adjclose.isnull().rolling(
@@ -705,7 +711,7 @@ class YahooFinance(OLHCV):
                 ).sum() == self.MAX_CONTIGUOUS_MISSING_ADJCLOSES]
         if len(invalid_indexes) > 0:
             last_invalid_index = invalid_indexes[-1]
-            logger.warning(
+            getattr(logger, level)(
                 '%s("%s").data has invalid adjclose prices for more than'
                 + ' %s contiguous days until %s; removing all data until then',
                 self.__class__.__name__, self.symbol,
@@ -714,7 +720,7 @@ class YahooFinance(OLHCV):
                 new_data.loc[new_data.index > last_invalid_index], copy=True)
         return new_data
 
-    def _remove_data_on_bad_adjcloses(self, new_data):
+    def _remove_data_on_bad_adjcloses(self, new_data, level='warning'):
         """Remove adjcloses if implied logreturns are highly anomalous."""
         # worst case (if it goes to end of for loop)
         # we throw out all data before the event
@@ -743,7 +749,7 @@ class YahooFinance(OLHCV):
             if len(bad_indexes) == 0:
                 break
             new_data.loc[bad_indexes] = np.nan
-            logger.warning(
+            getattr(logger, level)(
                 '%s("%s").data has anomalous adjclose prices on timestamps'
                 + '(including one day before and after) %s; removing all'
                 + 'data (not just adjcloses) on those timestamps.',
@@ -759,27 +765,35 @@ class YahooFinance(OLHCV):
         ## Treat adjclose. We believe them (unless impossible).
 
         # all infinity values to NaN (repeat, but for adjclose)
-        self._set_infty_to_nan(new_data)
+        self._set_infty_to_nan(new_data, level='info')
 
         # NaN non-positive adj close
         self._nan_nonpositive_prices(new_data, "adjclose")
 
         # Throw out all data before many NaN on adjclose
-        new_data = self._throw_out_all_data_before_many_bad_adjcloses(new_data)
+        new_data = self._throw_out_all_data_before_many_bad_adjcloses(
+            new_data, level='info')
 
         # Remove all data when highly anomalous adjclose prices are detected
-        self._remove_data_on_bad_adjcloses(new_data)
+        self._remove_data_on_bad_adjcloses(new_data, level='info')
 
         # Repeat throw out all data before many NaN on adjclose
-        new_data = self._throw_out_all_data_before_many_bad_adjcloses(new_data)
+        new_data = self._throw_out_all_data_before_many_bad_adjcloses(
+            new_data, level='info')
 
         # forward-fill adj close
         self._fillna_and_message(
-            new_data, 'adjclose', 'last available', filler='ffill')
+            new_data, 'adjclose', 'last available', filler='ffill',
+            level='info')
 
         # eliminate (initial) rows where adjclose is NaN
         nan_adjcloses = new_data.adjclose.isnull()
         if np.any(nan_adjcloses):
+            logger.info(
+                '%s("%s") is eliminating data on %s because the adjclose '
+                + 'price is missing.',
+                self.__class__.__name__, self.symbol,
+                new_data.index[nan_adjcloses])
             new_data = pd.DataFrame(new_data.loc[~nan_adjcloses], copy=True)
 
         ## OLHCV._process treats all columns other than adjclose
