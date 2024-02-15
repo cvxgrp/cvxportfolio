@@ -664,6 +664,14 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 class YahooFinance(OLHCV):
     """Yahoo Finance symbol data.
 
+    .. versionadded:: 1.2.0
+
+        The data cleaning logic has been significantly improved, see the
+        ``data_cleaning.py`` example to view what's done on any given
+        name (or enable ``'INFO'`` logging messages). It is recommended to
+        delete the ``~/cvxportfolio_data`` folder with data files downloaded
+        by previous Cvxportfolio versions.
+
     :param symbol: The symbol that we downloaded.
     :type symbol: str
     :param storage_backend: The storage backend, implemented ones are
