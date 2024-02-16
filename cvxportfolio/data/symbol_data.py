@@ -585,7 +585,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # zero volume
         zerovol_idx = data.index[data.volume == 0]
         if len(zerovol_idx) > 0:
-            logger.info(
+            logger.debug(
                 '%s("%s") has volume equal to zero for timestamps: %s',
                 self.__class__.__name__, self.symbol, zerovol_idx)
 
