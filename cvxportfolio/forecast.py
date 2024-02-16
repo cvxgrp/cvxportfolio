@@ -98,8 +98,6 @@ are relative to each point in time at which the policy is evaluated.
 """
 
 import logging
-# from dataclasses import dataclass
-# from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -144,7 +142,7 @@ def online_cache(values_in_time):
         if cache is None:  # temporary to not change tests
             cache = {}
 
-        if not str(self) in cache:
+        if str(self) not in cache:
             cache[str(self)] = {}
 
         if t in cache[str(self)]:
@@ -166,13 +164,6 @@ class BaseForecast(Estimator):
     """Base class for forecasters."""
 
     _last_time = None
-
-    # def __hash__(self):
-    #     """Same as the unsafe_hash of dataclass."""
-    #     return self.__repr__()
-
-    # def __post_init__(self):
-    #     raise NotImplementedError # pragma: no cover
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, **kwargs):
@@ -218,7 +209,6 @@ def _is_timedelta(value):
         ' pandas Timedeltas or np.inf.')
 
 
-# @dataclass()#unsafe_hash=True)
 class BaseMeanVarForecast(BaseForecast):
     """This class contains logic common to mean and (co)variance forecasters.
 
@@ -231,20 +221,12 @@ class BaseMeanVarForecast(BaseForecast):
     scratch (especially for covariances).
     """
 
+    _denominator = None
+    _numerator = None
+
     def __init__(self, half_life=np.inf, rolling=np.inf):
         self.half_life = half_life
         self.rolling = rolling
-        self._denominator = None
-        self._numerator = None
-
-    # half_life: Union[pd.Timedelta, float] = np.inf
-    # rolling: Union[pd.Timedelta, float] = np.inf
-    # regressors: Union[pd.DataFrame, None] = None
-
-    # def __post_init__(self):
-    #     self._last_time = None
-    #     self._denominator = None
-    #     self._numerator = None
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, **kwargs):
@@ -285,6 +267,16 @@ class BaseMeanVarForecast(BaseForecast):
         This method receives the **kwargs passed to :meth:`values_in_time`.
         """
         raise NotImplementedError # pragma: no cover
+
+    def _get_last_row(self, **kwargs):
+        """Return last row of the dataframe we work with.
+
+        This method receives the **kwargs passed to :meth:`values_in_time`.
+
+        You may redefine it if obtaining the full dataframe is expensive,
+        during online update (in most cases) only this method is required.
+        """
+        return self._dataframe_selector(**kwargs).iloc[-1]
 
     def values_in_time( # pylint: disable=arguments-differ
             self, **kwargs):
@@ -337,8 +329,7 @@ class BaseMeanVarForecast(BaseForecast):
 
         This method receives the **kwargs passed to :meth:`values_in_time`.
         """
-        df = self._dataframe_selector(t=t, **kwargs)
-        last_row = df.iloc[-1]
+        last_row = self._get_last_row(t=t, **kwargs)
 
         # if emw discount past
         if _is_timedelta(_resolve_hyperpar(self.half_life)):
@@ -357,6 +348,7 @@ class BaseMeanVarForecast(BaseForecast):
 
         # Moving average window logic: subtract elements that have gone out
         if _is_timedelta(_resolve_hyperpar(self.rolling)):
+            df = self._dataframe_selector(t=t, **kwargs)
             observations_to_subtract, emw_weights_of_subtract = \
                 self._remove_part_gone_out_of_ma(df, t)
         else:
@@ -394,7 +386,6 @@ class BaseMeanVarForecast(BaseForecast):
         return observations_to_subtract, emw_weights
 
 
-# @dataclass()#unsafe_hash=True)
 class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
     """This class contains the logic common to the mean forecasters."""
 
@@ -426,7 +417,6 @@ class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
         return ~(last_row.isnull())
 
 
-# @dataclass()#unsafe_hash=True)
 class HistoricalMeanReturn(BaseMeanForecast):
     r"""Historical means of non-cash returns.
 
@@ -459,7 +449,6 @@ class HistoricalMeanReturn(BaseMeanForecast):
         """Return dataframe to compute the historical means of."""
         return past_returns.iloc[:, :-1]
 
-# @dataclass()#unsafe_hash=True)
 class HistoricalMeanVolume(BaseMeanForecast):
     r"""Historical means of traded volume in units of value (e.g., dollars).
 
@@ -483,7 +472,6 @@ class HistoricalMeanVolume(BaseMeanForecast):
                 + " provides market volumes.")
         return past_volumes
 
-# @dataclass()#unsafe_hash=True)
 class HistoricalVariance(BaseMeanForecast):
     r"""Historical variances of non-cash returns.
 
@@ -523,16 +511,12 @@ class HistoricalVariance(BaseMeanForecast):
 
     def __init__(self, rolling=np.inf, half_life=np.inf, kelly=True):
         super().__init__(rolling=rolling, half_life=half_life)
-        self.kelly=kelly
+        self.kelly = kelly
 
-    # kelly: bool = True
-
-    # def __post_init__(self):
         if not self.kelly:
             self.meanforecaster = HistoricalMeanReturn(
                 half_life=_resolve_hyperpar(self.half_life),
                 rolling=_resolve_hyperpar(self.rolling))
-        # super().__post_init__()
 
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
@@ -589,8 +573,6 @@ class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     :type kelly: bool
     """
 
-    # kelly: bool = True
-
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
 
@@ -617,7 +599,6 @@ class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
             current_prices=kwargs['current_prices']
         )
 
-# @dataclass()#unsafe_hash=True)
 class HistoricalMeanError(HistoricalVariance):
     r"""Historical standard deviations of the mean of non-cash returns.
 
@@ -646,8 +627,6 @@ class HistoricalMeanError(HistoricalVariance):
     def __init__(self, rolling=np.inf, half_life=np.inf, kelly=False):
         super().__init__(rolling=rolling, half_life=half_life, kelly=kelly)
 
-    # kelly: bool = False
-
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
 
@@ -662,19 +641,14 @@ class HistoricalMeanError(HistoricalVariance):
         return np.sqrt(variance / self._denominator.values)
 
 
-# @dataclass()#unsafe_hash=True)
 class HistoricalCovariance(BaseMeanVarForecast):
     r"""Historical covariance matrix."""
 
-    # kelly: bool = True
+    _joint_mean = None
 
     def __init__(self, rolling=np.inf, half_life=np.inf, kelly=True):
         super().__init__(rolling=rolling, half_life=half_life)
-        self.kelly=kelly
-
-    # def __post_init__(self):
-        # super().__post_init__()
-        self._joint_mean = None
+        self.kelly = kelly
 
     def initialize_estimator(self, **kwargs):
         super().initialize_estimator(**kwargs)
@@ -745,8 +719,7 @@ class HistoricalCovariance(BaseMeanVarForecast):
 
         discount_factor, observations_to_subtract, emw_weights_of_subtract = \
             super()._online_update(**kwargs)
-        df = self._dataframe_selector(**kwargs)
-        last_row = df.iloc[-1]
+        last_row = self._get_last_row(**kwargs)
 
         if not self.kelly:
 
@@ -885,9 +858,9 @@ class HistoricalLowRankCovarianceSVD(Estimator):
     """
 
     def __init__(self, num_factors, svd_iters=10, svd='numpy'):
-        self.num_factors=num_factors
-        self.svd_iters=svd_iters
-        self.svd=svd
+        self.num_factors = num_factors
+        self.svd_iters = svd_iters
+        self.svd = svd
 
     # num_factors: int
     # svd_iters: int = 10
