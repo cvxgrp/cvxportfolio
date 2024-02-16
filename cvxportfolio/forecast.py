@@ -449,6 +449,106 @@ class HistoricalMeanReturn(BaseMeanForecast):
         """Return dataframe to compute the historical means of."""
         return past_returns.iloc[:, :-1]
 
+## Test regression, will be refactored
+
+class RegressionMeanReturn(HistoricalMeanReturn):
+    """Test class."""
+
+    def __init__(self, regressors, **kwargs):
+        # super().__init__(**kwargs)
+        self.regressors = regressors
+
+    def values_in_time(self, t, past_returns, **kwargs):
+        """Do it from scratch."""
+        assets = past_returns.columns[:-1]
+
+        self.all_X_matrices = {
+            asset: self.get_X_matrix(past_returns[asset], self.regressors)
+                for asset in assets}
+
+        print('all_X_matrices')
+        print(self.all_X_matrices)
+
+        self.all_XtY_means = {
+            regressor.name: self.multiply_df_by_regressor(
+                past_returns.iloc[:, :-1], regressor).mean()
+                    for regressor in self.regressors}
+
+        self.all_XtY_means['intercept'] = past_returns.iloc[:, :-1].mean()
+
+        print('all_XtY_means')
+        print(self.all_XtY_means)
+
+        X_last = self.get_x_last(t, self.regressors)
+
+        print('X_last')
+        print(X_last)
+
+        all_solves = {
+            asset: self.solve_for_single_X(
+                self.all_X_matrices[asset], X_last, quad_reg=0.)
+                    for asset in self.all_X_matrices}
+
+        print('all_solves')
+        print(all_solves)
+
+        # result should be an array
+        result = pd.Series(index = assets, dtype=float)
+        for asset in assets:
+            result[asset] = np.dot(
+                all_solves[asset],
+                    [self.all_XtY_means[regressor][asset]
+                        for regressor in all_solves[asset].index])
+
+        return result
+
+    @staticmethod
+    def get_x_last(t, regressors):
+        """Get values of regressors for today."""
+        x_last = pd.Series(1., index=['intercept'])
+        for regressor in regressors:
+            x_last[regressor.name] = regressor[regressor.index <= t].iloc[-1]
+        return x_last
+
+    @staticmethod
+    def get_XtX_mean(X):
+        """Get XtX / count; this will use HistoricalVariance(kelly=False)."""
+        Xfill = X.fillna(0.)
+        Xnnull = ~X.isnull()*1.
+        num = Xfill.T @ Xfill
+        den = Xnnull.T @ Xnnull
+        return num/den
+
+    @staticmethod
+    def solve_for_single_X(X, X_last, quad_reg):
+        """Solve with X_last."""
+        XtX_mean = RegressionMeanReturn.get_XtX_mean(X)
+        tikho_diag = np.array(np.diag(XtX_mean))
+        tikho_diag[0] = 0. # intercept
+        return pd.Series(np.linalg.solve(
+            XtX_mean + np.diag(tikho_diag * quad_reg), X_last), X_last.index)
+
+    @staticmethod
+    def multiply_df_by_regressor(df, regressor):
+        """Multiply time-indexed dataframe by time-indexed regressor.
+
+        At each point in time, use last available observation of the regressor.
+        """
+        regr_on_df = regressor.reindex(df.index, method='ffill').dropna()
+        return df.multiply(regr_on_df, axis=0).dropna(how='all')
+
+    @staticmethod
+    def get_X_matrix(col_of_df, regressors):
+        """To be repeated on each column of df (may save some w/ cache)."""
+        col_of_df = col_of_df.dropna()
+        regr_on_col = []
+        for regressor in regressors:
+            regr_on_col.append(regressor.reindex(
+                col_of_df.index, method='ffill').dropna())
+        ones = pd.Series(1., col_of_df.index, name='intercept')
+        return pd.concat([ones] + regr_on_col, axis=1, sort=True)
+
+
 class HistoricalMeanVolume(BaseMeanForecast):
     r"""Historical means of traded volume in units of value (e.g., dollars).
 

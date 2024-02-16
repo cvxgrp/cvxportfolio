@@ -18,13 +18,14 @@ import unittest
 import numpy as np
 import pandas as pd
 
+import cvxportfolio as cvx
 from cvxportfolio.forecast import (ForecastError, HistoricalCovariance,
                                    HistoricalFactorizedCovariance,
                                    HistoricalLowRankCovarianceSVD,
                                    HistoricalMeanError, HistoricalMeanReturn,
                                    HistoricalMeanVolume,
                                    HistoricalStandardDeviation,
-                                   HistoricalVariance)
+                                   HistoricalVariance, RegressionMeanReturn)
 from cvxportfolio.tests import CvxportfolioTest
 
 
@@ -33,6 +34,36 @@ class TestForecast(CvxportfolioTest):
 
     In most cases we test against the relevant pandas function as reference.
     """
+
+    def test_regression_mean_return(self):
+        """Test historical mean return with regression."""
+
+        # will be refactored
+        vix = cvx.YahooFinance('^VIX').data.open
+        vix.name = 'VIX'
+        regr_mean_ret = RegressionMeanReturn(regressors=[vix])
+        md = cvx.DownloadedMarketData(['AAPL', 'ZM'])
+        returns = md.returns
+
+        t = returns.index[-30]
+        past_returns = returns.loc[returns.index < t]
+
+        result  = \
+            regr_mean_ret.values_in_time(past_returns=past_returns, t=t)
+        print('result')
+        print(result)
+
+        # reproduce here
+        for asset in ['ZM']:
+            y = past_returns[asset].dropna()
+            x = pd.DataFrame(1., index=y.index, columns=['intercept'])
+            x['VIX'] = vix.reindex(y.index, method='ffill')
+            beta = np.linalg.solve(x.T @ x, x.T @ y)
+            x_last = pd.Series(1., index=['intercept'])
+            x_last['VIX'] = vix[vix.index < t].iloc[-1]
+            local_result = x_last @ beta
+            print(local_result)
+            self.assertTrue(local_result == result[asset])
 
     def test_historical_mean_volume(self):
         """Test mean volume forecaster."""
