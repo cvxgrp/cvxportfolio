@@ -63,7 +63,7 @@ class TestForecast(CvxportfolioTest):
             x_last['VIX'] = vix[vix.index < t].iloc[-1]
             local_result = x_last @ beta
             print(local_result)
-            self.assertTrue(local_result == result[asset])
+            self.assertTrue(np.isclose(local_result, result[asset]))
 
     def test_historical_mean_volume(self):
         """Test mean volume forecaster."""
