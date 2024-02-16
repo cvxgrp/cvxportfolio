@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from cvxportfolio.utils import repr_numpy_pandas
+from cvxportfolio.utils import make_numeric, repr_numpy_pandas
 
 
 class TestUtils(unittest.TestCase):
@@ -62,6 +62,32 @@ class TestUtils(unittest.TestCase):
         re1 = repr_numpy_pandas(data1)
         print(re1)
         self.assertTrue(re == re1)
+
+    def test_make_numeric(self):
+        """Test make_numeric function for user-provided data."""
+
+        for data in [
+                2., np.array([1, 2]), pd.Series([1, 2, 3]),
+                pd.DataFrame([[1, 2., 3], [4, 5., 6]])]:
+            self.assertTrue(make_numeric(data) is data)
+
+        for data in [
+                np.array([1, 2], dtype=object), pd.Series([1, 2, 3], dtype=object),
+                pd.DataFrame([[1, 2., 3], [4, 5., 6]], dtype=object)]:
+            self.assertTrue(np.all(make_numeric(data) == data))
+
+        for data in [
+                np.array(['1', 2], dtype=object),
+                pd.Series([1, '2', 3], dtype=object),
+                pd.DataFrame([[1, '2.', 3], [4, '5.', 6]], dtype=object)]:
+            self.assertTrue(np.all(data.astype(float) == make_numeric(data)))
+
+        for data in [
+                np.array(['1a', 2], dtype=object),
+                pd.Series([1, '2a', 3], dtype=object),
+                pd.DataFrame([[1, '2a.', 3], [4, '5a.', 6]], dtype=object)]:
+            with self.assertRaises(ValueError):
+                make_numeric(data)
 
 
 if __name__ == '__main__':

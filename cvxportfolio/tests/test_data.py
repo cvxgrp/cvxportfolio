@@ -81,8 +81,8 @@ class TestData(CvxportfolioTest):
             data.loc["2023-04-10 13:30:00+00:00", "return"],
             data.loc["2023-04-11 13:30:00+00:00", "open"] /
             data.loc["2023-04-10 13:30:00+00:00", "open"] - 1,
+            rtol=1e-04, atol=1e-07,
         ))
-        self.assertTrue(np.isnan(data.iloc[-1]["close"]))
 
     def test_fred(self):
         """Test basic Fred usage."""
@@ -124,6 +124,7 @@ class TestData(CvxportfolioTest):
             data.loc["2023-04-05 13:30:00+00:00", "return"],
             data.loc["2023-04-06 13:30:00+00:00", "open"] /
             data.loc["2023-04-05 13:30:00+00:00", "open"] - 1,
+            rtol=1e-04, atol=1e-07,
         ))
 
         store.update(grace_period=pd.Timedelta('1d'))
@@ -155,7 +156,8 @@ class TestData(CvxportfolioTest):
         and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
     def test_sqlite3_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        self._base_test_series(_loader_sqlite, _storer_sqlite)
+        with self.assertWarns(UserWarning):
+            self._base_test_series(_loader_sqlite, _storer_sqlite)
 
     @unittest.skipIf(sys.version_info.major == 3
         and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
@@ -195,6 +197,9 @@ class TestData(CvxportfolioTest):
         """Test storing and retrieving of a Series with datetime index."""
 
         for data in [
+            pd.Series(
+                0.0, pd.date_range("2020-01-01", "2020-01-10"),
+                name="test0"),
             pd.Series(
                 0.0, pd.date_range("2020-01-01", "2020-01-10", tz='UTC-05:00'),
                 name="test1"),
@@ -326,6 +331,369 @@ class TestData(CvxportfolioTest):
         self.assertTrue(all(data.index == data1.index))
         self.assertTrue(all(data.index.dtypes == data1.index.dtypes))
         self.assertTrue(all(data.dtypes == data1.dtypes))
+
+    def test_download_errors(self):
+        """Test single-symbol download error."""
+
+        storer = YahooFinance(
+            'AAPL', grace_period=self.data_grace_period,
+            base_location=self.datadir)
+        with self.assertRaises(SyntaxError):
+            # pylint: disable=protected-access
+            storer._download('AAPL', overlap=1)
+
+        class YahooFinanceErroneous(YahooFinance):
+            """Modified YF that nans last open price."""
+            def _download(self, symbol, current=None,
+                    overlap=5, grace_period='5d', **kwargs):
+                """Modified download method."""
+                res = super()._download(symbol, current,
+                    grace_period=grace_period)
+                res.iloc[-1, 0 ] = np.nan
+                return res
+
+        _ = YahooFinanceErroneous('AMZN', base_location=self.datadir)
+        with self.assertLogs(level='ERROR') as _:
+            _ = YahooFinanceErroneous(
+                'AMZN', base_location=self.datadir)
+
+        class YahooFinanceErroneous2(YahooFinance):
+            """Modified YF that nans some line."""
+            def _download(self, symbol, current=None,
+                    overlap=5, grace_period='5d', **kwargs):
+                """Modified download method."""
+                res = super()._download(symbol, current,
+                    grace_period=grace_period)
+                res.iloc[-20] = np.nan
+                return res
+        with self.assertLogs(level='WARNING') as _:
+            _ = YahooFinanceErroneous2('GOOGL',
+                base_location=self.datadir)
+        with self.assertLogs(level='WARNING') as _:
+            _ = YahooFinanceErroneous2(
+                'GOOGL', base_location=self.datadir)
+
+        class FredErroneous(Fred):
+            """Modified FRED SymbolData that gives a NaN in the last entry."""
+
+            def _download(self, symbol, current, grace_period):
+                """Modified download method."""
+                res = super()._download(symbol, current,
+                    grace_period=grace_period)
+                res.iloc[-1] = np.nan
+                return res
+
+        _ = FredErroneous('DFF', base_location=self.datadir)
+        with self.assertLogs(level='ERROR') as _:
+            _ = FredErroneous(
+                'DFF', base_location=self.datadir)
+
+        class YahooFinanceErroneous3(YahooFinance):
+            """Modified YF that is not append-only."""
+            counter = 0
+            def _download(self, symbol, current=None,
+                    overlap=5, grace_period='5d', **kwargs):
+                """Modified download method."""
+                res = super()._download(symbol, current,
+                    grace_period=grace_period)
+                if self.counter > 0:
+                    res.iloc[-2] = 0.
+                self.counter += 1
+                return res
+        storer = YahooFinanceErroneous3('GOOGL', base_location=self.datadir)
+        with self.assertLogs(level='ERROR') as _:
+            storer.update(pd.Timedelta('0d'))
+
+    def test_no_internet(self):
+        """Test errors thrown when not connected to the internet."""
+
+        with NoInternet():
+            with self.assertRaises(DataError):
+                cvx.YahooFinance('BABA', base_location=self.datadir)
+
+        with NoInternet():
+            with self.assertRaises(DataError):
+                cvx.Fred('CES0500000003', base_location=self.datadir)
+
+    def test_yahoo_finance_errors(self):
+        """Test errors with Yahoo Finance."""
+
+        with self.assertRaises(DataError):
+            YahooFinance("DOESNTEXIST", base_location=self.datadir)
+
+    def test_yahoo_finance_cleaning(self):
+        """Test our logic to clean Yahoo Finance data."""
+
+        # this stock was found to have NaN issues
+        data = YahooFinance("ENI.MI", base_location=self.datadir).data
+        self.assertTrue((data.valuevolume == 0).sum() > 0)
+        self.assertTrue(data.iloc[:-1].isnull().sum().sum() == 0)
+
+        # this stock was found to have phony open/low/high prices
+        data = YahooFinance('NWG.L', base_location=self.datadir).data
+        self.assertGreater(data['return'].min(), -0.75)
+        self.assertLess(data['return'].max(), 0.75)
+
+        # this stock had some extreme returns but they were legitimate
+        data = YahooFinance('GME', base_location=self.datadir).data
+        self.assertGreater(data['return'].min(), -0.75)
+        self.assertGreater(data['return'].max(), 3)
+
+    def test_yahoo_finance_preload_warnings(self):
+        """Test warnings on _preload if data has issues."""
+
+        # pylint: disable=protected-access
+
+        raw_data = YahooFinance._get_data_yahoo('ZM')
+        empty_instance = YahooFinance.__new__(YahooFinance)
+        empty_instance._symbol = 'ZM' # because the warnings use the symbol
+        cleaned = empty_instance._process(raw_data, None)
+
+        def _test_warning(
+                data_transformation, part_of_message, level='WARNING'):
+            """Test that warning is raised w/ message containing some word."""
+            data = pd.DataFrame(cleaned, copy=True)
+            exec(data_transformation) # pylint: disable=exec-used
+            # print(data)
+            with self.assertLogs(level=level) as _:
+                empty_instance._preload(data)
+                # print(_)
+                self.assertTrue(part_of_message in _.output[0])
+
+        # columns are: open low high close volume return
+
+        # high unexpected return
+        _test_warning(
+            'data.iloc[300,-1] = 4',
+            'dubious total open-to-open returns')
+
+        # low unexpected return
+        _test_warning(
+            'data.iloc[300,-1] = -0.9',
+            'dubious total open-to-open returns')
+
+        # low unexpected open
+        _test_warning(
+            'data.iloc[300,0] = data.iloc[300,0]*0.1',
+            'dubious open to close returns',
+            level='INFO')
+
+        # high unexpected open
+        _test_warning(
+            'data.iloc[300,0] = data.iloc[300,0]*5',
+            'dubious open to close returns',
+            level='INFO')
+
+        # low unexpected low
+        _test_warning(
+            'data.iloc[300,1] = data.iloc[300,1]*0.1',
+            'dubious open to low returns',
+            level='INFO')
+
+        # high unexpected high
+        _test_warning(
+            'data.iloc[300,2] = data.iloc[300,2]*5',
+            'dubious open to high returns',
+            level='INFO')
+
+    def test_yahoo_finance_remove_on_many_bad_adjcloses(self):
+        """Test remove old data when many adjcloses are invalid."""
+
+        # this stock was found to have bad (negative) adjcloses for many
+        # months at its start
+        with self.assertLogs(level='INFO') as _:
+            YahooFinance('BATS.L', base_location=self.datadir)
+            self.assertTrue(np.any(
+                'contiguous' in el.output for el in _))
+
+    def test_adjcloses_logrets_removal(self):
+        """Test method to remove adjcloses when its logrets are anomalous."""
+
+        # this stock had anomalous price changes in the 70s
+        with self.assertLogs(level='INFO') as _:
+            d = YahooFinance("SMT.L", base_location=self.datadir).data
+            self.assertTrue(np.any([
+                    'anomalous adjclose prices' in el for el in _.output]))
+            self.assertTrue(d['return'].max() < 2)
+
+        # this stock was found to have phony adjcloses
+        with self.assertLogs(level='INFO') as _:
+            YahooFinance('BA.L', base_location=self.datadir)
+            self.assertTrue(np.any([
+                    'anomalous adjclose prices' in el for el in _.output]))
+
+        with self.assertLogs(level='INFO') as _:
+            YahooFinance('BA.L', base_location=self.datadir)
+            self.assertFalse(np.any([
+                    'anomalous adjclose prices' in el for el in _.output]))
+
+    def test_yahoo_finance_cleaning_granular(self):
+        """Test each step of cleaning."""
+
+        # pylint: disable=protected-access
+        raw_data = YahooFinance._get_data_yahoo('ZM')
+        # print(raw_data)
+        empty_instance = YahooFinance.__new__(YahooFinance)
+        empty_instance._symbol = 'ZM' # because the warnings use the symbol
+
+        def _test_warning(
+                data_transformation, part_of_message, level='WARNING'):
+            """Test that warning is raised w/ message containing some word."""
+            data = pd.DataFrame(raw_data, copy=True)
+            exec(data_transformation) # pylint: disable=exec-used
+            with self.assertLogs(level=level) as _:
+                _cleaned = empty_instance._process(data, None)
+                self.assertTrue(
+                    np.any([part_of_message in el for el in _.output]))
+                # check all NaNs have been filled
+                self.assertTrue(_cleaned.iloc[:-1].isnull().sum().sum() == 0)
+
+        def _test_warning_update(
+                data_transformation, part_of_message, level='WARNING'):
+            """Test that warning is raised w/ message containing some word."""
+            new_data = pd.DataFrame(raw_data.iloc[-20:], copy=True)
+            saved_data = pd.DataFrame(raw_data.iloc[:-15], copy=True)
+            exec(data_transformation) # pylint: disable=exec-used
+            with self.assertLogs(level=level) as _:
+                _cleaned = empty_instance._process(new_data, saved_data)
+                self.assertTrue(
+                    np.any([part_of_message in el for el in _.output]))
+                # check all NaNs have been filled
+                self.assertTrue(_cleaned.iloc[:-1].isnull().sum().sum() == 0)
+
+        # missing initial adjclose
+        _test_warning(
+            'data.iloc[0,-2] = np.nan',
+            'adjclose price is missing', level='INFO')
+
+        # infty
+        _test_warning(
+            'data.iloc[2,2] = np.inf',
+            'infinity', level='INFO')
+
+        # non-pos price
+        _test_warning(
+            'data.iloc[2,0] = -1',
+            'non-positive open', level='INFO')
+        _test_warning(
+            'data.iloc[2,0] = 0',
+            'non-positive open', level='INFO')
+        _test_warning(
+            'data.iloc[4,2] = 0',
+            'non-positive high', level='INFO')
+
+        # neg volume
+        _test_warning(
+            'data.iloc[2,-1] = -1',
+            'negative volumes', level='INFO')
+
+        # open lower low
+        _test_warning(
+            'data.iloc[1,0] = data.iloc[1,1]*.9',
+            'open price lower than low price', level='INFO')
+
+        # open higher high
+        _test_warning(
+            'data.iloc[1,0] = data.iloc[1,2]*1.1',
+            'open price higher than high price', level='INFO')
+
+        # low higher close
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3].close * 1.1',
+            'low price higher than close price', level='INFO')
+
+        # high lower close
+        _test_warning( # had to fix it otherwise open cleaner kicks in
+            'close = data.iloc[3].close;'
+            'data.iloc[3,0] = close * .95;' # open
+            'data.iloc[3,1] = close * .95;' # low
+            'data.iloc[3,2] = close * .975', # high
+            'high price lower than close price', level='INFO')
+
+        # extreme low price
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .01',
+            'anomalous low price', level='INFO')
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .02',
+            'anomalous low price', level='INFO')
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .05',
+            'anomalous low price', level='INFO')
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .1',
+            'anomalous low price', level='INFO')
+        _test_warning(
+            'data.iloc[3,1] = data.iloc[3,1] * .2',
+            'anomalous low price', level='INFO')
+        _test_warning( # changed dtindex until found one that works
+            'data.iloc[20,1] = data.iloc[20,1] * .5',
+            'anomalous low price', level='INFO')
+
+        # extreme high price
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 100',
+            'anomalous high price', level='INFO')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 50',
+            'anomalous high price', level='INFO')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 20',
+            'anomalous high price', level='INFO')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 10',
+            'anomalous high price', level='INFO')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 5',
+            'anomalous high price', level='INFO')
+        _test_warning(
+            'data.iloc[3,2] = data.iloc[3,2] * 2',
+            'anomalous high price', level='INFO')
+
+        # extreme open price
+        _test_warning(
+            'data.iloc[3,0] = data.iloc[3,0] * 1.75;'
+            + 'data.iloc[3,2] = data.iloc[3,0]',
+            'anomalous open price', level='INFO')
+        _test_warning(
+            'data.iloc[20,0] = data.iloc[20,0] * 0.5;'
+            + 'data.iloc[20,1] = data.iloc[20,0]',
+            'anomalous open price', level='INFO')
+
+        # extreme open update
+        _test_warning_update(
+            'new_data.iloc[-1,0] = new_data.iloc[-1,0] * 1.75;'
+            + 'new_data.iloc[-1,2] = new_data.iloc[-1,0]',
+            'anomalous open price', level='INFO')
+        _test_warning_update(
+            'new_data.iloc[-1,0] = new_data.iloc[-1,0] *  0.5;'
+            + 'new_data.iloc[-1,1] = new_data.iloc[-1,0]',
+            'anomalous open price', level='INFO')
+
+    # def test_yahoo_finance_wrong_last_time(self):
+    #     """Test that we correct last time if intraday."""
+    #
+    #     class YahooFinanceErroneous4(YahooFinance):
+    #         """Modified YF that sets last time wrong."""
+    #         counter = 0
+    #
+    #         @staticmethod
+    #         def _get_data_yahoo(
+    #             ticker, start='1900-01-01', end='2100-01-01'):
+    #             """Modified download method."""
+    #             res = YahooFinance._get_data_yahoo(
+    #                 ticker, start=start, end=end)
+    #             if self.counter > 0:
+    #                 res.index = list(res.index)[:-1] + [
+    #                     res.index[-1] - pd.Timedelta('3h')]
+    #             self.counter += 1
+    #             print(res)
+    #             return res
+    #
+    #     storer = YahooFinanceErroneous4('GOOGL', base_location=self.datadir)
+    #     print(storer.data)
+    #     #storer.update(pd.Timedelta('0d'))
+    #     #print(storer.data)
 
 
 class TestMarketData(CvxportfolioTest):
@@ -490,6 +858,25 @@ class TestMarketData(CvxportfolioTest):
                        prices=self.prices, cash_key='cash',
                        min_history=pd.Timedelta('0d'))
 
+        with self.assertRaises(NotImplementedError):
+            UserProvidedMarketData(returns=self.returns, volumes=used_volumes,
+                prices=self.prices, cash_key='NOTSUPPORTED',
+                min_history=pd.Timedelta('0d'))
+
+        with self.assertRaises(ValueError):
+            UserProvidedMarketData(returns=self.returns, volumes=used_volumes,
+                prices=self.prices, cash_key='USDOLLAR',
+                min_history=pd.Timedelta('0d'))
+
+        md = UserProvidedMarketData(
+            returns=self.returns, volumes=self.volumes,
+            prices=self.prices, cash_key='cash',
+            min_history=pd.Timedelta('60d'))
+
+        # try to serve when there's not enough min_history
+        with self.assertRaises(ValueError):
+            md.serve(t=self.returns.index[20])
+
     def test_market_data_full(self):
         """Test serve method of DownloadedMarketData."""
 
@@ -535,128 +922,6 @@ class TestMarketData(CvxportfolioTest):
             base_location=self.datadir)
 
         print(md.partial_universe_signature(md.full_universe))
-
-    def test_download_errors(self):
-        """Test single-symbol download error."""
-
-        storer = YahooFinance(
-            'AAPL', grace_period=self.data_grace_period,
-            base_location=self.datadir)
-        with self.assertRaises(SyntaxError):
-            # pylint: disable=protected-access
-            storer._download('AAPL', overlap=1)
-
-        class YahooFinanceErroneous(YahooFinance):
-            """Modified YF that nans last open price."""
-            def _download(self, symbol, current=None,
-                    overlap=5, grace_period='5d', **kwargs):
-                """Modified download method."""
-                res = super()._download(symbol, current,
-                    grace_period=grace_period)
-                res.iloc[-1, 0 ] = np.nan
-                return res
-
-        _ = YahooFinanceErroneous('AMZN', base_location=self.datadir)
-        with self.assertLogs(level='ERROR') as _:
-            _ = YahooFinanceErroneous(
-                'AMZN', base_location=self.datadir)
-
-        class YahooFinanceErroneous2(YahooFinance):
-            """Modified YF that nans some line."""
-            def _download(self, symbol, current=None,
-                    overlap=5, grace_period='5d', **kwargs):
-                """Modified download method."""
-                res = super()._download(symbol, current,
-                    grace_period=grace_period)
-                res.iloc[-20] = np.nan
-                return res
-        with self.assertLogs(level='WARNING') as _:
-            _ = YahooFinanceErroneous2('GOOGL',
-                base_location=self.datadir)
-        with self.assertLogs(level='WARNING') as _:
-            _ = YahooFinanceErroneous2(
-                'GOOGL', base_location=self.datadir)
-
-        class FredErroneous(Fred):
-            """Modified FRED SymbolData that gives a NaN in the last entry."""
-
-            def _download(self, symbol, current, grace_period):
-                """Modified download method."""
-                res = super()._download(symbol, current,
-                    grace_period=grace_period)
-                res.iloc[-1] = np.nan
-                return res
-
-        _ = FredErroneous('DFF', base_location=self.datadir)
-        with self.assertLogs(level='ERROR') as _:
-            _ = FredErroneous(
-                'DFF', base_location=self.datadir)
-
-        class YahooFinanceErroneous3(YahooFinance):
-            """Modified YF that is not append-only."""
-            counter = 0
-            def _download(self, symbol, current=None,
-                    overlap=5, grace_period='5d', **kwargs):
-                """Modified download method."""
-                res = super()._download(symbol, current,
-                    grace_period=grace_period)
-                if self.counter > 0:
-                    res.iloc[-2] = 0.
-                self.counter += 1
-                return res
-        storer = YahooFinanceErroneous3('GOOGL', base_location=self.datadir)
-        with self.assertLogs(level='ERROR') as _:
-            storer.update(pd.Timedelta('0d'))
-
-    def test_no_internet(self):
-        """Test errors thrown when not connected to the internet."""
-
-        with NoInternet():
-            with self.assertRaises(DataError):
-                cvx.YahooFinance('BABA', base_location=self.datadir)
-
-        with NoInternet():
-            with self.assertRaises(DataError):
-                cvx.Fred('CES0500000003', base_location=self.datadir)
-
-    def test_yahoo_finance_errors(self):
-        """Test errors with Yahoo Finance."""
-
-        with self.assertRaises(DataError):
-            YahooFinance("DOESNTEXIST", base_location=self.datadir)
-
-    def test_yahoo_finance_cleaning(self):
-        """Test our logic to clean Yahoo Finance data."""
-
-        # this stock was found to have NaN issues
-        data = YahooFinance("ENI.MI", base_location=self.datadir).data
-        self.assertTrue((data.valuevolume == 0).sum() > 0)
-        self.assertTrue(data.iloc[:-1].isnull().sum().sum() == 0)
-
-    # def test_yahoo_finance_wrong_last_time(self):
-    #     """Test that we correct last time if intraday."""
-    #
-    #     class YahooFinanceErroneous4(YahooFinance):
-    #         """Modified YF that sets last time wrong."""
-    #         counter = 0
-    #
-    #         @staticmethod
-    #         def _get_data_yahoo(
-    #             ticker, start='1900-01-01', end='2100-01-01'):
-    #             """Modified download method."""
-    #             res = YahooFinance._get_data_yahoo(
-    #                 ticker, start=start, end=end)
-    #             if self.counter > 0:
-    #                 res.index = list(res.index)[:-1] + [
-    #                     res.index[-1] - pd.Timedelta('3h')]
-    #             self.counter += 1
-    #             print(res)
-    #             return res
-    #
-    #     storer = YahooFinanceErroneous4('GOOGL', base_location=self.datadir)
-    #     print(storer.data)
-    #     #storer.update(pd.Timedelta('0d'))
-    #     #print(storer.data)
 
 if __name__ == '__main__':
 

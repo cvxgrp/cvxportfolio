@@ -20,7 +20,7 @@ and check that the results make sense.
 We could also save each universe in a ``json`` file.
 """
 
-# This was generated on 2023-12-27 06:55:30.344592+00:00
+# This was generated on 2024-02-14 07:15:36.308012+00:00
 
 SP500 = \
 ['A', 'AAL', 'AAPL', 'ABBV', 'ABNB', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI',
@@ -31,11 +31,11 @@ SP500 = \
  'BALL', 'BAX', 'BBWI', 'BBY', 'BDX', 'BEN', 'BF-B', 'BG', 'BIIB', 'BIO', 'BK',
  'BKNG', 'BKR', 'BLDR', 'BLK', 'BMY', 'BR', 'BRK-B', 'BRO', 'BSX', 'BWA', 'BX',
  'BXP', 'C', 'CAG', 'CAH', 'CARR', 'CAT', 'CB', 'CBOE', 'CBRE', 'CCI', 'CCL',
- 'DAY', 'CDNS', 'CDW', 'CE', 'CEG', 'CF', 'CFG', 'CHD', 'CHRW', 'CHTR', 'CI',
- 'CINF', 'CL', 'CLX', 'CMA', 'CMCSA', 'CME', 'CMG', 'CMI', 'CMS', 'CNC', 'CNP',
- 'COF', 'COO', 'COP', 'COR', 'COST', 'CPB', 'CPRT', 'CPT', 'CRL', 'CRM',
- 'CSCO', 'CSGP', 'CSX', 'CTAS', 'CTLT', 'CTRA', 'CTSH', 'CTVA', 'CVS', 'CVX',
- 'CZR', 'D', 'DAL', 'DD', 'DE', 'DFS', 'DG', 'DGX', 'DHI', 'DHR', 'DIS', 'DLR',
+ 'CDNS', 'CDW', 'CE', 'CEG', 'CF', 'CFG', 'CHD', 'CHRW', 'CHTR', 'CI', 'CINF',
+ 'CL', 'CLX', 'CMA', 'CMCSA', 'CME', 'CMG', 'CMI', 'CMS', 'CNC', 'CNP', 'COF',
+ 'COO', 'COP', 'COR', 'COST', 'CPB', 'CPRT', 'CPT', 'CRL', 'CRM', 'CSCO',
+ 'CSGP', 'CSX', 'CTAS', 'CTLT', 'CTRA', 'CTSH', 'CTVA', 'CVS', 'CVX', 'CZR',
+ 'D', 'DAL', 'DAY', 'DD', 'DE', 'DFS', 'DG', 'DGX', 'DHI', 'DHR', 'DIS', 'DLR',
  'DLTR', 'DOV', 'DOW', 'DPZ', 'DRI', 'DTE', 'DUK', 'DVA', 'DVN', 'DXCM', 'EA',
  'EBAY', 'ECL', 'ED', 'EFX', 'EG', 'EIX', 'EL', 'ELV', 'EMN', 'EMR', 'ENPH',
  'EOG', 'EPAM', 'EQIX', 'EQR', 'EQT', 'ES', 'ESS', 'ETN', 'ETR', 'ETSY',
@@ -89,6 +89,21 @@ DOW30 = \
  'HD', 'HON', 'IBM', 'INTC', 'JNJ', 'JPM', 'KO', 'MCD', 'MMM', 'MRK', 'MSFT',
  'NKE', 'PG', 'TRV', 'UNH', 'V', 'VZ', 'WBA', 'WMT']
 
+FTSE100 = \
+['AAF.L', 'AAL.L', 'ABF.L', 'ADM.L', 'AHT.L', 'ANTO.L', 'AUTO.L', 'AV.L',
+ 'AZN.L', 'BA.L', 'BARC.L', 'BATS.L', 'BDEV.L', 'BEZ.L', 'BKG.L', 'BME.L',
+ 'BNZL.L', 'BP.L', 'BRBY.L', 'BT-A.L', 'CCH.L', 'CNA.L', 'CPG.L', 'CRDA.L',
+ 'CTEC.L', 'DCC.L', 'DGE.L', 'DPLM.L', 'EDV.L', 'ENT.L', 'EXPN.L', 'FCIT.L',
+ 'FLTR.L', 'FRAS.L', 'FRES.L', 'GLEN.L', 'GSK.L', 'HIK.L', 'HLMA.L', 'HLN.L',
+ 'HSBA.L', 'HWDN.L', 'IAG.L', 'ICP.L', 'IHG.L', 'III.L', 'IMB.L', 'IMI.L',
+ 'INF.L', 'ITRK.L', 'JD.L', 'KGF.L', 'LAND.L', 'LGEN.L', 'LLOY.L', 'LSEG.L',
+ 'MKS.L', 'MNDI.L', 'MNG.L', 'MRO.L', 'NG.L', 'NWG.L', 'NXT.L', 'OCDO.L',
+ 'PHNX.L', 'PRU.L', 'PSH.L', 'PSN.L', 'PSON.L', 'REL.L', 'RIO.L', 'RKT.L',
+ 'RMV.L', 'RR.L', 'RS1.L', 'RTO.L', 'SBRY.L', 'SDR.L', 'SGE.L', 'SGRO.L',
+ 'SHEL.L', 'SKG.L', 'SMDS.L', 'SMIN.L', 'SMT.L', 'SN.L', 'SPX.L', 'SSE.L',
+ 'STAN.L', 'STJ.L', 'SVT.L', 'TSCO.L', 'TW.L', 'ULVR.L', 'UTG.L', 'UU.L',
+ 'VOD.L', 'WEIR.L', 'WPP.L', 'WTB.L']
+
 if __name__ == '__main__':
 
     # import json
@@ -113,10 +128,16 @@ if __name__ == '__main__':
             'page': "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average",
             'table_number': 0,
             'column_number': 1,
+        },
+        'ftse100': {
+            'page': 'https://en.wikipedia.org/wiki/FTSE_100_Index',
+            'table_number': -1,
+            'column_number': 1,
+            'suffix': '.L',
         }
     }
 
-    def get_column_wikipedia_page(page, table_number, column_number):
+    def get_column_wikipedia_page(page, table_number, column_number, **kwargs):
         """Get a column as list of strings from a table on wikipedia.
 
         This is adapted from:
@@ -129,6 +150,8 @@ if __name__ == '__main__':
         :type table_number: int
         :param column_number: Which column to extract.
         :type column_number: int
+        :param kwargs: Unused arguments.
+        :type kwargs: dict
 
         :returns: Sorted strings of the column.
         :rtype: list
@@ -143,17 +166,21 @@ if __name__ == '__main__':
             column.append(element.strip())
         return sorted(column)
 
-    def adapt_for_yahoo_finance(tickers_list):
+    def adapt_for_yahoo_finance(tickers_list, suffix='', **kwargs):
         """Change tickers to match the spelling of Yahoo Finance.
 
         :param tickers_list: Tickers from Wikipedia.
         :type tickers_list: list
+        :param suffix: Suffix to add to each ticker, default empty string.
+        :type suffix: str
+        :param kwargs: Unused arguments.
+        :type kwargs: dict
 
         :returns: Adapted tickers.
         :rtype: list
         """
 
-        return [el.replace('.', '-') for el in tickers_list]
+        return [el.replace('.', '-') + suffix for el in tickers_list]
 
     # re-write this file
 
@@ -177,7 +204,7 @@ if __name__ == '__main__':
         for key, value in universes.items():
 
             tickers = adapt_for_yahoo_finance(
-                get_column_wikipedia_page(**value))
+                get_column_wikipedia_page(**value), **value)
             f.write(f'\n{key.upper()} = \\\n')
             pprint(tickers, compact=True, width=79, stream=f)
 
