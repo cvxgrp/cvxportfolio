@@ -289,7 +289,7 @@ def _unlikeliness_score(
         np.abs(test_logreturns) / scaler(reference_logreturns, window)
         for window in windows]
     scaled = pd.DataFrame(scaled).T
-    return scaled.min(axis=1, skipna=True)
+    return scaled.median(axis=1, skipna=True)
 
 
 class OLHCV(SymbolData): # pylint: disable=abstract-method
@@ -317,7 +317,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
     # remove open prices when open to close abs logreturn is larger than
     # this time the median absolute ones in FILTERING_WINDOWS around it
-    THRESHOLD_OPEN_TO_CLOSE = 15
+    THRESHOLD_OPEN_TO_CLOSE = 20
 
     # remove low/high prices when low/high to close abs logreturn larger than
     # this time the median absolute ones in FILTERING_WINDOWS centered on it
@@ -325,7 +325,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
     # log warning on _preload for abs logreturns (of 4 types) larger than this
     # this time the median absolute ones in FILTERING_WINDOWS centered on it
-    THRESHOLD_WARN_EXTREME_LOGRETS = 50
+    THRESHOLD_WARN_EXTREME_LOGRETS = 40
 
     def _process(self, new_data, saved_data=None):
         """Base method for processing (cleaning) data.
@@ -495,7 +495,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         # with this we skip over exact zeros (which come from some upstream
         # cleaning) and would throw the median off
-        all_lr_to_close.loc[all_lr_to_close == 0] = np.nan
+        all_lr_to_close.loc[all_lr_to_close == 0.] = np.nan
         score = _unlikeliness_score(
                 all_lr_to_close, all_lr_to_close, scaler=_median_scale_around,
                 windows=self.FILTERING_WINDOWS)
@@ -656,8 +656,9 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         self._quality_check(data)
 
         # NaN intraday data
-        data.loc[data.index[-1],
-            ["high", "low", "close", "return", "volume"]] = np.nan
+        if len(data) > 0:
+            data.loc[data.index[-1],
+                ["high", "low", "close", "return", "volume"]] = np.nan
 
         # compute volume in cash units
         data["valuevolume"] = data["volume"] * data["open"]
@@ -720,6 +721,10 @@ class YahooFinance(OLHCV):
     # longer overlap should make the cleaning of new data more robust,
     # shorter overlap makes the update faster
     UPDATE_OVERLAP = 5
+
+    # Throw out all data before any dividend payment (as implied by the data)
+    # larger than this fraction of the stock value
+    DIVIDEND_THRESHOLD = .2
 
     def _throw_out_all_data_before_many_bad_adjcloses(
             self, new_data, level='warning'):
@@ -818,6 +823,22 @@ class YahooFinance(OLHCV):
         # NaN non-positive adj close
         self._nan_nonpositive_prices(new_data, "adjclose")
 
+        # Analyze log diff of close and adjclose, throw data away before
+        # any neg change and pos change above dividends threshold
+        log_dividends = (
+            np.log(new_data.adjclose.ffill())
+            - np.log(new_data.close.ffill())).diff()
+        bad_indexes = log_dividends.index[
+            (log_dividends < -1E-5) | (
+                log_dividends > np.log(1+self.DIVIDEND_THRESHOLD))]
+        if len(bad_indexes) > 0:
+            logging.info(
+                '%s("%s").data has invalid or anomalous dividend payments on '
+                + 'date(s) %s; removing all data until the last one',
+                self.__class__.__name__, self.symbol, bad_indexes)
+            new_data = pd.DataFrame(
+                new_data.loc[new_data.index > bad_indexes[-1]], copy=True)
+
         # Throw out all data before many NaN on adjclose
         new_data = self._throw_out_all_data_before_many_bad_adjcloses(
             new_data, level='info')
@@ -834,6 +855,9 @@ class YahooFinance(OLHCV):
         self._ffill( # we can't ffill using saved_data :(
             new_data, col_name='adjclose', message='last available',
             level='info')
+
+        # TODO we should ffill OLHC with correct adjustment factor (also
+        # in parent class)
 
         # eliminate (initial) rows where adjclose is NaN
         nan_adjcloses = new_data.adjclose.isnull()
@@ -947,7 +971,7 @@ class YahooFinance(OLHCV):
             data['meta']['currentTradingPeriod']['regular']['start'])
 
         # this should be enough, but be careful
-        if df_result.index[-1] > this_periods_open_time:
+        if df_result.index[-1].time() != this_periods_open_time.time():
             index = df_result.index.to_numpy()
             index[-1] = this_periods_open_time
             df_result.index = pd.DatetimeIndex(index)

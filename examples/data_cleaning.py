@@ -18,7 +18,6 @@ so not covered by the semantic versioning agreeement (they could change
 without notice).
 """
 
-import logging
 import shutil
 import tempfile
 from pathlib import Path
@@ -30,15 +29,20 @@ import pandas as pd
 
 import cvxportfolio as cvx
 
-# If you change this to logging.INFO you get more logging output from the
-# cleaning procedure
-logging.getLogger().setLevel(logging.WARNING)
+# Uncomment the following lines to get information about the cleaning procedure
+# import logging
+# logging.basicConfig(level=logging.INFO)
+# log=logging.getLogger('=>')
 
 # Here put any number of stocks for which you wish to analyze the cleaning
 TEST_UNIVERSE = ['AAPL', 'GOOG', 'TSLA']
 
 # Some names with known issues:
-# TEST_UNIVERSE = ['SMT.L', 'NVR', 'HUBB', 'NWG.L']
+# TEST_UNIVERSE = ['SMT.L', 'NVR', 'HUBB', 'NWG.L', 'BA.L']
+
+# Or, pick a larger universe
+# from .universes import *
+# TEST_UNIVERSE = DOW30
 
 ALL_DROPPED_ROWS_PCT = pd.Series(dtype=float)
 ALL_MIN_LR = pd.Series(dtype=float)

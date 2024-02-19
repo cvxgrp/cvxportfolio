@@ -544,9 +544,9 @@ class TestData(CvxportfolioTest):
         YahooFinanceUpdaterTest._set_mock_data(raw_data)
         YahooFinanceUpdaterTest('AAPL', base_location=self.datadir)
 
-        # make 3 days ago close invalid, nothing changes
+        # make 3 days ago high invalid, nothing changes
         raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
-        raw_data_recent_invalid.iloc[-3, 3] *= 1000
+        raw_data_recent_invalid.iloc[-3, 2] *= 1000
         YahooFinanceUpdaterTest._set_mock_data(
             raw_data_recent_invalid)
         re_updated = YahooFinanceUpdaterTest(
@@ -588,16 +588,18 @@ class TestData(CvxportfolioTest):
         # data will be eliminated and only last 3 rows will available
         raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
         raw_data_recent_invalid.iloc[-5, 4] *= 100
+        raw_data_recent_invalid.iloc[-5, 3] *= 100
         YahooFinanceUpdaterTest._set_mock_data(
             raw_data_recent_invalid)
         with self.assertLogs(level='INFO') as _:
             re_updated = YahooFinanceUpdaterTest(
                 'AAPL', base_location=self.datadir,
                 grace_period=pd.Timedelta('0d')).data
-            self.assertTrue(np.any(
-                ['is eliminating data' in el for el in _.output]))
             # for el in _.output:
             #     print(el)
+            self.assertTrue(np.any(
+                ['is eliminating data' in el for el in _.output]))
+
         # print(re_updated)
         self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
 
@@ -608,9 +610,12 @@ class TestData(CvxportfolioTest):
 
         # even worse, invalidate adjclose 3 and 4 days ago, no ffill
         # data will be eliminated and won't be able to concatenate
+        # also change close otherwise dividends check kicks in
         raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
         raw_data_recent_invalid.iloc[-3, 4] *= 100
         raw_data_recent_invalid.iloc[-4, 4] *= 100
+        raw_data_recent_invalid.iloc[-3, 3] *= 100
+        raw_data_recent_invalid.iloc[-4, 3] *= 100
         YahooFinanceUpdaterTest._set_mock_data(
             raw_data_recent_invalid)
         with self.assertLogs(level='INFO') as _:
@@ -862,7 +867,7 @@ class TestData(CvxportfolioTest):
 
         # extreme open price
         _test_warning(
-            'data.iloc[3,0] = data.iloc[3,0] * 1.75;'
+            'data.iloc[3,0] = data.iloc[3,0] * 2;'
             + 'data.iloc[3,2] = data.iloc[3,0]',
             'anomalous open price', level='INFO')
         _test_warning(
