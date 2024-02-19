@@ -28,7 +28,7 @@ import cvxportfolio as cvx
 
 from ..universes import FTSE100
 
-HYPERPAR_OPTIMIZE_START = '2012-01-01'
+HYPERPAR_OPTIMIZE_START = '2018-01-01'
 
 OBJECTIVE = 'sharpe_ratio'
 
@@ -52,13 +52,14 @@ def policy(gamma_risk, gamma_trade):
         - gamma_risk_hp * cvx.FullCovariance()
         - gamma_trade_hp * cvx.StocksTransactionCost(),
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
-        benchmark=cvx.MarketBenchmark(),
+        benchmark=cvx.Uniform(),
+        ignore_dpp=True,
+        solver='CLARABEL'
     ), {'gamma_risk': gamma_risk_hp, 'gamma_trade': gamma_trade_hp}
-
 
 if __name__ == '__main__':
 
-    RESEARCH = True
+    RESEARCH = False
 
     if not RESEARCH:
         from .strategy_executor import main
@@ -67,15 +68,12 @@ if __name__ == '__main__':
 
     else:
         import matplotlib.pyplot as plt
-        import pandas as pd
 
-        #INDEX_ETF = 'DIA'
+        INDEX_ETF = 'VUKE.L'
+        research_sim = cvx.StockMarketSimulator(
+            universe=FTSE100, cash_key='GBPOUND')
 
-        md = cvx.DownloadedMarketData(
-            FTSE100, cash_key='GBPOUND', grace_period=pd.Timedelta('5d'))
-        research_sim = cvx.StockMarketSimulator(market_data = md)
-
-        research_policy, _ = policy(1., 1.)
+        research_policy, _ = policy(5., 1.)
 
         result_unif = research_sim.backtest(
             cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
@@ -87,16 +85,20 @@ if __name__ == '__main__':
         print('market')
         print(result_market)
 
-        exit(0)
+        result_etf = cvx.StockMarketSimulator(
+            universe=[INDEX_ETF], cash_key='GBPOUND').backtest(cvx.Uniform(),
+                start_time=HYPERPAR_OPTIMIZE_START)
+        print('etf')
+        print(result_etf)
 
-        # result_etf = cvx.StockMarketSimulator([INDEX_ETF]).backtest(
-        #     cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
-        # print(INDEX_ETF)
-        # print(result_etf)
+        # result_init = research_sim.backtest(
+        #     research_policy, start_time=HYPERPAR_OPTIMIZE_START)
+        # print('initial')
+        # print(result_init)
 
         research_sim.optimize_hyperparameters(
             research_policy, start_time=HYPERPAR_OPTIMIZE_START,
-            objective='sharpe_ratio')
+            objective=OBJECTIVE)
 
         result_opt = research_sim.backtest(
             research_policy, start_time=HYPERPAR_OPTIMIZE_START)
@@ -106,13 +108,13 @@ if __name__ == '__main__':
         result_unif.plot()
         result_opt.plot()
         result_market.plot()
-        #result_etf.plot()
+        result_etf.plot()
 
         plt.figure()
         result_opt.growth_rates.iloc[-252*4:].cumsum().plot(label='optimized')
         result_unif.growth_rates.iloc[-252*4:].cumsum().plot(label='uniform')
         result_market.growth_rates.iloc[-252*4:].cumsum().plot(label='market')
-        #result_etf.growth_rates.iloc[-252*4:].cumsum().plot(label='market etf')
+        result_etf.growth_rates.iloc[-252*4:].cumsum().plot(label='market etf')
         plt.legend()
 
         plt.show()

@@ -100,7 +100,7 @@ def main(
 
 def hyperparameter_optimize(
     universe, policy, hyperparameter_opt_start, objective='sharpe_ratio',
-    initial_values=None):
+    initial_values=None, cash_key='USDOLLAR'):
     """Optimize hyper-parameters of a policy over back-test.
 
     :param universe: Trading universe for the policy.
@@ -124,7 +124,7 @@ def hyperparameter_optimize(
     if initial_values is None:
         initial_values = {k: 1. for k in hyper_parameter_names}
 
-    sim = cvx.StockMarketSimulator(universe)
+    sim = cvx.StockMarketSimulator(universe, cash_key=cash_key)
     policy, hyperpar_handles = policy(**initial_values)
 
     # check to be sure
@@ -181,7 +181,8 @@ class _Runner:
         :rtype: pandas.Timestamp
         """
         logger.info('Getting last time-stamp from market data.')
-        _today = cvx.DownloadedMarketData(self.universe[:1]).returns.index[-1]
+        _today = cvx.DownloadedMarketData(
+            self.universe[:1], cash_key=self.cash_key).returns.index[-1]
         logger.info('Last timestamp is %s', _today)
         return _today
 
@@ -257,7 +258,8 @@ class _Runner:
         self.all_hyper_params[self.today] = hyperparameter_optimize(
             universe=self.universe, policy=self.policy,
             hyperparameter_opt_start=self.hyperparameter_opt_start,
-            objective=self.objective, initial_values=self.initial_values)
+            objective=self.objective, initial_values=self.initial_values,
+            cash_key=self.cash_key)
 
         print('Hyper-parameters optimized today:')
         print(self.all_hyper_params[self.today])
@@ -423,6 +425,7 @@ class _Runner:
             current_holdings=h,
             market_data=cvx.DownloadedMarketData(
                 self.universe, online_usage=True,
+                cash_key=self.cash_key,
                 min_history=pd.Timedelta('0d')),
             policy=self.policy,
             hyper_parameters=self.all_hyper_params[hp_index])
