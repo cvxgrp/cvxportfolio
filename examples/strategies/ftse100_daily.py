@@ -28,9 +28,11 @@ import cvxportfolio as cvx
 
 from ..universes import FTSE100
 
-HYPERPAR_OPTIMIZE_START = '2018-01-01'
+HYPERPAR_OPTIMIZE_START = '2016-01-01'
 
 OBJECTIVE = 'sharpe_ratio'
+
+INITIAL_VALUES = {'gamma_risk': 10., 'gamma_trade': 1.}
 
 
 def policy(gamma_risk, gamma_trade):
@@ -49,9 +51,10 @@ def policy(gamma_risk, gamma_trade):
     gamma_trade_hp = cvx.Gamma(initial_value=gamma_trade)
     return cvx.SinglePeriodOptimization(
         cvx.ReturnsForecast()
-        - gamma_risk_hp * cvx.FullCovariance()
+        - gamma_risk_hp * (
+            cvx.FullCovariance() + 0.05 * cvx.RiskForecastError())
         - gamma_trade_hp * cvx.StocksTransactionCost(),
-        [cvx.LongOnly(), cvx.LeverageLimit(1)],
+        [cvx.LongOnly(),  cvx.LeverageLimit(1)],
         benchmark=cvx.Uniform(),
         ignore_dpp=True,
         solver='CLARABEL'
@@ -64,7 +67,8 @@ if __name__ == '__main__':
     if not RESEARCH:
         from .strategy_executor import main
         main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
-            objective=OBJECTIVE, universe=FTSE100, cash_key='GBPOUND')
+            objective=OBJECTIVE, universe=FTSE100, cash_key='GBPOUND',
+            initial_values=INITIAL_VALUES)
 
     else:
         import matplotlib.pyplot as plt
@@ -73,7 +77,7 @@ if __name__ == '__main__':
         research_sim = cvx.StockMarketSimulator(
             universe=FTSE100, cash_key='GBPOUND')
 
-        research_policy, _ = policy(5., 1.)
+        research_policy, _ = policy(**INITIAL_VALUES)
 
         result_unif = research_sim.backtest(
             cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
@@ -90,11 +94,6 @@ if __name__ == '__main__':
                 start_time=HYPERPAR_OPTIMIZE_START)
         print('etf')
         print(result_etf)
-
-        # result_init = research_sim.backtest(
-        #     research_policy, start_time=HYPERPAR_OPTIMIZE_START)
-        # print('initial')
-        # print(result_init)
 
         research_sim.optimize_hyperparameters(
             research_policy, start_time=HYPERPAR_OPTIMIZE_START,

@@ -36,6 +36,8 @@ from ..universes import NDX100
 
 HYPERPAR_OPTIMIZE_START = '2012-01-01'
 OBJECTIVE = 'sharpe_ratio'
+INITIAL_VALUES = {'gamma_risk': 20., 'gamma_trade': 1.}
+
 
 def policy(gamma_risk, gamma_trade):
     """Create fresh policy object, also return handles to hyper-parameters.
@@ -56,7 +58,7 @@ def policy(gamma_risk, gamma_trade):
         - gamma_risk_hp * cvx.FullCovariance()
         - gamma_trade_hp * cvx.StocksTransactionCost(),
         [cvx.LongOnly(), cvx.LeverageLimit(1)],
-        benchmark=cvx.MarketBenchmark(),
+        benchmark=cvx.Uniform(),
         ignore_dpp=True,
         solver='CLARABEL',
     ), {'gamma_risk': gamma_risk_hp, 'gamma_trade': gamma_trade_hp}
@@ -82,25 +84,24 @@ if __name__ == '__main__':
         print('market')
         print(result_market)
 
-        # current strategy
-
-        hyper_pars = pd.read_json(
-            'examples/strategies/ndx100_daily_hyper_parameters.json'
-            ).T.iloc[-1].to_dict()
-
-        result_cur = research_sim.backtest(
-            policy(**hyper_pars)[0],
-            start_time=HYPERPAR_OPTIMIZE_START)
-        print('current')
-        print(result_cur)
+        research_policy, _ = policy(**INITIAL_VALUES)
 
         result_etf = cvx.StockMarketSimulator([INDEX_ETF]).backtest(
             cvx.Uniform(), start_time=HYPERPAR_OPTIMIZE_START)
         print(INDEX_ETF)
         print(result_etf)
 
+        research_sim.optimize_hyperparameters(
+            research_policy, start_time=HYPERPAR_OPTIMIZE_START,
+            objective=OBJECTIVE)
+
+        result_opt = research_sim.backtest(
+            research_policy, start_time=HYPERPAR_OPTIMIZE_START)
+        print('optimized')
+        print(result_opt)
+
         plt.figure()
-        result_cur.growth_rates.iloc[-252*4:].cumsum().plot(label='current')
+        result_opt.growth_rates.iloc[-252*4:].cumsum().plot(label='optimized')
         result_unif.growth_rates.iloc[-252*4:].cumsum().plot(label='uniform')
         result_market.growth_rates.iloc[-252*4:].cumsum().plot(label='market')
         result_etf.growth_rates.iloc[-252*4:].cumsum().plot(label='market etf')
@@ -111,4 +112,4 @@ if __name__ == '__main__':
     from .strategy_executor import main
     main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
         objective=OBJECTIVE, universe=NDX100,
-        initial_values={'gamma_risk': 20., 'gamma_trade': 1.})
+        initial_values=INITIAL_VALUES)
