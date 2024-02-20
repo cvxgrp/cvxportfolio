@@ -196,7 +196,7 @@ class SymbolData:
               self.__class__.__name__, self.symbol, self.storage_location)
 
         try:
-            if current is not None:
+            if (current is not None) and (len(current) > 0):
                 if not np.all(
                         # we use numpy.isclose because returns may be computed
                         # via logreturns and numerical errors can sift through
