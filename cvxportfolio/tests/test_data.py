@@ -429,7 +429,9 @@ class TestData(CvxportfolioTest):
         """Test specific issues when updating already stored data."""
 
         raw_data = pd.DataFrame(
-            cvx.YahooFinance._get_data_yahoo('AAPL'), copy=True)
+            # skip last day because there might actually be issues
+            # that invalidate the tests assumptions
+            cvx.YahooFinance._get_data_yahoo('AAPL'), copy=True).iloc[:-1]
 
         class YahooFinanceUpdaterTest(cvx.YahooFinance):
             """Tester of issues with update."""
