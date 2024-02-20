@@ -637,7 +637,9 @@ class DownloadedMarketData(MarketDataInMemory):
 
         if self.prices.iloc[-5:].isnull().any().any():
             logger.warning(
-                'Removing some recent lines because there are missing values.')
+                'Removing some recent lines because there are missing values,'
+                + ' the issue is with symbol(s) %s',
+                self.prices.columns[self.prices.iloc[-5:].isnull().any()])
             drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
             logger.warning('Dropping at index %s', drop_at)
             self.returns = self.returns.loc[self.returns.index < drop_at]

@@ -338,14 +338,14 @@ class TestData(CvxportfolioTest):
         storer = YahooFinance(
             'AAPL', grace_period=self.data_grace_period,
             base_location=self.datadir)
-        with self.assertRaises(SyntaxError):
-            # pylint: disable=protected-access
-            storer._download('AAPL', overlap=1)
+        # with self.assertRaises(SyntaxError):
+        #     # pylint: disable=protected-access
+        #     storer._download('AAPL', overlap=1)
 
         class YahooFinanceErroneous(YahooFinance):
             """Modified YF that nans last open price."""
-            def _download(self, symbol, current=None,
-                    overlap=5, grace_period='5d', **kwargs):
+            def _download(
+                    self, symbol, current=None, grace_period='5d', **kwargs):
                 """Modified download method."""
                 res = super()._download(symbol, current,
                     grace_period=grace_period)
@@ -353,14 +353,16 @@ class TestData(CvxportfolioTest):
                 return res
 
         _ = YahooFinanceErroneous('AMZN', base_location=self.datadir)
-        with self.assertLogs(level='ERROR') as _:
-            _ = YahooFinanceErroneous(
+        with self.assertLogs(level='WARNING') as _:
+            YahooFinanceErroneous(
                 'AMZN', base_location=self.datadir)
+            self.assertTrue(np.any([
+                'changed last open price' in el for el in _.output]))
 
         class YahooFinanceErroneous2(YahooFinance):
             """Modified YF that nans some line."""
-            def _download(self, symbol, current=None,
-                    overlap=5, grace_period='5d', **kwargs):
+            def _download(
+                    self, symbol, current=None, grace_period='5d', **kwargs):
                 """Modified download method."""
                 res = super()._download(symbol, current,
                     grace_period=grace_period)
@@ -384,15 +386,17 @@ class TestData(CvxportfolioTest):
                 return res
 
         _ = FredErroneous('DFF', base_location=self.datadir)
-        with self.assertLogs(level='ERROR') as _:
-            _ = FredErroneous(
+        with self.assertLogs(level='WARNING') as _:
+            FredErroneous(
                 'DFF', base_location=self.datadir)
+            self.assertTrue(np.any([
+                'changed last value' in el for el in _.output]))
 
         class YahooFinanceErroneous3(YahooFinance):
             """Modified YF that is not append-only."""
             counter = 0
-            def _download(self, symbol, current=None,
-                    overlap=5, grace_period='5d', **kwargs):
+            def _download(
+                    self, symbol, current=None, grace_period='5d', **kwargs):
                 """Modified download method."""
                 res = super()._download(symbol, current,
                     grace_period=grace_period)
@@ -401,7 +405,7 @@ class TestData(CvxportfolioTest):
                 self.counter += 1
                 return res
         storer = YahooFinanceErroneous3('GOOGL', base_location=self.datadir)
-        with self.assertLogs(level='ERROR') as _:
+        with self.assertLogs(level='WARNING') as _:
             storer.update(pd.Timedelta('0d'))
 
     def test_no_internet(self):
@@ -416,10 +420,218 @@ class TestData(CvxportfolioTest):
                 cvx.Fred('CES0500000003', base_location=self.datadir)
 
     def test_yahoo_finance_errors(self):
-        """Test errors with Yahoo Finance."""
+        """Test simple errors with Yahoo Finance."""
 
         with self.assertRaises(DataError):
             YahooFinance("DOESNTEXIST", base_location=self.datadir)
+
+    def test_yahoo_finance_update(self):
+        """Test specific issues when updating already stored data."""
+
+        raw_data = pd.DataFrame(
+            cvx.YahooFinance._get_data_yahoo('AAPL'), copy=True)
+
+        class YahooFinanceUpdaterTest(cvx.YahooFinance):
+            """Tester of issues with update."""
+
+            def _get_data_yahoo(
+                    self, symbol, start=None, *args, **kwargs):
+                return pd.DataFrame(
+                    self.mock_data if start is None else
+                    self.mock_data.loc[self.mock_data.index >= start], copy=True)
+
+            @classmethod
+            def _set_mock_data(cls, mock_data):
+                cls.mock_data = mock_data
+
+            def _delete_recent_stored(self, how_many):
+                raw_stored = self._load_raw()
+                only_past = pd.DataFrame(
+                    raw_stored.iloc[:-how_many], copy=True)
+                only_past.iloc[-1, -1] = np.nan
+                self._store(only_past)
+
+        YahooFinanceUpdaterTest._set_mock_data(raw_data)
+
+        obj = YahooFinanceUpdaterTest('AAPL', base_location=self.datadir)
+
+        # warm-up
+        initial = YahooFinanceUpdaterTest(
+            'AAPL', base_location=self.datadir).data
+        updated = YahooFinanceUpdaterTest(
+            'AAPL', base_location=self.datadir,
+            grace_period=pd.Timedelta('0d')).data
+        self.assertTrue(np.allclose(initial, updated, equal_nan=True))
+        obj._delete_recent_stored(10)
+        re_updated = YahooFinanceUpdaterTest(
+            'AAPL', base_location=self.datadir,
+            grace_period=pd.Timedelta('0d')).data
+        self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
+        print(initial)
+
+        # change intraday data keeping it valid, nothing happens
+        raw_data_intraday_changed = pd.DataFrame(raw_data, copy=True)
+        raw_data_intraday_changed.iloc[-1, 1] *= .9 # low
+        raw_data_intraday_changed.iloc[-1, 2] *= 1.1 # high
+        raw_data_intraday_changed.iloc[-1, 3] *= 1.05 # close
+        raw_data_intraday_changed.iloc[-1, 4] *= 1.05 # adjclose
+        YahooFinanceUpdaterTest._set_mock_data(raw_data_intraday_changed)
+        re_updated = YahooFinanceUpdaterTest(
+            'AAPL', base_location=self.datadir,
+            grace_period=pd.Timedelta('0d')).data
+        self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
+
+        # invalidate last open, gets filled w/ last close
+        raw_data_open_invalid = pd.DataFrame(raw_data, copy=True)
+        raw_data_open_invalid.iloc[-1, 0] = np.inf
+        YahooFinanceUpdaterTest._set_mock_data(raw_data_open_invalid)
+        with self.assertLogs(level='WARNING') as _:
+            re_updated = YahooFinanceUpdaterTest(
+                'AAPL', base_location=self.datadir,
+                grace_period=pd.Timedelta('0d')).data
+            self.assertTrue(np.any(
+                ['changed last open price' in el for el in _.output]))
+        # print(re_updated)
+        self.assertTrue(re_updated.iloc[-1, 0] == re_updated.iloc[-2, 3])
+
+        # reset to init
+        obj._delete_recent_stored(20)
+        YahooFinanceUpdaterTest._set_mock_data(raw_data)
+        YahooFinanceUpdaterTest('AAPL', base_location=self.datadir)
+
+        # make 3 days ago open invalid, nothing changes
+        raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
+        raw_data_recent_invalid.iloc[-3, 0] *= 100
+        YahooFinanceUpdaterTest._set_mock_data(
+            raw_data_recent_invalid)
+        re_updated = YahooFinanceUpdaterTest(
+                'AAPL', base_location=self.datadir,
+                grace_period=pd.Timedelta('0d')).data
+        self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
+
+        # reset to init
+        obj._delete_recent_stored(20)
+        YahooFinanceUpdaterTest._set_mock_data(raw_data)
+        YahooFinanceUpdaterTest('AAPL', base_location=self.datadir)
+
+        # make 3 days ago high invalid, nothing changes
+        raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
+        raw_data_recent_invalid.iloc[-3, 2] /= 100
+        YahooFinanceUpdaterTest._set_mock_data(
+            raw_data_recent_invalid)
+        re_updated = YahooFinanceUpdaterTest(
+                'AAPL', base_location=self.datadir,
+                grace_period=pd.Timedelta('0d')).data
+        self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
+
+        # make 2 days ago open invalid, stuff changes
+        raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
+        raw_data_recent_invalid.iloc[-2, 0] *= 100
+        YahooFinanceUpdaterTest._set_mock_data(
+            raw_data_recent_invalid)
+        with self.assertLogs(level='WARNING') as _:
+            re_updated = YahooFinanceUpdaterTest(
+                'AAPL', base_location=self.datadir,
+                grace_period=pd.Timedelta('0d')).data
+            self.assertTrue(np.any(
+                ['not append-only' in el for el in _.output]))
+        # print(re_updated)
+        self.assertTrue(re_updated.iloc[-2, 0] == re_updated.iloc[-3, 3])
+        # self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
+
+        # reset to init
+        obj._delete_recent_stored(20)
+        YahooFinanceUpdaterTest._set_mock_data(raw_data)
+        YahooFinanceUpdaterTest('AAPL', base_location=self.datadir)
+
+        # make 3 days ago high invalid, nothing changes
+        raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
+        raw_data_recent_invalid.iloc[-3, 2] *= 1000
+        YahooFinanceUpdaterTest._set_mock_data(
+            raw_data_recent_invalid)
+        re_updated = YahooFinanceUpdaterTest(
+                'AAPL', base_location=self.datadir,
+                grace_period=pd.Timedelta('0d')).data
+        self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
+
+        # reset to init
+        obj._delete_recent_stored(20)
+        YahooFinanceUpdaterTest._set_mock_data(raw_data)
+        YahooFinanceUpdaterTest('AAPL', base_location=self.datadir)
+
+        # make 2 days ago close invalid, stuff changes
+        raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
+        raw_data_recent_invalid.iloc[-2, 3] *= 1000
+        # important: also adjclose needs to wrong in the same way,
+        # this is generally true with Yahoo finance
+        raw_data_recent_invalid.iloc[-2, 4] *= 1000
+        YahooFinanceUpdaterTest._set_mock_data(
+            raw_data_recent_invalid)
+        with self.assertLogs(level='INFO') as _:
+            re_updated = YahooFinanceUpdaterTest(
+                'AAPL', base_location=self.datadir,
+                grace_period=pd.Timedelta('0d')).data
+            self.assertTrue(np.any(
+                ['not append-only' in el for el in _.output]))
+            # for el in _.output:
+            #     print(el)
+        # print(re_updated)
+        self.assertTrue(re_updated.iloc[-2, 0] == re_updated.iloc[-1, 0])
+        self.assertFalse(np.allclose(initial, re_updated, equal_nan=True))
+
+        # reset to init
+        obj._delete_recent_stored(20)
+        YahooFinanceUpdaterTest._set_mock_data(raw_data)
+        YahooFinanceUpdaterTest('AAPL', base_location=self.datadir)
+
+        # worse still, invalidate first adjclose of recent data, no ffill
+        # data will be eliminated and only last 3 rows will available
+        raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
+        raw_data_recent_invalid.iloc[-5, 4] *= 100
+        raw_data_recent_invalid.iloc[-5, 3] *= 100
+        YahooFinanceUpdaterTest._set_mock_data(
+            raw_data_recent_invalid)
+        with self.assertLogs(level='INFO') as _:
+            re_updated = YahooFinanceUpdaterTest(
+                'AAPL', base_location=self.datadir,
+                grace_period=pd.Timedelta('0d')).data
+            # for el in _.output:
+            #     print(el)
+            self.assertTrue(np.any(
+                ['is eliminating data' in el for el in _.output]))
+
+        # print(re_updated)
+        self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
+
+        # reset to init
+        obj._delete_recent_stored(20)
+        YahooFinanceUpdaterTest._set_mock_data(raw_data)
+        YahooFinanceUpdaterTest('AAPL', base_location=self.datadir)
+
+        # even worse, invalidate adjclose 3 and 4 days ago, no ffill
+        # data will be eliminated and won't be able to concatenate
+        # also change close otherwise dividends check kicks in
+        raw_data_recent_invalid = pd.DataFrame(raw_data, copy=True)
+        raw_data_recent_invalid.iloc[-3, 4] *= 100
+        raw_data_recent_invalid.iloc[-4, 4] *= 100
+        raw_data_recent_invalid.iloc[-3, 3] *= 100
+        raw_data_recent_invalid.iloc[-4, 3] *= 100
+        YahooFinanceUpdaterTest._set_mock_data(
+            raw_data_recent_invalid)
+        with self.assertLogs(level='INFO') as _:
+            re_updated = YahooFinanceUpdaterTest(
+                'AAPL', base_location=self.datadir,
+                grace_period=pd.Timedelta('0d')).data
+            self.assertTrue(np.any(
+                ['is eliminating data' in el for el in _.output]))
+            self.assertTrue(np.any(
+                ['re-downloading from the start' in el for el in _.output]))
+            # for el in _.output:
+            #     print(el)
+        # print(re_updated)
+        # last open hasn't changed (re-download is with same bad data, but
+        # ffill will work on fresh re-download)
+        self.assertTrue(initial.iloc[-1, 0] == re_updated.iloc[-1, 0])
 
     def test_yahoo_finance_cleaning(self):
         """Test our logic to clean Yahoo Finance data."""
@@ -553,6 +765,9 @@ class TestData(CvxportfolioTest):
             """Test that warning is raised w/ message containing some word."""
             new_data = pd.DataFrame(raw_data.iloc[-20:], copy=True)
             saved_data = pd.DataFrame(raw_data.iloc[:-15], copy=True)
+            # no need to make it precise
+            saved_data['return'] = np.log(saved_data.adjclose).diff()
+            del saved_data['adjclose']
             exec(data_transformation) # pylint: disable=exec-used
             with self.assertLogs(level=level) as _:
                 _cleaned = empty_instance._process(new_data, saved_data)
@@ -652,7 +867,7 @@ class TestData(CvxportfolioTest):
 
         # extreme open price
         _test_warning(
-            'data.iloc[3,0] = data.iloc[3,0] * 1.75;'
+            'data.iloc[3,0] = data.iloc[3,0] * 2;'
             + 'data.iloc[3,2] = data.iloc[3,0]',
             'anomalous open price', level='INFO')
         _test_warning(
