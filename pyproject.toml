@@ -26,7 +26,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["cvxportfolio", "cvxportfolio.data", "cvxportfolio.constraints",
-    "cvxportfolio.tests"]
+    "cvxportfolio.tests", "cvxportfolio.tests.data"]
 include-package-data = true
 
 [tool.pylint.main]
