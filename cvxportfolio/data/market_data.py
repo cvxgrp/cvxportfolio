@@ -143,7 +143,21 @@ class MarketDataInMemory(MarketData):
         self.cash_key = cash_key
         self._min_history_timedelta = min_history
         self.online_usage = online_usage
+        self._validate_universe_selection(universe_selection_in_time)
         self.universe_selection_in_time = universe_selection_in_time
+
+    def _validate_universe_selection(self, universe_selection_in_time):
+        """Validate input of universe_selection_in_time."""
+        if universe_selection_in_time is None:
+            return
+        if isinstance(universe_selection_in_time, pd.DataFrame
+            ) and universe_selection_in_time.columns.equals(
+                self.full_universe[:-1]) and isinstance(
+                    universe_selection_in_time.index, pd.DatetimeIndex):
+            return
+        raise DataError("universe_selection_in_time must be a DataFrame with"
+            " the full universe (minus cash) as columns, and datetime index."
+            " Dtypes should be boolean.")
 
     def _mask_dataframes(self, mask):
         """Mask internal dataframes if necessary."""
@@ -294,12 +308,26 @@ class MarketDataInMemory(MarketData):
 
     def _universe_mask_at_time(self, t):
         """Return the valid universe mask at time t."""
+
+        valid_universe_mask = pd.Series(True, self.full_universe)
+
+        # apply min_history filtering
         past_returns = self.returns.loc[self.returns.index < t]
-        if self.online_usage:
-            valid_universe_mask = past_returns.count() >= self.min_history
-        else:
-            valid_universe_mask = ((past_returns.count() >= self.min_history) &
-                (~self.returns.loc[t].isnull()))
+        valid_universe_mask.iloc[
+            :-1] &= past_returns.iloc[:, :-1].count() >= self._min_num_obs
+
+        # apply universe selection
+        if self.universe_selection_in_time is not None:
+            valid_universe_mask.iloc[
+                :-1] &= self.universe_selection_in_time.loc[
+                    self.universe_selection_in_time.index <= t].iloc[-1]
+
+        # if not running online remove current NaNs
+        if not self.online_usage:
+            valid_universe_mask &= ~self.returns.loc[t].isnull()
+            if np.isnan(self.returns.loc[t].iloc[-1]):
+                raise DataError(f'The cash return is nan at time {t}.')
+
         if sum(valid_universe_mask) <= 1:
             raise DataError(
                 f'The trading universe at time {t} has size less or equal'
@@ -322,7 +350,7 @@ class MarketDataInMemory(MarketData):
     def _earliest_backtest_start(self):
         """Earliest date at which we can start a backtest."""
         return self.returns.iloc[:, :-1].dropna(how='all').index[
-            self.min_history]
+            self._min_num_obs]
 
     sampling_intervals = {
         'weekly': 'W-MON', 'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
@@ -439,7 +467,7 @@ class MarketDataInMemory(MarketData):
         return periods_per_year_from_datetime_index(self.returns.index)
 
     @property
-    def min_history(self):
+    def _min_num_obs(self):
         """Min history expressed in periods.
 
         :returns: How many non-null elements of the past returns for a given
