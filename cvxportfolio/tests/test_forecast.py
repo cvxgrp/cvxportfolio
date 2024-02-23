@@ -45,25 +45,26 @@ class TestForecast(CvxportfolioTest):
         md = cvx.DownloadedMarketData(['AAPL', 'ZM'])
         returns = md.returns
 
-        t = returns.index[-30]
-        past_returns = returns.loc[returns.index < t]
+        for tidx in [-30, -29, -25, -24, -23]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index < t]
 
-        result  = \
-            regr_mean_ret.values_in_time(past_returns=past_returns, t=t)
-        print('result')
-        print(result)
+            result  = \
+                regr_mean_ret.values_in_time_recursive(past_returns=past_returns, t=t)
+            print('result')
+            print(result)
 
-        # reproduce here
-        for asset in ['ZM']:
-            y = past_returns[asset].dropna()
-            x = pd.DataFrame(1., index=y.index, columns=['intercept'])
-            x['VIX'] = vix.reindex(y.index, method='ffill')
-            beta = np.linalg.solve(x.T @ x, x.T @ y)
-            x_last = pd.Series(1., index=['intercept'])
-            x_last['VIX'] = vix[vix.index < t].iloc[-1]
-            local_result = x_last @ beta
-            print(local_result)
-            self.assertTrue(np.isclose(local_result, result[asset]))
+            # reproduce here
+            for asset in ['ZM']:
+                y = past_returns[asset].dropna()
+                x = pd.DataFrame(1., index=y.index, columns=['intercept'])
+                x['VIX'] = vix.reindex(y.index, method='ffill')
+                beta = np.linalg.solve(x.T @ x, x.T @ y)
+                x_last = pd.Series(1., index=['intercept'])
+                x_last['VIX'] = vix[vix.index < t].iloc[-1]
+                local_result = x_last @ beta
+                print(local_result)
+                self.assertTrue(np.isclose(local_result, result[asset]))
 
     def test_historical_mean_volume(self):
         """Test mean volume forecaster."""
