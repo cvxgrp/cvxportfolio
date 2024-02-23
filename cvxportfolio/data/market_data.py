@@ -246,6 +246,8 @@ class MarketDataInMemory(MarketData):
         objective term.
         """
 
+        logger.info('Adding cash column to the historical returns dataframe.')
+
         if not cash_key in RATES:
             raise NotImplementedError(
                 'Currently the only data pipelines built are for cash_key'
@@ -564,6 +566,7 @@ class UserProvidedMarketData(MarketDataInMemory):
 
         self.returns = pd.DataFrame(
             make_numeric(returns), copy=copy_dataframes)
+        self._validate_user_provided_returns()
         self.volumes = volumes if volumes is None else\
             pd.DataFrame(make_numeric(volumes), copy=copy_dataframes)
         self.prices = prices if prices is None else\
@@ -580,6 +583,23 @@ class UserProvidedMarketData(MarketDataInMemory):
             min_history=min_history,
             online_usage=online_usage,
             universe_selection_in_time=universe_selection_in_time)
+
+    def _validate_user_provided_returns(self):
+        """Log warning if returns have incorrect nan structure.
+
+        Each column of returns should only have nans at the top and/or at the
+        bottom. Things work anyway, but it's probably an error by the user.
+        """
+        changes_nan_status = self.returns.isnull().diff().sum()
+        changes_nan_status += ~self.returns.iloc[0].isnull()
+        bad_assets = changes_nan_status[changes_nan_status > 2]
+        if len(bad_assets) > 0:
+            logger.warning(
+                'In the user-provided returns, assets %s seem to have'
+                ' incorrect missing values structure. For each asset, missing'
+                ' returns should only be at the start and/or at the end.'
+                ' You should use universe_selection_in_time if you wanted to'
+                ' specify changes of universe in time.', bad_assets)
 
 
 class DownloadedMarketData(MarketDataInMemory):
