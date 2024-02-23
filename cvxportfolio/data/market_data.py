@@ -123,7 +123,7 @@ class MarketDataInMemory(MarketData):
 
     def __init__(
         self, trading_frequency, base_location, cash_key, min_history,
-        online_usage = False):
+        online_usage = False, universe_selection_in_time=None):
         """This must be called by the derived classes."""
         if (self.returns.index[-1] - self.returns.index[0]) < min_history:
             raise DataError(
@@ -143,6 +143,7 @@ class MarketDataInMemory(MarketData):
         self.cash_key = cash_key
         self._min_history_timedelta = min_history
         self.online_usage = online_usage
+        self.universe_selection_in_time = universe_selection_in_time
 
     def _mask_dataframes(self, mask):
         """Mask internal dataframes if necessary."""
@@ -452,6 +453,11 @@ class MarketDataInMemory(MarketData):
 class UserProvidedMarketData(MarketDataInMemory):
     """User-provided market data.
 
+    .. versionadded:: 1.3.0
+
+        The new parameter ``universe_selection_in_time`` used to optionally
+        exclude assets from the trading universe at different points in time.
+
     :param returns: Historical open-to-open returns. The return
         at time :math:`t` is :math:`r_t = p_{t+1}/p_t -1` where
         :math:`p_t` is the (open) price at time :math:`t`. Must
@@ -485,6 +491,30 @@ class UserProvidedMarketData(MarketDataInMemory):
     :param online_usage: Disable removal of assets that have ``np.nan`` returns
         for the given time. Default False.
     :type online_usage: bool
+    :param universe_selection_in_time: Boolean dataframe used to specify
+        which assets are to be included in the trading universe at each point
+        in time. The columns are the full universe (same columns as ``prices``,
+        ``volumes``, or ``returns`` without the last column, cash). The index
+        is datetime and, differently from the usual convention, needs not to
+        to be the same as the index of the other dataframes: at each point
+        in time of a back-test the *last* valid observation (before, or at, the
+        trading time) is selected. (You still need to provide a timezoned index
+        if the returns' index is, otherwise time comparisons can't be done.)
+        The entries are boolean; ``True`` means that the corresponding asset
+        can be invested in at the time, ``False`` that it can't. Note that this
+        is more fundamental than imposing time-varying position limit, for
+        example, in an optimization-based policy. Non-investable assets are
+        removed by the :class:`MarketSimulator`; their positions converted to
+        cash, the :class:`result.BacktestResult` dataframes will have
+        ``np.nan`` on those dates for those assets', and the policy is
+        re-compiled without those assets. You shouldn't use it to make frequent
+        changes to the trading universe (if that's your usecase), but rather
+        impose time-varying position limits via :class:`constraints.MinWeights`
+        and :class:`constraints.MaxWeights`. Also, note that
+        the filtering implied by ``min_history`` is still applied (in addition
+        to this), as well as non-``nan`` returns for the period (which can be
+        disabled by ``online_usage``). Default, None, don't use this filtering.
+    :type universe_selection_in_time: pd.DataFrame or None
     """
 
     # pylint: disable=too-many-arguments
@@ -494,7 +524,8 @@ class UserProvidedMarketData(MarketDataInMemory):
                  base_location=BASE_LOCATION,
                  grace_period=pd.Timedelta('1d'),
                  cash_key='USDOLLAR',
-                 online_usage=False):
+                 online_usage=False,
+                 universe_selection_in_time=None):
 
         if returns is None:
             raise SyntaxError(
@@ -519,11 +550,17 @@ class UserProvidedMarketData(MarketDataInMemory):
             base_location=base_location,
             cash_key=cash_key,
             min_history=min_history,
-            online_usage=online_usage)
+            online_usage=online_usage,
+            universe_selection_in_time=universe_selection_in_time)
 
 
 class DownloadedMarketData(MarketDataInMemory):
     """Market data that is downloaded.
+
+    .. versionadded:: 1.3.0
+
+        The new parameter ``universe_selection_in_time`` used to optionally
+        exclude assets from the trading universe at different points in time.
 
     :param universe: List of names as understood by the data source
         used, *e.g.*, ``['AAPL', 'GOOG']`` if using the default
@@ -556,6 +593,29 @@ class DownloadedMarketData(MarketDataInMemory):
     :param online_usage: Disable removal of assets that have ``np.nan`` returns
         for the given time. Default False.
     :type online_usage: bool
+    :param universe_selection_in_time: Boolean dataframe used to specify
+        which assets are to be included in the trading universe at each point
+        in time. The columns are the full ``universe``. The index
+        is datetime and, differently from the usual convention, needs not to
+        to be the same as the index of the other dataframes: at each point
+        in time of a back-test the *last* valid observation (before, or at, the
+        trading time) is selected. (You still need to provide a timezoned index
+        if the returns' index is, otherwise time comparisons can't be done.)
+        The entries are boolean; ``True`` means that the corresponding asset
+        can be invested in at the time, ``False`` that it can't. Note that this
+        is more fundamental than imposing time-varying position limit, for
+        example, in an optimization-based policy. Non-investable assets are
+        removed by the :class:`MarketSimulator`; their positions converted to
+        cash, the :class:`result.BacktestResult` dataframes will have
+        ``np.nan`` on those dates for those assets', and the policy is
+        re-compiled without those assets. You shouldn't use it to make frequent
+        changes to the trading universe (if that's your usecase), but rather
+        impose time-varying position limits via :class:`constraints.MinWeights`
+        and :class:`constraints.MaxWeights`. Also, note that
+        the filtering implied by ``min_history`` is still applied (in addition
+        to this), as well as non-``nan`` returns for the period (which can be
+        disabled by ``online_usage``). Default, None, don't use this filtering.
+    :type universe_selection_in_time: pd.DataFrame or None
     """
 
     # pylint: disable=too-many-arguments
@@ -568,7 +628,8 @@ class DownloadedMarketData(MarketDataInMemory):
                  min_history=pd.Timedelta('365.24d'),
                  grace_period=pd.Timedelta('1d'),
                  trading_frequency=None,
-                 online_usage=False):
+                 online_usage=False,
+                 universe_selection_in_time=None):
         """Initializer."""
 
         # drop duplicates and ensure ordering
@@ -592,7 +653,8 @@ class DownloadedMarketData(MarketDataInMemory):
             base_location=base_location,
             cash_key=cash_key,
             min_history=min_history,
-            online_usage=online_usage)
+            online_usage=online_usage,
+            universe_selection_in_time=universe_selection_in_time)
 
     def _get_market_data(self, universe, grace_period, storage_backend):
         """Download market data."""
