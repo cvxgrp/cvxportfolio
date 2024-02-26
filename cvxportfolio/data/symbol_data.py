@@ -327,6 +327,11 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
     # this time the median absolute ones in FILTERING_WINDOWS centered on it
     THRESHOLD_WARN_EXTREME_LOGRETS = 40
 
+    # exclude all zero logreturns from the window median calculations,
+    # used to allow for temporary periods of unknown/filtered market activity
+    # without throwing out all previous data
+    EXCLUDE_EXACT_ZEROS_FROM_FILTERING = True
+
     def _process(self, new_data, saved_data=None):
         """Base method for processing (cleaning) data.
 
@@ -493,9 +498,11 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
             all_lr_to_close = all_lr_to_close.iloc[
                 -len(new_data) - max(self.FILTERING_WINDOWS):]
 
-        # with this we skip over exact zeros (which come from some upstream
-        # cleaning) and would throw the median off
-        all_lr_to_close.loc[all_lr_to_close == 0.] = np.nan
+        if self.EXCLUDE_EXACT_ZEROS_FROM_FILTERING:
+            # with this we skip over exact zeros (which come from some upstream
+            # cleaning) and would throw the median off
+            all_lr_to_close.loc[all_lr_to_close == 0.] = np.nan
+
         score = _unlikeliness_score(
                 all_lr_to_close, all_lr_to_close, scaler=_median_scale_around,
                 windows=self.FILTERING_WINDOWS)
@@ -777,9 +784,10 @@ class YahooFinance(OLHCV):
             else:
                 all_lr = logrets
 
-            # with this we skip over exact zeros (which we assume come from
-            # some cleaning) and would bias the scale down
-            all_lr.loc[all_lr == 0.] = np.nan
+            if self.EXCLUDE_EXACT_ZEROS_FROM_FILTERING:
+                # with this we skip over exact zeros (which we assume come from
+                # some cleaning) and would bias the scale down
+                all_lr.loc[all_lr == 0.] = np.nan
 
             score = _unlikeliness_score(
                 all_lr, all_lr, scaler=_median_scale_around,
