@@ -58,14 +58,21 @@ their planned release.
 ``cvxportfolio.data``
 --------------------------
 
-- [ ] Improve ``YahooFinance`` data cleaning. Idea is to factor it in a 
+- [ ] Handle user-defined, time-varying investable universes both in `UserProvidedMarketData`
+  and `DownloadedMarketData`. Requested in #137. Idea: add `investable_assets_at_times` parameter to
+  both. It is specified as ``bool`` dataframe with datetime index and as columns all assets in the
+  universe. From the datetime index it is selected at each point in time the most recent line, ``DataEstimator``
+  already has that capability. Make sure logging throughout the library is accurate about changes in investable universe.
+  The selection is done in addition to the ``min_history`` filtering and non-``nan`` returns for the period.
+  (We don't want to lose the guarantees coming from those.)
+- [X] Improve ``YahooFinance`` data cleaning. Idea is to factor it in a 
   base ``OpenLowHighCloseVolume`` class, which should flexible enough to
   accommodate adjusted closes (i.e., with backwards dividend adjustments like
   YF), total returns like other data sources, or neither for non-stocks assets.
   This would implement all data cleaning process as sequence of small steps
   in separate methods, with good logging. It would also implement data quality
   check in the ``preload`` method to give feedback to the user. PR #127
-- [ ] Factor ``data.py`` in ``data/`` submodule. PR #127
+- [X] Factor ``data.py`` in ``data/`` submodule. PR #127
 
 ``cvxportfolio.simulator``
 --------------------------

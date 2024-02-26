@@ -1,6 +1,6 @@
 [project]
 name = "cvxportfolio"
-version = "1.1.1"
+version = "1.2.1"
 description = "Portfolio optimization and back-testing."
 readme = "README.rst"
 license = {text = "Apache License (2.0)"}
@@ -25,8 +25,11 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["cvxportfolio", "cvxportfolio.tests"]
-include-package-data = true
+packages = ["cvxportfolio", "cvxportfolio.data", "cvxportfolio.constraints",
+    "cvxportfolio.tests"]
+
+[tool.setuptools.package-data]
+"cvxportfolio.tests" = ["*.csv"]
 
 [tool.pylint.main]
 fail-under = 9.5

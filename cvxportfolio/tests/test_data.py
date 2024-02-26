@@ -429,7 +429,9 @@ class TestData(CvxportfolioTest):
         """Test specific issues when updating already stored data."""
 
         raw_data = pd.DataFrame(
-            cvx.YahooFinance._get_data_yahoo('AAPL'), copy=True)
+            # skip last day because there might actually be issues
+            # that invalidate the tests assumptions
+            cvx.YahooFinance._get_data_yahoo('AAPL'), copy=True).iloc[:-1]
 
         class YahooFinanceUpdaterTest(cvx.YahooFinance):
             """Tester of issues with update."""
@@ -1092,6 +1094,22 @@ class TestMarketData(CvxportfolioTest):
         with self.assertRaises(ValueError):
             md.serve(t=self.returns.index[20])
 
+        # errors with universe_selection_in_time
+        with self.assertRaises(ValueError):
+            UserProvidedMarketData(
+                returns=self.returns, volumes=self.volumes,
+                prices=self.prices, cash_key='cash',
+                min_history=pd.Timedelta('60d'),
+                universe_selection_in_time='not a dataframe')
+
+        with self.assertRaises(ValueError):
+            UserProvidedMarketData(
+                returns=self.returns, volumes=self.volumes,
+                prices=self.prices, cash_key='cash',
+                min_history=pd.Timedelta('60d'),
+                # has also cash
+                universe_selection_in_time=pd.DataFrame(self.returns))
+
     def test_market_data_full(self):
         """Test serve method of DownloadedMarketData."""
 
@@ -1103,6 +1121,15 @@ class TestMarketData(CvxportfolioTest):
         _, _, past_volumes, _, current_prices = md.serve(t)
         self.assertFalse(past_volumes is None)
         self.assertFalse(current_prices is None)
+
+        # test error on missing cash return
+        returns = pd.DataFrame(self.returns, copy=True)
+        returns.iloc[20, -1] = np.nan
+        with self.assertRaises(ValueError):
+            UserProvidedMarketData(
+                returns=returns, volumes=self.volumes,
+                prices=self.prices, cash_key='cash',
+                min_history=pd.Timedelta('60d')).serve(returns.index[20])
 
     def test_signature(self):
         """Test partial-universe signature of MarketData."""

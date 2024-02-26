@@ -375,10 +375,17 @@ class BaseMeanVarForecast(BaseForecast):
 
         self._denominator -= self._compute_denominator(
             observations_to_subtract, emw_weights)
-        if np.min(self._denominator.values) == 0:
+        mindenom = np.min(self._denominator.values)
+        if mindenom == 0:
             raise ForecastError(
-                f'{self.__class__.__name__} is given a dataframe with '
-                + 'at least a column that has no values.')
+                f'{self.__class__.__name__} can not compute the forecast at'
+                + f' time {t} because there are no observation for either some'
+                ' asset or some pair of assets (in the case of covariance).')
+        if mindenom < 5:
+            logger.warning(
+                '%s at time %s is given 5 or less observations for either some'
+                + ' asset or some pair of assets (in the case of covariance).',
+                self.__class__.__name__, t)
         self._numerator -= self._compute_numerator(
             observations_to_subtract, emw_weights).fillna(0.)
 
