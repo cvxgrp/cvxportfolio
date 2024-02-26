@@ -518,12 +518,12 @@ class DataEstimator(SimulatorEstimator):
             dimensions = data.shape
             if not len(self._universe_maybe_noncash) in dimensions:
                 raise MissingAssetsError(
-                    "The numpy array found by %s has dimensions %s"
-                    + " while the current universe%s "
-                    + "has size %s. It was not possible to reconcile the two.",
-                    self.__class__.__name__, data.shape,
-                    ' minus cash' if not self._data_includes_cash else ' ',
-                    len(self._universe_maybe_noncash))
+                    f"The numpy array found by {self.__class__.__name__}"
+                    + f" has dimensions {data.shape}"
+                    + " while the current universe"
+                + f"{' minus cash' if not self._data_includes_cash else ' '} "
+                    + f"has size {len(self._universe_maybe_noncash)}."
+                    + " It was not possible to reconcile the two.")
             return data
 
         # scalar
@@ -568,11 +568,10 @@ class DataEstimator(SimulatorEstimator):
 
             except (KeyError, IndexError) as exc:
                 raise MissingTimesError(
-                    "%s.values_in_time_recursive could not find data"
-                    + " for time %s. This could be due to wrong timezone"
+                    f"{self}.values_in_time_recursive could not find data"
+                    + f" for time {t}. This could be due to wrong timezone"
                     + " setting: in general Cvxportfolio objects are timezone"
-                    + " aware, the data you pass should be as well.",
-                     self, t) from exc
+                    + " aware, the data you pass should be as well.") from exc
 
         # if data is pandas but no datetime index (constant in time)
         if hasattr(self.data, "values"):
