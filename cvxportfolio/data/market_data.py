@@ -355,7 +355,7 @@ class MarketDataInMemory(MarketData):
             self._min_num_obs]
 
     sampling_intervals = {
-        'weekly': 'W-MON', 'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
+        'weekly': 'W-MON', 'monthly': 'MS', 'quarterly': 'QS', 'annual': 'YS'}
 
     # @staticmethod
     # def _is_first_interval_small(datetimeindex):
