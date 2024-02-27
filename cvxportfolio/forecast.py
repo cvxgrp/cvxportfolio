@@ -112,7 +112,7 @@ def online_cache(values_in_time):
     """A simple online cache that decorates :meth:`values_in_time`.
 
     The instance it is used on needs to be hashable (we currently use
-    the hash of its __repr__ via dataclass).
+    the hash of its __repr__).
 
     :param values_in_time: :meth:`values_in_time` method to decorate.
     :type values_in_time: function
@@ -139,7 +139,7 @@ def online_cache(values_in_time):
         :rtype: float or numpy.array
         """
 
-        if cache is None:  # temporary to not change tests
+        if cache is None:  # e.g., in execute() cache is disabled
             cache = {}
 
         if str(self) not in cache:
@@ -173,6 +173,54 @@ class BaseForecast(Estimator):
         :type kwargs: dict
         """
         self._last_time = None
+
+    def estimate(self, market_data, t=None):
+        """Estimate the forecaster at given time on given market data.
+
+        This uses the same logic used by a trading policy to evaluate the
+        forecaster at a given point in time.
+
+        :param market_data: Market data server, used to provide data to the
+            forecaster.
+        :type market_data: cvx.MarketData instance
+        :param t: Time at which to estimate the forecaster. Must be among
+            the ones returned by ``market_data.trading_calendar()``. Default is
+            ``None``, meaning that the last valid timestamp is chosen. Note
+            that with default market data servers you need to set
+            ``online_usage=True`` if forecasting on the last timestamp
+            (usually, today).
+        :type t: pd.Timestamp or None
+
+        :raises ValueError: If the provided time t is not in the trading
+            calendar.
+
+        :returns: Forecasted value.
+        :rtype: np.array
+        """
+
+        trading_calendar = market_data.trading_calendar()
+
+        if t is None:
+            t = trading_calendar[-1]
+
+        if not t in trading_calendar:
+            raise ValueError(f'Provided time {t} must be in the '
+            + 'trading calendar implied by the market data server.')
+
+        past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
+
+        self.initialize_estimator_recursive(
+            universe=past_returns.columns,
+            trading_calendar=trading_calendar[trading_calendar >= t])
+
+        forecast = self.values_in_time_recursive(
+            t=t, past_returns=past_returns, past_volumes=past_volumes,
+            current_weights=None, current_portfolio_value=None,
+            current_prices=current_prices)
+
+        self.finalize_estimator_recursive()
+
+        return forecast
 
     def _agnostic_update(self, t, past_returns, **kwargs):
         """Choose whether to make forecast from scratch or update last one."""
@@ -645,7 +693,6 @@ class HistoricalVariance(BaseMeanForecast):
         return past_returns.iloc[:, :-1]**2
 
 
-# @dataclass()#unsafe_hash=True)
 class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     """Historical standard deviation of non-cash returns.
 
@@ -875,7 +922,6 @@ def project_on_psd_cone_and_factorize(covariance):
     eigval = np.maximum(eigval, 0.)
     return eigvec @ np.diag(np.sqrt(eigval))
 
-# @dataclass()#unsafe_hash=True)
 class HistoricalFactorizedCovariance(HistoricalCovariance):
     r"""Historical covariance matrix of non-cash returns, factorized.
 
@@ -945,8 +991,7 @@ class HistoricalFactorizedCovariance(HistoricalCovariance):
                 + ' past returns.') from exc
 
 
-# @dataclass()#unsafe_hash=True)
-class HistoricalLowRankCovarianceSVD(Estimator):
+class HistoricalLowRankCovarianceSVD(BaseForecast):
     """Build factor model covariance using truncated SVD.
 
     .. note::
