@@ -12,5 +12,10 @@ We show some of them, along with their results, in the following pages:
    examples/dow30
    examples/timing
    examples/universes
+   examples/data_cleaning
    examples/etfs
+   examples/user_provided_forecasters
+   examples/risk_models
+   examples/market_neutral
+   examples/market_neutral_nocosts
    examples/paper_examples

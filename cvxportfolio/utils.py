@@ -14,9 +14,12 @@
 """This module contains miscellaneous functions."""
 
 import hashlib
+from numbers import Number
 
 import numpy as np
 import pandas as pd
+
+from .errors import DataError
 
 TRUNCATE_REPR_HASH = 10  # probability of conflict is 1e-16
 
@@ -24,6 +27,35 @@ TRUNCATE_REPR_HASH = 10  # probability of conflict is 1e-16
 __all__ = ['periods_per_year_from_datetime_index', 'resample_returns',
            'flatten_heterogeneous_list', 'repr_numpy_pandas',
            'average_periods_per_year']
+
+
+def set_pd_read_only(df_or_ser):
+    """Set numpy array contained in dataframe or series to read only.
+
+    This is done on data store internally before it is served to the
+    policy or the simulator to ensure data consistency in case some
+    element of the pipeline accidentally corrupts the data.
+
+    This is enough to prevent direct assignement to the resulting
+    dataframe. However it could still be accidentally corrupted by
+    assigning to columns or indices that are not present in the
+    original. We avoid that case as well by returning a wrapped
+    dataframe (which doesn't copy data on creation) in
+    serve_data_policy and serve_data_simulator.
+
+    :param df_or_ser: Series or Dataframe, only numeric (better if
+        homogeneous) dtype.
+    :type df_or_ser: pd.Series or pd.DataFrame
+
+    :returns: Pandas object set to read only.
+    :rtype: pd.Series or pd.DataFrame
+    """
+    data = df_or_ser.values
+    data.flags.writeable = False
+    if hasattr(df_or_ser, 'columns'):
+        return pd.DataFrame(data, index=df_or_ser.index,
+                            columns=df_or_ser.columns)
+    return pd.Series(data, index=df_or_ser.index, name=df_or_ser.name)
 
 
 def average_periods_per_year(num_periods, first_time, last_time):
@@ -69,6 +101,37 @@ def resample_returns(returns, periods):
     :rtype: pandas.Series
     """
     return np.exp(np.log(1 + returns) / periods) - 1
+
+def make_numeric(np_or_pd):
+    """Coerce Pandas or Numpy object to numeric.
+
+    :param np_or_pd: User-provided data.
+    :type np_or_pd: np.array, pd.Series, pd.DataFrame, object
+
+    :raises DataError: If input data could not be casted to numeric.
+
+    :returns: Same object, casted to numeric if necessary
+    :rtype: np.array, pd.Series, pd.DataFrame, object
+    """
+
+    try:
+        if isinstance(np_or_pd, np.ndarray):
+            if not np.issubdtype(np_or_pd.dtype, np.number):
+                return np_or_pd.astype(float)
+
+        if isinstance(np_or_pd, pd.Series):
+            if not np.issubdtype(np_or_pd.dtype, np.number):
+                return pd.to_numeric(np_or_pd)
+
+        if isinstance(np_or_pd, pd.DataFrame):
+            if not np.all(
+                [np.issubdtype(el, np.number) for el in set(np_or_pd.dtypes)]):
+                return np_or_pd.astype(float)
+
+    except ValueError as exc:
+        raise DataError("Input data could not be cast to numeric.") from exc
+
+    return np_or_pd
 
 
 def flatten_heterogeneous_list(li):

@@ -51,12 +51,24 @@ class FullCovariance(Cost):
     and the benchmark weights, respectively, at time :math:`t`.
 
     :param Sigma: DataFrame of covariance matrices supplied by the user, or by
-        default Covariance fitted from the past data. The DataFrame can either
+        default covariance matrix forecasted from the past data.
+        The DataFrame can either
         represents a single constant covariance matrix or one for each point in
-        time. If it is a class we instantiate it with default parameters. At
-        each time :math:`t` we project the value of :math:`\Sigma_t` on the
-        cone of positive semi-definite matrices.
-    :type Sigma: pandas.DataFrame or Estimator
+        time: in the latter case you use a Pandas multiindexed dataframe
+        where the first level are the points in time (of the back-test) and
+        the second level are the assets, as are the columns.
+        The default is to use
+        :class:`cvxportfolio.forecast.HistoricalFactorizedCovariance`, the
+        :doc:`forecaster class <forecasts>` that computes the full historical
+        covariance, at each point in time of a back-test, from past returns.
+        (It also factorizes it to ease the optimization and caches it on
+        disk.) It is instantiated with default parameters, if instead you
+        wish to change them you can pass an instance with your choices of
+        parameters (like ``rolling`` for moving average and ``half_life``
+        for exponential smoothing). You can also pass any other forecaster
+        estimator that computes a covariance matrix from the past returns.
+    :type Sigma: pandas.DataFrame, cvxportfolio.forecast.BaseForecast class
+        or instance
     """
 
     def __init__(self, Sigma=HistoricalFactorizedCovariance):
@@ -70,17 +82,19 @@ class FullCovariance(Cost):
         self.Sigma = DataEstimator(Sigma)
         self._sigma_sqrt = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self._sigma_sqrt = cp.Parameter((len(universe)-1, len(universe)-1))
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of risk model.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -117,10 +131,16 @@ class RiskForecastError(Cost):
     Implements the model defined in :paper:`chapter 4, page 32 <section.4.3>`
     of the paper. Takes same arguments as :class:`DiagonalCovariance`.
 
-    :param sigma_squares: per-stock variances, indexed by time if DataFrame.
+    :param sigma_squares: Per-asset variances, either constant
+        (Pandas series) or changing in time (time-indexed Pandas dataframe)
+        (see :ref:`the passing data manual page <passing-data>`).
         Default is to use historical variances, using
-        past returns at each point in time of a backtest.
-    :type sigma_squares: pd.DataFrame or pd.Series or None
+        past returns at each point in time of a backtest. If you wish to
+        change the parameters to
+        :class:`cvxportfolio.forecast.HistoricalVariance` you can instantiate
+        it with your choice of parameters and pass the instance.
+    :type sigma_squares: pd.DataFrame, pd.Series, cvx.forecast.BaseForecast
+        class or instance
     """
 
     def __init__(self, sigma_squares=HistoricalVariance):
@@ -130,18 +150,20 @@ class RiskForecastError(Cost):
 
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.sigmas_parameter = cp.Parameter(
             len(universe)-1, nonneg=True)  # +self.kelly))
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of risk model.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -170,12 +192,27 @@ class RiskForecastError(Cost):
 
 
 class DiagonalCovariance(Cost):
-    """Diagonal covariance matrix, user-provided or fit from data.
+    r"""Diagonal covariance matrix, user-provided or fit from data.
 
-    :param sigma_squares: per-stock variances, indexed by time if
-        DataFrame. Default is to use historical variances, using past
-        returns at each point in time of a backtest.
-    :type sigma_squares: pd.DataFrame or pd.Series or None
+    It represents the objective term:
+
+    .. math::
+        {(w^+_t - w^\text{b}_t )}^T \mathbf{diag}(\sigma_t^2)
+        (w^+_t - w^\text{b}_t)
+
+    where :math:`w^+_t` and :math:`w^\text{b}_t` are the post-trade
+    and the benchmark weights, respectively, at time :math:`t`.
+
+    :param sigma_squares: Per-asset variances, either constant
+        (Pandas series) or changing in time (time-indexed Pandas dataframe)
+        (see :ref:`the passing data manual page <passing-data>`).
+        Default is to use historical variances, using
+        past returns at each point in time of a backtest. If you wish to
+        change the parameters to
+        :class:`cvxportfolio.forecast.HistoricalVariance` you can instantiate
+        it with your choice of parameters and pass the instance.
+    :type sigma_squares: pd.DataFrame, pd.Series, cvx.forecast.BaseForecast
+        class or instance
     """
 
     def __init__(self, sigma_squares=HistoricalVariance):
@@ -184,17 +221,19 @@ class DiagonalCovariance(Cost):
             sigma_squares = sigma_squares()
         self.sigma_squares = DataEstimator(sigma_squares)
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
-        self.sigmas_parameter = cp.Parameter(len(universe)-1)  # +self.kelly))
+        self.sigmas_parameter = cp.Parameter(len(universe)-1)
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update parameters of risk model.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -277,16 +316,16 @@ class FactorModelCovariance(Cost):
         passed to :class:`FullCovariance` (by default,
         historical covariance fitted at each point in time). We take its PCA
         for the low-rank model, and the remaining factors are used to estimate
-        the diagonal, as is explained at pages 59-60 of the book. If it is a
+        the diagonal, as is explained at pages 59-60 of the paper. If it is a
         class, we instantiate it with default parameters.
-    :type Sigma: pandas.DataFrame or Estimator
+    :type Sigma: pandas.DataFrame or cvxportfolio.forecast.BaseForecast
     :param F_and_d_Forecaster: Only relevant if F or d are None, and Sigma is
         None. Forecaster that at each point in time produces estimate of F and
         d. By default we use a SVD-based forecaster that is equivalent to
         :class:`cvxportfolio.forecast.HistoricalFactorizedCovariance` if there
         are no missing values. If you pass a class, it will be instantiated
         with ``num_factors``.
-    :type F_and_d_Forecaster: Estimator
+    :type F_and_d_Forecaster: cvxportfolio.forecast.BaseForecast
     """
 
     def __init__(self, F=None, d=None, Sigma_F=None, num_factors=1,
@@ -314,13 +353,14 @@ class FactorModelCovariance(Cost):
             self._fit = False
         self.idyosync_sqrt_parameter = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize risk model with universe and trading times.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         if self._fit:
@@ -331,11 +371,13 @@ class FactorModelCovariance(Cost):
             if self.Sigma_F is None:
                 self.factor_exposures_parameter = self.F.parameter
             else:
-                # we could refactor the code here so we don't create duplicate parameters
+                # we could refactor the code here
+                # so we don't create duplicate parameters
                 self.factor_exposures_parameter = cp.Parameter(
                     self.F.parameter.shape)
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Update internal parameters.
 
         :param kwargs: All parameters to :meth:`values_in_time`.
@@ -391,12 +433,16 @@ class FactorModelCovariance(Cost):
 class WorstCaseRisk(Cost):
     """Select the most restrictive risk model for each value of the allocation.
 
-    vector.
-
     Given a list of risk models, penalize the portfolio allocation by
     the one with highest risk value at the solution point. If uncertain
     about which risk model to use this procedure can be an easy
     solution.
+
+    :Example:
+
+        >>> risk_model = cvx.WorstCaseRisk(
+                [cvx.FullCovariance(),
+                cvx.DiagonalCovariance() + 0.25 * cvx.RiskForecastError()])
 
     :param riskmodels: risk model instances on which to compute the
         worst-case risk.
@@ -406,16 +452,14 @@ class WorstCaseRisk(Cost):
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
 
-    def initialize_estimator_recursive(self, universe, trading_calendar):
+    def initialize_estimator_recursive(self, **kwargs):
         """Initialize risk model with universe and trading times.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         for risk in self.riskmodels:
-            risk.initialize_estimator_recursive(universe, trading_calendar)
+            risk.initialize_estimator_recursive(**kwargs)
 
     def values_in_time_recursive(self, **kwargs):
         """Update parameters of constituent risk models.
@@ -440,9 +484,26 @@ class WorstCaseRisk(Cost):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        risks = [risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
-                 for risk in self.riskmodels]
+        risks = []
+        for risk in self.riskmodels:
+            # this is needed if user provides individual risk terms
+            # that are composed objects (CombinedCost)
+            # it will check concavity instead of convexity
+            risk.do_convexity_check = False
+            risks.append(risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm))
+            # we also change it back in case the user is sharing the instance
+            risk.do_convexity_check = True
+
         return cp.max(cp.hstack(risks))
+
+    def finalize_estimator_recursive(self, **kwargs):
+        """Finalize object.
+
+        :param kwargs: Arguments.
+        :type kwargs: dict
+        """
+        for risk in self.riskmodels:
+            risk.finalize_estimator_recursive(**kwargs)
 
 # Aliases
 

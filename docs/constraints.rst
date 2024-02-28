@@ -8,6 +8,8 @@ Constraints
 
 .. autoclass:: DollarNeutral
 
+.. autoclass:: MarketNeutral
+
 .. autoclass:: FactorMaxLimit
 
 .. autoclass:: FactorMinLimit
@@ -37,15 +39,15 @@ Constraints
 .. autoclass:: TurnoverLimit
 
 
+.. _soft-constraints:
 
 Soft constraints
 ----------------
 
 (Almost) all the constraints described above can also be be made "soft".
-The concept is developed at pages 37-38 of 
-`the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_,
-and implemented by the objective term :class:`cvxportfolio.SoftConstraint`,
-documented in :ref:`the objective terms page <objective-terms-page>`.
+The concept is developed in
+:paper:`section 4.6 of the paper <section.4.6>`,
+and implemented by the objective term :class:`cvxportfolio.SoftConstraint`.
 
 In the case of a linear equality constraint, 
 which can be expressed as :math:`h(x) = 0`, 
@@ -60,7 +62,7 @@ the corresponding soft constraint is the cost
 :math:`{(\cdot )}_+` denotes the positive part 
 of each element of :math:`h(x)`.
 
-In the book we describe having different penalizers for
+In the paper we describe having different penalizers for
 different elements of each constraint vector (so that
 the penalizer :math:`\gamma` is a vector).
 In our implementation this is achieved by constructing
@@ -71,20 +73,21 @@ The syntax of our implementation is very simple. We pass a constraint instance t
 :class:`cvxportfolio.SoftConstraint`, multiply the term by the penalizer, and
 subtract it from the objective function.
 For a high value of the penalizer the constraint will be
-enforced almost exactly. For a small value, it will be almost ignored. 
+enforced almost exactly. For a small value, it will be almost ignored.
 
+For example:
 
 .. code-block:: python
 
-    import cvxportfolio as cvx
+    policy = cvx.SinglePeriodOptimization(
+        objective =
+            cvx.ReturnsForecast()
+            - 0.5 * cvx.FullCovariance()
+            - 10 * cvx.SoftConstraint(cvx.LeverageLimit(3)))
 
-    objective = cvx.ReturnsForecast() - gamma_risk * cvx.FullCovariance()
-
-    # for large enough value of the penalizer the constraint becomes "hard"
-    objective -= gamma_longonly * cvx.SoftConstraint(cvx.LongOnly())
-
-    cvx.MarketSimulator(universe).backtest(
-        cvx.SinglePeriodOptimization(objective).plot()
+is a policy that almost enforces a leverage limit of 3, allowing for some
+violation. This can be controlled by tuning the multiplier in front
+of :class:`cvxportfolio.SoftConstraint`.
 
 Some constraint objects, which are in reality compositions of constraints, 
 can not be used as soft constraints. See their documentation for more details.

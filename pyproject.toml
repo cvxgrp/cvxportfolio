@@ -1,6 +1,6 @@
 [project]
 name = "cvxportfolio"
-version = "1.0.3"
+version = "1.2.1"
 description = "Portfolio optimization and back-testing."
 readme = "README.rst"
 license = {text = "Apache License (2.0)"}
@@ -14,8 +14,7 @@ dependencies = ["pandas", "numpy", "matplotlib", "requests", "cvxpy",
 docs = ["sphinx", "furo"]
 dev = ["build", "twine", "coverage", "diff_cover", "pylint", "isort",
     "autopep8", "docformatter", "beautifulsoup4"]
-examples = ['beautifulsoup4', 'lxml', 'pandas_datareader', 'yfinance',
-    'clarabel', 'ecos']
+examples = ['beautifulsoup4', 'lxml', 'clarabel', 'ecos']
 
 [project.urls]
 Homepage = "https://www.cvxportfolio.com"
@@ -26,8 +25,11 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["cvxportfolio", "cvxportfolio.tests"]
-include-package-data = true
+packages = ["cvxportfolio", "cvxportfolio.data", "cvxportfolio.constraints",
+    "cvxportfolio.tests"]
+
+[tool.setuptools.package-data]
+"cvxportfolio.tests" = ["*.csv"]
 
 [tool.pylint.main]
 fail-under = 9.5
@@ -50,6 +52,9 @@ accept-no-param-doc = false
 accept-no-raise-doc = false
 accept-no-return-doc = false
 accept-no-yields-doc = false
+
+[tool.pylint.'MESSAGE CONTROL'] # check updates for the spelling of this
+enable=["useless-suppression"] # flag useless pylint pragmas
 
 [tool.coverage.report]
 fail_under = 99

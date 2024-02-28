@@ -19,7 +19,7 @@ __all__ = ['DataError', 'MissingTimesError',
            'ConvexSpecificationError', 'ConvexityError']
 
 
-class DataError(Exception):
+class DataError(ValueError):
     """Base class for exception related to data."""
 
 

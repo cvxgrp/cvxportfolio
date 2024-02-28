@@ -1,4 +1,4 @@
-# Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+# Copyright 2023 Enzo Busseti
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,20 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Cvxportfolio __init__ module.
+"""This module include classes that download, store, and serve market data.
 
-This module only republishes the api of a selection of cvxportfolio
-modules. The __all__ attribute of each is used.
+The two main abstractions are :class:`SymbolData` and :class:`MarketData`.
+Neither are exposed outside this module. Their derived classes instead are.
+If you want to interface cvxportfolio with financial data source other
+than the ones we provide, you should derive from either of those two classes.
 """
 
-__version__ = "1.2.1"
+from .market_data import *
+from .symbol_data import *
 
-from .constraints import *
-from .costs import *
-from .data import *
-from .hyperparameters import *
-from .policies import *
-from .result import *
-from .returns import *
-from .risks import *
-from .simulator import *
+__all__ = [
+    "YahooFinance", "Fred", "UserProvidedMarketData", "DownloadedMarketData"]

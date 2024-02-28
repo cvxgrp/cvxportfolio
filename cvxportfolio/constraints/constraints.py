@@ -11,41 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Here we define many realistic constraints that apply to :ref:`portfolio
-optimization trading policies <optimization-policies-page>`.
-
-Some of them, like :class:`LongOnly`, are
-very simple to use. Some others are more advanced,
-for example :class:`FactorNeutral`
-takes time-varying factor exposures as parameters.
-
-For a minimal example we present the classic Markowitz allocation.
-
-.. code-block:: python
-
-    import cvxportfolio as cvx
-
-    objective = cvx.ReturnsForecast() - gamma_risk * cvx.FullCovariance()
-
-    # the policy takes a list of constraint instances
-    constraints = [cvx.LongOnly(applies_to_cash=True)]
-
-    policy = cvx.SinglePeriodOptimization(objective, constraints)
-    print(cvx.MarketSimulator(universe).backtest(policy))
-
-With this, we require that the optimal post-trade weights
-found by the single-period optimization policy are non-negative.
-In our formulation the full portfolio weights vector (which includes
-the cash account) sums to one,
-see equation :math:`(4.9)` at page 43 of
-`the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
-"""
+"""This module defines user-facing constraints."""
 
 import cvxpy as cp
 import numpy as np
 
-from .estimator import CvxpyExpressionEstimator, DataEstimator, Estimator
-from .forecast import HistoricalFactorizedCovariance
+from ..estimator import DataEstimator, Estimator
+from ..forecast import (HistoricalFactorizedCovariance,
+                        project_on_psd_cone_and_factorize)
+from ..policies import MarketBenchmark
+from .base_constraints import (Constraint, EqualityConstraint,
+                               InequalityConstraint)
 
 __all__ = [
     "LongOnly",
@@ -71,124 +47,6 @@ __all__ = [
     "MinCashBalance"
 ]
 
-
-class Constraint(CvxpyExpressionEstimator):
-    """Base cvxpy constraint class."""
-
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy.
-
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
-        :returns: some cvxpy.constraints object, or list of those
-        :rtype: cvxpy.constraints, list
-        """
-        raise NotImplementedError # pragma: no cover
-
-
-class EqualityConstraint(Constraint):
-    """Base class for equality constraints.
-
-    This class is not exposed to the user, each equality
-    constraint inherits from this and overrides the
-    :func:`InequalityConstraint._compile_constr_to_cvxpy` and
-    :func:`InequalityConstraint._rhs` methods.
-
-    We factor this code in order to streamline the
-    design of :class:`SoftConstraint` costs.
-    """
-
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy.
-
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
-        :returns: Cvxpy constraints object.
-        :rtype: cvxpy.constraints
-        """
-        return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) ==\
-            self._rhs()
-
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Cvxpy expression of the left-hand side of the constraint."""
-        raise NotImplementedError # pragma: no cover
-
-    def _rhs(self):
-        """Cvxpy expression of the right-hand side of the constraint."""
-        raise NotImplementedError # pragma: no cover
-
-
-class InequalityConstraint(Constraint):
-    """Base class for inequality constraints.
-
-    This class is not exposed to the user, each inequality
-    constraint inherits from this and overrides the
-    :func:`InequalityConstraint._compile_constr_to_cvxpy` and
-    :func:`InequalityConstraint._rhs` methods.
-
-    We factor this code in order to streamline the
-    design of :class:`SoftConstraint` costs.
-    """
-
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy.
-
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
-        :returns: Cvxpy constraints object.
-        :rtype: cvxpy.constraints
-        """
-        return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) <=\
-            self._rhs()
-
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Cvxpy expression of the left-hand side of the constraint."""
-        raise NotImplementedError # pragma: no cover
-
-    def _rhs(self):
-        """Cvxpy expression of the right-hand side of the constraint."""
-        raise NotImplementedError # pragma: no cover
-
-
-class CostInequalityConstraint(InequalityConstraint):
-    """Linear inequality constraint applied to a cost term.
-
-    The user does not interact with this class directly,
-    it is returned by an expression such as ``cost <= value``
-    where ``cost`` is a :class:`Cost` instance and ``value``
-    is a scalar.
-    """
-
-    def __init__(self, cost, value):
-        self.cost = cost
-        self.value = DataEstimator(value, compile_parameter=True)
-
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile constraint to cvxpy."""
-        return self.cost.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
-
-    def _rhs(self):
-        return self.value.parameter
-
-    def __repr__(self):
-        return self.cost.__repr__() + ' <= ' + self.value.__repr__()
-
-
 class NoCash(EqualityConstraint):
     """Require that the cash balance is zero at each period."""
 
@@ -209,41 +67,50 @@ class MarketNeutral(EqualityConstraint):
     .. math::
         {(w_t^\text{b})}^T \Sigma_t (w_t + z_t) = 0
 
-    The benchmark portfolio weights are computed here, and are
-    proportional to the rolling averages of the market volumes over the
-    recent past.
+    The benchmark portfolio weights are given by a Policy object chosen by
+    the user.
 
-    .. note::
+    .. versionadded:: 1.2.0
 
-        This constraint's interface will improve; you will be able
-        to pass any Cvxportfolio policy object as benchmark weights.
+        This constraint's interface has been improved: now you can pass
+        any policy object as benchmark, and give parameters to the forecaster
+        of :math:`\Sigma_t`.
 
-    :param window: How many past observations of the volumes are used to
-        estimate the market benchmark.
-    :type window: int
+    :param benchmark: Policy object whose target weights at each point in time
+        are the benchmark weights we neutralize against. You can pass a class
+        or an instance. If you pass a class it is instantiated with default
+        parameters. Default is :class:`cvxportfolio.MarketBenchmark`, which are
+        weights proportional to the previous year's total traded volumes.
+    :type benchmark: cvx.Policy class or instance
+    :param kwargs: Optional arguments passed to the initializer
+        of :class:`cvxportfolio.forecast.HistoricalFactorizedCovariance`,
+        like rolling window or exponential smoothing half life, for the
+        estimation of the covariance matrices :math:`\Sigma_t`. Default (no
+        other arguments) is to use its default parameters.
+    :type kwargs: dict
     """
-    # TODO: refactor code to import MarketBenchmark, now it causes circular
-    # imports
-    def __init__(self, window=250, #benchmark=MarketBenchmark
-        ):
-        self.covarianceforecaster = HistoricalFactorizedCovariance()
-        self.window = window
-        # if type(benchmark) is type:
-        #     benchmark = benchmark()
-        # self.benchmark = benchmark
-        self.market_vector = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def __init__(self, benchmark=MarketBenchmark, **kwargs):
+
+        if isinstance(benchmark, type):
+            benchmark = benchmark()
+        self.benchmark = benchmark
+        self.covariance_forecaster = HistoricalFactorizedCovariance(**kwargs)
+        self._market_vector = None
+
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize parameter with size of universe.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
-        self.market_vector = cp.Parameter(len(universe)-1)
+        self._market_vector = cp.Parameter(len(universe)-1)
 
-    def values_in_time(self, past_volumes, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, past_volumes, **kwargs):
         """Update parameter with current market weights and covariance.
 
         :param past_volumes: Past market volumes, in units of value.
@@ -251,18 +118,15 @@ class MarketNeutral(EqualityConstraint):
         :param kwargs: Unused arguments passed to :meth:`values_in_time`.
         :type kwargs: dict
         """
-        tmp = past_volumes.iloc[-self.window:].mean()
-        tmp /= sum(tmp)
-        # tmp = self.benchmark.current_value.iloc[:-1]
 
-        tmp2 = self.covarianceforecaster.current_value @ (
-            self.covarianceforecaster.current_value.T @ tmp)
-        # print(tmp2)
-        self.market_vector.value = np.array(tmp2)
+        factorized_covariance = self.covariance_forecaster.current_value
+        bm = self.benchmark.current_value.iloc[:-1]
+        self._market_vector.value = np.array(
+            factorized_covariance @ (factorized_covariance.T @ bm))
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile left hand side of the constraint expression."""
-        return w_plus[:-1].T @ self.market_vector
+        return w_plus[:-1].T @ self._market_vector
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
@@ -315,7 +179,8 @@ class ParticipationRateLimit(InequalityConstraint):
             max_fraction_of_volumes, compile_parameter=True)
         self.portfolio_value = cp.Parameter(nonneg=True)
 
-    def values_in_time(self, current_portfolio_value, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
         """Update parameter with current portfolio value.
 
         :param current_portfolio_value: Current total value of the portfolio.
@@ -385,20 +250,22 @@ class NoTrade(Constraint):
         self._low = None
         self._high = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize internal parameters.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
-        :param trading_calendar: Future (including current) trading calendar.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self._index = (universe.get_loc if hasattr(
             universe, 'get_loc') else universe.index)(self.asset)
         self._low = cp.Parameter()
         self._high = cp.Parameter()
 
-    def values_in_time(self, t, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, **kwargs):
         """Update parameters, if necessary by imposing no-trade.
 
         :param t: Current time.
@@ -481,7 +348,8 @@ class MinCashBalance(InequalityConstraint):
         self.c_min = DataEstimator(c_min)
         self.rhs = cp.Parameter()
 
-    def values_in_time(self, current_portfolio_value, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
         """Update parameter with current portfolio value.
 
         :param current_portfolio_value: Current total value of the portfolio.
@@ -712,18 +580,20 @@ class MinMaxWeightsAtTimes(Estimator):
         self.limit = None
         self.trading_calendar = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, trading_calendar, **kwargs):
         """Initialize estimator instance with updated trading_calendar.
 
-        :param universe: Trading universe, including cash.
-        :type universe: pandas.Index
         :param trading_calendar: Future (including current) trading calendar.
         :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
         self.trading_calendar = trading_calendar
         self.limit = cp.Parameter()
 
-    def values_in_time(self, t, mpo_step, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, mpo_step, **kwargs):
         """If target period is in sight activate constraint.
 
         :param t: Current time.

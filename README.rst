@@ -12,13 +12,20 @@ paper <https://web.stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`__.
 The documentation of the library is at
 `www.cvxportfolio.com <https://www.cvxportfolio.com>`__.
 
-
 .. Installation
+
+*News:*
+
+   Since end of 2023 we're running daily `example strategies
+   <https://github.com/cvxgrp/cvxportfolio/tree/master/examples/strategies>`_
+   using the development version (master branch); each day we commit target
+   weights and initial holdings to the repository. All the code that runs them,
+   including the cron script, is in the repository.
 
 Installation
 ------------
 
-Cvxportolio is written in Python and can easily installed in any Python
+Cvxportolio is written in Python and can be easily installed in any Python
 environment by simple:
 
 .. code:: bash
@@ -98,7 +105,7 @@ Other examples
 --------------
 
 `Many examples 
-<https://www.cvxportfolio.com/en/latest/examples.html>`_ 
+<https://www.cvxportfolio.com/en/stable/examples.html>`_
 are shown in the documentation website, along with
 their output and comments.
 
@@ -111,7 +118,7 @@ are available in the code repository.
 are visible in a dedicated branch,
 and are being translated to run with the stable versions (``1.0.0`` and above) of the
 library. The translations are visible at `this documentation page
-<https://www.cvxportfolio.com/en/latest/examples/paper_examples.html>`_.
+<https://www.cvxportfolio.com/en/stable/examples/paper_examples.html>`_.
 
 We show in the example on `user-provided
 forecasters <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/user_provided_forecasters.py>`__
@@ -130,6 +137,23 @@ how a simple sweep over hyper-parameters, taking advantage of our
 sophisticated parallel backtest machinery, quickly provides results on
 the best strategy to apply to any given selection of assets.
 
+Similar projects
+----------------
+
+There are many open-source projects for portfolio optimization and back-testing.
+Some notable ones in the Python ecosystem are `Zipline <https://github.com/quantopian/zipline>`_,
+which implements a call-back model for back-testing very similar to the one
+we provide, `Riskfolio-Lib <https://riskfolio-lib.readthedocs.io/en/latest/examples.html>`_
+which implements (many!) portfolio optimization models and also follows a modular
+approach like ours, `VectorBT <https://vectorbt.dev/>`_, a back-testing library
+well-suited for high frequency applications, `PyPortfolioOpt <https://pyportfolioopt.readthedocs.io/en/latest/>`_,
+a simple yet powerful library for portfolio optimization that uses well-known models,
+`YFinance <https://github.com/ranaroussi/yfinance>`_, which is not a portfolio
+optimization library (it only provides a data interface to Yahoo Finance), but
+used to be one of our dependencies, and also `CVXPY <https://www.cvxpy.org>`_ by
+itself, which is used by some of the above and has an extensive 
+`set of examples <https://www.cvxpy.org/examples/index.html#finance>`_
+devoted to portfolio optimization (indeed, Cvxportfolio was born out of those).
 
 .. Contributions
 
@@ -296,8 +320,8 @@ open source license.
    :target: https://github.com/pylint-dev/pylint
 .. |Coverage Status| image:: https://coveralls.io/repos/github/cvxgrp/cvxportfolio/badge.svg?branch=master
    :target: https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master
-.. |Documentation Status| image:: https://readthedocs.org/projects/cvxportfolio/badge/?version=latest
-   :target: https://cvxportfolio.readthedocs.io/en/latest/?badge=latest
+.. |Documentation Status| image:: https://readthedocs.org/projects/cvxportfolio/badge/?version=stable
+   :target: https://cvxportfolio.readthedocs.io/en/stable/?badge=stable
 .. |Apache 2.0 License| image:: https://img.shields.io/badge/License-Apache%202.0-green.svg
    :target: https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/cvxportfolio/badges/version.svg

@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from .errors import DataError, MissingAssetsError, MissingTimesError, NaNError
-from .utils import repr_numpy_pandas
+from .utils import make_numeric, repr_numpy_pandas
 
 
 class Estimator:
@@ -39,46 +39,74 @@ class Estimator:
     :meth:`values_in_time_recursive`.
     """
 
-    # pylint: disable=useless-type-doc,useless-param-doc
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, trading_calendar, **kwargs):
         """Initialize estimator instance with universe and trading times.
 
-        This function is called whenever the trading universe changes.
+        This method is called at the start of an online execution, or, in a
+        back-test, at its start and whenever the trading universe changes.
         It provides the instance with the current trading universe and a
         :class:`pandas.DatetimeIndex` representing the current and future
         trading calendar, *i.e.*, the times at which the estimator will be
-        evaluated. The instance uses these to appropriately initialize any
-        internal object, such as Cvxpy parameters, to the right size (as
-        implied by the universe). Also, especially for multi-period
-        optimization and similar policies, awareness of the future trading
-        calendar is essential to, *e.g.*, plan in advance.
+        evaluated, or a best guess of it. The instance uses these to
+        appropriately initialize any internal object, such as Cvxpy parameters,
+        to the right size (as implied by the universe). Also, especially for
+        multi-period optimization and similar policies, awareness of the future
+        trading calendar is essential to, *e.g.*, plan in advance.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
         :param trading_calendar: Future (including current) trading calendar.
         :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Reserved for future expansion.
+        :type kwargs: dict
         """
 
         # we don't raise NotImplementedError because this is called
         # on classes that don't re-define it
 
-    def initialize_estimator_recursive(self, universe, trading_calendar):
+    def initialize_estimator_recursive(self, **kwargs):
         """Recursively initialize all estimators in a policy.
 
-        :param universe: Names of assets to be traded.
-        :type universe: pandas.Index
-        :param trading_calendar: Times at which the estimator is
-            expected to be evaluated.
-        :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Parameters sent down an estimator tree to inizialize it.
+        :type kwargs: dict
         """
-        # pylint: disable=arguments-differ
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "initialize_estimator_recursive"):
-                subestimator.initialize_estimator_recursive(
-                    universe=universe, trading_calendar=trading_calendar)
+                subestimator.initialize_estimator_recursive(**kwargs)
         if hasattr(self, "initialize_estimator"):
-            self.initialize_estimator(universe=universe,
-                                      trading_calendar=trading_calendar)
+            self.initialize_estimator(**kwargs)
+
+    def finalize_estimator(self, **kwargs):
+        """Finalize estimator instance (currently unused).
+
+        This method is called at the end of an online execution, or, in a
+        back-test, whenever the trading universe changes (before calling
+        :meth:`initialize_estimator` with the new universe) and at its end.
+        We aren't currently using in the rest of the library but we plan to
+        move the caching logic in it.
+
+        .. versionadded:: 1.1.0
+
+        :param kwargs: Reserved for future expansion.
+        :type kwargs: dict
+        """
+
+        # we don't raise NotImplementedError because this is called
+        # on classes that don't re-define it
+
+    def finalize_estimator_recursive(self, **kwargs):
+        """Recursively finalize all estimators in a policy.
+
+        .. versionadded:: 1.1.0
+
+        :param kwargs: Parameters sent down an estimator tree to finalize it.
+        :type kwargs: dict
+        """
+        for _, subestimator in self.__dict__.items():
+            if hasattr(subestimator, "finalize_estimator_recursive"):
+                subestimator.finalize_estimator_recursive(**kwargs)
+        if hasattr(self, "finalize_estimator"):
+            self.finalize_estimator(**kwargs)
 
     _current_value = None
 
@@ -91,21 +119,58 @@ class Estimator:
         """
         return self._current_value
 
+    # pylint: disable=too-many-arguments
+    def values_in_time(
+            self, t, current_weights, current_portfolio_value,
+            past_returns, past_volumes, current_prices,
+            mpo_step=None, cache=None, **kwargs):
+        """Evaluate estimator at current time, possibly return current value.
+
+        This method is usually the most important for Estimator classes.
+        It is called at each point in a back-test with all data of the current
+        state. Sub-estimators are evaluated first, in a depth-first recursive
+        tree fashion (defined in :meth:`values_in_time_recursive`). The
+        signature differs slightly between different estimators, see below.
+
+        :param t: Current timestamp.
+        :type t: pandas.Timestamp
+        :param current_weights: Current allocation weights.
+        :type current_weights: pandas.Series
+        :param current_portfolio_value: Current total value of the portfolio
+            in cash units.
+        :type current_portfolio_value: float
+        :param past_returns: Past market returns (including cash).
+        :type past_returns: pandas.DataFrame
+        :param past_volumes: Past market volumes, or None if not available.
+        :type past_volumes: pandas.DataFrame or None
+        :param current_prices: Current (open) prices, or None if not available.
+        :type current_prices: pandas.Series or None
+        :param mpo_step: For :class:`cvxportfolio.MultiPeriodOptimization`
+            which step in future planning this estimator is at: 0 is for
+            the current step (:class:`cvxportfolio.SinglePeriodOptimization`),
+            1 is for day ahead, .... Defaults to ``None`` if unused.
+        :type mpo_step: int, optional
+        :param cache: Cache or workspace shared between all elements of an
+            estimator tree, currently only used by
+            :class:`cvxportfolio.MultiPeriodOptimization` (and derived
+            classes). It's useful to avoid re-computing expensive things like
+            covariance estimates at different MPO steps. Defaults to ``None``
+            if unused.
+        :type cache: dict, optional
+        :param kwargs: Reserved for future expansion.
+        :type kwargs: dict
+
+        :returns: Current value of the estimator.
+        :rtype: object or None
+        """
+        # we don't raise NotImplementedError because this is called
+        # on classes that don't re-define it
+
     def values_in_time_recursive(self, **kwargs):
         """Evaluate recursively on sub-estimators.
 
-        This function is called by Simulator classes on Policy classes
-        returning the current trades list. Policy classes, if they
-        contain internal estimators, should declare them as attributes
-        and call this base function (via `super()`) before they do their
-        internal computation. CvxpyExpression estimators should instead
-        define this method to update their Cvxpy parameters.
-
-        Once we finalize the interface all parameters will be listed
-        here.
-
-        :param kwargs: Various parameters that are passed to all elements
-            contained in a policy object.
+        :param kwargs: All parameters to :meth:`values_in_time` that are passed
+            to all elements contained in a policy object.
         :type kwargs: dict
 
         :returns: The current value evaluated by this instance, if it
@@ -117,6 +182,7 @@ class Estimator:
             if hasattr(subestimator, "values_in_time_recursive"):
                 subestimator.values_in_time_recursive(**kwargs)
         if hasattr(self, "values_in_time"):
+            # pylint: disable=assignment-from-no-return
             self._current_value = self.values_in_time(**kwargs)
             return self.current_value
         return None
@@ -159,6 +225,92 @@ class Estimator:
         return lhs + core + rhs
 
 
+class SimulatorEstimator(Estimator):
+    """Base class for estimators that are used by the market simulator.
+
+    .. versionadded:: 1.2.0
+
+    This is currently used as the base class for
+    :class:`cvxportfolio.costs.SimulatorCost` but could implement in future
+    versions more operations done as part of a simulation (back-test) loop,
+    like filtering out trades (rejecting small ones, ...), or more. It allows
+    for nested evaluation like it's done by :meth:`values_in_time` and
+    :meth:`values_in_time_recursive`. Estimators that are used in the market
+    simulator should derive from this. Some examples are
+    :class:`DataEstimator`, which is used to select values (like borrow costs)
+    in simulations as well as in optimization, and
+    :class:`cvxportfolio.forecast.HistoricalStandardDeviation`, which is used
+    also in simulation by :class:`cvxportfolio.costs.TransactionCost`.
+    """
+
+    def simulate( # pylint: disable=too-many-arguments
+        self, t, t_next, u, h_plus, past_volumes,
+        past_returns, current_prices, current_returns, current_volumes,
+        current_weights, current_portfolio_value, **kwargs):
+        """Evaluate the estimator as part of a Market Simulator back-test loop.
+
+        Cost classes that are meant to be used in the simulator can
+        implement this. The arguments to this are the same as for
+        :meth:`cvxportfolio.estimator.Estimator.values_in_time` plus the
+        realized returns and volumes in the period, and the trades requested
+        by the policy, ....
+
+        :param t: Current timestamp.
+        :type t: pandas.Timestamp
+        :param u: Trade vector in cash units requested by the policy.
+            If the market simulator implements rounding by number of shares
+            and/or canceling trades on assets whose volume for the period
+            is zero, this is after those transformations.
+        :type u: pandas.Series
+        :param h_plus: Post-trade holdings vector.
+        :type h_plus: pandas.Series
+        :param past_returns: Past market returns (including cash).
+        :type past_returns: pandas.DataFrame
+        :param current_returns: Current period's market returns (including
+            cash).
+        :type current_returns: pandas.Series
+        :param past_volumes: Past market volumes, or None if not available.
+        :type past_volumes: pandas.DataFrame or None
+        :param current_volumes: Current period's market volumes, or None if not
+            available.
+        :type current_volumes: pandas.Series or None
+        :param current_prices: Current (open) prices, or None if not available.
+        :type current_prices: pandas.Series or None
+        :param current_weights: Current allocation weights (before trading).
+        :type current_weights: pandas.Series
+        :param current_portfolio_value: Current total value of the portfolio
+            in cash units, before costs.
+        :type current_portfolio_value: float
+        :param t_next: Timestamp of the next trading period.
+        :type t_next: pandas.Timestamp
+        :param kwargs: Reserved for future expansion.
+        :type kwargs: dict
+
+        :returns: The current value of this instance.
+        :rtype: any object
+        """
+        raise NotImplementedError # pragma: no cover
+
+    def simulate_recursive(self, **kwargs):
+        """Evaluate simulator value(s) recursively on sub-estimators.
+
+        :param kwargs: All parameters to :meth:`simulate` that are passed
+            to all elements contained in a simulator cost object.
+        :type kwargs: dict
+
+        :returns: The current simulator value evaluated by this instance, if it
+            implements the :meth:`simulate` method and it returns
+            something there.
+        :rtype: numpy.array, pandas.Series, pandas.DataFrame, ...
+        """
+        for _, subestimator in self.__dict__.items():
+            if hasattr(subestimator, "simulate_recursive"):
+                subestimator.simulate_recursive(**kwargs)
+        if hasattr(self, "simulate"):
+            self._current_value = self.simulate(**kwargs)
+            return self.current_value
+        return None # pragma: no cover
+
 class CvxpyExpressionEstimator(Estimator):
     """Base class for estimators that are Cvxpy expressions."""
 
@@ -187,8 +339,8 @@ class CvxpyExpressionEstimator(Estimator):
         """
         raise NotImplementedError
 
-
-class DataEstimator(Estimator):
+# pylint: disable=too-many-arguments
+class DataEstimator(SimulatorEstimator):
     """Estimator of point-in-time values from internal data.
 
     It also implements logic to check that no ``nan`` are returned
@@ -243,7 +395,7 @@ class DataEstimator(Estimator):
             compile_parameter=False, non_negative=False,
             positive_semi_definite=False, data_includes_cash=False,
             ignore_shape_check=False):
-        self.data = data
+        self.data = make_numeric(data)
         self._use_last_available_time = use_last_available_time
         self._allow_nans = allow_nans
         self._compile_parameter = compile_parameter
@@ -254,13 +406,15 @@ class DataEstimator(Estimator):
         self._ignore_shape_check = ignore_shape_check
         self.parameter = None
 
-    def initialize_estimator(self, universe, trading_calendar):
+    def initialize_estimator(self, universe, trading_calendar, **kwargs):
         """Initialize with current universe.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
         :param trading_calendar: Future (including current) trading calendar.
         :type trading_calendar: pandas.DatetimeIndex
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
         """
 
         self._universe_maybe_noncash = \
@@ -384,6 +538,11 @@ class DataEstimator(Estimator):
 
         # here (probably user-provided) we check
         if hasattr(self.data, "values_in_time"):
+            if len(kwargs) == 0:
+                raise ValueError(
+                    "It seems you're using a custom forecaster as part of a "
+                    "simulate_recursive evaluation, you should derive from "
+                    "SimulatorEstimator instead.")
             return self.value_checker(self._universe_subselect(
                 self.data.current_value if hasattr(self.data, 'current_value')
                 else self.data.values_in_time(t=t, **kwargs)))
@@ -422,7 +581,8 @@ class DataEstimator(Estimator):
         # if data is scalar or numpy
         return self.value_checker(self._universe_subselect(self.data))
 
-    def values_in_time(self, **kwargs):
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Obtain value of `self.data` at time t or right before.
 
         :param kwargs: All parameters passed to :meth:`values_in_time`.
@@ -443,6 +603,25 @@ class DataEstimator(Estimator):
         if self.parameter is not None:
             self.parameter.value = result
         return result
+
+    def simulate( # pylint: disable=arguments-differ
+            self, t, **kwargs):
+        """Evaluate in simulation (e.g., TransactionCost).
+
+        :param t: Current timestamp.
+        :type t: pd.Timestamp
+        :param kwargs: All other unused arguments to
+            :meth:`SimulatorEstimator.simulate`.
+        :type kwargs: dict
+
+        :returns: The  value from this
+            :class:`cvxportfolio.estimator.DataEstimator` at current time.
+        :rtype: int, float, numpy.ndarray
+        """
+        # We don't support evaluation inside DataEstimator in this case
+        # You should implement simulate/simulate_recursive in each
+        # SimulatorEstimator wrapped by DataEstimator
+        return self.values_in_time(t=t)
 
     def __repr__(self):
         """Pretty-print."""

@@ -1,7 +1,10 @@
 #! /usr/bin/env bash
 # 
-# We run this in a cron job, from the root of repo in the development
-# environment, at **10am New York time**. So, we give time to the
+# We run this in a cron job, from the root of repo in the development environment:
+# - at 8:30 London time with arguments ftse100_daily
+# - at 10:00 New York time with arguments dow30_daily ndx100_daily sp500_daily
+#
+# These are about 30 minutes after each market opens, so we give time to the
 # data provider to update their open prices. If we had a real-time data
 # provider we could run this exactly at market open.
 #
@@ -10,16 +13,20 @@
 # their changes to git too; **we do not change** the weights that we calculated
 # the previous day (as certified by git), so there is still no look-ahead.
 
-env/bin/python -m examples.strategies.dow30_daily strategy &>> examples/strategies/dow30_daily.log
-git add examples/strategies/dow30_daily*.json
-git commit -m '[auto commit] dow30_daily reconciliation & execution'
+date=$(date '+%Y-%m-%d')
 
-env/bin/python -m examples.strategies.ndx100_daily strategy &>> examples/strategies/ndx100_daily.log
-git add examples/strategies/ndx100_daily*.json
-git commit -m '[auto commit] ndx100_daily reconciliation & execution'
-
-env/bin/python -m examples.strategies.sp500_daily strategy &>> examples/strategies/sp500_daily.log
-git add examples/strategies/sp500_daily*.json
-git commit -m '[auto commit] sp500_daily reconciliation & execution'
-
+git pull
+for strat in "$@"; do
+    retry_counter=0
+    until env/bin/python -m examples.strategies."$strat" strategy &>> examples/strategies/"$strat".log
+        do
+            if [ $retry_counter -gt 10 ]; then
+                break
+            fi
+            sleep 10
+            ((retry_counter++))
+        done
+    git add examples/strategies/"$strat"*.json
+    git commit -m '[auto commit] '"$strat"' reconciliation & execution on '"$date"
+done
 git push

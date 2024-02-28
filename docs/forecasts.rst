@@ -1,14 +1,17 @@
 Forecasters
 ===========
 
-*Work in progress.*
-
 .. automodule:: cvxportfolio.forecast
 
 .. py:module:: cvxportfolio.forecast
      :noindex:
 
+Forecasters Documentation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. autoclass:: HistoricalMeanReturn
+
+.. autoclass:: HistoricalMeanVolume
 
 .. autoclass:: HistoricalVariance
 
@@ -16,6 +19,14 @@ Forecasters
 
 .. autoclass:: HistoricalMeanError
 
+.. autoclass:: HistoricalFactorizedCovariance
+
 .. autoclass:: HistoricalLowRankCovarianceSVD
 
-.. autoclass:: HistoricalFactorizedCovariance
+
+Base forecaster classes
+~~~~~~~~~~~~~~~~~~~~~~~
+
+*Work in progress.*
+
+.. autoclass:: BaseForecast
