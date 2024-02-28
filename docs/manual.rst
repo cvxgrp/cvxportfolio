@@ -12,9 +12,59 @@ to know. The code blocks in this document assume the following imports
 
 .. note::
 
-    This document is a work in progress. It will eventually have more
-    structure. We are prioritizing topics which are more important to
-    understand when using Cvxportfolio.
+    This document is a work in progress. We are prioritizing topics which are
+    more important to understand when using Cvxportfolio.
+
+
+Quickstart
+----------
+
+Cvxportfolio is designed for ease of use and extension. With it, you can
+quickly experiment with financial trading strategies and develop new ones.
+
+For example, a classic Markowitz optimization strategy 
+
+.. math::
+
+    \begin{array}{ll}
+         \text{maximize} & w^T \mathbf{E}[r] - \frac{1}{2} w^T \mathbf{Var}[r] w \\
+         \text{subject to} & w \geq 0, w^T \mathbf{1} <= 1
+    \end{array}
+
+where the expected returns and covariances are the simple sample ones, is
+specified as follows
+
+.. code-block:: python
+    
+    objective = cvx.ReturnsForecast() - 0.5 * cvx.FullCovariance()
+    constraints = [cvx.LongOnly(), cvx.LeverageLimit(1)]
+    
+    strategy = cvx.SinglePeriodOptimization(objective, constraints)
+    
+Here we instantiated an :ref:`optimization-based trading policy <optimization-policies-page>`.
+Cvxportfolio defines two (the other is a simple extension of this). 
+Optimization-based policies are defined by an objective function, which is 
+maximized, and a list of constraints, that are imposed on the solution.
+The objective function is specified as a linear combination of simple
+terms, :doc:`we provide many <objective_terms>`, and it's easy to define new ones.
+We provide as well :doc:`many constraints <constraints>` to choose from, and
+it's even easier to define new ones.
+
+Where are the assets' names?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Cvxportfolio policies are symbolic, they only define the logic of a trading 
+strategy. They work with any selection of assets. 
+The two objective terms defined above, however, need to know the values of
+the expected returns and the covariance matrix. 
+You can :ref:`pass Pandas dataframes <passing-data>` for those, and in that
+case your dataframes should contain the assets' names you want to trade. 
+Or, if you want, or you can rely on :doc:`forecasters <forecasts>` to compute those
+(iteratively, in back-testing) using past data. That is what happens in the 
+code shown above, the default parameters of :class:`cvxportfolio.ReturnsForecast`
+and :class:`cvxportfolio.FullCovariance` are forecasters that compute historical
+means and historical covariances respectively, at each point in time if running in a back-test
+or once, if running live, by using the policy's :meth:`execute` method.
 
 .. _passing-data:
 
@@ -229,12 +279,21 @@ ignored. Exceptions are noted in the documentation of each object.
 Multi-Period Optimization
 -------------------------
 Multi-period optimization is an advanced feature but an important one. You
-should probably first read section 5 (:paper:`in particular 5 <section.5.2>`)
-of the paper to understand the model we work with, which is based on
+should probably first read :paper:`section 5 of the paper <chapter.5>`
+to understand the model we work with, which is based on
 model-predictive control, the industrial engineering standard for multi-period
-optimization.
+optimization. The relevant Cvxportfolio object we deal with here is the 
+:class:`cvxportfolio.MultiPeriodOptimization` policy.
 
-The model itself is given by the following optimization problem, which is
+We note that the simpler single-period optimization model, implemented by 
+:class:`cvxportfolio.SinglePeriodOptimization` and defined in
+:paper:`section 4 of the paper <chapter.4>`, is in fact a special
+case of multi-period optimization with the planning horizon equal to 1. So,
+understanding the content of this section also helps you use the single-period
+optimization model more effectively (and, in fact, there are various situations
+in which single-period is preferable).
+
+The model is given by the following optimization problem, which is
 solved at each time :math:`t` in a back-test (or, the current time if
 running a policy on-line)
 
