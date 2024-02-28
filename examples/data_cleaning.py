@@ -16,6 +16,13 @@
 It is not really an example, and some of the methods shown here are not public,
 so not covered by the semantic versioning agreeement (they could change
 without notice).
+
+You run it (from the root of the development environment) by
+
+.. code-block::
+
+    python -m examples.data_cleaning
+
 """
 
 import shutil
@@ -41,8 +48,29 @@ TEST_UNIVERSE = ['AAPL', 'GOOG', 'TSLA']
 # TEST_UNIVERSE = ['SMT.L', 'NVR', 'HUBB', 'NWG.L', 'BA.L']
 
 # Or, pick a larger universe
-# from .universes import *
-# TEST_UNIVERSE = DOW30
+from .universes import *
+TEST_UNIVERSE = FTSE100
+
+class TestYahooFinance(cvx.YahooFinance):
+    """Example of subclass of YahooFinance for tuning cleaning parameters.
+
+    You can change any of the parameters to see how they affect cleaning.
+
+    We copied them from the data/symbol_data.py module. You find their
+    documentation there. The commented values below are their defaults.
+    """
+    # FILTERING_WINDOWS = (10, 20, 50, 100, 200)
+    # THRESHOLD_OPEN_TO_CLOSE = 20
+    # THRESHOLD_LOWHIGH_TO_CLOSE = 20
+    # THRESHOLD_WARN_EXTREME_LOGRETS = 40
+    # EXCLUDE_EXACT_ZEROS_FROM_FILTERING = False
+    # MAX_CONTIGUOUS_MISSING_ADJCLOSES = 20
+    # THRESHOLD_BAD_ADJCLOSE = 50
+    # THRESHOLD_FALSE_LOG10RETS = .5
+    # ASSUME_FALSE_BEFORE = pd.Timestamp('2000-01-01', tz='UTC')
+    # UPDATE_OVERLAP = 5
+    # DIVIDEND_THRESHOLD = .2
+
 
 ALL_DROPPED_ROWS_PCT = pd.Series(dtype=float)
 ALL_MIN_LR = pd.Series(dtype=float)
@@ -61,9 +89,9 @@ for stock in TEST_UNIVERSE:
     print(raw_yfinance)
 
     tmpdir = Path(tempfile.mkdtemp())
-    cvx_cleaned = cvx.YahooFinance(stock, base_location=tmpdir).data
+    cvx_cleaned = TestYahooFinance(stock, base_location=tmpdir).data
     shutil.rmtree(tmpdir)
-    print(f'{stock}: CVXPORTFOLIO CLEANED')
+    print(f'{stock}: CVXPORTFOLIO CLEANED (WITH TEST PARAMETERS)')
     print(cvx_cleaned)
 
     yf_log10r = np.log10(raw_yfinance.adjclose).diff().shift(-1)
@@ -78,13 +106,13 @@ for stock in TEST_UNIVERSE:
         axes[0].set_title(f'{stock}: RAW YAHOO FINANCE')
 
         cvx_cleaned.iloc[:, :4].plot(ax=axes[1])
-        axes[1].set_title(f'{stock}: CVXPORTFOLIO CLEANED DATA')
+        axes[1].set_title(f'{stock}: CVX CLEANED (W/ TEST PARAMETERS)')
         axes[1].set_yscale('log')
 
         (yf_log10r.cumsum() - yf_log10r.sum()).plot(
             label='Yahoo Finance total close-to-close', ax=axes[2])
         (cvx_log10r.cumsum() - cvx_log10r.sum()).plot(
-            label='Cvxportfolio total open-to-open', ax=axes[2])
+            label='Cvx cleaned total open-to-open', ax=axes[2])
         axes[2].set_title(f'{stock}: CUMULATIVE LOG10 RETURNS (SCALED)')
         axes[2].legend()
 
