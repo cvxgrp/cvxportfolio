@@ -278,11 +278,11 @@ ignored. Exceptions are noted in the documentation of each object.
 
 Multi-Period Optimization
 -------------------------
-Multi-period optimization is an advanced feature but an important one. You
-should probably first read :paper:`section 5 of the paper <chapter.5>`
-to understand the model we work with, which is based on
-model-predictive control, the industrial engineering standard for multi-period
-optimization. The relevant Cvxportfolio object we deal with here is the 
+Multi-period optimization is the signature portfolio allocation model
+defined by Cvxportfolio (although it is not the only one). It is discussed
+in :paper:`section 5 of the paper <chapter.5>`, and it is based on
+model-predictive control, the industrial engineering standard for dynamic
+control. The relevant Cvxportfolio object we deal with here is the 
 :class:`cvxportfolio.MultiPeriodOptimization` policy.
 
 We note that the simpler single-period optimization model, implemented by 
@@ -293,14 +293,96 @@ understanding the content of this section also helps you use the single-period
 optimization model more effectively (and, in fact, there are various situations
 in which single-period is preferable).
 
-The model is given by the following optimization problem, which is
-solved at each time :math:`t` in a back-test (or, the current time if
-running a policy on-line)
+A general formulation of the model is given by the following optimization
+problem, which is solved at time :math:`t`
 
 .. math::
 
     \begin{array}{ll}
-         \text{maximize} & \sum_{\tau = t} w_\tau^T \mathbf{E}[r] - \frac{1}{2} w^T \mathbf{Var}[r] w \\
-         \text{subject to} & w \geq 0, w^T \mathbf{1} <= 1
+         \text{maximize} & \sum_{\tau = t}^{t + H - 1}
+           \left(
+            \hat {r}_{\tau | t}^T w_\tau^T 
+            - \gamma^\text{risk} \psi_\tau(w_\tau)
+            - \gamma^\text{hold} \hat{\phi}^\text{hold}_{\tau|t}(w_\tau)
+            - \gamma^\text{trade} \hat{\phi}^\text{trade}_{\tau|t}(w_\tau - w_{\tau - 1})
+            \right) \\
+         \text{subject to} & 
+            \mathbf{1}^T w  = 1, \ 
+            w_\tau - w_{\tau -1} \in \mathcal{Z}_\tau, \ 
+            w_\tau \in \mathcal{W}_\tau, \ 
+            \text{for } \tau = t+1, \ldots, t+H 
     \end{array}
 
+This is copied from the equations in the paper, and uses all the definitions
+made there. We summarize them here for clarity:
+
+- The time index :math:`\tau` spans the planning horizon :math:`H \geq 1`,
+  and if :math:`H = 1` we have single-period optimization. The policy plans
+  for allocations over a few time-steps in the future, and only the first
+  time-step, :math:`\tau = t`, is used. (This is, in a nutshell, 
+  model-predictive control.) The time indexes used here are natural numbers.
+- The weight vector :math:`w_\tau` is the allocation of wealth among assets, at
+  each step in the planning horizon. Its last element is used by the cash
+  account, which is always there. The vector always sums to one, because of the
+  :paper:`self-financing condition defined in the paper <section.2.5>`.
+- The vector :math:`\hat {r}_{\tau | t}` are the forecasts of the returns, for all
+  assets (and cash), made at (execution) time :math:`t` for (prediction) time :math:`\tau`.
+  The return :math:`r_t` for a single asset is simply the ratio
+  :math:`\frac{p_{t+1} - p_t}{p_t}` between consecutive prices. (Note that often returns by data
+  vendors are defined differently, shifted by one.)
+- The :math:`\gamma`'s are hyper-parameters, as discussed in :paper:`section 4.8 <section.4.8>`
+  of the paper. These are positive numbers.
+- The objective term :math:`\psi_{\tau|t}` is a risk model, like a factor model covariance.
+  We can have different risk models at different planning steps.
+- The terms :math:`\hat{\phi}^\text{hold}_{\tau|t}` and :math:`\hat{\phi}^\text{trade}_{\tau|t}`
+  model the forecasts, made at time :math:`t`, for the holding and trading
+  costs respectively that will be incurred at time :math:`\tau`.
+- The sets :math:`\mathcal{Z}_\tau` and :math:`\mathcal{W}_\tau` represent the
+  allowed space of trade allocation vectors at each planning step, and are
+  defined by a selection of imposed constraints.
+
+  A close translation of the above equation in Cvxportfolio code looks like this.
+  Here we use :math:`H = 2`.
+
+  .. code-block:: python
+
+    same_period_returns_forecast = pd.DataFrame(...)
+    next_period_returns_forecast = pd.DataFrame(...) # indexed by the time of execution, not of the forecast!
+
+    gamma_risk = cvx.Gamma(initial_value = 0.5)
+    gamma_hold = cvx.Gamma(initial_value = 1.0)
+    gamma_trade = cvx.Gamma(initial_value = 1.0)
+
+    objective_1 = cvx.ReturnsForecast(r_hat = same_period_returns_forecast) \
+        - gamma_risk * cvx.FullCovariance() \
+        - gamma_hold * cvx.HoldingCost(short_fees = 1.) \ 
+        - gamma_trade * cvx.TransactionCost(a = 2E-4)
+
+    objective_2 = cvx.ReturnsForecast(r_hat = next_period_returns_forecast) \
+        - gamma_risk * cvx.FullCovariance() \
+        - gamma_hold * cvx.HoldingCost(short_fees = 1.) \ 
+        - gamma_trade * cvx.TransactionCost(a = 2E-4)
+
+    constraints_1 = [cvx.LongOnly(applies_to_cash = True)]
+    constraints_2 = [cvx.LongOnly(applies_to_cash = True)]
+
+    policy = cvx.MultiPeriodOptimization(
+        objective = [objective_1, objective_2],
+        constraints = [constraints_1, constraints_2]
+    )
+
+Here we use a mixture of data provided by the user (for the returns' forecast
+and the cost) and data estimated internally by :doc:`forecasters <forecasts>` (for the risk model).
+
+One thing to note: If providing time-indexed data like returns forecast,
+the time index always refers to the time of execution, not the time of the forecast.
+When the policy is evaluated at time :math:`t`, every provided dataframe (if applicable) will be
+searched for entries with index :math:`t`, regardless of which step in the planning
+horizon it is at.
+
+We note also that there's a simpler way to initialize :class:`cvxportfolio.MultiPeriodOptimization`,
+by providing a single objective and a single list of constraints, and specifying
+the ``planning_horizon`` argument to, for example, 2. This simply copies the terms
+for each step of planning horizon.
+
+*To be continued.*
