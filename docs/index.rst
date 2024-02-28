@@ -17,11 +17,6 @@ BlackRock Inc. investment professionals.
     :start-after: .. Installation
     :end-before: .. Simple Example
 
-Hello World Example
--------------------
-
-We show in :doc:`hello_world` a minimal example.
-
 
 Introduction
 ------------
@@ -46,19 +41,38 @@ Then, we provide the :class:`cvxportfolio.data.MarketData` abstraction, which bo
 data during a back-test and real time data in online usage. We implement the interface
 to public data sources (`Yahoo Finance`_ 
 and `FRED`_), as well as user-provided data, which
-can also be passed to all other objects (see :ref:`passing-data`).
+can also be passed to all other objects, see :ref:`the manual section on passing data <passing-data>`.
 
 In addition, we provide logic to easily parallelize back-testing of many different policies,
 or the same policy with different choices of hyperparameters, and cache on disk both
 historical data (for reproducibility) and various expensive calculations, such as
 estimates of covariance matrices. 
 
-We present the results of each back-test with a clear interface, :class:`cvxportfolio.BacktestResult`,
+We present the results of each back-test with a clear interface, :class:`cvxportfolio.result.BacktestResult`,
 which defines various metrics of backtest performance and the logic to both print
 and plot them.
 	
+
+Where to go next
+----------------
+
+You can see the :doc:`selection of examples <examples>` in this documentation
+website (even more are available in the code repository).
+
+Then, you can have a look at the :doc:`manual page <manual>` which explains
+some of the more important aspects to understand when using Cvxportfolio.
+
+Or, you can look directly at the documentation of each object the user
+interacts with, like the :doc:`market simulator <simulator>`, the collection of
+both :doc:`simple <simple_policies>` and :doc:`optimization-based policies
+<optimization_policies>`, the objective terms (:doc:`return <returns>`,
+:doc:`risk <risks>` and :doc:`cost <costs>` models, which all have their
+specifities) or :doc:`constraints <constraints>` which apply to optimization-based
+policies, and so on. 
+
 .. include:: ../README.rst    
     :start-after: .. Versions
+
 
 Table of Contents
 -----------------
@@ -66,8 +80,6 @@ Table of Contents
 .. toctree::
    :maxdepth: 2
    
-   hello_world
-   quickstart
    manual
    simulator
    policies

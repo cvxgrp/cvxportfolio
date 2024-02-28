@@ -1,5 +1,5 @@
-Multi-period Optimization
-=========================
+Multi-period Optimization Example
+=================================
 
 This example script is
 `available in the repository 
