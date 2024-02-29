@@ -19,8 +19,15 @@ import pandas as pd
 import cvxportfolio as cvx
 
 
+def paper_risk_model():
+    """Here we build the low-rank plus diagonal risk model used in the paper."""
+
 def paper_returns_forecast():
-    """Obtain the returns forecast used by the paper's examples."""
+    """Obtain the returns forecast used by the paper's examples.
+
+    :returns: Returns forecast (synthetic) developed for the paper.
+    :rtype: pd.DataFrame
+    """
     return pd.read_csv(
         Path(__file__).parent / 'return_estimate.csv.gz', index_col=0,
         parse_dates=[0])
@@ -57,7 +64,7 @@ def paper_optimization_tcost_model():
     :rtype: cvx.costs.SimulatorCost
     """
     sigma_estimate = pd.read_csv(
-        Path(__file__).parent / 'sigmas.csv.gz', index_col=0,
+        Path(__file__).parent / 'sigma_estimate.csv.gz', index_col=0,
         parse_dates=[0])
 
     volume_estimate = pd.read_csv(

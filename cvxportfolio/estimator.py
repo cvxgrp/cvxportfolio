@@ -421,7 +421,9 @@ class DataEstimator(SimulatorEstimator):
             universe if self._data_includes_cash else universe[:-1]
 
         if self._compile_parameter:
-            value = self._internal_values_in_time(
+            # to make sure it doesn't try to update the parameter
+            self.parameter = None
+            value = self.values_in_time_recursive(
                 t=trading_calendar[0])
             self.parameter = cp.Parameter(
                 value.shape if hasattr(value, "shape") else (),

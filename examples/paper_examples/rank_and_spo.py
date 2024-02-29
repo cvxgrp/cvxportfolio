@@ -18,10 +18,20 @@
 This is a close translation of what was done in `this notebook
 <https://github.com/cvxgrp/cvxportfolio/blob/0.0.X/examples/RankAndSPO.ipynb>`_.
 
-In fact, you can see that its results are **identical**.
+In fact, you can see that its results are **identical** for the Ranking policy.
+
+The optimization policy, instead, has different performance than in the
+original example: the Sharpe ratio is now higher and volatility lower, with the
+same choice of hyper-parameters, which is not optimized: it was simply chosen
+to match the ranking strategy's PnL. This is due to a bug in how the risk
+model was handled in the early (2016) development versions of Cvxportfolio. The
+risk penalization was also applied to the cash account, while the paper clearly
+states that it only applies to non-cash assets. This has been fixed in these
+translation scripts and is now correct in the stable versions of Cvxportfolio.
 """
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 
@@ -59,7 +69,8 @@ return_estimate = paper_returns_forecast()
 factor_exposures, factor_sigma, idyosincratic = paper_risk_model()
 risk_model = cvx.FactorModelCovariance(
         F=cvx.estimator.DataEstimator(
-            factor_exposures, use_last_available_time=True),
+            factor_exposures, use_last_available_time=True,
+            compile_parameter=True),
         d=cvx.estimator.DataEstimator(
             idyosincratic, use_last_available_time=True),
         Sigma_F=cvx.estimator.DataEstimator(
@@ -125,3 +136,44 @@ result_rank = simulator.run_backtest(
 
 print('RESULT RANK-AND-LONG-SHORT')
 print(result_rank)
+
+
+spo = cvx.SinglePeriodOpt(
+    cvx.ReturnsForecast(return_estimate) - 10 * risk_model
+     - 7. * optimization_tcost - 10. * optimization_hcost,
+    [cvx.LeverageLimit(3)])
+
+result_spo = simulator.run_backtest(
+    h=1e8 * w_b, start_time=start_t, end_time=end_t, policy=spo
+)
+
+print('RESULT SPO')
+print(result_spo)
+
+# Plot from the paper
+
+ax = pd.DataFrame(
+    {'Rank': (result_rank.v / 1e6), 'SPO': (result_spo.v / 1e6)}).plot()
+
+ax.yaxis.set_major_formatter(mtick.FormatStrFormatter("$%dM"))
+
+plt.ylabel("Portfolio total value")
+plt.show()
+# plt.savefig(plotdir + "rank_vs_spo.png")
+
+
+# leverage plot
+result_rank.leverage.plot(figsize=(12, 6), label='Rank')
+result_spo.leverage.plot(label='SPO')
+plt.legend()
+plt.ylabel('Leverage')
+plt.show()
+
+# example trades plot
+np.abs(result_rank.u.iloc[10].sort_values()).plot(
+    logy=True,  figsize=(8, 8), label='rank, sample day')
+np.abs(result_spo.u.iloc[10].sort_values()).plot(
+    logy=True, label='spo, sample day')
+plt.legend()
+plt.ylabel('abs. val. trades vector')
+plt.show()
