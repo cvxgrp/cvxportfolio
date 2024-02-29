@@ -48,7 +48,7 @@ end_t = "2016-12-31"
 # Get market data.
 market_data = paper_market_data()
 
-# Define benchmark weights.
+# Define initial weights.
 w_b = pd.Series(index=market_data.returns.columns, data=1)
 w_b.USDOLLAR = 0.
 w_b /= sum(w_b)
