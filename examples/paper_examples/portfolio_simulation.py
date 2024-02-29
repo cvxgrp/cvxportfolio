@@ -38,7 +38,7 @@ import pandas as pd
 import cvxportfolio as cvx
 
 from .common import paper_hcost_model, paper_simulated_tcost_model
-from .data_risk_model import paper_market_data, paper_risk_model
+from .data_risk_model import paper_market_data
 
 # Start and end times of the back-test.
 start_t = "2012-01-01"

@@ -19,6 +19,12 @@ import pandas as pd
 import cvxportfolio as cvx
 
 
+def paper_returns_forecast():
+    """Obtain the returns forecast used by the paper's examples."""
+    return pd.read_csv(
+        Path(__file__).parent / 'return_estimate.csv.gz', index_col=0,
+        parse_dates=[0])
+
 def paper_simulated_tcost_model():
     """Build the transaction cost model used in simulation.
 
@@ -36,6 +42,31 @@ def paper_simulated_tcost_model():
         parse_dates=[0])
 
     return cvx.TcostModel(a=0.0005/2., b=1, sigma=sigmas, exponent=1.5)
+
+
+def paper_optimization_tcost_model():
+    """Build the transaction cost model used in optimization.
+
+    This was done in the original example separately in each notebook,
+    we factor it here for simplicity.
+
+    We use here some keyword arguments introduced in Cvxportfolio ``1.2.0``,
+    which more closely match the original implementation.
+
+    :returns: Transaction cost model to use in optimization.
+    :rtype: cvx.costs.SimulatorCost
+    """
+    sigma_estimate = pd.read_csv(
+        Path(__file__).parent / 'sigmas.csv.gz', index_col=0,
+        parse_dates=[0])
+
+    volume_estimate = pd.read_csv(
+        Path(__file__).parent / 'volume_estimate.csv.gz', index_col=0,
+        parse_dates=[0])
+
+    return cvx.TcostModel(
+        a=0.0005/2., b=1, volume_hat=volume_estimate, sigma=sigma_estimate,
+        exponent=1.5)
 
 def paper_hcost_model():
     """Build the holding cost model used in simulation and optimization.
