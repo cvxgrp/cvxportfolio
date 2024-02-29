@@ -153,11 +153,12 @@ class MarketDataInMemory(MarketData):
         if isinstance(universe_selection_in_time, pd.DataFrame
             ) and universe_selection_in_time.columns.equals(
                 self.full_universe[:-1]) and isinstance(
-                    universe_selection_in_time.index, pd.DatetimeIndex):
+                    universe_selection_in_time.index, pd.DatetimeIndex) and (
+                        np.all(universe_selection_in_time.dtypes == bool)):
             return
         raise DataError("universe_selection_in_time must be a DataFrame with"
-            " the full universe (minus cash) as columns, and datetime index."
-            " Dtypes should be boolean.")
+            " the full universe (minus cash) as columns and datetime index."
+            " Dtypes should be boolean. NaNs are not allowed.")
 
     def _mask_dataframes(self, mask):
         """Mask internal dataframes if necessary."""
@@ -355,7 +356,7 @@ class MarketDataInMemory(MarketData):
             self._min_num_obs]
 
     sampling_intervals = {
-        'weekly': 'W-MON', 'monthly': 'MS', 'quarterly': 'QS', 'annual': 'AS'}
+        'weekly': 'W-MON', 'monthly': 'MS', 'quarterly': 'QS', 'annual': 'YS'}
 
     # @staticmethod
     # def _is_first_interval_small(datetimeindex):
