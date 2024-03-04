@@ -953,11 +953,11 @@ class YahooFinance(OLHCV):
         if res.status_code == 404:
             raise DataError(
                 f'Data for symbol {ticker} is not available.'
-                + 'Json output:', str(res.json()))
+                + 'Json: ' + str(res.json()))
 
         if res.status_code != 200:
             raise DataError(
-                f'Yahoo finance download of {ticker} failed. Json:',
+                f'Yahoo finance download of {ticker} failed. Json: ' +
                 str(res.json())) # pragma: no cover
 
         data = res.json()['chart']['result'][0]
@@ -972,7 +972,7 @@ class YahooFinance(OLHCV):
                 'indicators']['adjclose'][0]['adjclose']
         except KeyError as exc: # pragma: no cover
             raise DataError(f'Yahoo finance download of {ticker} failed.'
-                + ' Json:', str(res.json())) from exc # pragma: no cover
+                + ' Json: ' + str(res.json())) from exc # pragma: no cover
 
         # last timestamp could be not timed to market open
         this_periods_open_time = _timestamp_convert(
