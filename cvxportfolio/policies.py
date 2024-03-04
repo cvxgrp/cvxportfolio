@@ -331,8 +331,8 @@ class ProportionalTradeToTargets(Policy):
         next_targets = self.targets.loc[self.targets.index >= t]
         if not np.allclose(next_targets.sum(1), 1.):
             raise ValueError(
-                "The target weights provided to %s at time %s"
-                + " do not sum to 1.", self.__class__.__name__, t)
+                f"The target weights provided to {self.__class__.__name__} at"
+                + f" time {t} do not sum to 1.")
         if len(next_targets) == 0:
             return current_weights
         next_target = next_targets.iloc[0]
