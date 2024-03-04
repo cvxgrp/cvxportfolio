@@ -721,11 +721,11 @@ class MultiPeriodOptimization(Policy):
             self._cvxpy_objective), self._cvxpy_constraints)
         if not self._problem.is_dcp():  # dpp=True)
             raise SyntaxError(
-                "The optimization problem compiled by %s"
+              f"The optimization problem compiled by {self.__class__.__name__}"
                 + " does not follow the convex optimization rules."
                 + " This should not happen if you're using the default "
                 + " cvxportfolio terms and is probably due to a"
-                + " mis-specified custom term.", self.__class__.__name__)
+                + " mis-specified custom term.")
 
     def initialize_estimator_recursive( # pylint: disable=arguments-differ
             self, universe, **kwargs):
@@ -808,7 +808,7 @@ class MultiPeriodOptimization(Policy):
         if not current_portfolio_value > 0:
             raise DataError(
                 f"Policy {self.__class__.__name__} was evaluated at "
-                + "{t} with negative portfolio value.")
+                + f"{t} with negative portfolio value.")
         assert np.isclose(sum(current_weights), 1)
 
         for i, obj in enumerate(self.objective):
@@ -845,9 +845,9 @@ class MultiPeriodOptimization(Policy):
                 self._problem.solve(**self.cvxpy_kwargs)
         except cp.SolverError as exc:
             raise PortfolioOptimizationError(
-                "Numerical solver for policy %s at time %s failed;"
-                + " try changing it, relaxing some constraints,"
-                + " or removing costs.", self.__class__.__name__, t) from exc
+                f"Numerical solver for policy {self.__class__.__name__} at"
+                + f" time {t} failed; try changing it, relaxing some"
+                + " constraints, or removing costs.") from exc
 
         if self._problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(

@@ -337,7 +337,7 @@ class CvxpyExpressionEstimator(Estimator):
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
         """
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
 # pylint: disable=too-many-arguments
 class DataEstimator(SimulatorEstimator):
@@ -486,12 +486,11 @@ class DataEstimator(SimulatorEstimator):
                 return data.loc[self._universe_maybe_noncash].values
             except KeyError as exc:
                 raise MissingAssetsError(
-                    "The pandas Series found by %s has index %s"
-                    + " while the current universe%s"
-                    + " is %s. It was not possible to reconcile the two.",
-                    self.__class__.__name__, data.index,
-                    ' minus cash' if not self._data_includes_cash else ' ',
-                    self._universe_maybe_noncash) from exc
+                    f"The pandas Series found by {self.__class__.__name__} has"
+                    + f" index {data.index} while the current universe"
+                    + (' minus cash ' if not self._data_includes_cash else ' ')
+                    + f"is {self._universe_maybe_noncash}; It was not possible"
+                    + " to reconcile the two.") from exc
 
         if isinstance(data, pd.DataFrame):
             try:
@@ -506,23 +505,23 @@ class DataEstimator(SimulatorEstimator):
                     except KeyError:
                         pass
             raise MissingAssetsError(
-                "The pandas DataFrame found by %s has index %s"
-                + " and columns %s"
-                + " while the current universe%s"
-                + " is %s. It was not possible to reconcile the two.",
-                self.__class__.__name__, data.columns,
-                ' minus cash' if not self._data_includes_cash else ' ',
-                self._universe_maybe_noncash)
+                f"The pandas DataFrame found by {self.__class__.__name__} has"
+                + f" index {data.index} and columns {data.columns} while the "
+                + "current universe"
+                + (' minus cash ' if not self._data_includes_cash else ' ')
+                + f"is {self._universe_maybe_noncash}; It was not possible"
+                + " to reconcile the two.")
 
         if isinstance(data, np.ndarray):
             dimensions = data.shape
             if not len(self._universe_maybe_noncash) in dimensions:
+
                 raise MissingAssetsError(
                     f"The numpy array found by {self.__class__.__name__}"
                     + f" has dimensions {data.shape}"
                     + " while the current universe"
-                + f"{' minus cash' if not self._data_includes_cash else ' '} "
-                    + f"has size {len(self._universe_maybe_noncash)}."
+                + f"{' minus cash ' if not self._data_includes_cash else ' '}"
+                    + f"has size {len(self._universe_maybe_noncash)};"
                     + " It was not possible to reconcile the two.")
             return data
 
@@ -568,10 +567,13 @@ class DataEstimator(SimulatorEstimator):
 
             except (KeyError, IndexError) as exc:
                 raise MissingTimesError(
-                    f"{self}.values_in_time_recursive could not find data"
-                    + f" for time {t}. This could be due to wrong timezone"
+                    f"{self.__class__.__name__} could not find data"
+                    + f" for time {t}. The datetime index provided is: "
+                    + (str(self.data.index.levels[0]) if hasattr(
+                        self.data.index, 'levels') else str(self.data.index))
+                    + ". This could be due to wrong timezone"
                     + " setting: in general Cvxportfolio objects are timezone"
-                    + " aware, the data you pass should be as well.") from exc
+                    + "-aware, the data you pass should be as well.") from exc
 
         # if data is pandas but no datetime index (constant in time)
         if hasattr(self.data, "values"):
