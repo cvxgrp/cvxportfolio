@@ -1,3 +1,19 @@
+
+
+"""
+This script demonstrates a leverage-adjusted fixed weights trading strategy using the cvxportfolio library.
+
+The strategy borrows JPY to invest in AAPL stock with a target leverage of 3.5. The leverage is adjusted based on
+predefined rules:
+- If the leverage goes above 4.2, it is reduced to the target leverage.
+- If the leverage goes below 2.8, it is increased to the target leverage.
+- If the leverage reaches or exceeds 6.0, a margin call is triggered, and the leverage is reduced to the target leverage.
+
+The strategy also incorporates JPY interest rate and currency risk, as well as transaction costs.
+
+The backtest is run using historical data from 2010 to 2023, and the cumulative log returns are plotted.
+"""
+
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,9 +37,9 @@ jpy_usd_return = jpy_usd_rate.pct_change().shift(-1)
 # aapl open-to-open total returns with JPY as base ccy
 aapl_returns_in_jpy = (1 + aapl['return']) * (1 + jpy_usd_return) - 1
 
-class LeverageAdjustedFixedWeights(cvx.policies.FixedWeights):
+class LeverageAdjustedFixedWeights(cvx.estimator.Estimator):
     def __init__(self, target_weights, max_leverage=4.2, min_leverage=2.8, target_leverage=3.5, margin_call_leverage=6.0):
-        super().__init__(target_weights)
+        self.target_weights = pd.Series(target_weights)
         self.max_leverage = max_leverage
         self.min_leverage = min_leverage
         self.target_leverage = target_leverage
@@ -52,7 +68,7 @@ class LeverageAdjustedFixedWeights(cvx.policies.FixedWeights):
         else:
             target_weights = self.target_weights
 
-        return target_weights
+        return pd.Series(target_weights, index=current_weights.index)
 
 # Define the target weights and initial holdings
 target_weights = {'AAPL': 1, 'JPYEN': -0.5}
