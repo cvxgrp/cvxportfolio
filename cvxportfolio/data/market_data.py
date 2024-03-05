@@ -748,8 +748,9 @@ class DownloadedMarketData(MarketDataInMemory):
 
         if self.prices.iloc[-5:].isnull().any().any():
             logger.warning(
-                'Removing some recent lines because there are missing values,'
-                + ' the issue is with symbol(s) %s',
+                'Removing some recent lines because there are missing values.'
+                + ' This is most probably an error with the data source!'
+                + ' The issue is with symbol(s) %s',
                 self.prices.columns[self.prices.iloc[-5:].isnull().any()])
             drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
             logger.warning('Dropping at index %s', drop_at)
@@ -764,6 +765,12 @@ class DownloadedMarketData(MarketDataInMemory):
         self.returns.iloc[-1] = np.nan
         if self.volumes is not None:
             self.volumes.iloc[-1] = np.nan
+
+        # prices could have issues too, they are only used for rounding
+        # so this should be OK
+        if self.prices is not None:
+            self.prices.iloc[-1] = self.prices.iloc[-1].fillna(
+                self.prices.iloc[-2])
 
     def partial_universe_signature(self, partial_universe):
         """Unique signature of this instance with a partial universe.
