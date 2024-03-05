@@ -1,80 +1,100 @@
-import cvxportfolio as cp
+
+
+import cvxportfolio as cvx
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
-# Define the trading universe and initial holdings
-universe = ['SPY', 'TLT', 'XLE', 'XLF', 'XLK']
-initial_holdings = {'SPY': 10000, 'TLT': 5000, 'XLE': 2000, 'XLF': 3000, 'XLK': 8000}
+# AAPL is timestamped 9:30 NY time
+aapl = cvx.YahooFinance('AAPL').data
 
-# Define the fixed weights for the assets
-fixed_weights = pd.Series({'SPY': 0.4, 'TLT': 0.2, 'XLE': 0.1, 'XLF': 0.1, 'XLK': 0.2})
+# rate is timestamped 0:00 UTC (~midnight London)
+jpy_usd = cvx.YahooFinance('JPY=X').data
 
-# Define the leverage parameters
-initial_leverage = 3.5
-max_leverage = 4.2
-min_leverage = 2.8
-margin_call_leverage = 6.0
-target_leverage = 3.5
+# take close from day before rather than open, seems cleaner
+jpy_usd_rate = jpy_usd.close.shift(1)
 
-# Define the interest rate and currency risk parameters
-jpy_interest_rate = 0.01  # 1% annual interest rate
-jpy_usd_exchange_rate = 0.0091  # 1 JPY = 0.0091 USD
+# reindex, taking last available one
+jpy_usd_rate = jpy_usd_rate.reindex(aapl.index, method='ffill')
 
-# Define the transaction costs
-transaction_cost_ratio = 0.001  # 0.1% transaction cost
+# ccy returns, open-to-open NY time
+jpy_usd_return = jpy_usd_rate.pct_change().shift(-1)
 
-# Create a custom simulator
-class CustomSimulator(cp.MarketSimulator):
-    def simulate(self, t, t_next, h, policy, past_returns, current_returns,
-                 past_volumes, current_volumes, current_prices):
+# aapl open-to-open total returns with JPY as base ccy
+aapl_returns_in_jpy = (1 + aapl['return']) * (1 + jpy_usd_return) - 1
+
+class LeverageAdjustedFixedWeights(cvx.policies.FixedWeights):
+    def __init__(self, target_weights, max_leverage=4.2, min_leverage=2.8, target_leverage=3.5, margin_call_leverage=6.0):
+        super().__init__(target_weights)
+        self.max_leverage = max_leverage
+        self.min_leverage = min_leverage
+        self.target_leverage = target_leverage
+        self.margin_call_leverage = margin_call_leverage
+
+    def values_in_time(self, current_weights, **kwargs):
         # Calculate the current leverage
-        current_portfolio_value = sum(h)
-        current_leverage = (current_portfolio_value + sum(h[:-1])) / current_portfolio_value
+        current_leverage = sum(abs(current_weights[:-1]))
 
         # Adjust the leverage if necessary
-        if current_leverage > max_leverage:
-            # Sell assets to bring leverage down to target_leverage
-            target_value = current_portfolio_value * target_leverage
-            sell_value = current_portfolio_value - target_value
-            sell_weights = h[:-1] / sum(h[:-1])
-            sell_amounts = sell_value * sell_weights
-            h[:-1] -= sell_amounts
-            h[-1] += sum(sell_amounts) * (1 - transaction_cost_ratio)
-        elif current_leverage < min_leverage:
-            # Buy assets to bring leverage up to target_leverage
-            target_value = current_portfolio_value * target_leverage
-            buy_value = target_value - current_portfolio_value
-            buy_weights = fixed_weights
-            buy_amounts = buy_value * buy_weights
-            h[:-1] += buy_amounts
-            h[-1] -= sum(buy_amounts) * (1 + transaction_cost_ratio)
-        
-        # Check for margin call
-        if current_leverage >= margin_call_leverage:
-            # Sell assets until leverage is back to target_leverage
-            target_value = current_portfolio_value * target_leverage
-            sell_value = current_portfolio_value - target_value
-            sell_weights = h[:-1] / sum(h[:-1])
-            sell_amounts = sell_value * sell_weights
-            h[:-1] -= sell_amounts
-            h[-1] += sum(sell_amounts) * (1 - transaction_cost_ratio)
-        
+        if current_leverage > self.max_leverage:
+            # Reduce leverage to target_leverage
+            scale_factor = self.target_leverage / current_leverage
+            target_weights = current_weights[:-1] * scale_factor
+            target_weights['JPYEN'] = 1 - target_weights.sum()
+        elif current_leverage < self.min_leverage:
+            # Increase leverage to target_leverage
+            scale_factor = self.target_leverage / current_leverage
+            target_weights = current_weights[:-1] * scale_factor
+            target_weights['JPYEN'] = 1 - target_weights.sum()
+        elif current_leverage >= self.margin_call_leverage:
+            # Reduce leverage to target_leverage (margin call)
+            scale_factor = self.target_leverage / current_leverage
+            target_weights = current_weights[:-1] * scale_factor
+            target_weights['JPYEN'] = 1 - target_weights.sum()
+        else:
+            target_weights = self.target_weights
+
+        return target_weights
+
+# Define the target weights and initial holdings
+target_weights = {'AAPL': 1, 'JPYEN': -0.5}
+initial_holdings = {'AAPL': 0, 'JPYEN': 10000}
+
+# Create a custom market simulator with JPY as base currency
+class CustomSimulator(cvx.MarketSimulator):
+    def simulate(self, t, t_next, h, policy, past_returns, current_returns,
+                 past_volumes, current_volumes, current_prices):
         # Apply JPY interest rate and currency risk
-        jpy_borrowed = (current_leverage - 1) * current_portfolio_value
+        jpy_borrowed = -h['JPYEN']
+        jpy_interest_rate = 0.01  # 1% annual interest rate
         jpy_interest_cost = jpy_borrowed * jpy_interest_rate * (t_next - t).days / 365
-        h[-1] -= jpy_interest_cost * jpy_usd_exchange_rate
-        
+        h['JPYEN'] -= jpy_interest_cost
+
+        # Apply transaction costs
+        transaction_cost_ratio = 0.001  # 0.1% transaction cost
+        trades = h - policy.current_value * sum(h)
+        transaction_costs = abs(trades) * transaction_cost_ratio
+        h -= transaction_costs
+
         return h * (1 + current_returns), None, None, None, None
 
-# Create a market simulator
-simulator = CustomSimulator(universe=universe)
+# Create a market simulator with the custom simulator
+simulator = CustomSimulator(returns=pd.DataFrame(aapl_returns_in_jpy, columns=['AAPL']))
+
+# Create the leverage-adjusted fixed weights policy
+policy = LeverageAdjustedFixedWeights(target_weights)
 
 # Run the backtest
 results = simulator.run_backtest(
     initial_holdings,
     start_time=pd.Timestamp('2010-01-01'),
     end_time=pd.Timestamp('2023-12-31'),
-    policy=cp.FixedWeights(fixed_weights)
+    policy=policy
 )
 
 # Print the backtest results
 print(results.summary())
+
+# Plot the cumulative log returns
+results.cum_log_returns().plot()
+plt.show()
