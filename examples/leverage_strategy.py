@@ -1,5 +1,3 @@
-
-
 import cvxportfolio as cvx
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,7 +29,7 @@ class LeverageAdjustedFixedWeights(cvx.policies.FixedWeights):
         self.target_leverage = target_leverage
         self.margin_call_leverage = margin_call_leverage
 
-    def values_in_time(self, current_weights, **kwargs):
+    def values_in_time(self, t, current_weights, current_portfolio_value, **kwargs):
         # Calculate the current leverage
         current_leverage = sum(abs(current_weights[:-1]))
 
@@ -58,7 +56,7 @@ class LeverageAdjustedFixedWeights(cvx.policies.FixedWeights):
 
 # Define the target weights and initial holdings
 target_weights = {'AAPL': 1, 'JPYEN': -0.5}
-initial_holdings = {'AAPL': 0, 'JPYEN': 10000}
+initial_holdings = pd.Series({'AAPL': 0, 'JPYEN': 10000})
 
 # Create a custom market simulator with JPY as base currency
 class CustomSimulator(cvx.MarketSimulator):
@@ -87,9 +85,9 @@ policy = LeverageAdjustedFixedWeights(target_weights)
 # Run the backtest
 results = simulator.run_backtest(
     initial_holdings,
-    start_time=pd.Timestamp('2010-01-01'),
-    end_time=pd.Timestamp('2023-12-31'),
-    policy=policy
+    pd.Timestamp('2010-01-01'),
+    pd.Timestamp('2023-12-31'),
+    policy
 )
 
 # Print the backtest results
