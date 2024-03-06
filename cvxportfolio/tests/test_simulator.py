@@ -59,10 +59,10 @@ class TestSimulator(CvxportfolioTest):
             grace_period=cls.data_grace_period,
             base_location=cls.datadir)
 
-        cls.market_data_3 = cvx.DownloadedMarketData(
-            ['META', 'AAPL'],
-            grace_period=cls.data_grace_period,
-            base_location=cls.datadir)
+        # cls.market_data_3 = cvx.DownloadedMarketData(
+        #     ['META', 'AAPL'],
+        #     grace_period=cls.data_grace_period,
+        #     base_location=cls.datadir)
 
         # cls.market_data_3 = cvx.UserProvidedMarketData(
         #     returns=pd.DataFrame(cls.returns.iloc[:,-3:], copy=True),
@@ -100,11 +100,11 @@ class TestSimulator(CvxportfolioTest):
         #     grace_period=cls.data_grace_period,
         #     base_location=cls.datadir)
 
-        cls.market_data_7 = cvx.DownloadedMarketData(
-            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
-            base_location=cls.datadir,
-            grace_period=cls.data_grace_period,
-            trading_frequency='monthly')
+        # cls.market_data_7 = cvx.DownloadedMarketData(
+        #     ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+        #     base_location=cls.datadir,
+        #     grace_period=cls.data_grace_period,
+        #     trading_frequency='monthly')
 
         cls.market_data_7a = cvx.UserProvidedMarketData(
             returns=pd.DataFrame(cls.returns.iloc[:, -6:], copy=True),
@@ -485,8 +485,12 @@ class TestSimulator(CvxportfolioTest):
         """Test basic policy simulation."""
         simulator = StockMarketSimulator(
             # because we modify it
-            market_data=copy.deepcopy(self.market_data_3),
-            base_location=self.datadir)
+            # market_data=copy.deepcopy(self.market_data_3),
+            # base_location=self.datadir)
+            market_data = cvx.DownloadedMarketData(
+                ['META', 'AAPL'],
+                grace_period=self.data_grace_period,
+                base_location=self.datadir))
 
         # to fix this test
         self.strip_tz_and_hour(simulator.market_data)
@@ -907,8 +911,14 @@ class TestSimulator(CvxportfolioTest):
     def test_timed_constraints(self):
         """Test some constraints that depend on time."""
 
+        market_data = cvx.DownloadedMarketData(
+            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+            base_location=self.datadir,
+            grace_period=self.data_grace_period,
+            trading_frequency='monthly')
+
         sim = cvx.StockMarketSimulator(
-            market_data=self.market_data_7, base_location=self.datadir)
+            market_data=market_data, base_location=self.datadir)
 
         # cvx.NoTrade
         objective = cvx.ReturnsForecast() - 2 * cvx.FullCovariance()
