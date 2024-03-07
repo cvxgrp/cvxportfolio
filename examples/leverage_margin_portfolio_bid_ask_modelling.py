@@ -139,6 +139,7 @@ buy_and_hold = simulator.backtest(
 print('BUY AND HOLD')
 print(buy_and_hold)
 buy_and_hold.plot()
+plt.show()
 
 rebalance_every_day = simulator.backtest(
     cvx.FixedWeights(target_weights),
@@ -149,6 +150,7 @@ rebalance_every_day = simulator.backtest(
 print('REBALANCE EVERY DAY')
 print(rebalance_every_day)
 rebalance_every_day.plot()
+plt.show()
 
 target_rebalance_leverage = simulator.backtest(
     LeverageAdjustedFixedWeights(target_weights),
@@ -160,3 +162,4 @@ target_rebalance_leverage = simulator.backtest(
 print('TARGET REBALANCE LEVERAGE')
 print(target_rebalance_leverage)
 target_rebalance_leverage.plot()
+plt.show()
