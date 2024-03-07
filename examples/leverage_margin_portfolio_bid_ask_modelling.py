@@ -1,29 +1,3 @@
-# Copyright 2024 The Cvxportfolio Contributors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""
-This script demonstrates a leverage-adjusted fixed weights trading strategy using the cvxportfolio library.
-
-The strategy borrows JPY to invest in US stocks with a target leverage of 3.5. The leverage is adjusted based on
-predefined rules:
-- If the leverage goes above 4.2, it is reduced to the target leverage.
-- If the leverage goes below 2.8, it is increased to the target leverage.
-
-The strategy also incorporates JPY interest rate and currency risk, as well as transaction costs.
-
-The backtest is run using historical data from 2010 to 2023, and the cumulative log returns are plotted.
-"""
-
 import cvxportfolio as cvx
 from cvxportfolio.utils import set_pd_read_only
 from cvxportfolio.estimator import DataEstimator
@@ -32,7 +6,8 @@ import numpy as np
 import pandas as pd
 
 
-class StressModel(cvx.TransactionCostModel):
+
+class StressModel(object):
     """
     A simple stress model that increases transaction costs (bid-ask spread) under certain conditions.
     """
@@ -52,13 +27,16 @@ class StressModel(cvx.TransactionCostModel):
         spread = self.base_spread * (self.stress_factor if is_stressed else 1)
         return spread
 
-    def h_cost(self, w_plus, z, Sigma_hat, gamma_trade, gamma_hold=0, h=None):
+    def simulate(self, t, u, h_plus, past_volumes,
+                 past_returns, current_prices,
+                 current_weights, current_portfolio_value, **kwargs):
         """
-        Overriding the h_cost function to include the stress-adjusted transaction costs.
+        Overriding the simulate function to include the stress-adjusted transaction costs.
         """
-        spread = self.get_bid_ask_spread(z)
-        transaction_costs = spread * abs(z)  # Assuming proportional to the trade size
-        return transaction_costs
+        spread = self.get_bid_ask_spread(past_returns.iloc[-1])
+        transaction_costs = spread * np.abs(u)  # Assuming proportional to the trade size
+        return transaction_costs.sum()
+
 
 
 
@@ -182,5 +160,3 @@ target_rebalance_leverage = simulator.backtest(
 print('TARGET REBALANCE LEVERAGE')
 print(target_rebalance_leverage)
 target_rebalance_leverage.plot()
-
-
