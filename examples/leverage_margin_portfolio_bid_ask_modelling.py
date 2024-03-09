@@ -4,6 +4,7 @@ from cvxportfolio.estimator import DataEstimator
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from cvxportfolio.costs import TcostModel, HcostModel
 
 
 
@@ -126,7 +127,7 @@ initial_holdings = pd.Series({'AAPL': 0, 'GOOG': 0, 'JPYEN': 10000})
 
 simulator = cvx.MarketSimulator(
     market_data=ForeignCurrencyMarketData(['AAPL', 'GOOG']),
-    costs=[StressModel()],  # Include the StressModel in the costs
+    costs=[TcostModel.StressModel(), HcostModel.SpreadHoldingCost()],  # Include the StressModel in the costs
 )
 
 
