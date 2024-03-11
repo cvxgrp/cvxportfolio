@@ -433,6 +433,11 @@ class TestData(CvxportfolioTest):
             # that invalidate the tests assumptions
             cvx.YahooFinance._get_data_yahoo('AAPL'), copy=True).iloc[:-1]
 
+        # make sure last open is different from close of day before
+        # (we use it later)
+        if raw_data.iloc[-1, 0] == raw_data.iloc[-2,3]:
+            raw_data.iloc[-1, 0] += 0.1
+
         class YahooFinanceUpdaterTest(cvx.YahooFinance):
             """Tester of issues with update."""
 
@@ -484,6 +489,8 @@ class TestData(CvxportfolioTest):
         self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
 
         # invalidate last open, gets filled w/ last close
+        # this will only work as long as last open is different from
+        # last close to begin with! that's why we edit it above
         raw_data_open_invalid = pd.DataFrame(raw_data, copy=True)
         raw_data_open_invalid.iloc[-1, 0] = np.inf
         YahooFinanceUpdaterTest._set_mock_data(raw_data_open_invalid)
