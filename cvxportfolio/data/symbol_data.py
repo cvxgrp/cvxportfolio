@@ -981,7 +981,7 @@ class YahooFinance(OLHCV):
         # this should be enough; may still need adjustment for online usage
         # with extreme TZ offset?
         # the first comparison is needed for DST
-        if (this_periods_open_time.date() == df_result.index[-1].date) and (
+        if (this_periods_open_time.date() == df_result.index[-1].date()) and (
                 df_result.index[-1].time() != this_periods_open_time.time()):
             index = df_result.index.to_numpy()
             index[-1] = this_periods_open_time
