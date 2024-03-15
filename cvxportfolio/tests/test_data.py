@@ -1038,6 +1038,14 @@ class TestMarketData(CvxportfolioTest):
             cash_key='USDOLLAR', base_location=self.datadir,
             min_history=pd.Timedelta('0d'))
 
+        # add "cash" column
+        md = UserProvidedMarketData(
+            returns=used_returns, cash_key = 'cash',
+            min_history=pd.Timedelta('0d'))
+        self.assertEqual(md.returns.columns[-1], 'cash')
+        self.assertEqual(md.returns['cash'].iloc[20], 0.)
+        self.assertEqual(len(md.returns.columns), len(used_returns.columns)+1)
+
         without_prices = UserProvidedMarketData(
             returns=used_returns, volumes=used_prices, cash_key='USDOLLAR',
             base_location=self.datadir, min_history=pd.Timedelta('0d'))

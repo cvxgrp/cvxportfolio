@@ -84,7 +84,10 @@ class MarketSimulator:
         that will be used. Otherwise, the last column of the returns' will be
         added by downloading the risk-free returns. In that case you should
         make sure your provided dataframes have a time-zone aware datetime
-        index.
+        index. If not in the original dataframe, choice of ``USDOLLAR``,
+        ``EURO``,``JPYEN``, ``GBPOUND`` (Cvxportfolio downloads the historical
+        central bank rates from FRED), or ``cash``, which sets the cash returns
+        to 0. Default ``USDOLLAR``.
     :type cash_key: str
 
     :param trading_frequency: Instead of using frequency implied by
@@ -709,7 +712,9 @@ class StockMarketSimulator(MarketSimulator):
     :type universe: list
 
     :param cash_key: Name of the cash account. Its returns are the risk-free
-        rate. Default ``'USDOLLAR'`` (currently the only one supported).
+        rate. Choice of ``USDOLLAR``, ``EURO``,``JPYEN``, ``GBPOUND``
+        (Cvxportfolio downloads the historical central bank rates from FRED),
+        or ``cash``, which sets the cash returns to 0. Default ``USDOLLAR``.
     :type cash_key: str
 
     :param trading_frequency: Instead of using frequency implied by the index
