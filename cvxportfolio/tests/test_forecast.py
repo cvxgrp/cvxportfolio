@@ -13,6 +13,7 @@
 # limitations under the License.
 """Unit tests for the data and parameter estimator objects."""
 
+import copy
 import unittest
 
 import numpy as np
@@ -27,6 +28,7 @@ from cvxportfolio.forecast import (ForecastError, HistoricalCovariance,
                                    HistoricalStandardDeviation,
                                    HistoricalVariance, RegressionMeanReturn)
 from cvxportfolio.tests import CvxportfolioTest
+from cvxportfolio.utils import set_pd_read_only
 
 
 class TestForecast(CvxportfolioTest):
@@ -84,11 +86,20 @@ class TestForecast(CvxportfolioTest):
         # vix = cvx.YahooFinance('^VIX').data.open
         # vix.name = 'VIX'
 
-        md = self.market_data
+        md = copy.deepcopy(self.market_data)
+        rets = pd.DataFrame(self.market_data.returns, copy=True)
+        rets.loc[rets.index <= rets.index[10], 'AAPL'] = np.nan
+        rets.loc[rets.index <= rets.index[5], 'WMT'] = np.nan
+        assert rets.iloc[0].isnull().sum() > 0
+        md.returns = set_pd_read_only(rets)
+
         np.random.seed(0)
         vix = pd.Series(np.random.uniform(len(md.returns)), md.returns.index)
         vix.name = 'VIX'
         regr_mean_ret = RegressionMeanReturn(regressors=[vix])
+        regr_mean_ret.initialize_estimator_recursive(
+            universe=self.market_data.returns.columns,
+            trading_calendar=self.market_data.returns.index)
         regr_mean_ret._CACHED = True
         returns = md.returns
 
@@ -103,7 +114,7 @@ class TestForecast(CvxportfolioTest):
             # print(result)
 
             # reproduce here
-            for asset in ['AAPL']:
+            for asset in ['AAPL', 'WMT', 'MMM']:
                 y = past_returns[asset].dropna()
                 x = pd.DataFrame(1., index=y.index, columns=['intercept'])
                 x['VIX'] = vix.reindex(y.index, method='ffill')
@@ -661,4 +672,4 @@ class TestForecast(CvxportfolioTest):
 
 if __name__ == '__main__':
 
-    unittest.main() # pragma: no cover
+    unittest.main(warnings='error') # pragma: no cover
