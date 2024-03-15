@@ -103,6 +103,13 @@ class TestForecast(CvxportfolioTest):
         regr_mean_ret._CACHED = True
         returns = md.returns
 
+        # ValueError thrown by UserProvidedRegressor (not enough history)
+        with self.assertRaises(ValueError):
+            t = returns.index[9]
+            past_returns = returns.loc[returns.index < t]
+            regr_mean_ret.values_in_time_recursive(
+                    past_returns=past_returns, t=t)
+
         for tidx in [-30, -29, -25, -24, -23]:
             t = returns.index[tidx]
             past_returns = returns.loc[returns.index < t]

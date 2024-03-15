@@ -507,19 +507,59 @@ class HistoricalMeanReturn(BaseMeanForecast):
         return past_returns.iloc[:, :-1]
 
 
+class RegressionXtY(HistoricalMeanReturn):
+    """Class for the XtY matrix of returns regression forecaster."""
+
+    def __init__(self, regressor, **kwargs):
+        assert isinstance(regressor, UserProvidedRegressor)
+        super().__init__(**kwargs)
+        self.regressor = regressor
+
+    def _work_with(self, past_returns, **kwargs):
+        """Base DataFrame we work with."""
+        return past_returns.iloc[:, :-1]
+
+    # pylint: disable=arguments-differ
+    def _dataframe_selector(self, **kwargs):
+        """Return dataframe to compute the historical means of."""
+        regr_on_df = self.regressor._get_all_history(
+            self._work_with(**kwargs).index)
+        return self._work_with(
+            **kwargs).multiply(regr_on_df, axis=0).dropna(how='all')
+
+    def _get_last_row(self, **kwargs):
+        """Return last row of the dataframe we work with.
+
+        This method receives the **kwargs passed to :meth:`values_in_time`.
+
+        You may redefine it if obtaining the full dataframe is expensive,
+        during online update (in most cases) only this method is required.
+        """
+        return self._work_with(
+            **kwargs).iloc[-1] * self.regressor.current_value
+
+
 class UserProvidedRegressor(DataEstimator):
     """User provided regressor series."""
 
-    def __init__(self, data):
+    def __init__(self, data, min_obs=10):
         assert isinstance(data, pd.Series)
         assert isinstance(data.index, pd.DatetimeIndex)
         assert data.name is not None
         assert isinstance(data.name, str)
         super().__init__(data, use_last_available_time=True)
+        self._min_obs = min_obs
 
-    def _get_all_history(self, pandas_obj):
-        """Get history indexed on pandas obj."""
-        return self.data.reindex(pandas_obj.index, method='ffill').dropna()
+    def _get_all_history(self, pandas_obj_idx):
+        """Get history of this regressor indexed on pandas obj."""
+        result = self.data.reindex(
+            pandas_obj_idx, method='ffill').dropna()
+        if len(result) < self._min_obs:
+            raise DataError(
+                f'Regressor {self.name} at time {pandas_obj_idx[-1]} '
+                f' has less history than min_obs={self._min_obs},'
+                ' changing regressor in time is not (currently) supported.')
+        return result
 
     @property
     def name(self):
@@ -530,7 +570,6 @@ class UserProvidedRegressor(DataEstimator):
         """
         return self.data.name
 
-
 class RegressionMeanReturn(BaseForecast):
     """Test class."""
 
@@ -539,8 +578,13 @@ class RegressionMeanReturn(BaseForecast):
         self.regressors = [
             UserProvidedRegressor(regressor) for regressor in regressors]
 
+        self.XtY_forecasters = {
+            regressor.name: RegressionXtY(regressor)
+                for regressor in self.regressors}
+
         self.__subestimators__ = tuple(
-            [HistoricalMeanReturn()] + self.regressors)
+            [HistoricalMeanReturn()] + self.regressors
+            + list(self.XtY_forecasters.values()))
 
         self.XtX_matrices = None
 
@@ -564,8 +608,7 @@ class RegressionMeanReturn(BaseForecast):
         # this method is called *after* having iterated on __subestimators__,
         # so it's safe to do this
         self.__subestimators__ = tuple(
-            [HistoricalMeanReturn()] + self.regressors
-            + list(self.XtX_matrices.values()))
+            list(self.__subestimators__ ) + list(self.XtX_matrices.values()))
 
     def finalize_estimator(self, **kwargs):
         """Remove XtX matrices at change of universe.
@@ -575,7 +618,8 @@ class RegressionMeanReturn(BaseForecast):
         """
 
         self.__subestimators__ = tuple(
-            [HistoricalMeanReturn()] + self.regressors)
+            [HistoricalMeanReturn()] + self.regressors
+            + list(self.XtY_forecasters.values()))
 
         self.XtX_matrices = None
 
@@ -586,10 +630,20 @@ class RegressionMeanReturn(BaseForecast):
         # print('all_X_matrices')
         # print(self.all_X_matrices)
 
-        self._all_XtY_means = {
-            regressor.name: self.multiply_df_by_regressor(
-                past_returns.iloc[:, :-1], regressor).mean()
+        # self._all_XtY_means = {
+        #     regressor.name: self.multiply_df_by_regressor(
+        #         past_returns.iloc[:, :-1], regressor).mean()
+        #             for regressor in self.regressors}
+
+        test = {
+            regressor.name: pd.Series(self.XtY_forecasters[regressor.name].current_value, past_returns.columns[:-1])
                     for regressor in self.regressors}
+
+        # print(test)
+        # print(self._all_XtY_means)
+        # assert np.allclose(pd.Series(test['VIX']), pd.Series(self._all_XtY_means['VIX']))
+        self._all_XtY_means = test
+        # raise Exception
 
         self._all_XtY_means[
             'intercept'] = pd.Series(
@@ -623,15 +677,6 @@ class RegressionMeanReturn(BaseForecast):
 
         return result
 
-    @staticmethod
-    def get_XtX_mean(X):
-        """Get XtX / count; this will use HistoricalVariance(kelly=False)."""
-        Xfill = X.fillna(0.)
-        Xnnull = ~X.isnull()*1.
-        num = Xfill.T @ Xfill
-        den = Xnnull.T @ Xnnull
-        return num/den
-
     def solve_for_single_X(self, asset, X_last, quad_reg):
         """Solve with X_last."""
         XtX_mean = self.XtX_matrices[asset].current_value
@@ -641,14 +686,14 @@ class RegressionMeanReturn(BaseForecast):
         return pd.Series(np.linalg.solve(
             XtX_mean + np.diag(tikho_diag * quad_reg), X_last), X_last.index)
 
-    @staticmethod
-    def multiply_df_by_regressor(df, regressor):
-        """Multiply time-indexed dataframe by time-indexed regressor.
+    # @staticmethod
+    # def multiply_df_by_regressor(df, regressor):
+    #     """Multiply time-indexed dataframe by time-indexed regressor.
 
-        At each point in time, use last available observation of the regressor.
-        """
-        regr_on_df = regressor._get_all_history(df)
-        return df.multiply(regr_on_df, axis=0).dropna(how='all')
+    #     At each point in time, use last available observation of the regressor.
+    #     """
+    #     regr_on_df = regressor._get_all_history(df)
+    #     return df.multiply(regr_on_df, axis=0).dropna(how='all')
 
 
 class HistoricalMeanVolume(BaseMeanForecast):
@@ -985,7 +1030,7 @@ class RegressorsXtXMatrix(HistoricalCovariance):
         col_of_df = self._work_with(**kwargs)[self.col_name].dropna()
         regr_on_col = []
         for regressor in self.regressors:
-            regr_on_col.append(regressor._get_all_history(col_of_df))
+            regr_on_col.append(regressor._get_all_history(col_of_df.index))
         ones = pd.Series(1., col_of_df.index, name='intercept')
         res = pd.concat([ones] + regr_on_col, axis=1, sort=True)
         # print(res)
@@ -996,10 +1041,16 @@ class RegressorsXtXMatrix(HistoricalCovariance):
 
         This method receives the **kwargs passed to :meth:`values_in_time`.
 
-        You may redefine it if obtaining the full dataframe is expensive,
-        during online update (in most cases) only this method is required.
+        During online update (in most cases) only this method is required,
+        so :meth:`_dataframe_selector` is not called.
         """
-        return self._dataframe_selector(**kwargs).iloc[-1]
+        #result = self._dataframe_selector(**kwargs).iloc[-1]
+        result1 = pd.Series(1., ['intercept'])
+        for regressor in self.regressors:
+            result1[regressor.name] = regressor.current_value
+        #assert np.all(result == result1)
+        # raise Exception
+        return result1
 
 
 def project_on_psd_cone_and_factorize(covariance):
