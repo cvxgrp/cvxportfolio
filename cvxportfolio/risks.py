@@ -451,24 +451,7 @@ class WorstCaseRisk(Cost):
 
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
-
-    def initialize_estimator_recursive(self, **kwargs):
-        """Initialize risk model with universe and trading times.
-
-        :param kwargs: Arguments to :meth:`initialize_estimator`.
-        :type kwargs: dict
-        """
-        for risk in self.riskmodels:
-            risk.initialize_estimator_recursive(**kwargs)
-
-    def values_in_time_recursive(self, **kwargs):
-        """Update parameters of constituent risk models.
-
-        :param kwargs: All parameters to :meth:`values_in_time`.
-        :type kwargs: dict
-        """
-        for risk in self.riskmodels:
-            risk.values_in_time_recursive(**kwargs)
+        self.__subestimators__ = self.riskmodels
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile risk term to cvxpy expression.
@@ -495,15 +478,6 @@ class WorstCaseRisk(Cost):
             risk.do_convexity_check = True
 
         return cp.max(cp.hstack(risks))
-
-    def finalize_estimator_recursive(self, **kwargs):
-        """Finalize object.
-
-        :param kwargs: Arguments.
-        :type kwargs: dict
-        """
-        for risk in self.riskmodels:
-            risk.finalize_estimator_recursive(**kwargs)
 
 # Aliases
 

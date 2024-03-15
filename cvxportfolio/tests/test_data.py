@@ -435,11 +435,11 @@ class TestData(CvxportfolioTest):
 
         # make sure last open is different from close of day before
         # (we use it later)
-        if raw_data.iloc[-1, 0] == raw_data.iloc[-2,3]:
+        if raw_data.iloc[-1, 0] == raw_data.iloc[-2, 3]:
             raw_data.iloc[-1, 0] += 0.1 # pragma: no cover
 
         # also do the same for day before...
-        if raw_data.iloc[-2, 0] == raw_data.iloc[-3,3]:
+        if raw_data.iloc[-2, 0] == raw_data.iloc[-3, 3]:
             raw_data.iloc[-2, 0] += 0.1 # pragma: no cover
 
         class YahooFinanceUpdaterTest(cvx.YahooFinance):

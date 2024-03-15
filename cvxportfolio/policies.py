@@ -677,6 +677,11 @@ class MultiPeriodOptimization(Policy):
         self._w_plus_minus_w_bm_at_lags = None
         self._cache = {}
 
+        # for recursive evaluation
+        self.__subestimators__ = tuple(
+            [self.benchmark] + self.objective + sum(
+                [list(con_at_lag) for con_at_lag in self.constraints], []))
+
     def _compile_to_cvxpy(self):
         """Compile all cvxpy expressions and the problem."""
         self._cvxpy_objective = [
@@ -740,15 +745,7 @@ class MultiPeriodOptimization(Policy):
         :type kwargs: dict
         """
 
-        for obj in self.objective:
-            obj.initialize_estimator_recursive(universe=universe, **kwargs)
-        for constr_at_lag in self.constraints:
-            for constr in constr_at_lag:
-                constr.initialize_estimator_recursive(
-                    universe=universe, **kwargs)
-
-        self.benchmark.initialize_estimator_recursive(
-            universe=universe, **kwargs)
+        super().initialize_estimator_recursive(universe=universe, **kwargs)
 
         self._w_bm = cp.Parameter(len(universe))
 
@@ -764,19 +761,6 @@ class MultiPeriodOptimization(Policy):
         self._cache = {}
 
         self._compile_to_cvxpy()
-
-    def finalize_estimator_recursive(self, **kwargs):
-        """Finalize all objects in this policy's estimator tree.
-
-        :param kwargs: Arguments.
-        :type kwargs: dict
-        """
-        for obj in self.objective:
-            obj.finalize_estimator_recursive(**kwargs)
-        for constr_at_lag in self.constraints:
-            for constr in constr_at_lag:
-                constr.finalize_estimator_recursive(**kwargs)
-        self.benchmark.finalize_estimator_recursive(**kwargs)
 
     def values_in_time_recursive( # pylint: disable=arguments-differ
             self, t, current_weights, current_portfolio_value, **kwargs):
@@ -863,22 +847,6 @@ class MultiPeriodOptimization(Policy):
             self._z_at_lags[0].value, current_weights.index)
         self._current_value = result
         return result
-
-    def collect_hyperparameters(self):
-        """Collect hyper-parameters in the policy definition.
-
-        :returns: List of :class:`cvxportfolio.hyperparameters.HyperParameter`
-            instances.
-        :rtype: list
-        """
-        result = []
-        for el in self.objective:
-            result += el.collect_hyperparameters()
-        for el in self.constraints:
-            for constr in el:
-                result += constr.collect_hyperparameters()
-        return result
-
 
 class SinglePeriodOptimization(MultiPeriodOptimization):
     r"""Single Period Optimization policy.

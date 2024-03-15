@@ -166,6 +166,7 @@ class CombinedCosts(Cost):
                 raise SyntaxError(
                     "You can only sum cost instances to other cost instances.")
         self.costs = costs
+        self.__subestimators__ = self.costs
         self.multipliers = multipliers
         # this is changed by WorstCaseRisk before compiling to Cvxpy
         # TODO this can be problematic, also CostConstraint needs to act on it
@@ -192,33 +193,6 @@ class CombinedCosts(Cost):
     def __neg__(self):
         """Take negative of cost."""
         return self * -1
-
-    def initialize_estimator_recursive(self, **kwargs):
-        """Initialize iterating over constituent costs.
-
-        :param kwargs:  All parameters passed to :meth:`initialize_estimator`.
-        :type kwargs: dict
-        """
-        for el in self.costs:
-            el.initialize_estimator_recursive(**kwargs)
-
-    def finalize_estimator_recursive(self, **kwargs):
-        """Finalize iterating over constituent costs.
-
-        :param kwargs:  All parameters passed to :meth:`finalize_estimator`.
-        :type kwargs: dict
-        """
-        for el in self.costs:
-            el.finalize_estimator_recursive(**kwargs)
-
-    def values_in_time_recursive(self, **kwargs):
-        """Evaluate estimators by iterating over constituent costs.
-
-        :param kwargs: All parameters passed to :meth:`values_in_time`.
-        :type kwargs: dict
-        """
-        for el in self.costs:
-            el.values_in_time_recursive(**kwargs)
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile cost by iterating over constituent costs.

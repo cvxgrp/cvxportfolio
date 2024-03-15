@@ -48,7 +48,9 @@ class TestCosts(CvxportfolioTest):
         expr2 = cost2.compile_to_cvxpy(
             self.w_plus, self.z, self.w_plus_minus_w_bm)
         cost3.values_in_time_recursive(
-            t=t, past_returns=self.returns.loc[self.returns.index < t])
+            t=t, past_returns=self.returns.loc[self.returns.index < t],
+            current_weights=None, current_portfolio_value=None,
+            past_volumes=None, current_prices=None)
         self.assertTrue(expr3.value == expr1.value + expr2.value)
 
         cost4 = cost1 * 2

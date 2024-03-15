@@ -39,6 +39,10 @@ class Estimator:
     :meth:`values_in_time_recursive`.
     """
 
+    # explicitely list subestimators, only needed for those not defined
+    # at class attribute level
+    __subestimators__ = ()
+
     def initialize_estimator(self, universe, trading_calendar, **kwargs):
         """Initialize estimator instance with universe and trading times.
 
@@ -73,6 +77,8 @@ class Estimator:
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "initialize_estimator_recursive"):
                 subestimator.initialize_estimator_recursive(**kwargs)
+        for subestimator in self.__subestimators__:
+            subestimator.initialize_estimator_recursive(**kwargs)
         if hasattr(self, "initialize_estimator"):
             self.initialize_estimator(**kwargs)
 
@@ -105,6 +111,8 @@ class Estimator:
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "finalize_estimator_recursive"):
                 subestimator.finalize_estimator_recursive(**kwargs)
+        for subestimator in self.__subestimators__:
+            subestimator.finalize_estimator_recursive(**kwargs)
         if hasattr(self, "finalize_estimator"):
             self.finalize_estimator(**kwargs)
 
@@ -181,6 +189,8 @@ class Estimator:
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "values_in_time_recursive"):
                 subestimator.values_in_time_recursive(**kwargs)
+        for subestimator in self.__subestimators__:
+            subestimator.values_in_time_recursive(**kwargs)
         if hasattr(self, "values_in_time"):
             # pylint: disable=assignment-from-no-return
             self._current_value = self.values_in_time(**kwargs)
@@ -198,6 +208,13 @@ class Estimator:
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "collect_hyperparameters"):
                 result += subestimator.collect_hyperparameters()
+        for subestimator in self.__subestimators__:
+            result += subestimator.collect_hyperparameters()
+
+        # TODO: here list(set(result)) would take care of duplicate references,
+        # but current logic of optimize_hyperparameters would break.
+        # Current approach is correct logically, but may run duplicate
+        # bts in optimize_hyperparameters if there are duplicate refs
         return result
 
     def __repr__(self):
