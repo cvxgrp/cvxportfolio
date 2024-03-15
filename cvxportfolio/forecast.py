@@ -108,62 +108,62 @@ from .hyperparameters import _resolve_hyperpar
 
 logger = logging.getLogger(__name__)
 
-def online_cache(values_in_time):
-    """A simple online cache that decorates :meth:`values_in_time`.
-
-    The instance it is used on needs to be hashable (we currently use
-    the hash of its __repr__).
-
-    :param values_in_time: :meth:`values_in_time` method to decorate.
-    :type values_in_time: function
-
-    :returns: Decorated method, which saves and retrieves (if available) from
-        cache the result.
-    :rtype: function
-    """
-
-    def wrapped(self, t, cache=None, **kwargs):
-        """Cached :meth:`values_in_time` method.
-
-        :param self: Class instance.
-        :type self: cvxportfolio.Estimator
-        :param t: Current time, used as in the key for caching.
-        :type t: pandas.Timestamp
-        :param cache: Cache dictionary; if None (the default) caching is
-            disabled.
-        :type cache: dict or None
-        :param kwargs: Extra arguments that are passed through.
-        :type kwargs: dict
-
-        :returns: The returned value, maybe retrieved from cache.
-        :rtype: float or numpy.array
-        """
-
-        if cache is None:  # e.g., in execute() cache is disabled
-            cache = {}
-
-        if str(self) not in cache:
-            cache[str(self)] = {}
-
-        if t in cache[str(self)]:
-            logger.debug(
-                '%s.values_in_time at time %s is retrieved from cache.',
-                self, t)
-            result = cache[str(self)][t]
-        else:
-            result = values_in_time(self, t=t, cache=cache, **kwargs)
-            logger.debug('%s.values_in_time at time %s is stored in cache.',
-                self, t)
-            cache[str(self)][t] = result
-        return result
-
-    return wrapped
-
 
 class BaseForecast(Estimator):
     """Base class for forecasters."""
 
     _last_time = None
+
+    # Will be exposed to the user, for now it's a class-level constant
+    _CACHED = False
+
+    def values_in_time_recursive(self, t, cache=None, **kwargs):
+        """Override default method to handle caching.
+
+        :param t: Current timestamp in execution or back-test.
+        :type t: pd.Timestamp
+        :param cache: Cache dictionary, if available. Default None.
+        :type cache: dict or None
+        :param kwargs: Various arguments to :meth:`values_in_time_recursive`.
+        :type kwargs: dict
+        """
+
+        if not self._CACHED:
+            return super().values_in_time_recursive(t=t, cache=cache, **kwargs)
+        else:
+            # this part is copied from Estimator
+            # TODO: could refactor upstream to avoid copy-pasting these clauses
+            for _, subestimator in self.__dict__.items():
+                if hasattr(subestimator, "values_in_time_recursive"):
+                    subestimator.values_in_time_recursive(
+                        t=t, cache=cache, **kwargs)
+            for subestimator in self.__subestimators__:
+                subestimator.values_in_time_recursive(
+                    t=t, cache=cache, **kwargs)
+
+        # here goes caching
+        if hasattr(self, "values_in_time"):
+
+            if cache is None:  # e.g., in execute() cache is disabled
+                cache = {}
+
+            if str(self) not in cache:
+                cache[str(self)] = {}
+
+            if t in cache[str(self)]:
+                logger.info(
+                    '%s.values_in_time at time %s is retrieved from cache.',
+                    self, t)
+                self._current_value = cache[str(self)][t]
+            else:
+                self._current_value = self.values_in_time(
+                    t=t, cache=cache, **kwargs)
+                logger.info('%s.values_in_time at time %s is stored in cache.',
+                    self, t)
+                cache[str(self)][t] = self._current_value
+            return self.current_value
+
+        return None # pragma: no cover
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, **kwargs):
@@ -508,30 +508,36 @@ class HistoricalMeanReturn(BaseMeanForecast):
 
 ## Test regression, will be refactored
 
-class RegressionMeanReturn(HistoricalMeanReturn):
+class RegressionMeanReturn(BaseForecast):
     """Test class."""
 
     def __init__(self, regressors, **kwargs):
         # super().__init__(**kwargs)
         self.regressors = regressors
 
+        # this will contain many more :)
+        self.__subestimators__ = (HistoricalMeanReturn(),)
+
     def values_in_time(self, t, past_returns, **kwargs):
         """Do it from scratch."""
         assets = past_returns.columns[:-1]
 
-        self.all_X_matrices = {
+        self._all_X_matrices = {
             asset: self.get_X_matrix(past_returns[asset], self.regressors)
                 for asset in assets}
 
         # print('all_X_matrices')
         # print(self.all_X_matrices)
 
-        self.all_XtY_means = {
+        self._all_XtY_means = {
             regressor.name: self.multiply_df_by_regressor(
                 past_returns.iloc[:, :-1], regressor).mean()
                     for regressor in self.regressors}
 
-        self.all_XtY_means['intercept'] = past_returns.iloc[:, :-1].mean()
+        self._all_XtY_means[
+            'intercept'] = pd.Series(
+                self.__subestimators__[0].current_value,
+                past_returns.columns[:-1])
 
         # print('all_XtY_means')
         # print(self.all_XtY_means)
@@ -543,8 +549,8 @@ class RegressionMeanReturn(HistoricalMeanReturn):
 
         all_solves = {
             asset: self.solve_for_single_X(
-                self.all_X_matrices[asset], X_last, quad_reg=0.)
-                    for asset in self.all_X_matrices}
+                self._all_X_matrices[asset], X_last, quad_reg=0.)
+                    for asset in self._all_X_matrices}
 
         # print('all_solves')
         # print(all_solves)
@@ -554,7 +560,7 @@ class RegressionMeanReturn(HistoricalMeanReturn):
         for asset in assets:
             result[asset] = np.dot(
                 all_solves[asset],
-                    [self.all_XtY_means[regressor][asset]
+                    [self._all_XtY_means[regressor][asset]
                         for regressor in all_solves[asset].index])
 
         return result
@@ -965,7 +971,9 @@ class HistoricalFactorizedCovariance(HistoricalCovariance):
     # this is used by FullCovariance
     FACTORIZED = True
 
-    @online_cache
+    # Will be exposed to the user, for now it's a class level constant
+    _CACHED = True
+
     def values_in_time( # pylint: disable=arguments-differ
             self, t, **kwargs):
         """Obtain current value of the covariance estimate.
@@ -1090,7 +1098,9 @@ class HistoricalLowRankCovarianceSVD(BaseForecast):
                 + " or change your universe.")
         return F.values, idyosyncratic.values
 
-    @online_cache
+    # Will be exposed to the user, for now it's a class level constant
+    _CACHED = True
+
     def values_in_time( # pylint: disable=arguments-differ
             self, past_returns, **kwargs):
         """Current low-rank model, also cached.

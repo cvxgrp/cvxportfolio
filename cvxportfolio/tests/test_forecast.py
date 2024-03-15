@@ -57,6 +57,26 @@ class TestForecast(CvxportfolioTest):
                 market_data=self.market_data,
                 t = self.market_data.returns.index[-1] + pd.Timedelta('300d'))
 
+    def test_nested_cached_eval(self):
+        """Test nested evaluation with caching."""
+
+        forecaster = HistoricalVariance(kelly=False)
+        forecaster._CACHED = True
+        md = self.market_data
+        returns = md.returns
+        cache = {}
+        for tidx in [-30, -29, -25, -24, -23, -30, -29]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index < t]
+
+            result = forecaster.values_in_time_recursive(
+                    past_returns=past_returns, t=t, cache=cache)
+
+            self.assertTrue(
+                np.allclose(result, past_returns.iloc[:, :-1].var(ddof=0)))
+        self.assertEqual(len(cache), 1)
+        self.assertEqual(len(list(cache.values())[0]), 5)
+
     def test_regression_mean_return(self):
         """Test historical mean return with regression."""
 
@@ -69,6 +89,7 @@ class TestForecast(CvxportfolioTest):
         vix = pd.Series(np.random.uniform(len(md.returns)), md.returns.index)
         vix.name = 'VIX'
         regr_mean_ret = RegressionMeanReturn(regressors=[vix])
+        regr_mean_ret._CACHED = True
         returns = md.returns
 
         for tidx in [-30, -29, -25, -24, -23]:
