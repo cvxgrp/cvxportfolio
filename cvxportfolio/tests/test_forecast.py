@@ -35,14 +35,40 @@ class TestForecast(CvxportfolioTest):
     In most cases we test against the relevant pandas function as reference.
     """
 
+    def test_estimate(self):
+        """Test estimate method of a forecaster."""
+        forecaster = cvx.forecast.HistoricalCovariance()
+
+        forecaster.estimate(
+            market_data=self.market_data,
+            t=self.market_data.trading_calendar()[20])
+
+        forecaster = cvx.forecast.HistoricalCovariance(kelly=False)
+
+        full_cov, t_fore = forecaster.estimate(market_data=self.market_data)
+
+        pdcov = self.market_data.returns.loc[
+            self.market_data.returns.index < t_fore].iloc[:, :-1].cov(ddof=0)
+
+        self.assertTrue(np.allclose(full_cov, pdcov))
+
+        with self.assertRaises(ValueError):
+            forecaster.estimate(
+                market_data=self.market_data,
+                t = self.market_data.returns.index[-1] + pd.Timedelta('300d'))
+
     def test_regression_mean_return(self):
         """Test historical mean return with regression."""
 
         # will be refactored
-        vix = cvx.YahooFinance('^VIX').data.open
+        # vix = cvx.YahooFinance('^VIX').data.open
+        # vix.name = 'VIX'
+
+        md = self.market_data
+        np.random.seed(0)
+        vix = pd.Series(np.random.uniform(len(md.returns)), md.returns.index)
         vix.name = 'VIX'
         regr_mean_ret = RegressionMeanReturn(regressors=[vix])
-        md = cvx.DownloadedMarketData(['AAPL', 'ZM'])
         returns = md.returns
 
         for tidx in [-30, -29, -25, -24, -23]:
@@ -50,12 +76,13 @@ class TestForecast(CvxportfolioTest):
             past_returns = returns.loc[returns.index < t]
 
             result  = \
-                regr_mean_ret.values_in_time_recursive(past_returns=past_returns, t=t)
-            print('result')
-            print(result)
+                regr_mean_ret.values_in_time_recursive(
+                    past_returns=past_returns, t=t)
+            # print('result')
+            # print(result)
 
             # reproduce here
-            for asset in ['ZM']:
+            for asset in ['AAPL']:
                 y = past_returns[asset].dropna()
                 x = pd.DataFrame(1., index=y.index, columns=['intercept'])
                 x['VIX'] = vix.reindex(y.index, method='ffill')
@@ -63,7 +90,8 @@ class TestForecast(CvxportfolioTest):
                 x_last = pd.Series(1., index=['intercept'])
                 x_last['VIX'] = vix[vix.index < t].iloc[-1]
                 local_result = x_last @ beta
-                print(local_result)
+                # print(local_result)
+                # print(result[asset])
                 self.assertTrue(np.isclose(local_result, result[asset]))
 
     def test_historical_mean_volume(self):

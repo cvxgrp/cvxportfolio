@@ -194,8 +194,9 @@ class BaseForecast(Estimator):
         :raises ValueError: If the provided time t is not in the trading
             calendar.
 
-        :returns: Forecasted value.
-        :rtype: np.array
+        :returns: Forecasted value and time at which the forecast is made
+            (for safety checking).
+        :rtype: (np.array, pd.Timestamp)
         """
 
         trading_calendar = market_data.trading_calendar()
@@ -220,7 +221,7 @@ class BaseForecast(Estimator):
 
         self.finalize_estimator_recursive()
 
-        return forecast
+        return forecast, t
 
     def _agnostic_update(self, t, past_returns, **kwargs):
         """Choose whether to make forecast from scratch or update last one."""
@@ -522,8 +523,8 @@ class RegressionMeanReturn(HistoricalMeanReturn):
             asset: self.get_X_matrix(past_returns[asset], self.regressors)
                 for asset in assets}
 
-        print('all_X_matrices')
-        print(self.all_X_matrices)
+        # print('all_X_matrices')
+        # print(self.all_X_matrices)
 
         self.all_XtY_means = {
             regressor.name: self.multiply_df_by_regressor(
@@ -532,21 +533,21 @@ class RegressionMeanReturn(HistoricalMeanReturn):
 
         self.all_XtY_means['intercept'] = past_returns.iloc[:, :-1].mean()
 
-        print('all_XtY_means')
-        print(self.all_XtY_means)
+        # print('all_XtY_means')
+        # print(self.all_XtY_means)
 
         X_last = self.get_x_last(t, self.regressors)
 
-        print('X_last')
-        print(X_last)
+        # print('X_last')
+        # print(X_last)
 
         all_solves = {
             asset: self.solve_for_single_X(
                 self.all_X_matrices[asset], X_last, quad_reg=0.)
                     for asset in self.all_X_matrices}
 
-        print('all_solves')
-        print(all_solves)
+        # print('all_solves')
+        # print(all_solves)
 
         # result should be an array
         result = pd.Series(index = assets, dtype=float)

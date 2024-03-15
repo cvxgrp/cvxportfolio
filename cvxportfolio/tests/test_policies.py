@@ -638,6 +638,12 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(t == self.returns.index[-1])
         self.assertTrue(u['CSCO'] >= .9)
 
+        # wrong time
+        with self.assertRaises(ValueError):
+            policy.execute(
+                market_data=market_data, h=h,
+                t=self.returns.index[-1]+pd.Timedelta('300d'))
+
         h_neg_value = pd.Series(h, copy=True)
         h_neg_value.iloc[-1] = -100
         with self.assertRaises(DataError):
