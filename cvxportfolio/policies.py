@@ -646,8 +646,8 @@ class MultiPeriodOptimization(Policy):
                     'If `objective` and `constraints` are the same for '
                     + 'all steps you must specify `planning_horizon`.')
             self._planning_horizon = planning_horizon
-            self.objective = [objective._copy_keeping_multipliers()
-                if hasattr(objective, '_copy_keeping_multipliers')
+            self.objective = [objective.copy_keeping_multipliers()
+                if hasattr(objective, 'copy_keeping_multipliers')
                     else copy.deepcopy(objective) for i in range(
                     planning_horizon)] if planning_horizon > 1 else [objective]
             self.constraints = [copy.deepcopy(constraints) for i in range(

@@ -89,10 +89,8 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
     def __mul__(self, other):
         """Multiply by constant."""
         if isinstance(other, (Number, HyperParameter)):
-            return CombinedCosts([self], [other])
-        raise SyntaxError(
-            "You can only multiply a cost instance by a scalar "
-            + "or a HyperParameter instance.")
+            return MulCost(scalar=other, cost=self)
+        return NotImplemented
 
     def __add__(self, other):
         """Add cost expression to another cost expression.
@@ -101,9 +99,9 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
         implements `compile_to_cvxpy` and values_in_time_recursive
         by summing over costs.
         """
-        if isinstance(other, CombinedCosts):
-            return other.__radd__(self)
-        return CombinedCosts([self, other], [1.0, 1.0])
+        if isinstance(other, Cost):
+            return SumCost(self, other)
+        return NotImplemented
 
     def __rmul__(self, other):
         """Multiply by constant."""
@@ -150,124 +148,104 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
         """Self >= other, return CostInequalityConstraint."""
         return (-self).__le__(other)
 
-
-class CombinedCosts(Cost):
-    """Algebraic combination of :class:`Cost` instances.
-
-    :param costs: instances of :class:`Cost`
-    :type costs: list
-    :param multipliers: floats that multiply the ``costs``
-    :type multipliers: list
-    """
-
-    def __init__(self, costs, multipliers):
-        for cost in costs:
-            if not isinstance(cost, Cost):
-                raise SyntaxError(
-                    "You can only sum cost instances to other cost instances.")
-        self.costs = costs
-        self.__subestimators__ = self.costs
-        self.multipliers = multipliers
-        # this is changed by WorstCaseRisk before compiling to Cvxpy
-        # TODO this can be problematic, also CostConstraint needs to act on it
-        self.do_convexity_check = True
-
-    def __add__(self, other):
-        """Add self to other (combined) cost."""
-        if isinstance(other, CombinedCosts):
-            return CombinedCosts(self.costs + other.costs,
-                                 self.multipliers + other.multipliers)
-        return CombinedCosts(self.costs + [other], self.multipliers + [1.0])
-
-    def __radd__(self, other):
-        """Add other (combined) cost to self."""
-        if isinstance(other, CombinedCosts):
-            return other + self # pragma: no cover
-        return CombinedCosts([other] + self.costs, [1.0] + self.multipliers)
-
-    def __mul__(self, other):
-        """Multiply by constant."""
-        return CombinedCosts(self.costs,
-                             [el * other for el in self.multipliers])
-
-    def __neg__(self):
-        """Take negative of cost."""
-        return self * -1
-
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile cost by iterating over constituent costs.
-
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
-
-        :raises cvxportfolio.errors.ConvexSpecificationError: If the compiled
-            Cvxpy expression doesn't follow the disciplined convex programming
-            rules.
-        :raises cvxportfolio.errors.ConvexityError: If the compiled Cvxpy
-            expression is not concave (since we maximize it).
-
-        :returns: Cvxpy expression of the combined cost.
-        :rtype: cvxpy.Expression
-        """
-        expression = 0
-        for multiplier, cost in zip(self.multipliers, self.costs):
-            add = _resolve_hyperpar(multiplier) *\
-                    cost.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
-            if not add.is_dcp():
-                raise ConvexSpecificationError(cost * multiplier)
-            if self.do_convexity_check and (not add.is_concave()):
-                raise ConvexityError(cost * multiplier)
-            if (not self.do_convexity_check) and add.is_concave():
-                raise ConvexityError(-cost * multiplier)
-            expression += add
-        return expression
-
-    def collect_hyperparameters(self):
-        """Collect hyper-parameters in the combined cost.
-
-        :returns: List of :class:`cvxportfolio.hyperparameters.HyperParameter`
-            instances.
-        :rtype: list
-        """
-        return sum([el.collect_hyperparameters() for el in self.costs], []) +\
-            sum([el.collect_hyperparameters() for el in self.multipliers if
-                hasattr(el, 'collect_hyperparameters')], [])
-
-    def __repr__(self):
-        """Pretty-print."""
-        result = ''
-        for i, (mult, cost) in enumerate(zip(self.multipliers, self.costs)):
-            if not isinstance(mult, HyperParameter):
-                if mult == 0:
-                    continue
-                if mult < 0:
-                    result += ' - ' if i > 0 else '-'
-                else:
-                    result += ' + ' if i > 0 else ''
-                result += (str(abs(mult)) + ' * ' if abs(mult) != 1 else '')
-            else:
-                result += str(mult) + ' * '
-            result += cost.__repr__()
-        return result
-
-    def _copy_keeping_multipliers(self):
+    def copy_keeping_multipliers(self):
         """This method is used when creating MPO policies.
 
         We want to deepcopy the constituent cost objects, but not the
         multipliers (which can be symbolic HPs).
 
-        We will probably re-factor this, or make it public.
+        TODO: Not finished (it's not copying the HPs inside the costs).
         """
-        return CombinedCosts(
-            costs = [el._copy_keeping_multipliers()
-                if hasattr(el, '_copy_keeping_multipliers')
-                    else copy.deepcopy(el)
-                        for el in self.costs],
-            multipliers = self.multipliers)
+        return copy.deepcopy(self)
+
+class SumCost(Cost):
+    """Sum of two cost objects.
+
+    This should not be instatiated directly, use cost + cost.
+    """
+
+    def __init__(self, left, right):
+        self.left = left
+        assert isinstance(left, Cost)
+        self.right = right
+        assert isinstance(right, Cost)
+
+    def compile_to_cvxpy(self, *args, **kwargs):
+        """Compile cost by iterating over constituent costs.
+
+        :param kwargs: Symbolic variables
+        :type kwargs: dict
+
+        :returns: Symbolic expression of the combined cost.
+        :rtype: cvxpy.Expression
+        """
+        sum = self.left.compile_to_cvxpy(
+            *args, **kwargs) + self.right.compile_to_cvxpy(*args, **kwargs)
+        if not sum.is_dcp():
+            raise ConvexSpecificationError(self)
+        return sum
+
+    def __repr__(self):
+        """Pretty print."""
+        ri = str(self.right)
+        if ri[0] == '-':
+            return str(self.left) + ' ' + ri
+        return str(self.left) + ' + ' + ri
+
+    def copy_keeping_multipliers(self):
+        """This method is used when creating MPO policies.
+
+        We want to deepcopy the constituent cost objects, but not the
+        multipliers (which can be symbolic HPs).
+        """
+        return self.left.copy_keeping_multipliers(
+            ) + self.right.copy_keeping_multipliers()
+
+class MulCost(Cost):
+    """Multiplication of scalar and cost.
+
+    This should not be instatiated directly, use scalar * cost.
+    """
+
+    def __init__(self, scalar, cost):
+        self.scalar = scalar
+        assert isinstance(scalar, (Number, HyperParameter))
+        self.cost = cost
+        assert isinstance(cost, Cost)
+
+    def compile_to_cvxpy(self, *args, **kwargs):
+        """Compile cost by iterating over constituent costs.
+
+        :param args: Symbolic variables
+        :type args: tuple
+        :param kwargs: Symbolic variables
+        :type kwargs: dict
+
+        :returns: Symbolic expression of the combined cost.
+        :rtype: cvxpy.Expression
+        """
+        mul = _resolve_hyperpar(
+            self.scalar) * self.cost.compile_to_cvxpy(*args, **kwargs)
+        if not mul.is_dcp():
+            raise ConvexSpecificationError(self) # pragma: no cover
+        assert mul.is_dcp(dpp=True)
+        return mul
+
+    def __repr__(self):
+        """Pretty print."""
+        add_parenthesis = isinstance(self.cost, SumCost)
+        result = '- ' if (self.scalar == -1) else (str(self.scalar) + ' * ')
+        result += ('(' if add_parenthesis else '') + str(self.cost)
+        return result + (')' if add_parenthesis else '')
+
+    def copy_keeping_multipliers(self):
+        """This method is used when creating MPO policies.
+
+        We want to deepcopy the constituent cost objects, but not the
+        multipliers (which can be symbolic HPs).
+        """
+        return MulCost(
+            scalar=self.scalar, cost=self.cost.copy_keeping_multipliers())
 
 
 class SoftConstraint(Cost):

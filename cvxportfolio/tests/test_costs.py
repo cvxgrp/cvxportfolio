@@ -84,17 +84,17 @@ class TestCosts(CvxportfolioTest):
         """Test code of cost algebra that is not tested above."""
 
         cost = cvx.ReturnsForecast()
-        with self.assertRaises(SyntaxError):
+        with self.assertRaises(TypeError):
             _ = cost + 'hello'
-        with self.assertRaises(SyntaxError): # __radd__
+        with self.assertRaises(TypeError): # __radd__
             _ = 'hello' + cost
-        with self.assertRaises(SyntaxError):
+        with self.assertRaises(TypeError):
             _ = cost - 2
         with self.assertRaises(TypeError): # __rsub__ , error thrown by - str
             _ = 'hello' - cost
-        with self.assertRaises(SyntaxError):
+        with self.assertRaises(TypeError):
             _ = 'hello' * cost
-        with self.assertRaises(SyntaxError):
+        with self.assertRaises(TypeError):
             _ = cost * 'hello'
         with self.assertRaises(TypeError):
             _ = cost <= 'hello'
