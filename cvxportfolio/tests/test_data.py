@@ -433,6 +433,15 @@ class TestData(CvxportfolioTest):
             # that invalidate the tests assumptions
             cvx.YahooFinance._get_data_yahoo('AAPL'), copy=True).iloc[:-1]
 
+        # make sure last open is different from close of day before
+        # (we use it later)
+        if raw_data.iloc[-1, 0] == raw_data.iloc[-2, 3]:
+            raw_data.iloc[-1, 0] += 0.1 # pragma: no cover
+
+        # also do the same for day before...
+        if raw_data.iloc[-2, 0] == raw_data.iloc[-3, 3]:
+            raw_data.iloc[-2, 0] += 0.1 # pragma: no cover
+
         class YahooFinanceUpdaterTest(cvx.YahooFinance):
             """Tester of issues with update."""
 
@@ -484,6 +493,8 @@ class TestData(CvxportfolioTest):
         self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
 
         # invalidate last open, gets filled w/ last close
+        # this will only work as long as last open is different from
+        # last close to begin with! that's why we edit it above
         raw_data_open_invalid = pd.DataFrame(raw_data, copy=True)
         raw_data_open_invalid.iloc[-1, 0] = np.inf
         YahooFinanceUpdaterTest._set_mock_data(raw_data_open_invalid)
@@ -1026,6 +1037,14 @@ class TestMarketData(CvxportfolioTest):
             returns=used_returns, volumes=used_volumes, prices=used_prices,
             cash_key='USDOLLAR', base_location=self.datadir,
             min_history=pd.Timedelta('0d'))
+
+        # add "cash" column
+        md = UserProvidedMarketData(
+            returns=used_returns, cash_key = 'cash',
+            min_history=pd.Timedelta('0d'))
+        self.assertEqual(md.returns.columns[-1], 'cash')
+        self.assertEqual(md.returns['cash'].iloc[20], 0.)
+        self.assertEqual(len(md.returns.columns), len(used_returns.columns)+1)
 
         without_prices = UserProvidedMarketData(
             returns=used_returns, volumes=used_prices, cash_key='USDOLLAR',

@@ -39,6 +39,10 @@ class Estimator:
     :meth:`values_in_time_recursive`.
     """
 
+    # explicitely list subestimators, only needed for those not defined
+    # at class attribute level
+    __subestimators__ = ()
+
     def initialize_estimator(self, universe, trading_calendar, **kwargs):
         """Initialize estimator instance with universe and trading times.
 
@@ -73,6 +77,8 @@ class Estimator:
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "initialize_estimator_recursive"):
                 subestimator.initialize_estimator_recursive(**kwargs)
+        for subestimator in self.__subestimators__:
+            subestimator.initialize_estimator_recursive(**kwargs)
         if hasattr(self, "initialize_estimator"):
             self.initialize_estimator(**kwargs)
 
@@ -105,6 +111,8 @@ class Estimator:
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "finalize_estimator_recursive"):
                 subestimator.finalize_estimator_recursive(**kwargs)
+        for subestimator in self.__subestimators__:
+            subestimator.finalize_estimator_recursive(**kwargs)
         if hasattr(self, "finalize_estimator"):
             self.finalize_estimator(**kwargs)
 
@@ -181,6 +189,8 @@ class Estimator:
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "values_in_time_recursive"):
                 subestimator.values_in_time_recursive(**kwargs)
+        for subestimator in self.__subestimators__:
+            subestimator.values_in_time_recursive(**kwargs)
         if hasattr(self, "values_in_time"):
             # pylint: disable=assignment-from-no-return
             self._current_value = self.values_in_time(**kwargs)
@@ -198,6 +208,13 @@ class Estimator:
         for _, subestimator in self.__dict__.items():
             if hasattr(subestimator, "collect_hyperparameters"):
                 result += subestimator.collect_hyperparameters()
+        for subestimator in self.__subestimators__:
+            result += subestimator.collect_hyperparameters()
+
+        # TODO: here list(set(result)) would take care of duplicate references,
+        # but current logic of optimize_hyperparameters would break.
+        # Current approach is correct logically, but may run duplicate
+        # bts in optimize_hyperparameters if there are duplicate refs
         return result
 
     def __repr__(self):
@@ -337,7 +354,7 @@ class CvxpyExpressionEstimator(Estimator):
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
         """
-        raise NotImplementedError
+        raise NotImplementedError # pragma: no cover
 
 # pylint: disable=too-many-arguments
 class DataEstimator(SimulatorEstimator):
@@ -486,12 +503,11 @@ class DataEstimator(SimulatorEstimator):
                 return data.loc[self._universe_maybe_noncash].values
             except KeyError as exc:
                 raise MissingAssetsError(
-                    "The pandas Series found by %s has index %s"
-                    + " while the current universe%s"
-                    + " is %s. It was not possible to reconcile the two.",
-                    self.__class__.__name__, data.index,
-                    ' minus cash' if not self._data_includes_cash else ' ',
-                    self._universe_maybe_noncash) from exc
+                    f"The pandas Series found by {self.__class__.__name__} has"
+                    + f" index {data.index} while the current universe"
+                    + (' minus cash ' if not self._data_includes_cash else ' ')
+                    + f"is {self._universe_maybe_noncash}; It was not possible"
+                    + " to reconcile the two.") from exc
 
         if isinstance(data, pd.DataFrame):
             try:
@@ -506,24 +522,24 @@ class DataEstimator(SimulatorEstimator):
                     except KeyError:
                         pass
             raise MissingAssetsError(
-                "The pandas DataFrame found by %s has index %s"
-                + " and columns %s"
-                + " while the current universe%s"
-                + " is %s. It was not possible to reconcile the two.",
-                self.__class__.__name__, data.columns,
-                ' minus cash' if not self._data_includes_cash else ' ',
-                self._universe_maybe_noncash)
+                f"The pandas DataFrame found by {self.__class__.__name__} has"
+                + f" index {data.index} and columns {data.columns} while the "
+                + "current universe"
+                + (' minus cash ' if not self._data_includes_cash else ' ')
+                + f"is {self._universe_maybe_noncash}; It was not possible"
+                + " to reconcile the two.")
 
         if isinstance(data, np.ndarray):
             dimensions = data.shape
             if not len(self._universe_maybe_noncash) in dimensions:
+
                 raise MissingAssetsError(
-                    "The numpy array found by %s has dimensions %s"
-                    + " while the current universe%s "
-                    + "has size %s. It was not possible to reconcile the two.",
-                    self.__class__.__name__, data.shape,
-                    ' minus cash' if not self._data_includes_cash else ' ',
-                    len(self._universe_maybe_noncash))
+                    f"The numpy array found by {self.__class__.__name__}"
+                    + f" has dimensions {data.shape}"
+                    + " while the current universe"
+                + f"{' minus cash ' if not self._data_includes_cash else ' '}"
+                    + f"has size {len(self._universe_maybe_noncash)};"
+                    + " It was not possible to reconcile the two.")
             return data
 
         # scalar
@@ -568,11 +584,13 @@ class DataEstimator(SimulatorEstimator):
 
             except (KeyError, IndexError) as exc:
                 raise MissingTimesError(
-                    "%s.values_in_time_recursive could not find data"
-                    + " for time %s. This could be due to wrong timezone"
+                    f"{self.__class__.__name__} could not find data"
+                    + f" for time {t}. The datetime index provided is: "
+                    + (str(self.data.index.levels[0]) if hasattr(
+                        self.data.index, 'levels') else str(self.data.index))
+                    + ". This could be due to wrong timezone"
                     + " setting: in general Cvxportfolio objects are timezone"
-                    + " aware, the data you pass should be as well.",
-                     self, t) from exc
+                    + "-aware, the data you pass should be as well.") from exc
 
         # if data is pandas but no datetime index (constant in time)
         if hasattr(self.data, "values"):

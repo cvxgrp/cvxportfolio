@@ -59,7 +59,7 @@ class ConvexSpecificationError(SyntaxError):
         )
 
 
-class ConvexityError(SyntaxError):
+class ConvexityError(ConvexSpecificationError):
     """Some program term is not convex."""
     def __init__(self, cost):
         super().__init__(

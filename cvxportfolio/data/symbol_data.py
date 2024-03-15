@@ -953,11 +953,11 @@ class YahooFinance(OLHCV):
         if res.status_code == 404:
             raise DataError(
                 f'Data for symbol {ticker} is not available.'
-                + 'Json output:', str(res.json()))
+                + 'Json: ' + str(res.json()))
 
         if res.status_code != 200:
             raise DataError(
-                f'Yahoo finance download of {ticker} failed. Json:',
+                f'Yahoo finance download of {ticker} failed. Json: ' +
                 str(res.json())) # pragma: no cover
 
         data = res.json()['chart']['result'][0]
@@ -972,28 +972,20 @@ class YahooFinance(OLHCV):
                 'indicators']['adjclose'][0]['adjclose']
         except KeyError as exc: # pragma: no cover
             raise DataError(f'Yahoo finance download of {ticker} failed.'
-                + ' Json:', str(res.json())) from exc # pragma: no cover
+                + ' Json: ' + str(res.json())) from exc # pragma: no cover
 
         # last timestamp could be not timed to market open
         this_periods_open_time = _timestamp_convert(
             data['meta']['currentTradingPeriod']['regular']['start'])
 
-        # this should be enough, but be careful
-        if df_result.index[-1].time() != this_periods_open_time.time():
+        # this should be enough; may still need adjustment for online usage
+        # with extreme TZ offset?
+        # the first comparison is needed for DST
+        if (this_periods_open_time.date() == df_result.index[-1].date()) and (
+                df_result.index[-1].time() != this_periods_open_time.time()):
             index = df_result.index.to_numpy()
             index[-1] = this_periods_open_time
             df_result.index = pd.DatetimeIndex(index)
-
-        # # last timestamp is probably broken (not timed to market open)
-        # # we set its time to same as the day before, but this is wrong
-        # # on days of DST switch. It's fine though because that line will be
-        # # overwritten next update
-        # if df_result.index[-1].time() != df_result.index[-2].time():
-        #     tm1 = df_result.index[-2].time()
-        #     newlast = df_result.index[-1].replace(
-        #         hour=tm1.hour, minute=tm1.minute, second=tm1.second)
-        #     df_result.index = pd.DatetimeIndex(
-        #         list(df_result.index[:-1]) + [newlast])
 
         # these are all the columns, we simply re-order them
         return df_result[

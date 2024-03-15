@@ -333,8 +333,8 @@ class ProportionalTradeToTargets(Policy):
         next_targets = self.targets.loc[self.targets.index >= t]
         if not np.allclose(next_targets.sum(1), 1.):
             raise ValueError(
-                "The target weights provided to %s at time %s"
-                + " do not sum to 1.", self.__class__.__name__, t)
+                f"The target weights provided to {self.__class__.__name__} at"
+                + f" time {t} do not sum to 1.")
         if len(next_targets) == 0:
             return current_weights
         next_target = next_targets.iloc[0]
@@ -648,8 +648,8 @@ class MultiPeriodOptimization(Policy):
                     'If `objective` and `constraints` are the same for '
                     + 'all steps you must specify `planning_horizon`.')
             self._planning_horizon = planning_horizon
-            self.objective = [objective._copy_keeping_multipliers()
-                if hasattr(objective, '_copy_keeping_multipliers')
+            self.objective = [objective.copy_keeping_multipliers()
+                if hasattr(objective, 'copy_keeping_multipliers')
                     else copy.deepcopy(objective) for i in range(
                     planning_horizon)] if planning_horizon > 1 else [objective]
             self.constraints = [copy.deepcopy(constraints) for i in range(
@@ -678,6 +678,11 @@ class MultiPeriodOptimization(Policy):
         self._w_plus_at_lags = None
         self._w_plus_minus_w_bm_at_lags = None
         self._cache = {}
+
+        # for recursive evaluation
+        self.__subestimators__ = tuple(
+            [self.benchmark] + self.objective + sum(
+                [list(con_at_lag) for con_at_lag in self.constraints], []))
 
     def _compile_to_cvxpy(self):
         """Compile all cvxpy expressions and the problem."""
@@ -723,11 +728,11 @@ class MultiPeriodOptimization(Policy):
             self._cvxpy_objective), self._cvxpy_constraints)
         if not self._problem.is_dcp():  # dpp=True)
             raise SyntaxError(
-                "The optimization problem compiled by %s"
+              f"The optimization problem compiled by {self.__class__.__name__}"
                 + " does not follow the convex optimization rules."
                 + " This should not happen if you're using the default "
                 + " cvxportfolio terms and is probably due to a"
-                + " mis-specified custom term.", self.__class__.__name__)
+                + " mis-specified custom term.")
 
     def initialize_estimator_recursive( # pylint: disable=arguments-differ
             self, universe, **kwargs):
@@ -742,15 +747,7 @@ class MultiPeriodOptimization(Policy):
         :type kwargs: dict
         """
 
-        for obj in self.objective:
-            obj.initialize_estimator_recursive(universe=universe, **kwargs)
-        for constr_at_lag in self.constraints:
-            for constr in constr_at_lag:
-                constr.initialize_estimator_recursive(
-                    universe=universe, **kwargs)
-
-        self.benchmark.initialize_estimator_recursive(
-            universe=universe, **kwargs)
+        super().initialize_estimator_recursive(universe=universe, **kwargs)
 
         self._w_bm = cp.Parameter(len(universe))
 
@@ -766,19 +763,6 @@ class MultiPeriodOptimization(Policy):
         self._cache = {}
 
         self._compile_to_cvxpy()
-
-    def finalize_estimator_recursive(self, **kwargs):
-        """Finalize all objects in this policy's estimator tree.
-
-        :param kwargs: Arguments.
-        :type kwargs: dict
-        """
-        for obj in self.objective:
-            obj.finalize_estimator_recursive(**kwargs)
-        for constr_at_lag in self.constraints:
-            for constr in constr_at_lag:
-                constr.finalize_estimator_recursive(**kwargs)
-        self.benchmark.finalize_estimator_recursive(**kwargs)
 
     def values_in_time_recursive( # pylint: disable=arguments-differ
             self, t, current_weights, current_portfolio_value, **kwargs):
@@ -810,7 +794,7 @@ class MultiPeriodOptimization(Policy):
         if not current_portfolio_value > 0:
             raise DataError(
                 f"Policy {self.__class__.__name__} was evaluated at "
-                + "{t} with negative portfolio value.")
+                + f"{t} with negative portfolio value.")
         assert np.isclose(sum(current_weights), 1)
 
         for i, obj in enumerate(self.objective):
@@ -847,9 +831,9 @@ class MultiPeriodOptimization(Policy):
                 self._problem.solve(**self.cvxpy_kwargs)
         except cp.SolverError as exc:
             raise PortfolioOptimizationError(
-                "Numerical solver for policy %s at time %s failed;"
-                + " try changing it, relaxing some constraints,"
-                + " or removing costs.", self.__class__.__name__, t) from exc
+                f"Numerical solver for policy {self.__class__.__name__} at"
+                + f" time {t} failed; try changing it, relaxing some"
+                + " constraints, or removing costs.") from exc
 
         if self._problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(
@@ -865,22 +849,6 @@ class MultiPeriodOptimization(Policy):
             self._z_at_lags[0].value, current_weights.index)
         self._current_value = result
         return result
-
-    def collect_hyperparameters(self):
-        """Collect hyper-parameters in the policy definition.
-
-        :returns: List of :class:`cvxportfolio.hyperparameters.HyperParameter`
-            instances.
-        :rtype: list
-        """
-        result = []
-        for el in self.objective:
-            result += el.collect_hyperparameters()
-        for el in self.constraints:
-            for constr in el:
-                result += constr.collect_hyperparameters()
-        return result
-
 
 class SinglePeriodOptimization(MultiPeriodOptimization):
     r"""Single Period Optimization policy.

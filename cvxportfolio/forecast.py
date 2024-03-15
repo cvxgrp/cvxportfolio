@@ -362,10 +362,7 @@ class BaseMeanVarForecast(BaseForecast):
             emw_weights = None
 
         self._denominator = self._compute_denominator(df, emw_weights)
-        if np.min(self._denominator.values) == 0:
-            raise ForecastError(
-                f'{self.__class__.__name__} is given a dataframe with '
-                    + 'at least a column that has no values.')
+        self._check_denominator_valid(t)
         self._numerator = self._compute_numerator(df, emw_weights)
         self._last_time = t
 
@@ -423,6 +420,15 @@ class BaseMeanVarForecast(BaseForecast):
 
         self._denominator -= self._compute_denominator(
             observations_to_subtract, emw_weights)
+        self._check_denominator_valid(t)
+        self._numerator -= self._compute_numerator(
+            observations_to_subtract, emw_weights).fillna(0.)
+
+        # used by covariance forecaster
+        return observations_to_subtract, emw_weights
+
+    def _check_denominator_valid(self, t):
+        """Check that there are enough obs to compute the forecast."""
         mindenom = np.min(self._denominator.values)
         if mindenom == 0:
             raise ForecastError(
@@ -434,11 +440,6 @@ class BaseMeanVarForecast(BaseForecast):
                 '%s at time %s is given 5 or less observations for either some'
                 + ' asset or some pair of assets (in the case of covariance).',
                 self.__class__.__name__, t)
-        self._numerator -= self._compute_numerator(
-            observations_to_subtract, emw_weights).fillna(0.)
-
-        # used by covariance forecaster
-        return observations_to_subtract, emw_weights
 
 
 class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
