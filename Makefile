@@ -10,6 +10,11 @@ ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
 EXTRA_SCRIPTS = bumpversion.py
 EXAMPLES      = examples
+# if you want to use (e.g., debian) packaged numpy/scipy/pandas, ...
+# probably improves performance (on debian, at least)
+# in the test suite in github we install everything from pip, including
+# the last available dependencies versions for all platforms
+VENV_OPTS     = --system-site-packages
 
 ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
@@ -18,7 +23,7 @@ endif
 .PHONY: env clean update test lint docs opendocs coverage fix release examples
 
 env:  ## create environment
-	$(PYTHON) -m venv $(ENVDIR)
+	$(PYTHON) -m venv $(VENV_OPTS) $(ENVDIR)
 	$(BINDIR)/python -m pip install --editable .[docs,dev,examples]
 	
 clean:  ## clean environment

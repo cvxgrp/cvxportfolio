@@ -474,7 +474,7 @@ class TestSimulator(CvxportfolioTest):
                 # pylint: disable=protected-access
                 rounded = simulator._round_trade_vector(
                     u, simulator.market_data.prices.loc[t])
-                self.assertTrue(sum(rounded) == 0)
+                self.assertTrue(np.isclose(sum(rounded), 0))
                 self.assertTrue(
                     np.linalg.norm(rounded[:-1] - u[:-1])
                     < np.linalg.norm(simulator.market_data.prices.loc[t]/2))
