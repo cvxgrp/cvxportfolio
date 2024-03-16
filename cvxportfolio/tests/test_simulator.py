@@ -619,26 +619,26 @@ class TestSimulator(CvxportfolioTest):
 
         pol1 = cvx.Uniform()
 
-        START = '2014-03-01'
-        END = '2014-04-25'
+        start = '2014-03-01'
+        end = '2014-04-25'
 
         sim = cvx.MarketSimulator(
             market_data=self.md_3assets, base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
             sim.run_multiple_backtest([pol, pol1], pd.Timestamp(
-                START), pd.Timestamp(END), h=['hello'])
+                start), pd.Timestamp(end), h=['hello'])
 
         with self.assertRaises(SyntaxError):
             sim.run_multiple_backtest(pol, pd.Timestamp(
-                START), pd.Timestamp(END), h=['hello'])
+                start), pd.Timestamp(end), h=['hello'])
 
         result = sim.backtest(pol1, pd.Timestamp(
-            START), pd.Timestamp(END))
+            start), pd.Timestamp(end))
 
         result2, result3 = sim.backtest_many(
-            [pol, pol1], pd.Timestamp(START),
-            pd.Timestamp(END))
+            [pol, pol1], pd.Timestamp(start),
+            pd.Timestamp(end))
 
         self.assertTrue(np.all(result.h == result3.h))
 
@@ -646,8 +646,8 @@ class TestSimulator(CvxportfolioTest):
         good_h = pd.Series(
             [0, 0, 0, 1E6], index=sim.market_data.returns.columns)
         result4, result5 = sim.backtest_many(
-            [pol, pol1], start_time=pd.Timestamp(START),
-            end_time=pd.Timestamp(END), h=[good_h, good_h])
+            [pol, pol1], start_time=pd.Timestamp(start),
+            end_time=pd.Timestamp(end), h=[good_h, good_h])
 
         # not sure why, fails on gh can't reproduce locally
         self.assertTrue(np.allclose(result2.h, result4.h))
@@ -656,8 +656,8 @@ class TestSimulator(CvxportfolioTest):
         # shuffled h
         good_h_shuffled = good_h.iloc[::-1]
         result6, result7 = sim.backtest_many(
-            [pol, pol1], start_time=pd.Timestamp(START),
-            end_time=pd.Timestamp(END),
+            [pol, pol1], start_time=pd.Timestamp(start),
+            end_time=pd.Timestamp(end),
             h=[good_h_shuffled, good_h_shuffled])
 
         # not sure why, fails on gh can't reproduce locally
@@ -669,15 +669,15 @@ class TestSimulator(CvxportfolioTest):
             [0, 0, 0, 1E6], index=['AAPL_bad', 'very_bad', 'MSFT', 'cash'])
         with self.assertRaises(ValueError):
             sim.backtest_many(
-                [pol, pol1], start_time=pd.Timestamp(START),
-                end_time=pd.Timestamp(END), h=[bad_h, good_h])
+                [pol, pol1], start_time=pd.Timestamp(start),
+                end_time=pd.Timestamp(end), h=[bad_h, good_h])
 
     def test_multiple_backtest2(self):
         """Test re-use of a worker process."""
         cpus = multiprocessing.cpu_count()
 
-        START = '2014-03-01'
-        END = '2014-04-25'
+        start = '2014-03-01'
+        end = '2014-04-25'
 
         sim = cvx.MarketSimulator(
             market_data=self.md_3assets, base_location=self.datadir)
@@ -686,15 +686,15 @@ class TestSimulator(CvxportfolioTest):
             solver=self.default_qp_solver)
                 for i in range(cpus*2)]
         results = sim.backtest_many(pols, pd.Timestamp(
-            START), pd.Timestamp(END), parallel=True)
+            start), pd.Timestamp(end), parallel=True)
         sharpes = [result.sharpe_ratio for result in results]
         self.assertTrue(len(set(sharpes)) == 1)
 
     def test_multiple_backtest3(self):
         """Test benchmarks."""
 
-        START = '2014-03-01'
-        END = '2014-04-25'
+        start = '2014-03-01'
+        end = '2014-04-25'
 
         sim = cvx.MarketSimulator(
             market_data=self.md_3assets, base_location=self.datadir)
@@ -712,7 +712,7 @@ class TestSimulator(CvxportfolioTest):
                 benchmark=cvx.MarketBenchmark, solver=self.default_qp_solver),
         ]
         results = sim.backtest_many(pols, pd.Timestamp(
-            START), pd.Timestamp(END), parallel=True)
+            start), pd.Timestamp(end), parallel=True)
         print(np.linalg.norm(results[0].w.sum()[:2] - .5))
         print(np.linalg.norm(results[1].w.sum()[:2] - .5))
         print(np.linalg.norm(results[2].w.sum()[:2] - .5))
