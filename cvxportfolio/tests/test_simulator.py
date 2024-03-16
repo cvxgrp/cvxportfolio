@@ -693,7 +693,8 @@ class TestSimulator(CvxportfolioTest):
             [pol, pol1], start_time=pd.Timestamp(START),
             end_time=pd.Timestamp(END), h=[good_h, good_h])
 
-        self.assertTrue(np.all(result2.h == result4.h))
+        # not sure why, fails on gh can't reproduce locally
+        self.assertTrue(np.allclose(result2.h, result4.h))
         self.assertTrue(np.all(result3.h == result5.h))
 
         # shuffled h

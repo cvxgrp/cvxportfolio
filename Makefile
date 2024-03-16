@@ -2,7 +2,7 @@
 # Ideally this logic would be in pyproject.toml but it appears
 # easier to do it this way for now.
 
-PYTHON        = python #python3.12
+PYTHON        = python #3.12
 PROJECT       = cvxportfolio
 TESTS         = $(PROJECT)/tests
 BUILDDIR      = build
