@@ -1,43 +1,41 @@
+
+
 import cvxportfolio as cvx
 from cvxportfolio.utils import set_pd_read_only
 from cvxportfolio.estimator import DataEstimator
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from cvxportfolio.costs import TcostModel, HcostModel
 
+class StressModel(object):
+    """
+    A simple stress model that increases transaction costs (bid-ask spread) under certain conditions.
+    """
+    def __init__(self, base_spread=0.001, stress_factor=5, stress_threshold=0.02):
+        self.base_spread = base_spread
+        self.stress_factor = stress_factor
+        self.stress_threshold = stress_threshold
 
+    def get_bid_ask_spread(self, returns):
+        """
+        Calculate the bid-ask spread based on the volatility of the returns.
+        If the volatility is above a certain threshold, it's considered a stress condition,
+        and the spread is increased by the stress factor.
+        """
+        volatility = returns.std()
+        is_stressed = volatility > self.stress_threshold
+        spread = self.base_spread * (self.stress_factor if is_stressed else 1)
+        return spread
 
-# class StressModel(object):
-#     """
-#     A simple stress model that increases transaction costs (bid-ask spread) under certain conditions.
-#     """
-#     def __init__(self, base_spread=0.001, stress_factor=5, stress_threshold=0.02):
-#         self.base_spread = base_spread
-#         self.stress_factor = stress_factor
-#         self.stress_threshold = stress_threshold
-
-#     def get_bid_ask_spread(self, returns):
-#         """
-#         Calculate the bid-ask spread based on the volatility of the returns.
-#         If the volatility is above a certain threshold, it's considered a stress condition,
-#         and the spread is increased by the stress factor.
-#         """
-#         volatility = returns.std()
-#         is_stressed = volatility > self.stress_threshold
-#         spread = self.base_spread * (self.stress_factor if is_stressed else 1)
-#         return spread
-
-#     def simulate(self, t, u, h_plus, past_volumes,
-#                  past_returns, current_prices,
-#                  current_weights, current_portfolio_value, **kwargs):
-#         """
-#         Overriding the simulate function to include the stress-adjusted transaction costs.
-#         """
-#         spread = self.get_bid_ask_spread(past_returns.iloc[-1])
-#         transaction_costs = spread * np.abs(u)  # Assuming proportional to the trade size
-#         return transaction_costs.sum()
-
+    def simulate(self, t, u, h_plus, past_volumes,
+                 past_returns, current_prices,
+                 current_weights, current_portfolio_value, **kwargs):
+        """
+        Overriding the simulate function to include the stress-adjusted transaction costs.
+        """
+        spread = self.get_bid_ask_spread(past_returns.iloc[-1])
+        transaction_costs = spread * np.abs(u)  # Assuming proportional to the trade size
+        return transaction_costs.sum()
 
 
 
@@ -127,8 +125,8 @@ initial_holdings = pd.Series({'AAPL': 0, 'GOOG': 0, 'JPYEN': 10000})
 
 simulator = cvx.MarketSimulator(
     market_data=ForeignCurrencyMarketData(['AAPL', 'GOOG']),
-    costs=[TcostModel.StressModel(), HcostModel.SpreadHoldingCost()],  # Include the StressModel in the costs
-)
+    costs=[StressModel()]
+    )
 
 
 buy_and_hold = simulator.backtest(
