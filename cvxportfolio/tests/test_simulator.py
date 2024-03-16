@@ -40,17 +40,7 @@ class TestSimulator(CvxportfolioTest):
         """
         super(TestSimulator, cls).setUpClass()
 
-        # cls.market_data_1 = cvx.DownloadedMarketData(
-        #     ['ZM', 'META'],
-        #     grace_period=cls.data_grace_period,
-        #     base_location=cls.datadir)
-
-        # cls.market_data_2 = cvx.DownloadedMarketData(
-        #     ['ZM', 'META', 'AAPL'],
-        #     grace_period=cls.data_grace_period,
-        #     base_location=cls.datadir)
-
-        cls.market_data_2 = cvx.UserProvidedMarketData(
+        cls.md_3assets = cvx.UserProvidedMarketData(
             returns=pd.DataFrame(cls.returns.iloc[:, -4:], copy=True),
             prices=pd.DataFrame(cls.prices.iloc[:, -3:], copy=True),
             volumes=pd.DataFrame(cls.volumes.iloc[:, -3:], copy=True),
@@ -59,29 +49,10 @@ class TestSimulator(CvxportfolioTest):
             grace_period=cls.data_grace_period,
             base_location=cls.datadir)
 
-        # cls.market_data_3 = cvx.DownloadedMarketData(
-        #     ['META', 'AAPL'],
-        #     grace_period=cls.data_grace_period,
-        #     base_location=cls.datadir)
-
-        # cls.market_data_3 = cvx.UserProvidedMarketData(
-        #     returns=pd.DataFrame(cls.returns.iloc[:,-3:], copy=True),
-        #     prices=pd.DataFrame(cls.prices.iloc[:,-2:], copy=True),
-        #     volumes=pd.DataFrame(cls.volumes.iloc[:,-2:], copy=True),
-        #     cash_key='cash',
-        #     min_history=pd.Timedelta('5d'),
-        #     grace_period=cls.data_grace_period,
-        #     base_location=cls.datadir)
-
-        # cls.market_data_4 = cvx.DownloadedMarketData(
-        #     ['AAPL', 'MSFT'],
-        #     grace_period=cls.data_grace_period,
-        #     base_location=cls.datadir)
-
         # second asset has a bunch of NaNs
         rets = pd.DataFrame(cls.returns.iloc[:, -3:], copy=True)
         rets.iloc[:125, 1] = np.nan
-        cls.market_data_5 = cvx.UserProvidedMarketData(
+        cls.md_2assets_nan = cvx.UserProvidedMarketData(
             returns=rets,
             prices=pd.DataFrame(cls.prices.iloc[:, -2:], copy=True),
             volumes=pd.DataFrame(cls.volumes.iloc[:, -2:], copy=True),
@@ -90,23 +61,7 @@ class TestSimulator(CvxportfolioTest):
             grace_period=cls.data_grace_period,
             base_location=cls.datadir)
 
-        # cls.market_data_5 = cvx.DownloadedMarketData(
-        #     ['AAPL', 'ZM'],
-        #     grace_period=cls.data_grace_period,
-        #     base_location=cls.datadir)
-
-        # cls.market_data_6 = cvx.DownloadedMarketData(
-        #     ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
-        #     grace_period=cls.data_grace_period,
-        #     base_location=cls.datadir)
-
-        # cls.market_data_7 = cvx.DownloadedMarketData(
-        #     ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
-        #     base_location=cls.datadir,
-        #     grace_period=cls.data_grace_period,
-        #     trading_frequency='monthly')
-
-        cls.market_data_7a = cvx.UserProvidedMarketData(
+        cls.md_5assets = cvx.UserProvidedMarketData(
             returns=pd.DataFrame(cls.returns.iloc[:, -6:], copy=True),
             prices=pd.DataFrame(cls.prices.iloc[:, -5:], copy=True),
             volumes=pd.DataFrame(cls.volumes.iloc[:, -5:], copy=True),
@@ -380,7 +335,8 @@ class TestSimulator(CvxportfolioTest):
                             current_portfolio_value=None,
                             current_weights=None,)
 
-        tcost = cvx.StocksTransactionCost(window_volume_est=252)
+        with self.assertWarns(DeprecationWarning):
+            tcost = cvx.StocksTransactionCost(window_volume_est=252)
         with self.assertRaises(SyntaxError):
             tcost.values_in_time_recursive(t=t,
                 current_prices=current_prices,
@@ -425,9 +381,9 @@ class TestSimulator(CvxportfolioTest):
 
             # pylint: disable=protected-access
             u = MarketSimulator._round_trade_vector(u, current_prices)
-
-            tcost = cvx.StocksTransactionCost(
-                a=spreads/2, window_sigma_est=252)
+            with self.assertWarns(DeprecationWarning):
+                tcost = cvx.StocksTransactionCost(
+                    a=spreads/2, window_sigma_est=252)
             tcost.initialize_estimator_recursive(
                 universe=current_returns.index, trading_calendar=[t])
 
@@ -455,20 +411,20 @@ class TestSimulator(CvxportfolioTest):
         """Test some methods of MarketSimulator."""
         simulator = MarketSimulator(
             # because we modify it
-            market_data=copy.deepcopy(self.market_data_2),
+            market_data=copy.deepcopy(self.md_3assets),
             base_location=self.datadir)
 
         self.strip_tz_and_hour(simulator.market_data)
 
-        for t in [self.market_data_2.returns.index[20]]:
+        for t in [self.md_3assets.returns.index[20]]:
 
             # round trade
 
             for i in range(10):
                 np.random.seed(i)
                 tmp = np.random.uniform(
-                    size=self.market_data_2.returns.shape[1])*1000
-                tmp[3] = -sum(tmp[:self.market_data_2.returns.shape[1]-1])
+                    size=self.md_3assets.returns.shape[1])*1000
+                tmp[3] = -sum(tmp[:self.md_3assets.returns.shape[1]-1])
                 u = pd.Series(tmp, simulator.market_data.full_universe)
 
                 # pylint: disable=protected-access
@@ -599,8 +555,8 @@ class TestSimulator(CvxportfolioTest):
             [cvx.LeverageLimit(1)], # verbose=True,
             solver=self.default_socp_solver)
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_2, base_location=self.datadir)
-        # print(self.market_data_2.returns)
+            market_data=self.md_3assets, base_location=self.datadir)
+        # print(self.md_3assets.returns)
         result = sim.backtest(pol, pd.Timestamp(
             '2014-06-01'), pd.Timestamp('2014-08-20'))
 
@@ -616,7 +572,7 @@ class TestSimulator(CvxportfolioTest):
             [cvx.LeverageLimit(1)], verbose=True,
             solver=self.default_socp_solver)
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_2, base_location=self.datadir)
+            market_data=self.md_3assets, base_location=self.datadir)
 
         with self.assertRaises(ConvexityError):
             sim.backtest(pol, pd.Timestamp(
@@ -629,7 +585,7 @@ class TestSimulator(CvxportfolioTest):
         """
 
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_5, base_location=self.datadir)
+            market_data=self.md_2assets_nan, base_location=self.datadir)
         print(sim.market_data.returns)
         pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
                                            cvx.ReturnsForecastError() -
@@ -667,7 +623,7 @@ class TestSimulator(CvxportfolioTest):
         END = '2014-04-25'
 
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_2, base_location=self.datadir)
+            market_data=self.md_3assets, base_location=self.datadir)
 
         with self.assertRaises(SyntaxError):
             sim.run_multiple_backtest([pol, pol1], pd.Timestamp(
@@ -724,7 +680,7 @@ class TestSimulator(CvxportfolioTest):
         END = '2014-04-25'
 
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_2, base_location=self.datadir)
+            market_data=self.md_3assets, base_location=self.datadir)
         pols = [cvx.SinglePeriodOptimization(cvx.ReturnsForecast()
             - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)],
             solver=self.default_qp_solver)
@@ -741,7 +697,7 @@ class TestSimulator(CvxportfolioTest):
         END = '2014-04-25'
 
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_2, base_location=self.datadir)
+            market_data=self.md_3assets, base_location=self.datadir)
         pols = [
             cvx.SinglePeriodOptimization(cvx.ReturnsForecast(
             ) - 1 * cvx.FullCovariance(), [cvx.LeverageLimit(1)],
@@ -790,9 +746,13 @@ class TestSimulator(CvxportfolioTest):
             time_first += time.time() - s
 
         with self.assertRaises(SyntaxError):
-            _ = cvx.DownloadedMarketData(
-                ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+            _ = cvx.UserProvidedMarketData(
+                returns=self.returns,
+                prices=self.prices,
+                volumes=self.volumes,
                 base_location=self.datadir,
+                cash_key='cash',
+                min_history=pd.Timedelta('0d'),
                 grace_period=self.data_grace_period,
                 trading_frequency='unsupported')
 
@@ -828,7 +788,7 @@ class TestSimulator(CvxportfolioTest):
     def test_result(self):
         """Test methods and properties of result."""
         sim = cvx.MarketSimulator(
-            market_data = self.market_data_5, base_location=self.datadir)
+            market_data = self.md_2assets_nan, base_location=self.datadir)
         result = sim.backtest(cvx.Uniform(), pd.Timestamp(
             '2014-05-01'))
         result.plot(show=False)
@@ -840,7 +800,7 @@ class TestSimulator(CvxportfolioTest):
         """Test the effect of benchmark on SPO policies."""
 
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_7a, base_location=self.datadir)
+            market_data=self.md_5assets, base_location=self.datadir)
 
         objective = cvx.ReturnsForecast() - 20 * (
             cvx.FullCovariance() + 0.05 * cvx.RiskForecastError())
@@ -960,7 +920,7 @@ class TestSimulator(CvxportfolioTest):
         """We check that soft DollarNeutral penalizes non-dollar-neutrality."""
 
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_7a, base_location=self.datadir)
+            market_data=self.md_5assets, base_location=self.datadir)
 
         objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance()
 
@@ -983,7 +943,7 @@ class TestSimulator(CvxportfolioTest):
         """We check that soft LongOnly penalizes shorts."""
 
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_7a, base_location=self.datadir)
+            market_data=self.md_5assets, base_location=self.datadir)
 
         objective = cvx.ReturnsForecast() - .5 * cvx.FullCovariance()
 
@@ -1008,7 +968,7 @@ class TestSimulator(CvxportfolioTest):
         """We check that cost constraints work as expected."""
 
         sim = cvx.MarketSimulator(
-            market_data=self.market_data_7a, base_location=self.datadir)
+            market_data=self.md_5assets, base_location=self.datadir)
 
         policies = [
             cvx.SinglePeriodOptimization(
@@ -1029,12 +989,8 @@ class TestSimulator(CvxportfolioTest):
     def test_dcp_convex_raises(self):
         """Test that some errors are thrown at wrong problem specifications."""
 
-        market_data = cvx.DownloadedMarketData(
-            ['AAPL'],
-            base_location=self.datadir,
-            grace_period=self.data_grace_period)
         sim = cvx.MarketSimulator(
-            market_data=market_data, base_location=self.datadir)
+            market_data=self.market_data, base_location=self.datadir)
 
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast(), [cvx.FullCovariance() >= 2])
@@ -1067,7 +1023,7 @@ class TestSimulator(CvxportfolioTest):
             solver=self.default_socp_solver)
 
         simulator = cvx.StockMarketSimulator(
-            market_data=self.market_data_7a, base_location=self.datadir)
+            market_data=self.md_5assets, base_location=self.datadir)
 
         self.assertTrue(gamma_risk.current_value == 1.)
         self.assertTrue(gamma_trade.current_value == 1.)
@@ -1185,5 +1141,4 @@ class TestSimulator(CvxportfolioTest):
 
 if __name__ == '__main__':
 
-    # unittest.main(warnings='error') # pragma: no cover
-    unittest.main() # pragma: no cover
+    unittest.main(warnings='error') # pragma: no cover
