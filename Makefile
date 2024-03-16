@@ -2,7 +2,7 @@
 # Ideally this logic would be in pyproject.toml but it appears
 # easier to do it this way for now.
 
-PYTHON        = python
+PYTHON        = python #python3.12
 PROJECT       = cvxportfolio
 TESTS         = $(PROJECT)/tests
 BUILDDIR      = build
@@ -27,7 +27,7 @@ export PATH   := $(BINDIR):$(PATH)
 
 env:  ## create environment
 	$(PYTHON) -m venv $(VENV_OPTS) $(ENVDIR)
-	python -m pip install --editable .[docs,dev,examples]
+	pip install --editable .[docs,dev,examples]
 	
 clean:  ## clean environment
 	-rm -rf $(BUILDDIR)/*
@@ -66,7 +66,7 @@ fix:  ## auto-fix code
 release: update lint test  ## update version, publish to pypi
 	python bumpversion.py
 	git push --no-verify
-	python -m build
+	build
 	twine check dist/*
 	twine upload --skip-existing dist/*
 
