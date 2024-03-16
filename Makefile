@@ -20,11 +20,14 @@ ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
 endif
 
+# this way any Python command calls the venv interpreter with its own sys.path
+export PATH   := $(BINDIR):$(PATH)
+
 .PHONY: env clean update test lint docs opendocs coverage fix release examples
 
 env:  ## create environment
 	$(PYTHON) -m venv $(VENV_OPTS) $(ENVDIR)
-	$(BINDIR)/python -m pip install --editable .[docs,dev,examples]
+	python -m pip install --editable .[docs,dev,examples]
 	
 clean:  ## clean environment
 	-rm -rf $(BUILDDIR)/*
@@ -34,44 +37,42 @@ clean:  ## clean environment
 update: clean env  ## update environment
 	
 test:  ## run tests w/ cov report
-	$(BINDIR)/coverage run -m $(PROJECT).tests
-	$(BINDIR)/coverage report
-	$(BINDIR)/coverage xml
-	$(BINDIR)/diff-cover coverage.xml --config-file pyproject.toml
-	# disabled for now, we need to change pickle as default on-disk cache
-	# $(BINDIR)/bandit $(PROJECT)/*.py $(TESTS)/*.py
+	coverage run -m $(PROJECT).tests
+	coverage report
+	coverage xml
+	diff-cover coverage.xml --config-file pyproject.toml
 
 lint:  ## run linter
-	$(BINDIR)/pylint $(PROJECT) $(EXTRA_SCRIPTS) # $(EXAMPLES)
-	$(BINDIR)/diff-quality --violations=pylint --config-file pyproject.toml
+	pylint $(PROJECT) $(EXTRA_SCRIPTS) # $(EXAMPLES)
+	diff-quality --violations=pylint --config-file pyproject.toml
 
 docs:  ## build docs
-	$(BINDIR)/sphinx-build -E docs $(BUILDDIR)
+	sphinx-build -E docs $(BUILDDIR)
 
 opendocs: docs  ## open html docs
 	open build/index.html
 
 coverage:  ## open html cov report
-	$(BINDIR)/coverage html --fail-under=0 # overwrite pyproject.toml default
+	coverage html --fail-under=0 # overwrite pyproject.toml default
 	open htmlcov/index.html
 
 fix:  ## auto-fix code
 	# selected among many code auto-fixers, tweaked in pyproject.toml
-	$(BINDIR)/autopep8 -i -r $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
-	$(BINDIR)/isort $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
+	autopep8 -i -r $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
+	isort $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 	# this is the best found for the purpose
-	$(BINDIR)/docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
+	docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 
 release: update lint test  ## update version, publish to pypi
-	$(BINDIR)/python bumpversion.py
+	python bumpversion.py
 	git push --no-verify
-	$(BINDIR)/python -m build
-	$(BINDIR)/twine check dist/*
-	$(BINDIR)/twine upload --skip-existing dist/*
+	python -m build
+	twine check dist/*
+	twine upload --skip-existing dist/*
 
 examples:  ## run examples for docs
 	for example in hello_world case_shiller universes dow30; \
-		do env CVXPORTFOLIO_SAVE_PLOTS=1 $(BINDIR)/python -m examples."$$example" > docs/_static/"$$example"_output.txt; \
+		do env CVXPORTFOLIO_SAVE_PLOTS=1 python -m examples."$$example" > docs/_static/"$$example"_output.txt; \
 	done
 	mv *.png docs/_static/
 

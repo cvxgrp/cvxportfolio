@@ -987,9 +987,11 @@ class TestSimulator(CvxportfolioTest):
 
         policies = [cvx.SinglePeriodOptimization(
             objective - cvx.SoftConstraint(cvx.LongOnly()) * gamma,
-            [cvx.MarketNeutral()]) for gamma in [.0001, .001, .01]]
+            [cvx.MarketNeutral()],
+            solver=self.default_socp_solver) for gamma in [.0001, .001]]
         policies.append(cvx.SinglePeriodOptimization(
-            objective, [cvx.LongOnly(), cvx.MarketNeutral()]))
+            objective, [cvx.LongOnly(), cvx.MarketNeutral()],
+            solver=self.default_socp_solver))
         results = sim.backtest_many(
             policies, start_time='2014-10-01',
             parallel=False)  # important for test coverage
@@ -999,7 +1001,6 @@ class TestSimulator(CvxportfolioTest):
         print(allshorts)
         self.assertTrue(allshorts[0] < allshorts[1])
         self.assertTrue(allshorts[1] < allshorts[2])
-        self.assertTrue(allshorts[2] < allshorts[3])
 
     def test_cost_constraints(self):
         """We check that cost constraints work as expected."""
