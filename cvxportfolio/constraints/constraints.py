@@ -174,10 +174,20 @@ class ParticipationRateLimit(InequalityConstraint):
     """
 
     def __init__(self, volumes, max_fraction_of_volumes=0.05):
-        self.volumes = DataEstimator(volumes, compile_parameter=True)
+        self.volumes = DataEstimator(volumes)
         self.max_participation_rate = DataEstimator(
-            max_fraction_of_volumes, compile_parameter=True)
+            max_fraction_of_volumes)
         self.portfolio_value = cp.Parameter(nonneg=True)
+
+    def initialize_estimator(self, universe, **kwargs):
+        """Initialize internal parameter.
+
+        :param universe: Current trading universe.
+        :type universe: pd.Index
+        :param kwargs: Unused arguments to initialize estimator.
+        :type kwargs: dict
+        """
+        self._parameter = cp.Parameter(len(universe) - 1)
 
     def values_in_time( # pylint: disable=arguments-differ
             self, current_portfolio_value, **kwargs):
@@ -189,6 +199,9 @@ class ParticipationRateLimit(InequalityConstraint):
         :type kwargs: dict
         """
         self.portfolio_value.value = current_portfolio_value
+        self._parameter.value = (
+            self.volumes.current_value
+                * self.max_participation_rate.current_value)
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile left hand side of the constraint expression."""
@@ -196,8 +209,7 @@ class ParticipationRateLimit(InequalityConstraint):
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
-        return cp.multiply(self.volumes.parameter,
-                           self.max_participation_rate.parameter)
+        return self._parameter
 
 
 class LongOnly(InequalityConstraint):

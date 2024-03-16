@@ -1036,6 +1036,13 @@ class TestSimulator(CvxportfolioTest):
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast(), [cvx.FullCovariance() >= 2])
 
+        with self.assertRaises(ConvexityError):
+            sim.backtest(policy)
+
+        policy = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast(), [
+                cvx.FullCovariance() - cvx.RiskForecastError() <= 2])
+
         with self.assertRaises(ConvexSpecificationError):
             sim.backtest(policy)
 

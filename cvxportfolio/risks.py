@@ -20,6 +20,7 @@ import cvxpy as cp
 import numpy as np
 
 from .costs import Cost
+from .errors import ConvexityError
 from .estimator import DataEstimator
 from .forecast import (HistoricalFactorizedCovariance,
                        HistoricalLowRankCovarianceSVD, HistoricalVariance,
@@ -120,9 +121,11 @@ class FullCovariance(Cost):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        self.cvxpy_expression = cp.sum_squares(
+        cvxpy_expression = cp.sum_squares(
             self._sigma_sqrt.T @ w_plus_minus_w_bm[:-1])
-        return self.cvxpy_expression
+        assert cvxpy_expression.is_dcp(dpp=True)
+        assert cvxpy_expression.is_convex()
+        return cvxpy_expression
 
 
 class RiskForecastError(Cost):
@@ -187,8 +190,11 @@ class RiskForecastError(Cost):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        return cp.square(
+        cvxpy_expression = cp.square(
             cp.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
+        assert cvxpy_expression.is_dcp(dpp=True)
+        assert cvxpy_expression.is_convex()
+        return cvxpy_expression
 
 
 class DiagonalCovariance(Cost):
@@ -256,8 +262,11 @@ class DiagonalCovariance(Cost):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        return cp.sum_squares(cp.multiply(w_plus_minus_w_bm[:-1],
+        cvxpy_expression = cp.sum_squares(cp.multiply(w_plus_minus_w_bm[:-1],
             self.sigmas_parameter))
+        assert cvxpy_expression.is_dcp(dpp=True)
+        assert cvxpy_expression.is_convex()
+        return cvxpy_expression
 
 
 class FactorModelCovariance(Cost):
@@ -419,15 +428,15 @@ class FactorModelCovariance(Cost):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        self.expression = cp.sum_squares(cp.multiply(
+        cvxpy_expression = cp.sum_squares(cp.multiply(
             self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
-        assert self.expression.is_dcp(dpp=True)
+        assert cvxpy_expression.is_dcp(dpp=True)
 
-        self.expression += cp.sum_squares(self.factor_exposures_parameter @
+        cvxpy_expression += cp.sum_squares(self.factor_exposures_parameter @
                                           w_plus_minus_w_bm[:-1])
-        assert self.expression.is_dcp(dpp=True)
-
-        return self.expression
+        assert cvxpy_expression.is_dcp(dpp=True)
+        assert cvxpy_expression.is_convex()
+        return cvxpy_expression
 
 
 class WorstCaseRisk(Cost):
@@ -451,24 +460,7 @@ class WorstCaseRisk(Cost):
 
     def __init__(self, riskmodels):
         self.riskmodels = riskmodels
-
-    def initialize_estimator_recursive(self, **kwargs):
-        """Initialize risk model with universe and trading times.
-
-        :param kwargs: Arguments to :meth:`initialize_estimator`.
-        :type kwargs: dict
-        """
-        for risk in self.riskmodels:
-            risk.initialize_estimator_recursive(**kwargs)
-
-    def values_in_time_recursive(self, **kwargs):
-        """Update parameters of constituent risk models.
-
-        :param kwargs: All parameters to :meth:`values_in_time`.
-        :type kwargs: dict
-        """
-        for risk in self.riskmodels:
-            risk.values_in_time_recursive(**kwargs)
+        self.__subestimators__ = self.riskmodels
 
     def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Compile risk term to cvxpy expression.
@@ -486,24 +478,16 @@ class WorstCaseRisk(Cost):
         """
         risks = []
         for risk in self.riskmodels:
-            # this is needed if user provides individual risk terms
-            # that are composed objects (CombinedCost)
-            # it will check concavity instead of convexity
-            risk.do_convexity_check = False
-            risks.append(risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm))
-            # we also change it back in case the user is sharing the instance
-            risk.do_convexity_check = True
+            _ = risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
+            assert _.is_dcp(dpp=True)
+            if not _.is_convex():
+                raise ConvexityError(f"The risk term {risk} is not convex!")
+            risks.append(_)
 
-        return cp.max(cp.hstack(risks))
-
-    def finalize_estimator_recursive(self, **kwargs):
-        """Finalize object.
-
-        :param kwargs: Arguments.
-        :type kwargs: dict
-        """
-        for risk in self.riskmodels:
-            risk.finalize_estimator_recursive(**kwargs)
+        cvxpy_expression = cp.max(cp.hstack(risks))
+        assert cvxpy_expression.is_dcp(dpp=True)
+        assert cvxpy_expression.is_convex()
+        return cvxpy_expression
 
 # Aliases
 

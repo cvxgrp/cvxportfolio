@@ -14,6 +14,7 @@
 """This module defines base constraint classes."""
 
 
+from ..errors import ConvexityError
 from ..estimator import CvxpyExpressionEstimator, DataEstimator
 
 __all__ = ['Constraint', 'EqualityConstraint', 'InequalityConstraint']
@@ -99,8 +100,12 @@ class InequalityConstraint(Constraint):
         :returns: Cvxpy constraints object.
         :rtype: cvxpy.constraints
         """
-        return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) <=\
+        _ = self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) <=\
             self._rhs()
+        if not _.is_dcp():
+            raise ConvexityError(f"The constraint {self} is not convex!")
+        assert _.is_dcp(dpp=True)
+        return _
 
     def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
         """Cvxpy expression of the left-hand side of the constraint."""

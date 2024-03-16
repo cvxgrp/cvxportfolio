@@ -38,24 +38,44 @@ class GammaTrade(cvx.RangeHyperParameter):
 class TestHyperparameters(CvxportfolioTest):
     """Test hyper-parameters interface."""
 
+    def test_copy_keeping_multipliers(self):
+        """Test that HPs are not duplicated in MPO."""
+
+        pol = cvx.MultiPeriodOpt(
+            cvx.ReturnsForecast()
+            - cvx.Gamma() * cvx.FullCovariance()
+            - cvx.Gamma() * cvx.TransactionCost(),
+            planning_horizon=2)
+        hps = pol.collect_hyperparameters()
+
+        # TODO make this work, see comment in Estimator.collect_hyperpar
+        # self.assertEqual(len(hps), 2)
+
+        self.assertEqual(len(set(hps)), 2)
+
     def test_repr(self):
         """Test the repr method."""
         obj = cvx.ReturnsForecast() - cvx.Gamma() * cvx.FullCovariance()\
             - cvx.Gamma() * cvx.StocksTransactionCost()
 
-        self.assertTrue(str(obj) ==
-            'ReturnsForecast(r_hat=HistoricalMeanReturn(half_life=inf,'
+        print(obj)
+
+        ref = ('ReturnsForecast(r_hat=HistoricalMeanReturn(half_life=inf,'
             + ' rolling=inf), decay=1.0)'
-            + '- Gamma(current_value=1.0) * FullCovariance('
+            + ' - Gamma(current_value=1.0) * FullCovariance('
             + 'Sigma=HistoricalFactorizedCovariance(half_life=inf,'
             + ' rolling=inf, kelly=True))'
-            + '- Gamma(current_value=1.0) * StocksTransactionCost(a=0.0, '
+            + ' - Gamma(current_value=1.0) * StocksTransactionCost(a=0.0, '
             + 'b=1.0, market_volumes=VolumeHatOrRealized('
             + 'volume_hat=HistoricalMeanVolume(half_life=inf, '
             + "rolling=Timedelta('365 days 05:45:36'))), "
             + "sigma=HistoricalStandardDeviation(half_life=inf, "
             + "rolling=Timedelta('365 days 05:45:36'), kelly=True), "
             + 'exponent=1.5, pershare_cost=0.005)')
+
+        print(ref)
+
+        self.assertTrue(str(obj) == ref)
 
         print(cvx.Gamma() * cvx.Gamma())
         print(cvx.Gamma() - cvx.Gamma())
@@ -81,7 +101,7 @@ class TestHyperparameters(CvxportfolioTest):
 
         cvx.SinglePeriodOptimization(GammaRisk() * cvx.FullCovariance())
 
-        with self.assertRaises(SyntaxError):
+        with self.assertRaises(TypeError):
             cvx.SinglePeriodOptimization(GammaRisk * cvx.FullCovariance())
 
         cvx.SinglePeriodOptimization(-GammaRisk() * cvx.FullCovariance())
