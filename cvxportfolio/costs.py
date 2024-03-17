@@ -1047,63 +1047,16 @@ class StocksTransactionCost(TransactionCost):
 
 # Aliases
 
-
 class TcostModel(TransactionCost):
     """Alias of :class:`TransactionCost`.
-    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the paper.
+
+    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the
+    paper.
     """
-    
-    class StressModel(TransactionCost):
-        """
-        A transaction cost model that increases the bid-ask spread under certain
-        stress conditions.
-
-        :param base_spread: The base bid-ask spread.
-        :type base_spread: float
-        :param stress_factor: The factor by which to increase the spread under stress conditions.
-        :type stress_factor: float
-        :param stress_threshold: The volatility threshold above which stress conditions are considered to occur.
-        :type stress_threshold: float
-        """
-        def __init__(self, base_spread=0.001, stress_factor=5, stress_threshold=0.02):
-            self.base_spread = base_spread
-            self.stress_factor = stress_factor
-            self.stress_threshold = stress_threshold
-
-            super().__init__(a=1E-6, # small fixed part of transaction
-                             b=self._get_stress_spread,
-                             exponent=1.) # linear market impact
-
-        def _get_stress_spread(self, past_returns, current_portfolio_value):
-            """
-            Calculate the bid-ask spread based on the volatility of the returns.
-            If the volatility is above a certain threshold, it's considered a stress condition,
-            and the spread is increased by the stress factor.
-            """
-            volatility = past_returns.iloc[-1].std()
-            is_stressed = volatility > self.stress_threshold
-            spread = self.base_spread * (self.stress_factor if is_stressed else 1)
-            return pd.Series([spread] * (past_returns.shape[1] - 1), index=past_returns.columns[:-1])
 
 class HcostModel(HoldingCost):
     """Alias of :class:`HoldingCost`.
-    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the paper.
+
+    As it was defined originally in :paper:`section 6.1 <section.6.1>` of the
+    paper.
     """
-    
-    class SpreadHoldingCost(HoldingCost):
-        """
-        A holding cost model that applies a spread to negative cash holdings.
-
-        :param spread: The spread to apply to negative cash holdings.
-        :type spread: float
-        """
-        def __init__(self, spread=0.001):
-            self.spread = spread
-            super().__init__()
-
-        def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-            """
-            Apply the spread to negative cash holdings.
-            """
-            return self.spread * cp.neg(w_plus[-1])
-
