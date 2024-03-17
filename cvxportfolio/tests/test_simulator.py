@@ -70,6 +70,53 @@ class TestSimulator(CvxportfolioTest):
             grace_period=cls.data_grace_period,
             base_location=cls.datadir)
 
+        cls.md_5assets_30yrs = cls.generate_market_data(
+            years=30, assets=5, nan_frac = .2)
+
+    @classmethod
+    def generate_market_data(cls, years=20, assets=10, nan_frac=0.):
+        """Generate market data by bootstrapping the little one we ship.
+
+        :param years: How many years.
+        :type years: int
+        :param assets: How many assets (max 28).
+        :type assets: int
+        :param nan_frac: Fraction of NaNs (approximate).
+        :type nan_frac: float
+        """
+        rng = np.random.default_rng(seed=0)
+        bs_index = rng.choice(cls.returns.index, size=len(cls.returns)*years)
+        rets = cls.returns.iloc[:, -assets-1:].loc[bs_index]
+        vols = cls.volumes.iloc[:, -assets:].loc[bs_index]
+        index = pd.date_range(
+            freq='1b', periods=len(rets), end=pd.Timestamp.utcnow().date())
+        rets.index = index
+        vols.index = index
+        rets.iloc[-1] = np.nan
+        vols.iloc[-1] = np.nan
+        np.random.seed(0)
+        rets *= np.random.randn(*rets.shape)*0.01 + 1
+        vols *= np.random.randn(*vols.shape)*0.1 + 1
+
+        if nan_frac > 0.:
+            for i, _ in enumerate(vols.columns):
+                start = np.random.uniform(0, nan_frac*2)
+                start_idx = int(len(rets) * start)
+                rets.iloc[:start_idx, i] = np.nan
+                vols.iloc[:start_idx, i] = np.nan
+
+        prices_init = np.random.uniform(10, 200, size=assets)
+        prices = np.exp(
+            np.log(
+                1+rets.iloc[:, :-1]).cumsum().shift(1)) * prices_init
+        # set init prices
+        for i, asset in enumerate(prices.columns):
+            prices.loc[rets[asset].isnull().idxmin(), asset] = prices_init[i]
+
+        return cvx.UserProvidedMarketData(
+            returns=rets, prices=prices, volumes=vols, cash_key='cash',
+            base_location=cls.datadir)
+
     def test_simulator_raises(self):
         """Test syntax checker of MarketSimulator."""
 
@@ -729,11 +776,13 @@ class TestSimulator(CvxportfolioTest):
         time_first = 0.
         results_first = []
         for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
-            market_data = cvx.DownloadedMarketData(
-                ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+            market_data = cvx.UserProvidedMarketData(
+                returns=self.md_5assets_30yrs.returns,
+                prices=self.md_5assets_30yrs.prices,
+                volumes=self.md_5assets_30yrs.volumes,
                 base_location=self.datadir,
-                grace_period=self.data_grace_period,
-                trading_frequency=downsampling)
+                trading_frequency=downsampling,
+                cash_key='cash')
             sim = cvx.MarketSimulator(
                 market_data=market_data,
                 base_location=self.datadir)
@@ -759,11 +808,13 @@ class TestSimulator(CvxportfolioTest):
         time_second = 0.
         results_second = []
         for downsampling in ['weekly', 'monthly', 'quarterly', 'annual']:
-            market_data = cvx.DownloadedMarketData(
-                ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+            market_data = cvx.UserProvidedMarketData(
+                returns=self.md_5assets_30yrs.returns,
+                prices=self.md_5assets_30yrs.prices,
+                volumes=self.md_5assets_30yrs.volumes,
                 base_location=self.datadir,
-                grace_period=self.data_grace_period,
-                trading_frequency=downsampling)
+                trading_frequency=downsampling,
+                cash_key='cash')
             sim = cvx.MarketSimulator(
                 market_data=market_data,
                 base_location=self.datadir)
@@ -778,7 +829,8 @@ class TestSimulator(CvxportfolioTest):
             time_second += time.time() - s
 
         # example is too small to see speed difference w/ cache
-        # sadly we have to drop this test element
+        # sadly we have to drop this test element (also cache is not enabled
+        # with user-provided data, currently)
         # self.assertTrue(time_second < time_first)
         print(time_second, time_first)
         for i, _ in enumerate(results_first):
