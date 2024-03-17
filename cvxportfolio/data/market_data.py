@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module defines the :class:`MarketData` abstraction and derived classes."""
+"""This module defines :class:`MarketData` and derived classes."""
 
 import logging
 import sys
@@ -46,10 +46,25 @@ class MarketData:
 
         :returns: past_returns, current_returns, past_volumes, current_volumes,
             current_prices
-        :rtype: (pandas.DataFrame, pandas.Series, pandas.DataFrame,
-            pandas.Series, pandas.Series)
+        :rtype: (pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, pd.Series)
         """
         raise NotImplementedError # pragma: no cover
+
+    def universe_at_time(self, t):
+        """Return trading universe at given time.
+
+        Base implementation simply returns the index of ``current_returns``
+        returned by :meth:`serve`. Typically a more efficient implementation
+        can be made available.
+
+        :param t: Trading time. It must be included in the timestamps returned
+            by :meth:`trading_calendar`.
+        :type t: pandas.Timestamp
+
+        :returns: Trading universe at time ``t``.
+        :rtype: pd.Index
+        """
+        return self.serve(t)[1].index # pragma: no cover
 
     def trading_calendar(
         self, start_time=None, end_time=None, include_end=True):
@@ -65,7 +80,7 @@ class MarketData:
         :type include_end: bool
 
         :returns: Trading calendar.
-        :rtype: pandas.DatetimeIndex
+        :rtype: pd.DatetimeIndex
         """
         raise NotImplementedError # pragma: no cover
 
@@ -82,7 +97,7 @@ class MarketData:
         """Full universe, which might not be available for trading.
 
         :returns: Full universe.
-        :rtype: pandas.Index
+        :rtype: pd.Index
         """
         raise NotImplementedError # pragma: no cover
 
@@ -249,10 +264,14 @@ class MarketDataInMemory(MarketData):
 
         logger.info('Adding cash column to the historical returns dataframe.')
 
+        if cash_key == 'cash':
+            self.returns['cash'] = 0.
+            return
+
         if not cash_key in RATES:
             raise NotImplementedError(
                 'Currently the only data pipelines built are for cash_key'
-                f' in {list(RATES)}')
+                f' in {list(RATES)}, or "cash".')
 
         if self.returns.index.tz is None:
             raise DataError(
@@ -358,18 +377,6 @@ class MarketDataInMemory(MarketData):
     sampling_intervals = {
         'weekly': 'W-MON', 'monthly': 'MS', 'quarterly': 'QS', 'annual': 'YS'}
 
-    # @staticmethod
-    # def _is_first_interval_small(datetimeindex):
-    #     """Check if post-resampling the first interval is small.
-    #
-    #     We have no way of knowing exactly if the first interval
-    #     needs to be dropped. We drop it if its length is smaller
-    #     than the average of all others, minus 2 standard deviation.
-    #     """
-    #     first_interval = (datetimeindex[1] - datetimeindex[0])
-    #     all_others = (datetimeindex[2:] - datetimeindex[1:-1])
-    #     return first_interval < (all_others.mean() - 2 * all_others.std())
-
     def _downsample(self, interval):
         """_downsample market data."""
         if not interval in self.sampling_intervals:
@@ -387,10 +394,6 @@ class MarketDataInMemory(MarketData):
 
         # last row is always unknown
         self.returns.iloc[-1] = np.nan
-
-        # # we drop the first row if its interval is small
-        # if self._is_first_interval_small(self.returns.index):
-        #     self.returns = self.returns.iloc[1:]
 
         # we nan-out the first non-nan element of every col
         for col in self.returns.columns[:-1]:
@@ -412,10 +415,6 @@ class MarketDataInMemory(MarketData):
             # last row is always unknown
             self.volumes.iloc[-1] = np.nan
 
-            # # we drop the first row if its interval is small
-            # if self._is_first_interval_small(self.volumes.index):
-            #     self.volumes = self.volumes.iloc[1:]
-
             # we nan-out the first non-nan element of every col
             for col in self.volumes.columns:
                 self.volumes.loc[
@@ -432,10 +431,6 @@ class MarketDataInMemory(MarketData):
             self.prices = self.prices.resample(
                 interval, closed='left', label='left').first()
             self.prices.index = new_prices_index
-
-            # # we drop the first row if its interval is small
-            # if self._is_first_interval_small(self.prices.index):
-            #     self.prices = self.prices.iloc[1:]
 
             # we nan-out the first non-nan element of every col
             for col in self.prices.columns:
@@ -515,9 +510,13 @@ class UserProvidedMarketData(MarketDataInMemory):
         it's a directory named ``cvxportfolio_data`` in your home folder.
     :type base_location: pathlib.Path
     :param cash_key: Name of the cash account. If not the last column
-        of the provided returns, it will be downloaded. In that case you should
+        of the provided returns, it will be added. In that case you should
         make sure your provided dataframes have a timezone aware datetime
         index. Its returns are the risk-free rate.
+        If not in the original dataframe, choice of ``USDOLLAR``, ``EURO``,
+        ``JPYEN``, ``GBPOUND`` (Cvxportfolio downloads the historical central
+        bank rates from FRED), or ``cash``, which sets the cash returns to 0.
+        Default ``USDOLLAR``.
     :type cash_key: str
     :param online_usage: Disable removal of assets that have ``np.nan`` returns
         for the given time. Default False.
@@ -575,6 +574,7 @@ class UserProvidedMarketData(MarketDataInMemory):
 
         if cash_key != returns.columns[-1]:
             self._add_cash_column(cash_key, grace_period=grace_period)
+        assert self.returns.columns[-1] == cash_key
 
         # this is mandatory
         super().__init__(
@@ -617,9 +617,11 @@ class DownloadedMarketData(MarketDataInMemory):
     :type universe: list
     :param datasource: The data source used.
     :type datasource: str or :class:`SymbolData` class
-    :param cash_key: Name of the cash account, its rates will be downloaded
-        and added as last columns of the returns. Its returns are the
-        risk-free rate.
+    :param cash_key: Name of the cash account, its rates will be
+        added as last column of the returns, as the
+        risk-free rate. Choice of ``USDOLLAR``, ``EURO``,``JPYEN``, ``GBPOUND``
+        (Cvxportfolio downloads the historical central bank rates from FRED),
+        or ``cash``, which sets the cash returns to 0. Default ``USDOLLAR``.
     :type cash_key: str
     :param base_location: The location of the storage. By default
         it's a directory named ``cvxportfolio_data`` in your home folder.

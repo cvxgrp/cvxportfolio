@@ -284,4 +284,7 @@ class ReturnsForecastError(Cost):
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
-        return cp.abs(w_plus_minus_w_bm[:-1]).T @ self._deltas_parameter
+        _ = cp.abs(w_plus_minus_w_bm[:-1]).T @ self._deltas_parameter
+        assert _.is_dcp(dpp=True)
+        assert _.is_convex()
+        return _

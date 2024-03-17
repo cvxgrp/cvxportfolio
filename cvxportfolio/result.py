@@ -34,6 +34,7 @@ from __future__ import annotations, print_function
 
 import collections
 import logging
+import time
 from io import StringIO
 from typing import Dict
 
@@ -63,16 +64,26 @@ logger = logging.getLogger(__name__)
 class BacktestResult:
     """Store the data from a back-test and produce metrics and plots.
 
+    Additionally, record all logs produced by the simulator, market data
+    server, and policy object during the back-test. These are stored in the
+    ``logs`` attribute as a newline separated string. This is done in a
+    multi-process safe manner, so that if you run parallel back-tests with
+    :meth:`cvxportfolio.MarketSimulator.backtest_many`, only the logs from the
+    right process are recorded.
+
     :param universe: Best initial guess of the trading universe.
     :type universe: pandas.Index
-    :param trading_calendar:  Best initial guess of the trading calendar.
-    :type trading_calendar: pandas.DatetimeIndex
-    :param costs: Simulator cost objects whose value is logged.
+    :param trading_calendar: Trading calendar. Can be a best guess, but the
+        first timestamp **must be** the actual.
+    :type trading_calendar: pd.DateTimeIndex
+    :param costs: Simulator cost objects whose value is logged. Note: we use
+        only the classes' **names** here.
     :type costs: list
     """
 
     def __init__(self, universe, trading_calendar, costs):
         """Initialization of back-test result."""
+        timer = time.time()
         self._h = pd.DataFrame(index=trading_calendar,
                               columns=universe, dtype=float)
         self._u = pd.DataFrame(index=trading_calendar,
@@ -83,11 +94,23 @@ class BacktestResult:
             index=trading_calendar, dtype=float) for cost in costs}
         self._policy_times = pd.Series(index=trading_calendar, dtype=float)
         self._simulator_times = pd.Series(index=trading_calendar, dtype=float)
+        self._market_data_times = pd.Series(
+            index=trading_calendar, dtype=float)
+        self._result_times = pd.Series(
+            index=trading_calendar, dtype=float)
+        self._simulator_times = pd.Series(
+            index=trading_calendar, dtype=float)
         self._cash_returns = pd.Series(index=trading_calendar, dtype=float)
         self._benchmark_returns = pd.Series(
             index=trading_calendar, dtype=float)
         self._current_universe = pd.Index(universe)
         self._indexer = np.arange(len(universe), dtype=int)
+        self._init_timer = time.time() - timer
+
+    def __enter__(self):
+        """Set up logging context to record back-test logs."""
+        # we do this because you can also use the class without logging
+        # pylint: disable=attribute-defined-outside-init
 
         # record logs
         self._log = ''
@@ -120,6 +143,8 @@ class BacktestResult:
         # logs formatting
         formatter = logging.Formatter(LOG_FORMAT)
         self._log_stream_handler.setFormatter(formatter)
+
+        return self
 
     @property
     def _current_full_universe(self):
@@ -173,13 +198,46 @@ class BacktestResult:
         self._indexer = self._h.columns.get_indexer(new_universe)
 
     #pylint: disable=too-many-arguments
-    def _log_trading(self, t: pd.Timestamp,
+    def log_trading(self, t: pd.Timestamp,
         h: pd.Series[float], u: pd.Series[float],
         z: pd.Series[float], costs: Dict[str, float],
         cash_return: float, benchmark_return: float or None,
-        policy_time: float, simulator_time: float):
-        "Log one trading period."
+        policy_time: float, simulator_time: float, market_data_time: float):
+        """Log one trading period.
 
+        :param t: Timestamp of execution.
+        :type t: pd.Timestamp
+        :param h: Initial holdings.
+        :type h: pd.Series
+        :param u: Trade vectors in (*e.g.*) dollars.
+        :type u: pd.Series
+        :param z: Trade weight vectors requested by the policy. Can be
+            different from the actual trades because of rounding or any other
+            filtering applied by the simulator. They are recorded but not used
+            in accounting.
+        :type z: pd.Series
+        :param costs: Dictionary indexed by the cost class names with the
+            current values of each. They are recorded but not used for
+            accounting, that is done directly in the simulator and already
+            included in the computed holdings.
+        :type costs: dict
+        :param cash_return: Current return of the cash account (interest rate),
+            used for excess metrics (*e.g.*, Sharpe ratio).
+        :type cash_return: float
+        :param benchmark_return: Current return of the benchmark, if defined,
+            otherwise None.
+        :type benchmark_return: float or None
+        :param policy_time: Time spent inside the policy object in this period.
+        :type policy_time: float
+        :param simulator_time: Time spent to back-test this period outside of
+            the policy object.
+        :type simulator_time: float
+        :param market_data_time: Time spent inside
+            :meth:`cvxportfolio.data.MarketData` for this period (also already
+            included in ``simulator_time``).
+        :type market_data_time: float
+        """
+        timer = time.time()
         if not h.index.equals(self._current_universe):
             self._change_universe(h.index)
 
@@ -194,13 +252,31 @@ class BacktestResult:
 
         self._simulator_times.iloc[tidx] = simulator_time
         self._policy_times.iloc[tidx] = policy_time
+        self._market_data_times.iloc[tidx] = market_data_time
         self._cash_returns.iloc[tidx] = cash_return
         if benchmark_return is not None:
             self._benchmark_returns.iloc[tidx] = benchmark_return
+        self._result_times.iloc[tidx] = time.time() - timer + self._init_timer
+        self._init_timer = 0.
 
-    def _log_final(self, t, t_next, h, extra_simulator_time):
-        """Log final elements and (if necessary) clean up."""
+    def log_final(self, t, t_next, h, extra_simulator_time):
+        """Log final elements and (if necessary) clean up.
 
+        Also clean up if the back-test finishes before it was expected to
+        (*e.g.*, bankruptcy).
+
+        :param t: Last execution time.
+        :type t: pd.Timestamp
+        :param t_next: Next execution time, at which we don't run the policy
+            but we do record the holdings.
+        :type t_next: pd.Timestamp
+        :param h: Last value of the holdings, at time ``t_next``.
+        :type h: pd.Series
+        :param extra_simulator_time: Any extra time, in seconds, spent in the
+            simulator to propagate the holdings from t to t_next (other times
+            are already accounted for).
+        :type extra_simulator_time: float
+        """
         self._h.loc[t_next] = h
         self._simulator_times.loc[t] += extra_simulator_time
         # in case of bankruptcy
@@ -211,8 +287,17 @@ class BacktestResult:
             self._z = self._z.iloc[:tidx]
             self._simulator_times = self._simulator_times.iloc[:tidx]
             self._policy_times = self._policy_times.iloc[:tidx]
+            self._market_data_times = self._market_data_times.iloc[:tidx]
+            self._result_times = self._result_times.iloc[:tidx]
+
             self._cash_returns = self._cash_returns.iloc[:tidx]
             self._benchmark_returns = self._benchmark_returns.iloc[:tidx]
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Clean up logging context manager.
+
+        TODO: we'll also do something with exceptions
+        """
 
         # logging output
         self._log = self._log_stream.getvalue()
@@ -258,6 +343,28 @@ class BacktestResult:
         :rtype: pandas.Series
         """
         return pd.Series(self._simulator_times)
+
+    @property
+    def market_data_times(self):
+        """The computation time of the market data server at each period.
+
+        This is already included in ``simulator_times`` !
+
+        :returns: Market data server time in seconds at each period.
+        :rtype: pandas.Series
+        """
+        return pd.Series(self._market_data_times)
+
+    @property
+    def result_times(self):
+        """The computation time of the back-test result (this) at each period.
+
+        This is already included in ``simulator_times`` !
+
+        :returns: Back-test result time in seconds at each period.
+        :rtype: pandas.Series
+        """
+        return pd.Series(self._result_times)
 
     @property
     def cash_returns(self):
@@ -861,6 +968,26 @@ class BacktestResult:
         if show:
             fig.show() # pragma: no cover
 
+    def times_plot(self, show=True):
+        """Plot all execution times of the back-test.
+
+        :param show: if True, call ``matplotlib.Figure.show``, helpful when
+            running in the interpreter.
+        :type show: bool
+        """
+
+        fig, ax = plt.subplots(1, figsize=(8.5, 8.5/1.618))
+
+        fig.suptitle('Back-Test Times')
+        self.policy_times.plot(label='Policy', fig=fig)
+        self.simulator_times.plot(label='Simulator', fig=fig)
+        self.market_data_times.plot(label='Of which: market data', fig=fig)
+        self.result_times.plot(label='Of which: result', fig=fig)
+        ax.legend()
+
+        if show:
+            fig.show() # pragma: no cover
+
     def __repr__(self):
         """Print the class instance."""
 
@@ -916,6 +1043,10 @@ class BacktestResult:
             ' '*9: '',
             "Avg. policy time": f"{self.policy_times.mean():.3f}s",
             "Avg. simulator time": f"{self.simulator_times.mean():.3f}s",
+            "    Of which: market data":
+                f"{self.market_data_times.mean():.3f}s",
+            # "    Of which: result":
+            #     f"{self.result_times.mean():.3f}s",
             "Total time":
                 f"{self.simulator_times.sum() + self.policy_times.sum():.3f}s",
             }))

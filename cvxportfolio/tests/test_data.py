@@ -427,6 +427,7 @@ class TestData(CvxportfolioTest):
 
     def test_yahoo_finance_update(self):
         """Test specific issues when updating already stored data."""
+        # pylint: disable=protected-access
 
         raw_data = pd.DataFrame(
             # skip last day because there might actually be issues
@@ -435,11 +436,11 @@ class TestData(CvxportfolioTest):
 
         # make sure last open is different from close of day before
         # (we use it later)
-        if raw_data.iloc[-1, 0] == raw_data.iloc[-2,3]:
+        if raw_data.iloc[-1, 0] == raw_data.iloc[-2, 3]:
             raw_data.iloc[-1, 0] += 0.1 # pragma: no cover
 
         # also do the same for day before...
-        if raw_data.iloc[-2, 0] == raw_data.iloc[-3,3]:
+        if raw_data.iloc[-2, 0] == raw_data.iloc[-3, 3]:
             raw_data.iloc[-2, 0] += 0.1 # pragma: no cover
 
         class YahooFinanceUpdaterTest(cvx.YahooFinance):
@@ -1037,6 +1038,14 @@ class TestMarketData(CvxportfolioTest):
             returns=used_returns, volumes=used_volumes, prices=used_prices,
             cash_key='USDOLLAR', base_location=self.datadir,
             min_history=pd.Timedelta('0d'))
+
+        # add "cash" column
+        md = UserProvidedMarketData(
+            returns=used_returns, cash_key = 'cash',
+            min_history=pd.Timedelta('0d'))
+        self.assertEqual(md.returns.columns[-1], 'cash')
+        self.assertEqual(md.returns['cash'].iloc[20], 0.)
+        self.assertEqual(len(md.returns.columns), len(used_returns.columns)+1)
 
         without_prices = UserProvidedMarketData(
             returns=used_returns, volumes=used_prices, cash_key='USDOLLAR',

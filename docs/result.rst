@@ -8,6 +8,12 @@ Back-test result
 
 .. autoclass:: BacktestResult
 
+    .. automethod:: plot
+
+    .. automethod:: times_plot
+
+    .. autoproperty:: logs
+
     .. autoproperty:: cash_key
     
     .. autoproperty:: periods_per_year
@@ -85,11 +91,19 @@ Back-test result
     .. autoproperty:: drawdown
     
     .. autoproperty:: policy_times
-    
+
     .. autoproperty:: simulator_times
 
-    .. autoproperty:: logs
+    .. autoproperty:: market_data_times
 
-    .. automethod:: plot
+    .. autoproperty:: result_times
 
+Interface methods with the market simulator
+-------------------------------------------
 
+.. autoclass:: BacktestResult
+     :noindex:
+
+     .. automethod:: log_trading
+
+     .. automethod:: log_final
