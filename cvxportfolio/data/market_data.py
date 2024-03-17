@@ -46,10 +46,25 @@ class MarketData:
 
         :returns: past_returns, current_returns, past_volumes, current_volumes,
             current_prices
-        :rtype: (pandas.DataFrame, pandas.Series, pandas.DataFrame,
-            pandas.Series, pandas.Series)
+        :rtype: (pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, pd.Series)
         """
         raise NotImplementedError # pragma: no cover
+
+    def universe_at_time(self, t):
+        """Return trading universe at given time.
+
+        Base implementation simply returns the index of ``current_returns``
+        returned by :meth:`serve`. Typically a more efficient implementation
+        can be made available.
+
+        :param t: Trading time. It must be included in the timestamps returned
+            by :meth:`trading_calendar`.
+        :type t: pandas.Timestamp
+
+        :returns: Trading universe at time ``t``.
+        :rtype: pd.Index
+        """
+        return self.serve(t)[1].index # pragma: no cover
 
     def trading_calendar(
         self, start_time=None, end_time=None, include_end=True):
@@ -65,7 +80,7 @@ class MarketData:
         :type include_end: bool
 
         :returns: Trading calendar.
-        :rtype: pandas.DatetimeIndex
+        :rtype: pd.DatetimeIndex
         """
         raise NotImplementedError # pragma: no cover
 
@@ -82,7 +97,7 @@ class MarketData:
         """Full universe, which might not be available for trading.
 
         :returns: Full universe.
-        :rtype: pandas.Index
+        :rtype: pd.Index
         """
         raise NotImplementedError # pragma: no cover
 

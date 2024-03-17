@@ -427,6 +427,7 @@ class TestData(CvxportfolioTest):
 
     def test_yahoo_finance_update(self):
         """Test specific issues when updating already stored data."""
+        # pylint: disable=protected-access
 
         raw_data = pd.DataFrame(
             # skip last day because there might actually be issues

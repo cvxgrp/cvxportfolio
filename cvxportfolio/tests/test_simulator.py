@@ -844,6 +844,7 @@ class TestSimulator(CvxportfolioTest):
         result = sim.backtest(cvx.Uniform(), pd.Timestamp(
             '2014-05-01'))
         result.plot(show=False)
+        result.times_plot(show=False)
         print(result)
         for attribute in dir(result):
             print(attribute, getattr(result, attribute))

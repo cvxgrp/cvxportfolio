@@ -115,6 +115,10 @@ class MarketSimulator:
     :param round_trades: If market prices are available, round trades to
         integer number of shares.
     :type round_trades: bool
+    :param backtest_result_cls: Back-test result class (not instance) returned
+        by the simulator. Use this if you wish to use a custom subclass of the
+        default, :class:`cvxportfolio.result.BacktestResult`.
+    :type backtest_result_cls: class
     """
 
     # pylint: disable=too-many-arguments
@@ -124,7 +128,8 @@ class MarketSimulator:
                  cash_key="USDOLLAR",
                  base_location=BASE_LOCATION,
                  min_history=pd.Timedelta('365.24d'),
-                 trading_frequency=None):
+                 trading_frequency=None,
+                 backtest_result_cls=BacktestResult):
         """Initialize the Simulator and download data if necessary."""
         self.base_location = Path(base_location)
 
@@ -157,8 +162,9 @@ class MarketSimulator:
 
         self.round_trades = round_trades
         self.costs = [el() if isinstance(el, type) else el for el in costs]
+        self.backtest_result_cls = backtest_result_cls
         # self.lock = Lock()
-       # self.kwargs = kwargs
+        # self.kwargs = kwargs
 
     @staticmethod
     def _round_trade_vector(u, current_prices):
@@ -328,67 +334,71 @@ class MarketSimulator:
         trading_calendar = self.market_data.trading_calendar(
             start_time, end_time, include_end=True)
 
-        _, current_returns, _, _, _ = self.market_data.serve(
-            trading_calendar[0])
-        universe = current_returns.index
+        universe = self.market_data.universe_at_time(trading_calendar[0])
 
         used_policy = self._get_initialized_policy(
             policy, universe=universe, trading_calendar=trading_calendar)
 
-        result = BacktestResult(
+        with self.backtest_result_cls(
             universe=universe, trading_calendar=trading_calendar,
-            costs=self.costs)
+            costs=self.costs) as result:
 
-        for t, t_next in zip(trading_calendar[:-1], trading_calendar[1:]):
+            for t, t_next in zip(trading_calendar[:-1], trading_calendar[1:]):
 
-            past_returns, current_returns, past_volumes, current_volumes, \
-                 current_prices = self.market_data.serve(t)
-            current_universe = current_returns.index
+                md_timer = time.time()
+                served = self.market_data.serve(t)
+                market_data_time = time.time() - md_timer
+                past_returns, current_returns, past_volumes, current_volumes, \
+                    current_prices = served[:5]
+                current_universe = current_returns.index
 
-            if not current_universe.equals(h.index):
+                if not current_universe.equals(h.index):
 
-                self._finalize_policy(used_policy, h.index)
+                    self._finalize_policy(used_policy, h.index)
 
-                h = self._adjust_h_new_universe(h, current_universe)
-                used_policy = self._get_initialized_policy(
-                    policy, universe=current_universe,
-                    trading_calendar=trading_calendar[trading_calendar >= t])
+                    h = self._adjust_h_new_universe(h, current_universe)
+                    used_policy = self._get_initialized_policy(
+                        policy, universe=current_universe,
+                        trading_calendar=trading_calendar[
+                            trading_calendar >= t])
 
-            h_next, z, u, realized_costs, policy_time = self.simulate(
-                t=t, h=h, policy=used_policy,
-                t_next=t_next,
-                past_returns=past_returns,
-                current_returns=current_returns,
-                past_volumes=past_volumes,
-                current_volumes=current_volumes,
-                current_prices=current_prices)
+                h_next, z, u, realized_costs, policy_time = self.simulate(
+                    t=t, h=h, policy=used_policy,
+                    t_next=t_next,
+                    past_returns=past_returns,
+                    current_returns=current_returns,
+                    past_volumes=past_volumes,
+                    current_volumes=current_volumes,
+                    current_prices=current_prices)
 
-            if hasattr(used_policy, 'benchmark'):
-                w_bm = used_policy.benchmark.current_value
-                bm_ret = w_bm @ current_returns
-            else:
-                bm_ret = None
+                if hasattr(used_policy, 'benchmark'):
+                    w_bm = used_policy.benchmark.current_value
+                    bm_ret = w_bm @ current_returns
+                else:
+                    bm_ret = None
 
-            simulator_time = time.time() - timer - policy_time
+                simulator_time = time.time() - timer - policy_time
 
-            timer = time.time()
+                timer = time.time()
 
-            result._log_trading(t=t, h=h, z=z, u=u, costs=realized_costs,
-                                policy_time=policy_time,
-                                simulator_time=simulator_time,
-                                cash_return=current_returns.iloc[-1],
-                                benchmark_return=bm_ret)
+                result.log_trading(t=t, h=h, z=z, u=u, costs=realized_costs,
+                                    policy_time=policy_time,
+                                    simulator_time=simulator_time,
+                                    market_data_time = market_data_time,
+                                    cash_return=current_returns.iloc[-1],
+                                    benchmark_return=bm_ret)
 
-            h = h_next
+                h = h_next
 
-            if sum(h) <= 0.: # bankruptcy
-                logger.warning('Back-test ended in bankruptcy at time %s!', t)
-                break
+                if sum(h) <= 0.: # bankruptcy
+                    logger.warning(
+                        'Back-test ended in bankruptcy at time %s!', t)
+                    break
 
-        self._finalize_policy(used_policy, h.index)
+            self._finalize_policy(used_policy, h.index)
 
-        result._log_final(t, t_next, h,
-            extra_simulator_time=time.time() - timer)
+            result.log_final(t, t_next, h,
+                extra_simulator_time=time.time() - timer)
 
         return result
 
@@ -669,8 +679,7 @@ class MarketSimulator:
                 'There are no trading days between the provided times.')
         start_time = trading_calendar_inclusive[0]
         end_time = trading_calendar_inclusive[-1]
-        _, initial_returns, _, _, _ = self.market_data.serve(start_time)
-        initial_universe = initial_returns.index
+        initial_universe = self.market_data.universe_at_time(start_time)
 
         # check that provided h are right and sort them
         for i, single_h in enumerate(h):
