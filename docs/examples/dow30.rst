@@ -1,18 +1,18 @@
 DOW30 monthly
 =============
 
-This example script is
-`available in the repository <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/dow30.py>`_.
-See the docstring below for its explanation.
+.. automodule:: examples.dow30
 
 .. literalinclude:: ../../examples/dow30.py
    :language: python
-   :lines: 14-
+   :start-after: if __name__ ==
+   :end-before: # we use this to save the plots
+   :dedent:
 
 This is the output printed to screen when executing this script. You can see
 many statistics of the back-tests.
 
-.. include:: ../_static/dow30_example_output.txt
+.. include:: ../_static/dow30_output.txt
    :literal:
 
 And these are the figure that are plotted. 
