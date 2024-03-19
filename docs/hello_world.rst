@@ -1,15 +1,13 @@
 Hello World Example
 ===================
 
-This is a simple example that showcases the main usage of the library.
-We define a market simulator with some stocks, two trading policies
-(one simple, and one optimization-based), backtest them in parallel,
-and show the results. This example script is 
-`available in the repository <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/hello_world.py>`_.
+.. automodule:: examples.hello_world
 
 .. literalinclude:: ../examples/hello_world.py
    :language: python
-   :lines: 14-
+   :start-after: if __name__ ==
+   :end-before: # we use this to save the plots
+   :dedent:
 
 This is the output printed to screen when executing this script. You can see
 many statistics of the back-tests. The timestamps of the back-test are the

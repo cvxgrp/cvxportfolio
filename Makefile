@@ -23,7 +23,7 @@ endif
 # this way any Python command calls the venv interpreter with its own sys.path
 export PATH   := $(BINDIR):$(PATH)
 
-.PHONY: env clean update test lint docs opendocs coverage fix release examples
+.PHONY: env clean update test lint docs opendocs coverage fix release
 
 env:  ## create environment
 	$(PYTHON) -m venv $(VENV_OPTS) $(ENVDIR)
@@ -69,12 +69,6 @@ release: update lint test  ## update version, publish to pypi
 	build
 	twine check dist/*
 	twine upload --skip-existing dist/*
-
-examples:  ## run examples for docs
-	for example in hello_world case_shiller universes dow30; \
-		do env CVXPORTFOLIO_SAVE_PLOTS=1 python -m examples."$$example" > docs/_static/"$$example"_output.txt; \
-	done
-	mv *.png docs/_static/
 
 # Thanks to Francoise at marmelab.com for this
 .DEFAULT_GOAL := help
