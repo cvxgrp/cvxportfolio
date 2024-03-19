@@ -18,6 +18,7 @@ import logging
 import sqlite3
 import warnings
 from pathlib import Path
+from pickle import UnpicklingError
 from urllib.error import URLError
 
 import numpy as np
@@ -1210,7 +1211,13 @@ def _storer_sqlite(symbol, data, storage_location):
 
 def _loader_pickle(symbol, storage_location):
     """Load data in pickle format."""
-    return pd.read_pickle(storage_location / f"{symbol}.pickle")
+    try:
+        return pd.read_pickle(storage_location / f"{symbol}.pickle")
+    except (EOFError, UnpicklingError) as e:
+        logger.warning(
+            'Data file %s is corrupt! Discarding it.',
+                str(storage_location / f"{symbol}.pickle")) # pragma: no cover
+        raise FileNotFoundError from e # pragma: no cover
 
 def _storer_pickle(symbol, data, storage_location):
     """Store data in pickle format."""
