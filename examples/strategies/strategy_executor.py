@@ -296,10 +296,11 @@ class _Runner:
             day_universe, min_history=pd.Timedelta('0d'),
             cash_key=self.cash_key))
 
-        # This should be done by MarketSimulator, but for safety.
-        day_init_holdings = day_init_holdings[sim.market_data.returns.columns]
-        # if we changed universe b/c of delisting, add zeros to the new name(s)
-        # and discard the old name(s)
+        # this will drop any delisted asset and/or add new ones
+        md_universe = sim.market_data.universe_at_time(day)
+        day_init_holdings = day_init_holdings[md_universe]
+
+        # if we changed universe, give zeros to the new and discard the old
         day_target_weigths = day_target_weigths.reindex(
             sim.market_data.returns.columns).fillna(0.)
 

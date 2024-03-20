@@ -2,7 +2,7 @@
 # From https://stackoverflow.com/questions/3887736/keep-git-history-when-splitting-a-file
 
 if [[ $# -ne 2 ]] ; then
-  echo "Usage: git-split.sh original copy"
+  echo "Usage: $0 original copy"
   exit 0
 fi
 

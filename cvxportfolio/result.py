@@ -937,6 +937,9 @@ class BacktestResult:
             weights plots. The ones with largest average absolute value
             are chosen.
         :type how_many_weights: int
+
+        :returns: Resulting matplotlib figure.
+        :rtype: matplotlib.figure.Figure
         """
 
         # US Letter size
@@ -968,12 +971,17 @@ class BacktestResult:
         if show:
             fig.show() # pragma: no cover
 
+        return fig
+
     def times_plot(self, show=True):
         """Plot all execution times of the back-test.
 
         :param show: if True, call ``matplotlib.Figure.show``, helpful when
             running in the interpreter.
         :type show: bool
+
+        :returns: Resulting matplotlib figure.
+        :rtype: matplotlib.figure.Figure
         """
 
         fig, ax = plt.subplots(1, figsize=(8.5, 8.5/1.618))
@@ -987,6 +995,8 @@ class BacktestResult:
 
         if show:
             fig.show() # pragma: no cover
+
+        return fig
 
     def __repr__(self):
         """Print the class instance."""

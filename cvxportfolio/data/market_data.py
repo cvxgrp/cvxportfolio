@@ -696,6 +696,7 @@ class DownloadedMarketData(MarketDataInMemory):
             universe, grace_period=grace_period,
             storage_backend=storage_backend)
         self._add_cash_column(self.cash_key, grace_period=grace_period)
+        self.online_usage = online_usage
         self._remove_missing_recent()
 
         # this is mandatory
@@ -749,18 +750,23 @@ class DownloadedMarketData(MarketDataInMemory):
         """
 
         if self.prices.iloc[-5:].isnull().any().any():
+            # pylint: disable=logging-not-lazy
             logger.warning(
-                'Removing some recent lines because there are missing values.'
+                ('Missing values detected in recent lines.'
+                    if self.online_usage else
+                'Removing some recent lines because there are missing values.')
                 + ' This is most probably an error with the data source!'
                 + ' The issue is with symbol(s) %s',
                 self.prices.columns[self.prices.iloc[-5:].isnull().any()])
-            drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
-            logger.warning('Dropping at index %s', drop_at)
-            self.returns = self.returns.loc[self.returns.index <= drop_at]
-            if self.prices is not None:
-                self.prices = self.prices.loc[self.prices.index <= drop_at]
-            if self.volumes is not None:
-                self.volumes = self.volumes.loc[self.volumes.index <= drop_at]
+            if not self.online_usage:
+                drop_at = self.prices.iloc[-5:].isnull().any(axis=1).idxmax()
+                logger.warning('Dropping at index %s', drop_at)
+                self.returns = self.returns.loc[self.returns.index <= drop_at]
+                if self.prices is not None:
+                    self.prices = self.prices.loc[self.prices.index <= drop_at]
+                if self.volumes is not None:
+                    self.volumes = self.volumes.loc[
+                        self.volumes.index <= drop_at]
 
         # for consistency we must also nan-out the last row
         # of returns and volumes
