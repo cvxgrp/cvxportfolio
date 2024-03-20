@@ -303,6 +303,8 @@ class _Runner:
         # if we changed universe, give zeros to the new and discard the old
         day_target_weigths = day_target_weigths.reindex(
             sim.market_data.returns.columns).fillna(0.)
+        day_target_weigths[self.cash_key] = 1 - np.sum(
+            day_target_weigths[day_target_weigths.index != self.cash_key])
 
         # Recompute cash of target weights, needed if universe changed
         if not np.isclose(
