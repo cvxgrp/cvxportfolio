@@ -250,7 +250,9 @@ class TestRisks(CvxportfolioTest):
         t = pd.Timestamp('2014-06-02')
 
         worst_case.values_in_time_recursive(
-            t=t, past_returns=self.returns.loc[self.returns.index < t])
+            t=t, past_returns=self.returns.loc[self.returns.index < t],
+            current_weights=None, current_portfolio_value=None,
+            past_volumes=None, current_prices=None)
 
         print(cvxpy_expression.value)
         print(cvxpy_expression0.value)

@@ -296,19 +296,23 @@ class _Runner:
             day_universe, min_history=pd.Timedelta('0d'),
             cash_key=self.cash_key))
 
-        # This should be done by MarketSimulator, but for safety.
-        day_init_holdings = day_init_holdings[sim.market_data.returns.columns]
-        last_day_target_weigths = day_target_weigths[
-            sim.market_data.returns.columns]
+        # this will drop any delisted asset and/or add new ones
+        md_universe = sim.market_data.universe_at_time(day)
+        day_init_holdings = day_init_holdings[md_universe]
 
-        # For safety also recompute cash of target weights
-        assert np.isclose(day_target_weigths.iloc[-1],
-            1-day_target_weigths.iloc[:-1].sum())
-        day_target_weigths.iloc[-1] = \
-            1-day_target_weigths.iloc[:-1].sum()
+        # if we changed universe, give zeros to the new and discard the old
+        day_target_weigths = day_target_weigths.reindex(
+            sim.market_data.returns.columns).fillna(0.)
+
+        # Recompute cash of target weights, needed if universe changed
+        if not np.isclose(
+          day_target_weigths.iloc[-1], 1-day_target_weigths.iloc[:-1].sum()):
+            logger.warning(
+                'recomputing cash element of target weights at day %s!', day)
+            day_target_weigths.iloc[-1] = 1-day_target_weigths.iloc[:-1].sum()
 
         result = sim.backtest(
-                policy=cvx.FixedWeights(last_day_target_weigths),
+                policy=cvx.FixedWeights(day_target_weigths),
                 h=day_init_holdings, start_time=day)
         return result.h.loc[result.h.index > day]
 
@@ -368,7 +372,14 @@ class _Runner:
                 last_run_day, new_universe=yesterdays_universe)
 
         # now back-test from yesterday to get today holdings
-        new_holdings = self.backtest_from_day(last_run_day)
+        try:
+            new_holdings = self.backtest_from_day(last_run_day)
+        except cvx.errors.DataError:
+            logger.warning(
+                "Back-test propagation from yesterday failed!"
+                + " Retrying by adjusting yesterday's universe")
+            self.adjust_universe(last_run_day, self.universe)
+            new_holdings = self.backtest_from_day(last_run_day)
         for t in new_holdings.index:
             self.all_holdings[t] = dict(new_holdings.loc[t])
         self.adjust_universe(self.today, self.universe)

@@ -18,6 +18,7 @@ import logging
 import sqlite3
 import warnings
 from pathlib import Path
+from pickle import UnpicklingError
 from urllib.error import URLError
 
 import numpy as np
@@ -953,11 +954,11 @@ class YahooFinance(OLHCV):
         if res.status_code == 404:
             raise DataError(
                 f'Data for symbol {ticker} is not available.'
-                + 'Json output:', str(res.json()))
+                + 'Json: ' + str(res.json()))
 
         if res.status_code != 200:
             raise DataError(
-                f'Yahoo finance download of {ticker} failed. Json:',
+                f'Yahoo finance download of {ticker} failed. Json: ' +
                 str(res.json())) # pragma: no cover
 
         data = res.json()['chart']['result'][0]
@@ -972,28 +973,25 @@ class YahooFinance(OLHCV):
                 'indicators']['adjclose'][0]['adjclose']
         except KeyError as exc: # pragma: no cover
             raise DataError(f'Yahoo finance download of {ticker} failed.'
-                + ' Json:', str(res.json())) from exc # pragma: no cover
+                + ' Json: ' + str(res.json())) from exc # pragma: no cover
 
         # last timestamp could be not timed to market open
         this_periods_open_time = _timestamp_convert(
             data['meta']['currentTradingPeriod']['regular']['start'])
 
-        # this should be enough, but be careful
-        if df_result.index[-1].time() != this_periods_open_time.time():
+        # if the time does not match
+        # and it's not off by one hour (modulo 1 day) because of DST
+        if (df_result.index[-1].time() != this_periods_open_time.time())\
+            and not (np.abs((df_result.index[-1] - this_periods_open_time
+                ) % pd.Timedelta('1d')) == pd.Timedelta('3600s')):
+            # set the last time to the announced open time
             index = df_result.index.to_numpy()
-            index[-1] = this_periods_open_time
+            dt = df_result.index[-1]
+            dt = dt.replace(hour=this_periods_open_time.time().hour)
+            dt = dt.replace(minute=this_periods_open_time.time().minute)
+            dt = dt.replace(second=this_periods_open_time.time().second)
+            index[-1] = dt
             df_result.index = pd.DatetimeIndex(index)
-
-        # # last timestamp is probably broken (not timed to market open)
-        # # we set its time to same as the day before, but this is wrong
-        # # on days of DST switch. It's fine though because that line will be
-        # # overwritten next update
-        # if df_result.index[-1].time() != df_result.index[-2].time():
-        #     tm1 = df_result.index[-2].time()
-        #     newlast = df_result.index[-1].replace(
-        #         hour=tm1.hour, minute=tm1.minute, second=tm1.second)
-        #     df_result.index = pd.DatetimeIndex(
-        #         list(df_result.index[:-1]) + [newlast])
 
         # these are all the columns, we simply re-order them
         return df_result[
@@ -1213,7 +1211,13 @@ def _storer_sqlite(symbol, data, storage_location):
 
 def _loader_pickle(symbol, storage_location):
     """Load data in pickle format."""
-    return pd.read_pickle(storage_location / f"{symbol}.pickle")
+    try:
+        return pd.read_pickle(storage_location / f"{symbol}.pickle")
+    except (EOFError, UnpicklingError) as e:
+        logger.warning(
+            'Data file %s is corrupt! Discarding it.',
+                str(storage_location / f"{symbol}.pickle")) # pragma: no cover
+        raise FileNotFoundError from e # pragma: no cover
 
 def _storer_pickle(symbol, data, storage_location):
     """Store data in pickle format."""

@@ -1,0 +1,93 @@
+Updating data.................
+LARGEST SHARPE RATIO
+gamma_trade and gamma_risk
+(0.9, 10)
+result
+
+###########################################################
+Universe size                                            18
+Initial timestamp                       1994-02-01 14:30:00
+Final timestamp                         2024-03-01 14:30:00
+Number of periods                                       362
+Initial value (USDOLLAR)                          1.000e+06
+Final value (USDOLLAR)                            6.180e+06
+Profit (USDOLLAR)                                 5.180e+06
+                                                           
+Avg. return (annualized)                               6.3%
+Volatility (annualized)                                7.2%
+Avg. excess return (annualized)                        3.9%
+Avg. active return (annualized)                        3.9%
+Excess volatility (annualized)                         7.1%
+Active volatility (annualized)                         7.1%
+                                                           
+Avg. growth rate (annualized)                          6.1%
+Avg. excess growth rate (annualized)                   3.6%
+Avg. active growth rate (annualized)                   3.6%
+                                                           
+Avg. StocksTransactionCost                              0bp
+Max. StocksTransactionCost                             40bp
+Avg. StocksHoldingCost                                  0bp
+Max. StocksHoldingCost                                  0bp
+                                                           
+Sharpe ratio                                           0.55
+Information ratio                                      0.55
+                                                           
+Avg. drawdown                                         -3.7%
+Min. drawdown                                        -23.2%
+Avg. leverage                                         68.1%
+Max. leverage                                        100.4%
+Avg. turnover                                          3.3%
+Max. turnover                                         93.5%
+                                                           
+Avg. policy time                                     0.025s
+Avg. simulator time                                  0.007s
+    Of which: market data                            0.001s
+Total time                                          11.750s
+###########################################################
+
+LARGEST GROWTH RATE
+gamma_trade and gamma_risk
+(0.0, 5)
+result
+
+###########################################################
+Universe size                                            18
+Initial timestamp                       1994-02-01 14:30:00
+Final timestamp                         2024-03-01 14:30:00
+Number of periods                                       362
+Initial value (USDOLLAR)                          1.000e+06
+Final value (USDOLLAR)                            9.716e+06
+Profit (USDOLLAR)                                 8.716e+06
+                                                           
+Avg. return (annualized)                               8.2%
+Volatility (annualized)                               11.3%
+Avg. excess return (annualized)                        5.8%
+Avg. active return (annualized)                        5.8%
+Excess volatility (annualized)                        11.3%
+Active volatility (annualized)                        11.3%
+                                                           
+Avg. growth rate (annualized)                          7.6%
+Avg. excess growth rate (annualized)                   5.1%
+Avg. active growth rate (annualized)                   5.1%
+                                                           
+Avg. StocksTransactionCost                              1bp
+Max. StocksTransactionCost                             84bp
+Avg. StocksHoldingCost                                  0bp
+Max. StocksHoldingCost                                  0bp
+                                                           
+Sharpe ratio                                           0.51
+Information ratio                                      0.51
+                                                           
+Avg. drawdown                                         -6.4%
+Min. drawdown                                        -32.7%
+Avg. leverage                                         85.6%
+Max. leverage                                        100.9%
+Avg. turnover                                          4.6%
+Max. turnover                                        100.0%
+                                                           
+Avg. policy time                                     0.024s
+Avg. simulator time                                  0.007s
+    Of which: market data                            0.001s
+Total time                                          11.316s
+###########################################################
+

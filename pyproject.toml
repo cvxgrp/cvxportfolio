@@ -59,6 +59,9 @@ enable=["useless-suppression"] # flag useless pylint pragmas
 [tool.coverage.report]
 fail_under = 99
 
+[tool.coverage.run]
+omit = ["*/site-packages/*", "*/dist-packages/*"]
+
 [tool.diff_cover]
 # this will be superflous once we push coverage to 100
 compare_branch = "origin/master"
