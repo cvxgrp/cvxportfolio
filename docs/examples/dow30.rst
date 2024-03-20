@@ -15,22 +15,22 @@ many statistics of the back-tests.
 .. include:: ../_static/dow30_output.txt
    :literal:
 
-And these are the figure that are plotted. 
+And these are the figure that are plotted.
 The result of the :class:`cvxportfolio.MultiPeriodOptimization` policy
 that has the largest out-of-sample Sharpe ratio:
 
 .. figure:: ../_static/dow30_largest_sharpe_ratio.png
    :scale: 100 %
-   :alt: dow30_example.py result figure
+   :alt: examples/dow30.py result figure
 
    This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
-   
+
 The result of the :class:`cvxportfolio.MultiPeriodOptimization` policy
 that has the largest out-of-sample growth rate:
 
 .. figure:: ../_static/dow30_largest_growth_rate.png
    :scale: 100 %
-   :alt: dow30_example.py result figure
+   :alt: examples/dow30.py result figure
 
    This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
 
@@ -39,7 +39,7 @@ weight to all non-cash assets:
 
 .. figure:: ../_static/dow30_uniform.png
    :scale: 100 %
-   :alt: dow30_example.py result figure
+   :alt: examples/dow30.py result figure
 
    This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
 
@@ -48,6 +48,6 @@ obtained by automatic hyper-parameter optimization to have largest profit:
 
 .. figure:: ../_static/dow30_hyperparameter_optimized.png
    :scale: 100 %
-   :alt: dow30_example.py result figure
+   :alt: examples/dow30.py result figure
 
    This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`

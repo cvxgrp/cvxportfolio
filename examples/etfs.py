@@ -22,72 +22,80 @@ largest Sharpe ratio, and the one with largest growth rate,
 are shown.
 """
 
-import numpy as np
+import os
 
-import cvxportfolio as cvx
+import matplotlib.pyplot as plt
 
 # Uncomment the logging lines to get online information
 # from the parallel backtest routines
-
 # import logging
 # logging.basicConfig(level=logging.INFO)
-# log=logging.getLogger('=>')
 
+if __name__ == '__main__':
+    import numpy as np
 
-UNIVERSE = [
-    "QQQ", # nasdaq 100
-    "SPY", # US large caps
-    'EFA', # EAFE stocks
-    "CWB", # convertible bonds
-    "IWM", # US small caps
-    "EEM", # EM stocks
-    "GLD", # Gold
-    'TLT', # long duration treasuries
-    'HYG', # high yield bonds
-    "EMB", # EM bonds (usd)
-    'LQD', # investment grade bonds
-    'PFF', # preferred stocks
-    'VNQ', # US REITs
-    'BND', # US total bond market
-    'BIL', # US cash
-    'TIP', # TIPS
-    'DBC', # commodities
-    ]
+    import cvxportfolio as cvx
 
+    UNIVERSE = [
+        "QQQ", # nasdaq 100
+        "SPY", # US large caps
+        'EFA', # EAFE stocks
+        "CWB", # convertible bonds
+        "IWM", # US small caps
+        "EEM", # EM stocks
+        "GLD", # Gold
+        'TLT', # long duration treasuries
+        'HYG', # high yield bonds
+        "EMB", # EM bonds (usd)
+        'LQD', # investment grade bonds
+        'PFF', # preferred stocks
+        'VNQ', # US REITs
+        'BND', # US total bond market
+        'BIL', # US cash
+        'TIP', # TIPS
+        'DBC', # commodities
+        ]
 
-sim = cvx.StockMarketSimulator(UNIVERSE, trading_frequency='monthly')
+    sim = cvx.StockMarketSimulator(UNIVERSE, trading_frequency='monthly')
 
-def make_policy(gamma_trade, gamma_risk):
-    return cvx.MultiPeriodOptimization(cvx.ReturnsForecast()
-        - gamma_risk * cvx.FactorModelCovariance(num_factors=10)
-        - gamma_trade * cvx.StocksTransactionCost(),
-        [cvx.LongOnly(), cvx.LeverageLimit(1)],
-        planning_horizon=6, solver='ECOS')
+    def make_policy(gamma_trade, gamma_risk):
+        return cvx.MultiPeriodOptimization(cvx.ReturnsForecast()
+            - gamma_risk * cvx.FactorModelCovariance(num_factors=10)
+            - gamma_trade * cvx.StocksTransactionCost(),
+            [cvx.LongOnly(), cvx.LeverageLimit(1)],
+            planning_horizon=6, solver='ECOS')
 
-keys = [(gamma_trade, gamma_risk) for gamma_trade in np.array(range(10))/10 for gamma_risk in [.5, 1, 2, 5, 10]]
-ress = sim.backtest_many([make_policy(*key) for key in keys], parallel=True)
+    keys = [(gamma_trade, gamma_risk)
+        for gamma_trade in np.array(range(10))/10
+            for gamma_risk in [.5, 1, 2, 5, 10]]
+    ress = sim.backtest_many(
+        [make_policy(*key) for key in keys], parallel=True)
 
+    print('LARGEST SHARPE RATIO')
+    idx = np.argmax([el.sharpe_ratio for el in ress])
 
-print('LARGEST SHARPE RATIO')
-idx = np.argmax([el.sharpe_ratio for el in ress])
+    print('gamma_trade and gamma_risk')
+    print(keys[idx])
 
-print('gamma_trade and gamma_risk')
-print(keys[idx])
+    print('result')
+    print(ress[idx])
 
-print('result')
-print(ress[idx])
+    largest_sharpe_figure = ress[idx].plot()
 
-ress[idx].plot()
+    print('LARGEST GROWTH RATE')
+    idx = np.argmax([el.growth_rates.mean() for el in ress])
 
+    print('gamma_trade and gamma_risk')
+    print(keys[idx])
 
-print('LARGEST GROWTH RATE')
-idx = np.argmax([el.growth_rates.mean() for el in ress])
+    print('result')
+    print(ress[idx])
 
+    largest_growth_figure = ress[idx].plot()
 
-print('gamma_trade and gamma_risk')
-print(keys[idx])
-
-print('result')
-print(ress[idx])
-
-ress[idx].plot()
+    # we use this to save the plots for the documentation
+    if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+        largest_sharpe_figure.savefig('etfs_largest_sharpe_ratio.png')
+        largest_growth_figure.savefig('etfs_largest_growth_rate.png')
+    else:
+        plt.show()
