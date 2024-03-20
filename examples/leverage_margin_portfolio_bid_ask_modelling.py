@@ -1,5 +1,18 @@
 
 
+"""
+This example demonstrates how to use cvxportfolio to backtest a leveraged portfolio of US stocks
+denominated in Japanese Yen (JPYEN). It compares three strategies:
+
+1. Buy and hold: Purchase the target weights at the start and hold throughout the backtest period.
+2. Rebalance every day: Rebalance the portfolio to the target weights at the end of each day.
+3. Target rebalance leverage: Rebalance the portfolio to the target weights only when the leverage
+   goes above a maximum threshold or below a minimum threshold.
+
+The example also includes a custom cost model (StressModel) that adjusts the bid-ask spread based on
+the volatility of the asset returns, increasing the spread during stressed market conditions.
+"""
+
 import cvxportfolio as cvx
 from cvxportfolio.utils import set_pd_read_only
 from cvxportfolio.estimator import DataEstimator
@@ -10,6 +23,18 @@ import pandas as pd
 class StressModel(object):
     """
     A simple stress model that increases transaction costs (bid-ask spread) under certain conditions.
+
+    The model calculates the bid-ask spread based on the volatility of the asset returns. If the
+    volatility exceeds a specified threshold (stress_threshold), the model considers it a stressed
+    market condition and increases the spread by a stress factor (stress_factor). Otherwise, the
+    base spread (base_spread) is used.
+
+    The transaction costs are assumed to be proportional to the absolute value of the trades (u).
+
+    Parameters:
+    - base_spread: The default bid-ask spread under normal market conditions (default: 0.001).
+    - stress_factor: The factor by which the spread is increased under stressed conditions (default: 5).
+    - stress_threshold: The volatility threshold above which the market is considered stressed (default: 0.02).
     """
     def __init__(self, base_spread=0.001, stress_factor=5, stress_threshold=0.02):
         self.base_spread = base_spread
