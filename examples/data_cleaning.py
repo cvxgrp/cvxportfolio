@@ -16,6 +16,12 @@
 It is not really an example, and some of the methods shown here are not public,
 so not covered by the semantic versioning agreeement (they could change
 without notice).
+
+You run it (from the root of the development environment) by
+
+.. code-block::
+
+    python -m examples.data_cleaning
 """
 
 import shutil

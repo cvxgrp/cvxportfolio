@@ -63,7 +63,7 @@ import pandas as pd
 from .constraints.base_constraints import (CostInequalityConstraint,
                                            EqualityConstraint,
                                            InequalityConstraint)
-from .errors import ConvexityError, ConvexSpecificationError
+from .errors import ConvexSpecificationError
 from .estimator import (CvxpyExpressionEstimator, DataEstimator, Estimator,
                         SimulatorEstimator)
 from .forecast import HistoricalMeanVolume, HistoricalStandardDeviation
@@ -154,8 +154,10 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
         We want to deepcopy the constituent cost objects, but not the
         multipliers (which can be symbolic HPs).
 
-        TODO: Not finished (it's not copying the HPs inside the costs).
+        :returns: Same cost object, copied.
+        :rtype: cvx.costs.Cost
         """
+        # TODO: Not finished (it's not copying the HPs inside the costs).
         return copy.deepcopy(self)
 
 class SumCost(Cost):
@@ -173,17 +175,22 @@ class SumCost(Cost):
     def compile_to_cvxpy(self, *args, **kwargs):
         """Compile cost by iterating over constituent costs.
 
+        :param args: Symbolic variables
+        :type args: tuple
         :param kwargs: Symbolic variables
         :type kwargs: dict
+
+        :raises ConvexSpecificationError: If there are issues with the convex
+            rules of the combined cost.
 
         :returns: Symbolic expression of the combined cost.
         :rtype: cvxpy.Expression
         """
-        sum = self.left.compile_to_cvxpy(
+        s = self.left.compile_to_cvxpy(
             *args, **kwargs) + self.right.compile_to_cvxpy(*args, **kwargs)
-        if not sum.is_dcp():
+        if not s.is_dcp():
             raise ConvexSpecificationError(self)
-        return sum
+        return s
 
     def __repr__(self):
         """Pretty print."""
@@ -197,6 +204,10 @@ class SumCost(Cost):
 
         We want to deepcopy the constituent cost objects, but not the
         multipliers (which can be symbolic HPs).
+
+        :returns: Deep copy of the same object, with copy of reference to
+            same multipliers.
+        :rtype: cvx.costs.Cost
         """
         return self.left.copy_keeping_multipliers(
             ) + self.right.copy_keeping_multipliers()
@@ -221,6 +232,9 @@ class MulCost(Cost):
         :param kwargs: Symbolic variables
         :type kwargs: dict
 
+        :raises ConvexSpecificationError: If there are issues with convexity
+            of the combined cost.
+
         :returns: Symbolic expression of the combined cost.
         :rtype: cvxpy.Expression
         """
@@ -243,6 +257,10 @@ class MulCost(Cost):
 
         We want to deepcopy the constituent cost objects, but not the
         multipliers (which can be symbolic HPs).
+
+        :returns: Deep copy of the same cost, with copy of reference to same
+            multipliers.
+        :rtype: cvx.costs.Cost
         """
         return MulCost(
             scalar=self.scalar, cost=self.cost.copy_keeping_multipliers())
@@ -525,8 +543,7 @@ class HoldingCost(SimulatorCost):
         self._long_fees_parameter = None
         self._dividends_parameter = None
 
-    def initialize_estimator( # pylint: disable=arguments-differ
-            self, universe, **kwargs):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize cvxpy parameters.
 
         We don't use the parameter from
@@ -800,8 +817,7 @@ class TransactionCost(SimulatorCost):
         self._first_term_multiplier = None
         self._second_term_multiplier = None
 
-    def initialize_estimator( # pylint: disable=arguments-differ
-            self, universe, **kwargs):
+    def initialize_estimator(self, universe, **kwargs):
         """Initialize cvxpy parameters.
 
         :param universe: Trading universe, including cash.

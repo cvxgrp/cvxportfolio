@@ -13,19 +13,22 @@
 # limitations under the License.
 """Unit tests for the data and parameter estimator objects."""
 
+import copy
 import unittest
 
 import numpy as np
 import pandas as pd
 
+import cvxportfolio as cvx
 from cvxportfolio.forecast import (ForecastError, HistoricalCovariance,
                                    HistoricalFactorizedCovariance,
                                    HistoricalLowRankCovarianceSVD,
                                    HistoricalMeanError, HistoricalMeanReturn,
                                    HistoricalMeanVolume,
                                    HistoricalStandardDeviation,
-                                   HistoricalVariance)
+                                   HistoricalVariance, RegressionMeanReturn)
 from cvxportfolio.tests import CvxportfolioTest
+from cvxportfolio.utils import set_pd_read_only
 
 
 class TestForecast(CvxportfolioTest):
@@ -33,6 +36,102 @@ class TestForecast(CvxportfolioTest):
 
     In most cases we test against the relevant pandas function as reference.
     """
+
+    def test_estimate(self):
+        """Test estimate method of a forecaster."""
+        forecaster = cvx.forecast.HistoricalCovariance()
+
+        forecaster.estimate(
+            market_data=self.market_data,
+            t=self.market_data.trading_calendar()[20])
+
+        forecaster = cvx.forecast.HistoricalCovariance(kelly=False)
+
+        full_cov, t_fore = forecaster.estimate(market_data=self.market_data)
+
+        pdcov = self.market_data.returns.loc[
+            self.market_data.returns.index < t_fore].iloc[:, :-1].cov(ddof=0)
+
+        self.assertTrue(np.allclose(full_cov, pdcov))
+
+        with self.assertRaises(ValueError):
+            forecaster.estimate(
+                market_data=self.market_data,
+                t = self.market_data.returns.index[-1] + pd.Timedelta('300d'))
+
+    def test_nested_cached_eval(self):
+        """Test nested evaluation with caching."""
+
+        forecaster = HistoricalVariance(kelly=False)
+        forecaster._CACHED = True
+        md = self.market_data
+        returns = md.returns
+        cache = {}
+        for tidx in [-30, -29, -25, -24, -23, -30, -29]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index < t]
+
+            result = forecaster.values_in_time_recursive(
+                    past_returns=past_returns, t=t, cache=cache)
+
+            self.assertTrue(
+                np.allclose(result, past_returns.iloc[:, :-1].var(ddof=0)))
+        self.assertEqual(len(cache), 1)
+        self.assertEqual(len(list(cache.values())[0]), 5)
+
+    def test_regression_mean_return(self):
+        """Test historical mean return with regression."""
+
+        # will be refactored
+        # vix = cvx.YahooFinance('^VIX').data.open
+        # vix.name = 'VIX'
+
+        md = copy.deepcopy(self.market_data)
+        rets = pd.DataFrame(self.market_data.returns, copy=True)
+        rets.loc[rets.index <= rets.index[10], 'AAPL'] = np.nan
+        rets.loc[rets.index <= rets.index[5], 'WMT'] = np.nan
+        assert rets.iloc[0].isnull().sum() > 0
+        md.returns = set_pd_read_only(rets)
+
+        np.random.seed(0)
+        vix = pd.Series(np.random.uniform(len(md.returns)), md.returns.index)
+        vix.name = 'VIX'
+        regr_mean_ret = RegressionMeanReturn(regressors=[vix])
+        regr_mean_ret.initialize_estimator_recursive(
+            universe=self.market_data.returns.columns,
+            trading_calendar=self.market_data.returns.index)
+        regr_mean_ret._CACHED = True
+        returns = md.returns
+
+        # ValueError thrown by UserProvidedRegressor (not enough history)
+        with self.assertRaises(ValueError):
+            t = returns.index[9]
+            past_returns = returns.loc[returns.index < t]
+            regr_mean_ret.values_in_time_recursive(
+                    past_returns=past_returns, t=t)
+
+        for tidx in [-30, -29, -25, -24, -23]:
+            t = returns.index[tidx]
+            past_returns = returns.loc[returns.index < t]
+
+            result  = \
+                regr_mean_ret.values_in_time_recursive(
+                    past_returns=past_returns, t=t)
+            # print('result')
+            # print(result)
+
+            # reproduce here
+            for asset in ['AAPL', 'WMT', 'MMM']:
+                y = past_returns[asset].dropna()
+                x = pd.DataFrame(1., index=y.index, columns=['intercept'])
+                x['VIX'] = vix.reindex(y.index, method='ffill')
+                beta = np.linalg.solve(x.T @ x, x.T @ y)
+                x_last = pd.Series(1., index=['intercept'])
+                x_last['VIX'] = vix[vix.index < t].iloc[-1]
+                local_result = x_last @ beta
+                # print(local_result)
+                # print(result[asset])
+                self.assertTrue(np.isclose(local_result, result[asset]))
 
     def test_historical_mean_volume(self):
         """Test mean volume forecaster."""
@@ -580,4 +679,4 @@ class TestForecast(CvxportfolioTest):
 
 if __name__ == '__main__':
 
-    unittest.main() # pragma: no cover
+    unittest.main(warnings='error') # pragma: no cover

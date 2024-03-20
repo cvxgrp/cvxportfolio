@@ -98,68 +98,15 @@ are relative to each point in time at which the policy is evaluated.
 """
 
 import logging
-from dataclasses import dataclass
-from typing import Union
 
 import numpy as np
 import pandas as pd
 
 from .errors import DataError, ForecastError
-from .estimator import Estimator, SimulatorEstimator
+from .estimator import DataEstimator, Estimator, SimulatorEstimator
 from .hyperparameters import _resolve_hyperpar
 
 logger = logging.getLogger(__name__)
-
-def online_cache(values_in_time):
-    """A simple online cache that decorates :meth:`values_in_time`.
-
-    The instance it is used on needs to be hashable (we currently use
-    the hash of its __repr__ via dataclass).
-
-    :param values_in_time: :meth:`values_in_time` method to decorate.
-    :type values_in_time: function
-
-    :returns: Decorated method, which saves and retrieves (if available) from
-        cache the result.
-    :rtype: function
-    """
-
-    def wrapped(self, t, cache=None, **kwargs):
-        """Cached :meth:`values_in_time` method.
-
-        :param self: Class instance.
-        :type self: cvxportfolio.Estimator
-        :param t: Current time, used as in the key for caching.
-        :type t: pandas.Timestamp
-        :param cache: Cache dictionary; if None (the default) caching is
-            disabled.
-        :type cache: dict or None
-        :param kwargs: Extra arguments that are passed through.
-        :type kwargs: dict
-
-        :returns: The returned value, maybe retrieved from cache.
-        :rtype: float or numpy.array
-        """
-
-        if cache is None:  # temporary to not change tests
-            cache = {}
-
-        if not self in cache:
-            cache[self] = {}
-
-        if t in cache[self]:
-            logger.debug(
-                '%s.values_in_time at time %s is retrieved from cache.',
-                self, t)
-            result = cache[self][t]
-        else:
-            result = values_in_time(self, t=t, cache=cache, **kwargs)
-            logger.debug('%s.values_in_time at time %s is stored in cache.',
-                self, t)
-            cache[self][t] = result
-        return result
-
-    return wrapped
 
 
 class BaseForecast(Estimator):
@@ -167,8 +114,56 @@ class BaseForecast(Estimator):
 
     _last_time = None
 
-    def __post_init__(self):
-        raise NotImplementedError # pragma: no cover
+    # Will be exposed to the user, for now it's a class-level constant
+    _CACHED = False
+
+    def values_in_time_recursive(self, t, cache=None, **kwargs):
+        """Override default method to handle caching.
+
+        :param t: Current timestamp in execution or back-test.
+        :type t: pd.Timestamp
+        :param cache: Cache dictionary, if available. Default None.
+        :type cache: dict or None
+        :param kwargs: Various arguments to :meth:`values_in_time_recursive`.
+        :type kwargs: dict
+        """
+
+        if not self._CACHED:
+            return super().values_in_time_recursive(t=t, cache=cache, **kwargs)
+        else:
+            # this part is copied from Estimator
+            # TODO: could refactor upstream to avoid copy-pasting these clauses
+            for _, subestimator in self.__dict__.items():
+                if hasattr(subestimator, "values_in_time_recursive"):
+                    subestimator.values_in_time_recursive(
+                        t=t, cache=cache, **kwargs)
+            for subestimator in self.__subestimators__:
+                subestimator.values_in_time_recursive(
+                    t=t, cache=cache, **kwargs)
+
+        # here goes caching
+        if hasattr(self, "values_in_time"):
+
+            if cache is None:  # e.g., in execute() cache is disabled
+                cache = {}
+
+            if str(self) not in cache:
+                cache[str(self)] = {}
+
+            if t in cache[str(self)]:
+                logger.info(
+                    '%s.values_in_time at time %s is retrieved from cache.',
+                    self, t)
+                self._current_value = cache[str(self)][t]
+            else:
+                self._current_value = self.values_in_time(
+                    t=t, cache=cache, **kwargs)
+                logger.info('%s.values_in_time at time %s is stored in cache.',
+                    self, t)
+                cache[str(self)][t] = self._current_value
+            return self.current_value
+
+        return None # pragma: no cover
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, **kwargs):
@@ -177,7 +172,56 @@ class BaseForecast(Estimator):
         :param kwargs: Unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-        self.__post_init__()
+        self._last_time = None
+
+    def estimate(self, market_data, t=None):
+        """Estimate the forecaster at given time on given market data.
+
+        This uses the same logic used by a trading policy to evaluate the
+        forecaster at a given point in time.
+
+        :param market_data: Market data server, used to provide data to the
+            forecaster.
+        :type market_data: cvx.MarketData instance
+        :param t: Time at which to estimate the forecaster. Must be among
+            the ones returned by ``market_data.trading_calendar()``. Default is
+            ``None``, meaning that the last valid timestamp is chosen. Note
+            that with default market data servers you need to set
+            ``online_usage=True`` if forecasting on the last timestamp
+            (usually, today).
+        :type t: pd.Timestamp or None
+
+        :raises ValueError: If the provided time t is not in the trading
+            calendar.
+
+        :returns: Forecasted value and time at which the forecast is made
+            (for safety checking).
+        :rtype: (np.array, pd.Timestamp)
+        """
+
+        trading_calendar = market_data.trading_calendar()
+
+        if t is None:
+            t = trading_calendar[-1]
+
+        if not t in trading_calendar:
+            raise ValueError(f'Provided time {t} must be in the '
+            + 'trading calendar implied by the market data server.')
+
+        past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
+
+        self.initialize_estimator_recursive(
+            universe=past_returns.columns,
+            trading_calendar=trading_calendar[trading_calendar >= t])
+
+        forecast = self.values_in_time_recursive(
+            t=t, past_returns=past_returns, past_volumes=past_volumes,
+            current_weights=None, current_portfolio_value=None,
+            current_prices=current_prices)
+
+        self.finalize_estimator_recursive()
+
+        return forecast, t
 
     def _agnostic_update(self, t, past_returns, **kwargs):
         """Choose whether to make forecast from scratch or update last one."""
@@ -214,7 +258,6 @@ def _is_timedelta(value):
         ' pandas Timedeltas or np.inf.')
 
 
-@dataclass(unsafe_hash=True)
 class BaseMeanVarForecast(BaseForecast):
     """This class contains logic common to mean and (co)variance forecasters.
 
@@ -227,11 +270,21 @@ class BaseMeanVarForecast(BaseForecast):
     scratch (especially for covariances).
     """
 
-    half_life: Union[pd.Timedelta, float] = np.inf
-    rolling: Union[pd.Timedelta, float] = np.inf
+    _denominator = None
+    _numerator = None
 
-    def __post_init__(self):
-        self._last_time = None
+    def __init__(self, half_life=np.inf, rolling=np.inf):
+        self.half_life = half_life
+        self.rolling = rolling
+
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Re-initialize whenever universe changes.
+
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
+        """
+        super().initialize_estimator(**kwargs)
         self._denominator = None
         self._numerator = None
 
@@ -263,6 +316,16 @@ class BaseMeanVarForecast(BaseForecast):
         This method receives the **kwargs passed to :meth:`values_in_time`.
         """
         raise NotImplementedError # pragma: no cover
+
+    def _get_last_row(self, **kwargs):
+        """Return last row of the dataframe we work with.
+
+        This method receives the **kwargs passed to :meth:`values_in_time`.
+
+        You may redefine it if obtaining the full dataframe is expensive,
+        during online update (in most cases) only this method is required.
+        """
+        return self._dataframe_selector(**kwargs).iloc[-1]
 
     def values_in_time( # pylint: disable=arguments-differ
             self, **kwargs):
@@ -312,8 +375,7 @@ class BaseMeanVarForecast(BaseForecast):
 
         This method receives the **kwargs passed to :meth:`values_in_time`.
         """
-        df = self._dataframe_selector(t=t, **kwargs)
-        last_row = df.iloc[-1]
+        last_row = self._get_last_row(t=t, **kwargs)
 
         # if emw discount past
         if _is_timedelta(_resolve_hyperpar(self.half_life)):
@@ -332,6 +394,7 @@ class BaseMeanVarForecast(BaseForecast):
 
         # Moving average window logic: subtract elements that have gone out
         if _is_timedelta(_resolve_hyperpar(self.rolling)):
+            df = self._dataframe_selector(t=t, **kwargs)
             observations_to_subtract, emw_weights_of_subtract = \
                 self._remove_part_gone_out_of_ma(df, t)
         else:
@@ -380,7 +443,6 @@ class BaseMeanVarForecast(BaseForecast):
                 self.__class__.__name__, t)
 
 
-@dataclass(unsafe_hash=True)
 class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
     """This class contains the logic common to the mean forecasters."""
 
@@ -412,7 +474,6 @@ class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
         return ~(last_row.isnull())
 
 
-@dataclass(unsafe_hash=True)
 class HistoricalMeanReturn(BaseMeanForecast):
     r"""Historical means of non-cash returns.
 
@@ -445,7 +506,196 @@ class HistoricalMeanReturn(BaseMeanForecast):
         """Return dataframe to compute the historical means of."""
         return past_returns.iloc[:, :-1]
 
-@dataclass(unsafe_hash=True)
+
+class RegressionXtY(HistoricalMeanReturn):
+    """Class for the XtY matrix of returns regression forecaster."""
+
+    def __init__(self, regressor, **kwargs):
+        assert isinstance(regressor, UserProvidedRegressor)
+        super().__init__(**kwargs)
+        self.regressor = regressor
+
+    def _work_with(self, past_returns, **kwargs):
+        """Base DataFrame we work with."""
+        return past_returns.iloc[:, :-1]
+
+    # pylint: disable=arguments-differ
+    def _dataframe_selector(self, **kwargs):
+        """Return dataframe to compute the historical means of."""
+        regr_on_df = self.regressor._get_all_history(
+            self._work_with(**kwargs).index)
+        return self._work_with(
+            **kwargs).multiply(regr_on_df, axis=0).dropna(how='all')
+
+    def _get_last_row(self, **kwargs):
+        """Return last row of the dataframe we work with.
+
+        This method receives the **kwargs passed to :meth:`values_in_time`.
+
+        You may redefine it if obtaining the full dataframe is expensive,
+        during online update (in most cases) only this method is required.
+        """
+        return self._work_with(
+            **kwargs).iloc[-1] * self.regressor.current_value
+
+
+class UserProvidedRegressor(DataEstimator):
+    """User provided regressor series."""
+
+    def __init__(self, data, min_obs=10):
+        assert isinstance(data, pd.Series)
+        assert isinstance(data.index, pd.DatetimeIndex)
+        assert data.name is not None
+        assert isinstance(data.name, str)
+        super().__init__(data, use_last_available_time=True)
+        self._min_obs = min_obs
+
+    def _get_all_history(self, pandas_obj_idx):
+        """Get history of this regressor indexed on pandas obj."""
+        result = self.data.reindex(
+            pandas_obj_idx, method='ffill').dropna()
+        if len(result) < self._min_obs:
+            raise DataError(
+                f'Regressor {self.name} at time {pandas_obj_idx[-1]} '
+                f' has less history than min_obs={self._min_obs},'
+                ' changing regressor in time is not (currently) supported.')
+        return result
+
+    @property
+    def name(self):
+        """Name of the regressor.
+
+        :returns: Name
+        :rtype: str
+        """
+        return self.data.name
+
+class RegressionMeanReturn(BaseForecast):
+    """Test class."""
+
+    def __init__(self, regressors, **kwargs):
+        # super().__init__(**kwargs)
+        self.regressors = [
+            UserProvidedRegressor(regressor) for regressor in regressors]
+
+        self.XtY_forecasters = {
+            regressor.name: RegressionXtY(regressor)
+                for regressor in self.regressors}
+
+        self.__subestimators__ = tuple(
+            [HistoricalMeanReturn()] + self.regressors
+            + list(self.XtY_forecasters.values()))
+
+        self.XtX_matrices = None
+
+    def initialize_estimator(self, universe, **kwargs):
+        """Initialize, create XtX matrices knowing the current universe.
+
+        :param universe: Current trading universe.
+        :type universe: pd.Index
+        :param **kwargs: Other arguments to :meth:`initialize_estimator`.
+        :type **kwargs: dict
+        """
+
+        self.XtX_matrices = {
+            asset: RegressorsXtXMatrix(
+                col_name=asset, regressors=self.regressors)
+                    for asset in universe[:-1]}
+
+        for XtX in self.XtX_matrices.values():
+            XtX.initialize_estimator_recursive(universe=universe, **kwargs)
+
+        # this method is called *after* having iterated on __subestimators__,
+        # so it's safe to do this
+        self.__subestimators__ = tuple(
+            list(self.__subestimators__ ) + list(self.XtX_matrices.values()))
+
+    def finalize_estimator(self, **kwargs):
+        """Remove XtX matrices at change of universe.
+
+        :param **kwargs: Unused arguments to :meth:`finalize_estimator`.
+        :type **kwargs: dict
+        """
+
+        self.__subestimators__ = tuple(
+            [HistoricalMeanReturn()] + self.regressors
+            + list(self.XtY_forecasters.values()))
+
+        self.XtX_matrices = None
+
+    def values_in_time(self, t, past_returns, **kwargs):
+        """Do it from scratch."""
+        assets = past_returns.columns[:-1]
+
+        # print('all_X_matrices')
+        # print(self.all_X_matrices)
+
+        # self._all_XtY_means = {
+        #     regressor.name: self.multiply_df_by_regressor(
+        #         past_returns.iloc[:, :-1], regressor).mean()
+        #             for regressor in self.regressors}
+
+        test = {
+            regressor.name: pd.Series(self.XtY_forecasters[regressor.name].current_value, past_returns.columns[:-1])
+                    for regressor in self.regressors}
+
+        # print(test)
+        # print(self._all_XtY_means)
+        # assert np.allclose(pd.Series(test['VIX']), pd.Series(self._all_XtY_means['VIX']))
+        self._all_XtY_means = test
+        # raise Exception
+
+        self._all_XtY_means[
+            'intercept'] = pd.Series(
+                self.__subestimators__[0].current_value,
+                past_returns.columns[:-1])
+
+        # print('all_XtY_means')
+        # print(self.all_XtY_means)
+
+        X_last = pd.Series(1., index=['intercept'])
+        for regressor in self.regressors:
+            X_last[regressor.name] = regressor.current_value
+
+        # print('X_last')
+        # print(X_last)
+
+        all_solves = {
+            asset: self.solve_for_single_X(
+                asset, X_last, quad_reg=0.) for asset in assets}
+
+        # print('all_solves')
+        # print(all_solves)
+
+        # result should be an array
+        result = pd.Series(index = assets, dtype=float)
+        for asset in assets:
+            result[asset] = np.dot(
+                all_solves[asset],
+                    [self._all_XtY_means[regressor][asset]
+                        for regressor in all_solves[asset].index])
+
+        return result
+
+    def solve_for_single_X(self, asset, X_last, quad_reg):
+        """Solve with X_last."""
+        XtX_mean = self.XtX_matrices[asset].current_value
+
+        tikho_diag = np.array(np.diag(XtX_mean))
+        tikho_diag[0] = 0. # intercept
+        return pd.Series(np.linalg.solve(
+            XtX_mean + np.diag(tikho_diag * quad_reg), X_last), X_last.index)
+
+    # @staticmethod
+    # def multiply_df_by_regressor(df, regressor):
+    #     """Multiply time-indexed dataframe by time-indexed regressor.
+
+    #     At each point in time, use last available observation of the regressor.
+    #     """
+    #     regr_on_df = regressor._get_all_history(df)
+    #     return df.multiply(regr_on_df, axis=0).dropna(how='all')
+
+
 class HistoricalMeanVolume(BaseMeanForecast):
     r"""Historical means of traded volume in units of value (e.g., dollars).
 
@@ -469,7 +719,6 @@ class HistoricalMeanVolume(BaseMeanForecast):
                 + " provides market volumes.")
         return past_volumes
 
-@dataclass(unsafe_hash=True)
 class HistoricalVariance(BaseMeanForecast):
     r"""Historical variances of non-cash returns.
 
@@ -507,14 +756,14 @@ class HistoricalVariance(BaseMeanForecast):
     :type kelly: bool
     """
 
-    kelly: bool = True
+    def __init__(self, rolling=np.inf, half_life=np.inf, kelly=True):
+        super().__init__(rolling=rolling, half_life=half_life)
+        self.kelly = kelly
 
-    def __post_init__(self):
         if not self.kelly:
             self.meanforecaster = HistoricalMeanReturn(
                 half_life=_resolve_hyperpar(self.half_life),
                 rolling=_resolve_hyperpar(self.rolling))
-        super().__post_init__()
 
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
@@ -536,7 +785,6 @@ class HistoricalVariance(BaseMeanForecast):
         return past_returns.iloc[:, :-1]**2
 
 
-@dataclass(unsafe_hash=True)
 class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     """Historical standard deviation of non-cash returns.
 
@@ -571,8 +819,6 @@ class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     :type kelly: bool
     """
 
-    kelly: bool = True
-
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
 
@@ -599,7 +845,6 @@ class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
             current_prices=kwargs['current_prices']
         )
 
-@dataclass(unsafe_hash=True)
 class HistoricalMeanError(HistoricalVariance):
     r"""Historical standard deviations of the mean of non-cash returns.
 
@@ -625,7 +870,8 @@ class HistoricalMeanError(HistoricalVariance):
     :type kelly: bool
     """
 
-    kelly: bool = False
+    def __init__(self, rolling=np.inf, half_life=np.inf, kelly=False):
+        super().__init__(rolling=rolling, half_life=half_life, kelly=kelly)
 
     def values_in_time(self, **kwargs):
         """Obtain current value either by update or from scratch.
@@ -641,14 +887,17 @@ class HistoricalMeanError(HistoricalVariance):
         return np.sqrt(variance / self._denominator.values)
 
 
-@dataclass(unsafe_hash=True)
 class HistoricalCovariance(BaseMeanVarForecast):
     r"""Historical covariance matrix."""
 
-    kelly: bool = True
+    _joint_mean = None
 
-    def __post_init__(self):
-        super().__post_init__()
+    def __init__(self, rolling=np.inf, half_life=np.inf, kelly=True):
+        super().__init__(rolling=rolling, half_life=half_life)
+        self.kelly = kelly
+
+    def initialize_estimator(self, **kwargs):
+        super().initialize_estimator(**kwargs)
         self._joint_mean = None
 
     def _compute_numerator(self, df, emw_weights):
@@ -716,8 +965,7 @@ class HistoricalCovariance(BaseMeanVarForecast):
 
         discount_factor, observations_to_subtract, emw_weights_of_subtract = \
             super()._online_update(**kwargs)
-        df = self._dataframe_selector(**kwargs)
-        last_row = df.iloc[-1]
+        last_row = self._get_last_row(**kwargs)
 
         if not self.kelly:
 
@@ -752,6 +1000,59 @@ class HistoricalCovariance(BaseMeanVarForecast):
 
         return covariance
 
+class RegressorsXtXMatrix(HistoricalCovariance):
+    """XtX matrix used for linear regression.
+
+    The user doesn't interact with this class directly, it is managed by the
+    regression forecasters.
+    """
+
+    def __init__(self, regressors, col_name, **kwargs):
+        self.regressors = regressors
+        self.col_name = col_name
+        super().__init__(kelly=True, **kwargs)
+
+    def _work_with(self, past_returns, **kwargs):
+        """Which base dataframe do we work with.
+
+        This receives the arguments to :meth:`values_in_time`.
+
+        In this class we only use its missing values structure, not its values!
+
+        :param past_returns: Past market returns.
+        :type past_returns: pd.DataFrame
+        """
+        return past_returns
+
+    def _dataframe_selector(self, **kwargs):
+        """Return dataframe we work with."""
+        # TODO: might take just the index here
+        col_of_df = self._work_with(**kwargs)[self.col_name].dropna()
+        regr_on_col = []
+        for regressor in self.regressors:
+            regr_on_col.append(regressor._get_all_history(col_of_df.index))
+        ones = pd.Series(1., col_of_df.index, name='intercept')
+        res = pd.concat([ones] + regr_on_col, axis=1, sort=True)
+        # print(res)
+        return res
+
+    def _get_last_row(self, **kwargs):
+        """Return last row of the dataframe we work with.
+
+        This method receives the **kwargs passed to :meth:`values_in_time`.
+
+        During online update (in most cases) only this method is required,
+        so :meth:`_dataframe_selector` is not called.
+        """
+        #result = self._dataframe_selector(**kwargs).iloc[-1]
+        result1 = pd.Series(1., ['intercept'])
+        for regressor in self.regressors:
+            result1[regressor.name] = regressor.current_value
+        #assert np.all(result == result1)
+        # raise Exception
+        return result1
+
+
 def project_on_psd_cone_and_factorize(covariance):
     """Factorize matrix and remove negative eigenvalues.
 
@@ -766,7 +1067,6 @@ def project_on_psd_cone_and_factorize(covariance):
     eigval = np.maximum(eigval, 0.)
     return eigvec @ np.diag(np.sqrt(eigval))
 
-@dataclass(unsafe_hash=True)
 class HistoricalFactorizedCovariance(HistoricalCovariance):
     r"""Historical covariance matrix of non-cash returns, factorized.
 
@@ -808,7 +1108,9 @@ class HistoricalFactorizedCovariance(HistoricalCovariance):
     # this is used by FullCovariance
     FACTORIZED = True
 
-    @online_cache
+    # Will be exposed to the user, for now it's a class level constant
+    _CACHED = True
+
     def values_in_time( # pylint: disable=arguments-differ
             self, t, **kwargs):
         """Obtain current value of the covariance estimate.
@@ -836,8 +1138,7 @@ class HistoricalFactorizedCovariance(HistoricalCovariance):
                 + ' past returns.') from exc
 
 
-@dataclass(unsafe_hash=True)
-class HistoricalLowRankCovarianceSVD(Estimator):
+class HistoricalLowRankCovarianceSVD(BaseForecast):
     """Build factor model covariance using truncated SVD.
 
     .. note::
@@ -855,9 +1156,14 @@ class HistoricalLowRankCovarianceSVD(Estimator):
     :type svd: str
     """
 
-    num_factors: int
-    svd_iters: int = 10
-    svd: str = 'numpy'
+    def __init__(self, num_factors, svd_iters=10, svd='numpy'):
+        self.num_factors = num_factors
+        self.svd_iters = svd_iters
+        self.svd = svd
+
+    # num_factors: int
+    # svd_iters: int = 10
+    # svd: str = 'numpy'
 
     # brought back from old commit;
     #
@@ -929,7 +1235,9 @@ class HistoricalLowRankCovarianceSVD(Estimator):
                 + " or change your universe.")
         return F.values, idyosyncratic.values
 
-    @online_cache
+    # Will be exposed to the user, for now it's a class level constant
+    _CACHED = True
+
     def values_in_time( # pylint: disable=arguments-differ
             self, past_returns, **kwargs):
         """Current low-rank model, also cached.

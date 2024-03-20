@@ -85,7 +85,9 @@ class Policy(Estimator):
         if t is None:
             t = trading_calendar[-1]
 
-        assert t in trading_calendar
+        if not t in trading_calendar:
+            raise ValueError(f'Provided time {t} must be in the '
+            + 'trading calendar implied by the market data server.')
 
         v = np.sum(h)
 
