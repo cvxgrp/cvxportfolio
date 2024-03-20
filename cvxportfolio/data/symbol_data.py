@@ -18,6 +18,7 @@ import logging
 import sqlite3
 import warnings
 from pathlib import Path
+from pickle import UnpicklingError
 from urllib.error import URLError
 
 import numpy as np
@@ -978,13 +979,18 @@ class YahooFinance(OLHCV):
         this_periods_open_time = _timestamp_convert(
             data['meta']['currentTradingPeriod']['regular']['start'])
 
-        # this should be enough; may still need adjustment for online usage
-        # with extreme TZ offset?
-        # the first comparison is needed for DST
-        if (this_periods_open_time.date() == df_result.index[-1].date()) and (
-                df_result.index[-1].time() != this_periods_open_time.time()):
+        # if the time does not match
+        # and it's not off by one hour (modulo 1 day) because of DST
+        if (df_result.index[-1].time() != this_periods_open_time.time())\
+            and not (np.abs((df_result.index[-1] - this_periods_open_time
+                ) % pd.Timedelta('1d')) == pd.Timedelta('3600s')):
+            # set the last time to the announced open time
             index = df_result.index.to_numpy()
-            index[-1] = this_periods_open_time
+            dt = df_result.index[-1]
+            dt = dt.replace(hour=this_periods_open_time.time().hour)
+            dt = dt.replace(minute=this_periods_open_time.time().minute)
+            dt = dt.replace(second=this_periods_open_time.time().second)
+            index[-1] = dt
             df_result.index = pd.DatetimeIndex(index)
 
         # these are all the columns, we simply re-order them
@@ -1205,7 +1211,13 @@ def _storer_sqlite(symbol, data, storage_location):
 
 def _loader_pickle(symbol, storage_location):
     """Load data in pickle format."""
-    return pd.read_pickle(storage_location / f"{symbol}.pickle")
+    try:
+        return pd.read_pickle(storage_location / f"{symbol}.pickle")
+    except (EOFError, UnpicklingError) as e:
+        logger.warning(
+            'Data file %s is corrupt! Discarding it.',
+                str(storage_location / f"{symbol}.pickle")) # pragma: no cover
+        raise FileNotFoundError from e # pragma: no cover
 
 def _storer_pickle(symbol, data, storage_location):
     """Store data in pickle format."""

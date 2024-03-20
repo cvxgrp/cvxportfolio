@@ -1,20 +1,13 @@
 Case-Shiller multi-period
 =========================
 
-This is an example that shows that Cvxportfolio can work as well with
-different asset classes, in this case a real estate portfolio. We use
-the Case-Shiller index as proxy for the price of housing units in various
-metropolitan areas in the USA. We impose realistic transaction costs, which
-are comparable to the annual return on the asset, and we show
-that multi-period optimization is useful to correctly balance transaction cost
-and expected risk-adjusted return.
-This example script is
-`available in the repository 
-<https://github.com/cvxgrp/cvxportfolio/blob/master/examples/case_shiller.py>`_.
+.. automodule:: examples.case_shiller
 
 .. literalinclude:: ../../examples/case_shiller.py
    :language: python
-   :lines: 14-
+   :start-after: if __name__ ==
+   :end-before: # we use this to save the plots
+   :dedent:
 
 This is the output printed to screen when executing this script. You can see
 many statistics of the back-tests.

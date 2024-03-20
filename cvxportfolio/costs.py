@@ -704,7 +704,11 @@ class VolumeHatOrRealized(SimulatorEstimator):
         :returns: Current market volumes.
         :rtype: np.ndarray
         """
-        assert self.volume_hat.current_value is None
+        if not self.volume_hat.current_value is None:
+            raise SyntaxError(
+                'You should not pass realized volumes to the volume_hat'
+                ' argument of TransactionCost; in simulation the volumes are'
+                ' provided by the market data server.')
         if current_volumes is None:
             raise SyntaxError(
                 "If you don't provide volumes you should set b to None"
