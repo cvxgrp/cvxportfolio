@@ -23,7 +23,7 @@ weight to all non-cash assets:
    :scale: 100 %
    :alt: case_shiller.py result figure
 
-   This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
+   This figure is made by the :meth:`cvxportfolio.result.BacktestResult.plot` method.
 
 And result of the :class:`cvxportfolio.MultiPeriodOptimization` policy, selected
 among the efficient frontier below as the one with highest back-tested profit:
@@ -32,7 +32,7 @@ among the efficient frontier below as the one with highest back-tested profit:
    :scale: 100 %
    :alt: case_shiller.py result figure
 
-   This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
+   This figure is made by the :meth:`cvxportfolio.result.BacktestResult.plot` method.
 
 And finally, the efficient frontier, which shows that the 
 :class:`cvxportfolio.MultiPeriodOptimization` policies out-perform the

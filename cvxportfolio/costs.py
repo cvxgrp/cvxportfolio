@@ -94,10 +94,6 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
 
     def __add__(self, other):
         """Add cost expression to another cost expression.
-
-        Idea is to create a new CombinedCost class that
-        implements `compile_to_cvxpy` and values_in_time_recursive
-        by summing over costs.
         """
         if isinstance(other, Cost):
             return SumCost(self, other)
@@ -125,11 +121,9 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
 
     def __le__(self, other):
         """Self <= other, return CostInequalityConstraint.
-
-        For now we check here the type of "other" but it would be nicer
-        to have CostInequalityConstraint's internal DataEstimator throw
-        NotImplemented instead.
         """
+        # TODO: if series, we should check that it is dt indexed
+        # (DataEstimator should?)
         if isinstance(other, (Number, pd.Series)):
             return CostInequalityConstraint(self, other)
         return NotImplemented
@@ -146,7 +140,7 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
 
     def __ge__(self, other):
         """Self >= other, return CostInequalityConstraint."""
-        return (-self).__le__(other)
+        return (-self).__le__(-other)
 
     def copy_keeping_multipliers(self):
         """This method is used when creating MPO policies.
@@ -422,6 +416,7 @@ class SimulatorCost( # pylint: disable=abstract-method
             current_portfolio_value=current_portfolio_value)
 
         self._w_plus.value = h_plus.values / current_portfolio_value
+        # TODO: w_plus_minus_w_bm is unaccounted for (should be?)
         self._z.value = u.values / current_portfolio_value
         return self._cvxpy_expression.value * current_portfolio_value
 
@@ -802,7 +797,8 @@ class TransactionCost(SimulatorCost):
             if isinstance(volume_hat, type):
                 volume_hat = volume_hat(
                     rolling=pd.Timedelta('365.24d'))
-            self.market_volumes = VolumeHatOrRealized(DataEstimator(volume_hat))
+            self.market_volumes = VolumeHatOrRealized(
+                DataEstimator(volume_hat))
 
             if isinstance(sigma, type):
                 sigma = sigma(

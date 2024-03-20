@@ -1,0 +1,93 @@
+Updating data.....................................................................................................
+iteration 0
+Current objective:
+0.6005046029534814
+iteration 1
+Current objective:
+0.6171139234851384
+iteration 2
+Current objective:
+0.6247585131044959
+iteration 3
+Current objective:
+0.6331797111859923
+iteration 4
+Current objective:
+0.646250516194385
+iteration 5
+Current objective:
+0.6576934195407363
+iteration 6
+Current objective:
+0.6657143552713986
+iteration 7
+Current objective:
+0.6720274705379033
+iteration 8
+Current objective:
+0.6802259829875591
+iteration 9
+Current objective:
+0.6855364861604615
+iteration 10
+Current objective:
+0.6922642475911701
+iteration 11
+Current objective:
+0.6999128639209367
+iteration 12
+Current objective:
+0.7050025826558192
+iteration 13
+Current objective:
+0.7050046146281316
+iteration 14
+Current objective:
+0.7050115241448068
+Optimized policy hyper-parameters:
+SinglePeriodOptimization(objective=ReturnsForecast(r_hat=HistoricalMeanReturn(half_life=inf, rolling=inf), decay=1.0) - Gamma(current_value=2.8531167061100025) * FactorModelCovariance(Sigma=HistoricalFactorizedCovariance(half_life=inf, rolling=inf, kelly=True), num_factors=10) - Gamma(current_value=0.9090909090909091) * TransactionCost(a=0.00025, b=1.0, market_volumes=VolumeHatOrRealized(volume_hat=HistoricalMeanVolume(half_life=inf, rolling=Timedelta('365 days 05:45:36'))), sigma=HistoricalStandardDeviation(half_life=inf, rolling=Timedelta('365 days 05:45:36'), kelly=True), exponent=1.5) - Gamma(current_value=0.8264462809917354) * HoldingCost(short_fees=0.25, periods_per_year=YearDividedByTradingPeriod()) + CashReturn(), constraints=[DollarNeutral(), MarketNeutral(benchmark=MarketBenchmark(mean_volume_forecast=HistoricalMeanVolume(half_life=inf, rolling=Timedelta('365 days 05:45:36'))), covariance_forecaster=HistoricalFactorizedCovariance(half_life=inf, rolling=inf, kelly=True)), LeverageLimit(limit=7)], benchmark=AllCash(), cvxpy_kwargs={'solver': 'CLARABEL'})
+Optimized policy back-test result:
+
+#################################################################
+Universe size                                                 102
+Initial timestamp                       2016-01-04 14:30:00+00:00
+Final timestamp                         2024-03-19 13:30:00+00:00
+Number of periods                                            2066
+Initial value (USDOLLAR)                                1.000e+06
+Final value (USDOLLAR)                                  6.391e+06
+Profit (USDOLLAR)                                       5.391e+06
+                                                                 
+Avg. return (annualized)                                    31.7%
+Volatility (annualized)                                     42.6%
+Avg. excess return (annualized)                             30.0%
+Avg. active return (annualized)                             30.0%
+Excess volatility (annualized)                              42.6%
+Active volatility (annualized)                              42.6%
+                                                                 
+Avg. growth rate (annualized)                               22.6%
+Avg. excess growth rate (annualized)                        21.0%
+Avg. active growth rate (annualized)                        21.0%
+                                                                 
+Avg. TransactionCost                                          0bp
+Max. TransactionCost                                          4bp
+Avg. HoldingCost                                              0bp
+Max. HoldingCost                                              1bp
+                                                                 
+Sharpe ratio                                                 0.71
+Information ratio                                            0.71
+                                                                 
+Avg. drawdown                                              -13.5%
+Min. drawdown                                              -49.4%
+Avg. leverage                                              629.9%
+Max. leverage                                              786.0%
+Avg. turnover                                                2.2%
+Max. turnover                                               43.6%
+                                                                 
+Avg. policy time                                           0.017s
+Avg. simulator time                                        0.018s
+    Of which: market data                                  0.004s
+Total time                                                71.472s
+#################################################################
+
+Correlation of strategy returns with benchmark:
+0.16478970446546193

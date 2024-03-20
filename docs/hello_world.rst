@@ -23,7 +23,7 @@ The result of the :class:`cvxportfolio.MultiPeriodOptimization` policy:
    :scale: 100 %
    :alt: hello_world.py result figure
 
-   This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
+   This figure is made by the :meth:`cvxportfolio.result.BacktestResult.plot` method.
 
 And result of the :class:`cvxportfolio.Uniform` policy, which allocates equal
 weight to all non-cash assets:
@@ -32,4 +32,4 @@ weight to all non-cash assets:
    :scale: 100 %
    :alt: hello_world.py result figure
 
-   This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
+   This figure is made by the :meth:`cvxportfolio.result.BacktestResult.plot` method.

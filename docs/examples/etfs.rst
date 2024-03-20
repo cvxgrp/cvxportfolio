@@ -23,7 +23,7 @@ that has the largest out-of-sample Sharpe ratio:
    :scale: 100 %
    :alt: examples/etfs.py result figure
 
-   This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
+   This figure is made by the :meth:`cvxportfolio.result.BacktestResult.plot` method.
 
 The result of the :class:`cvxportfolio.MultiPeriodOptimization` policy
 that has the largest out-of-sample growth rate:
@@ -32,4 +32,4 @@ that has the largest out-of-sample growth rate:
    :scale: 100 %
    :alt: examples/etfs.py result figure
 
-   This figure is made by the :meth:`plot()` method of :class:`cvxportfolio.BacktestResult`
+   This figure is made by the :meth:`cvxportfolio.result.BacktestResult.plot` method.
