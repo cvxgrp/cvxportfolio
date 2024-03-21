@@ -73,9 +73,8 @@ linkcode_blob = release
 
 # link to paper; can also build sphinx rule from scratch
 # PDF_LINK = 'https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf'
-PDF_LINK = 'https://cvxportfolio.readthedocs.org/en/master/_static/cvx_portfolio.pdf'
-extlinks = {
-    'paper': (f'{PDF_LINK}#%s', None)}
+PDF_LINK = 'https://cvxportfolio.readthedocs.org/en/stable/_static/cvx_portfolio.pdf'
+extlinks = {'paper': (f'{PDF_LINK}#%s', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

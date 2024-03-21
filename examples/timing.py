@@ -14,7 +14,7 @@
 """We show the runtime of a typical single-period optimization back-test.
 
 This is similar to what was show in :paper:`figure 7.8 of the paper
-<section.7.1>`.
+<section.7.5>`.
 
 Many elements matter in determining how fast a back-test can be run; here
 we present a few (size of risk model, choice of numerical solver and CVXPY
