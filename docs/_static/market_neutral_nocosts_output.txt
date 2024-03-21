@@ -1,0 +1,39 @@
+Updating data.......................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+RESULT:
+
+#################################################################
+Universe size                                                 518
+Initial timestamp                       2000-01-03 14:30:00+00:00
+Final timestamp                         2024-03-20 13:30:00+00:00
+Number of periods                                            6092
+Initial value (USDOLLAR)                                1.000e+06
+Final value (USDOLLAR)                                  2.454e+07
+Profit (USDOLLAR)                                       2.354e+07
+                                                                 
+Avg. return (annualized)                                    15.1%
+Volatility (annualized)                                     19.2%
+Avg. excess return (annualized)                             13.3%
+Avg. active return (annualized)                             13.3%
+Excess volatility (annualized)                              19.2%
+Active volatility (annualized)                              19.2%
+                                                                 
+Avg. growth rate (annualized)                               13.2%
+Avg. excess growth rate (annualized)                        11.5%
+Avg. active growth rate (annualized)                        11.5%
+                                                                 
+Sharpe ratio                                                 0.69
+Information ratio                                            0.69
+                                                                 
+Avg. drawdown                                               -7.6%
+Min. drawdown                                              -32.2%
+Avg. leverage                                              700.0%
+Max. leverage                                              791.1%
+Avg. turnover                                               16.5%
+Max. turnover                                              350.0%
+                                                                 
+Avg. policy time                                           1.503s
+Avg. simulator time                                        0.320s
+    Of which: market data                                  0.013s
+Total time                                             11108.088s
+#################################################################
+

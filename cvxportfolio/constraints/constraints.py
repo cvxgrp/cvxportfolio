@@ -895,8 +895,7 @@ class FixedFactorLoading(EqualityConstraint):
 class FactorNeutral(FixedFactorLoading):
     r"""Require neutrality with respect to certain risk factors.
 
-    This is developed at page 35 of
-    `the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+    This is developed at :paper:`page 35 of the paper <section.4.4>`.
     This models the term
 
     .. math::

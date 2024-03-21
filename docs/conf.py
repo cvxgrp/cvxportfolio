@@ -71,10 +71,12 @@ linkcode_url = REPO
 linkcode_blob = release
 
 
-# External links
+# link to paper; can also build sphinx rule from scratch
+# PDF_LINK = 'https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf'
+PDF_LINK = 'https://raw.githubusercontent.com/cvxgrp/cvxportfolio/tree/master/docs/_static/cvx_portfolio.pdf'
+# PDF_LINK = 'https://cvxportfolio.readthedocs.org/en/stable/_static/cvx_portfolio.pdf'
 extlinks = {
-    'paper': (
-        'https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf#%s', None)}
+    'paper': (f'{PDF_LINK}#%s', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

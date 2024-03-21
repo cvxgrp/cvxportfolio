@@ -1,0 +1,97 @@
+Updating data.......................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+
+
+FIRST RUN; RESULT:
+
+#################################################################
+Universe size                                                 502
+Initial timestamp                       2019-03-22 13:30:00+00:00
+Final timestamp                         2024-03-20 13:30:00+00:00
+Number of periods                                            1258
+Initial value (USDOLLAR)                                1.000e+06
+Final value (USDOLLAR)                                  2.898e+06
+Profit (USDOLLAR)                                       1.898e+06
+                                                                 
+Avg. return (annualized)                                    52.0%
+Volatility (annualized)                                     77.3%
+Avg. excess return (annualized)                             50.0%
+Avg. active return (annualized)                             50.0%
+Excess volatility (annualized)                              77.3%
+Active volatility (annualized)                              77.3%
+                                                                 
+Avg. growth rate (annualized)                               21.3%
+Avg. excess growth rate (annualized)                        19.4%
+Avg. active growth rate (annualized)                        19.4%
+                                                                 
+Avg. StocksTransactionCost                                    0bp
+Max. StocksTransactionCost                                    9bp
+Avg. StocksHoldingCost                                        1bp
+Max. StocksHoldingCost                                        5bp
+                                                                 
+Sharpe ratio                                                 0.65
+Information ratio                                            0.65
+                                                                 
+Avg. drawdown                                              -47.0%
+Min. drawdown                                              -89.1%
+Avg. leverage                                              300.0%
+Max. leverage                                              403.0%
+Avg. turnover                                                3.8%
+Max. turnover                                              150.0%
+                                                                 
+Avg. policy time                                           0.232s
+Avg. simulator time                                        0.094s
+    Of which: market data                                  0.016s
+Total time                                               408.823s
+#################################################################
+
+BACK-TEST TOOK: 409.0286121368408
+SIMULATOR + POLICY TIMES: 408.8231477737427
+AVERAGE TIME PER ITERATION: 0.32523718995524475
+
+
+SECOND RUN; RESULT:
+
+#################################################################
+Universe size                                                 502
+Initial timestamp                       2019-03-22 13:30:00+00:00
+Final timestamp                         2024-03-20 13:30:00+00:00
+Number of periods                                            1258
+Initial value (USDOLLAR)                                1.000e+06
+Final value (USDOLLAR)                                  2.898e+06
+Profit (USDOLLAR)                                       1.898e+06
+                                                                 
+Avg. return (annualized)                                    52.0%
+Volatility (annualized)                                     77.3%
+Avg. excess return (annualized)                             50.0%
+Avg. active return (annualized)                             50.0%
+Excess volatility (annualized)                              77.3%
+Active volatility (annualized)                              77.3%
+                                                                 
+Avg. growth rate (annualized)                               21.3%
+Avg. excess growth rate (annualized)                        19.4%
+Avg. active growth rate (annualized)                        19.4%
+                                                                 
+Avg. StocksTransactionCost                                    0bp
+Max. StocksTransactionCost                                    9bp
+Avg. StocksHoldingCost                                        1bp
+Max. StocksHoldingCost                                        5bp
+                                                                 
+Sharpe ratio                                                 0.65
+Information ratio                                            0.65
+                                                                 
+Avg. drawdown                                              -47.0%
+Min. drawdown                                              -89.1%
+Avg. leverage                                              300.0%
+Max. leverage                                              403.0%
+Avg. turnover                                                3.8%
+Max. turnover                                              150.0%
+                                                                 
+Avg. policy time                                           0.135s
+Avg. simulator time                                        0.079s
+    Of which: market data                                  0.014s
+Total time                                               268.317s
+#################################################################
+
+BACK-TEST TOOK: 268.54603695869446
+SIMULATOR + POLICY TIMES: 268.3172538280487
+AVERAGE TIME PER ITERATION: 0.2134584358218367

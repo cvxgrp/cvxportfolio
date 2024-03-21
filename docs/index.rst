@@ -93,6 +93,6 @@ Table of Contents
    examples
    contributing
    
-.. _paper: https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf
+.. _paper: _static/cvx_portfolio.pdf
 .. _FRED: https://fred.stlouisfed.org/
 .. _Yahoo Finance: https://finance.yahoo.com

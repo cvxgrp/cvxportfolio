@@ -37,8 +37,7 @@ With this, we require that the optimal post-trade weights
 found by the single-period optimization policy are non-negative.
 In our formulation the full portfolio weights vector (which includes
 the cash account) sums to one,
-see equation :math:`(4.9)` at page 43 of
-`the book <https://stanford.edu/~boyd/papers/pdf/cvx_portfolio.pdf>`_.
+see equation 4.9 at :paper:`page 43 of the paper <section.4.8>`.
 """
 
 from .base_constraints import *

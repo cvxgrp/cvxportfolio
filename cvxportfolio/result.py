@@ -991,6 +991,7 @@ class BacktestResult:
         self.simulator_times.plot(label='Simulator', fig=fig)
         self.market_data_times.plot(label='Of which: market data', fig=fig)
         self.result_times.plot(label='Of which: result', fig=fig)
+        ax.set_ylabel('Seconds')
         ax.legend()
 
         if show:

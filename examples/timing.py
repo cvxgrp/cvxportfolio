@@ -11,91 +11,122 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""""""
-import time
+"""We show the runtime of a typical single-period optimization back-test.
 
-import matplotlib.pyplot as plt
-import pandas as pd
+This is similar to what was show in :paper:`figure 7.8 of the paper
+<section.7.1>`.
 
-import cvxportfolio as cvx
+Many elements matter in determining how fast a back-test can be run; here
+we present a few (size of risk model, choice of numerical solver and CVXPY
+flags, ...) but many more are relevant and understanding of those comes only
+with (deep) expertise in optimization software (and computer systems).
 
-from .universes import SP500
+One interesting feature of Cvxportfolio is that it enables for automatic
+caching of some expensive numerical procedures; one of them is estimation
+of large covariance matrices. Here we show the execution time difference when
+running the same back-test twice. The first time covariance matrices are
+estimated and saved on disk, the second time they are loaded. This especially
+matters when doing hyper-parameter optimization (the expensive calculation is
+only done once).
 
-# we test the typical time it takes
-# to solve and simulate an SPO policy,
-# in the same way as we did in Figure
-# 7.8 of the book
+Finally, we show that :class:`cvxportfolio.result.BacktestResult` does a good
+job accounting for and reporting the time spent doing a back-test and in its
+various components. You can expect it will do even more granular reporting in
+future releases.
 
-# NOTE: the first time you run this, it will
-# compute and cache the risk model terms (for
-# each day). The second time you run you should
-# see faster runtime.
+.. note::
 
-# changing these may have some effect
-# on the solver time, but small
-GAMMA_RISK = 1.
-GAMMA_TRADE = 1.
-GAMMA_HOLD = 1.
+    To reproduce what is shown here you should make sure that the first
+    time this script is run there are no covariance matrices already saved
+    for the historical market data used here. If you run it from scratch, that
+    is OK, but if you re-run this script it will pick up the covariance
+    matrices already estimated. There is currently (Cvxportfolio ``1.3.0``) no
+    easy way to remove caches other than manually deleting files in
+    ``~/cvxportfolio_data``, which you can always safely do.
+"""
+import os
 
-# the solve time grows linearly
-# with this. 15 is the same number
-# we had in the book examples
-NUM_RISK_FACTORS = 15
+if __name__ == '__main__':
 
-# if you change this to 2 (quadratic model)
-# the resulting problem is a QP and can be
-# solved faster
-TCOST_EXPONENT = 1.5
+    import time
 
-# you can add any constraint or objective
-# term to see how it affects execution time
-policy = cvx.SinglePeriodOptimization(
-    objective = cvx.ReturnsForecast()
-        - GAMMA_RISK * cvx.FactorModelCovariance(num_factors=NUM_RISK_FACTORS)
-        - GAMMA_TRADE * cvx.StocksTransactionCost(exponent=TCOST_EXPONENT)
-        - GAMMA_HOLD * cvx.StocksHoldingCost(),
-    constraints = [
-        cvx.LeverageLimit(3),
-    ],
+    import matplotlib.pyplot as plt
+    import pandas as pd
 
-    # You can select any CVXPY
-    # solver here to see how it
-    # affects performance of your
-    # particular problem. This one
-    # is the default for this type
-    # of problems.
-    solver='ECOS',
+    import cvxportfolio as cvx
 
-    # this is a CVXPY compilation flag, it is
-    # recommended for large optimization problems
-    # (like this one) but not for small ones
-    ignore_dpp=True,
+    # same choice as in the paper
+    from .universes import SP500 as UNIVERSE
 
-    # you can add any other cvxpy.Problem.solve option
-    # here, see https://www.cvxpy.org/tutorial/advanced/index.html
-)
+    # changing these may have some effect on the solver time, but small
+    GAMMA_RISK = 1.
+    GAMMA_TRADE = 1.
+    GAMMA_HOLD = 1.
 
-# this downloads data for all the sp500
-simulator = cvx.StockMarketSimulator(SP500)
+    # the solve time grows (approximately) linearly with this. 15 is the same
+    # number we had in the paper examples
+    NUM_RISK_FACTORS = 15
 
-# execution and timing, 5 years backtest
-s = time.time()
-result = simulator.backtest(
-    policy, start_time=pd.Timestamp.today() - pd.Timedelta(f'{365.24*5}d'))
+    # if you change this to 2 (quadratic model) the resulting problem is a QP
+    # and can be solved faster
+    TCOST_EXPONENT = 1.5
 
-print('## RESULT')
-print(result)
+    # you can add any constraint or objective
+    # term to see how it affects execution time
+    policy = cvx.SinglePeriodOptimization(
+        objective = cvx.ReturnsForecast()
+            - GAMMA_RISK * cvx.FactorModelCovariance(
+                num_factors=NUM_RISK_FACTORS)
+            - GAMMA_TRADE * cvx.StocksTransactionCost(exponent=TCOST_EXPONENT)
+            - GAMMA_HOLD * cvx.StocksHoldingCost(),
+        constraints = [
+            cvx.LeverageLimit(3),
+        ],
 
-print('BACKTEST TOOK:', time.time() - s)
-print(
-    'SIMULATOR + POLICY TIMES:',
-    result.simulator_times.sum() + result.policy_times.sum())
-print(
-    'AVERAGE TIME PER ITERATION:',
-    result.simulator_times.mean() + result.policy_times.mean())
+        # You can select any CVXPY solver here to see how it affects
+        # performance of your particular problem. This one  is the default for
+        # this type of problems
+        solver='ECOS',
 
-# plot
-result.policy_times.plot(label='policy times')
-result.simulator_times.plot(label='simulator times')
-plt.legend()
-plt.show()
+        # this is a CVXPY compilation flag, it is recommended for large
+        # optimization problems (like this one) but not for small ones
+        ignore_dpp=True,
+
+        # you can add any other cvxpy.Problem.solve option
+        # here, see https://www.cvxpy.org/tutorial/advanced/index.html
+    )
+
+    # this downloads data for all the sp500
+    simulator = cvx.StockMarketSimulator(UNIVERSE)
+
+    # we repeat two times to see the difference due to estimation and saving
+    # of covariance matrices (the first run), and loading them from disk the
+    # second time
+    figures = {}
+    for run in ['first', 'second']:
+        # execution and timing, 5 years backtest
+        s = time.time()
+        result = simulator.backtest(
+            policy,
+            start_time=pd.Timestamp.today() - pd.Timedelta(f'{365.24*5}d'))
+
+        print('\n\n' + run.upper() + ' RUN; RESULT:')
+        print(result)
+
+        print('BACK-TEST TOOK:', time.time() - s)
+        print(
+            'SIMULATOR + POLICY TIMES:',
+            result.simulator_times.sum() + result.policy_times.sum())
+        print(
+            'AVERAGE TIME PER ITERATION:',
+            result.simulator_times.mean() + result.policy_times.mean())
+
+        # plot; this method was introduced in Cvxportfolio 1.3.0
+        figures[run] = result.times_plot()
+
+    # we use this to save the plots for the documentation
+    if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+        figures['first'].savefig('timing_first_run.png')
+        figures['second'].savefig('timing_second_run.png')
+    else:
+        plt.show()

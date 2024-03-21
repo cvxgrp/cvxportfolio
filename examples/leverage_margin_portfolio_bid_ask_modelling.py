@@ -1,7 +1,4 @@
-
-
-"""
-This example demonstrates how to use cvxportfolio to backtest a leveraged portfolio of US stocks
+"""This example demonstrates how to use cvxportfolio to backtest a leveraged portfolio of US stocks
 denominated in Japanese Yen (JPYEN). It compares three strategies:
 
 1. Buy and hold: Purchase the target weights at the start and hold throughout the backtest period.
@@ -13,16 +10,17 @@ The example also includes a custom cost model (StressModel) that adjusts the bid
 the volatility of the asset returns, increasing the spread during stressed market conditions.
 """
 
-import cvxportfolio as cvx
-from cvxportfolio.utils import set_pd_read_only
-from cvxportfolio.estimator import DataEstimator
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+import cvxportfolio as cvx
+from cvxportfolio.estimator import DataEstimator
+from cvxportfolio.utils import set_pd_read_only
+
+
 class StressModel(object):
-    """
-    A simple stress model that increases transaction costs (bid-ask spread) under certain conditions.
+    """A simple stress model that increases transaction costs (bid-ask spread) under certain conditions.
 
     The model calculates the bid-ask spread based on the volatility of the asset returns. If the
     volatility exceeds a specified threshold (stress_threshold), the model considers it a stressed
@@ -42,8 +40,8 @@ class StressModel(object):
         self.stress_threshold = stress_threshold
 
     def get_bid_ask_spread(self, returns):
-        """
-        Calculate the bid-ask spread based on the volatility of the returns.
+        """Calculate the bid-ask spread based on the volatility of the returns.
+
         If the volatility is above a certain threshold, it's considered a stress condition,
         and the spread is increased by the stress factor.
         """
@@ -55,24 +53,21 @@ class StressModel(object):
     def simulate(self, t, u, h_plus, past_volumes,
                  past_returns, current_prices,
                  current_weights, current_portfolio_value, **kwargs):
-        """
-        Overriding the simulate function to include the stress-adjusted transaction costs.
-        """
+        """Overriding the simulate function to include the stress-adjusted transaction costs."""
         spread = self.get_bid_ask_spread(past_returns.iloc[-1])
         transaction_costs = spread * np.abs(u)  # Assuming proportional to the trade size
         return transaction_costs.sum()
 
 
-
 # Subclass of DownloadedMarketData to represent US (only) stocks in JPYEN
 class ForeignCurrencyMarketData(cvx.DownloadedMarketData):
     """Represent US stocks/ETF returns, prices, and volumes in a foreign ccy.
-    
+
     Supported currencies are EURO, JPYEN, GBPOUND (the currently supported
     cash keys other than USDOLLAR).
 
     In the future, the default MarketData servers will be able to handle
-    currency conversion, using a similar mechanism as prototyped here. 
+    currency conversion, using a similar mechanism as prototyped here.
 
     :param universe: Yahoo Finance tickers of **US assets only**.
     :type universe: iterable
@@ -80,7 +75,7 @@ class ForeignCurrencyMarketData(cvx.DownloadedMarketData):
     :type datasource: str
     :param cash_key: EURO, GBPOUND, or JPYEN
     :type cash_key: str
-    """ 
+    """
     def __init__(
             self, universe=(), datasource='YahooFinance', cash_key='JPYEN',
             *args, **kwargs):
@@ -95,11 +90,11 @@ class ForeignCurrencyMarketData(cvx.DownloadedMarketData):
         rate_return = rate.pct_change().shift(-1)
 
         # the cash column of returns is already in cash_key
-        orig_interest_rate = self.returns.iloc[:,-1]
+        orig_interest_rate = self.returns.iloc[:, -1]
 
         self.returns = (
             1 + self.returns).multiply((1 + rate_return), axis=0) - 1
-        self.returns.iloc[:,-1] = orig_interest_rate
+        self.returns.iloc[:, -1] = orig_interest_rate
         self.returns = set_pd_read_only(self.returns)
 
         self.prices = set_pd_read_only(self.prices.multiply(rate, axis=0))
@@ -107,7 +102,7 @@ class ForeignCurrencyMarketData(cvx.DownloadedMarketData):
 
     def _get_exchange_rate(self):
         mapping = {'JPYEN': 'JPY=X', 'EURO': 'EUR=X', 'GBPOUND': 'GBP=X'}
-        
+
         # fx rate is timestamped 0:00 UTC (~midnight London)
         rate_full = cvx.YahooFinance(mapping[self.cash_key]).data
 
@@ -118,7 +113,7 @@ class ForeignCurrencyMarketData(cvx.DownloadedMarketData):
         return rate.reindex(self.returns.index, method='ffill')
 
 class LeverageAdjustedFixedWeights(cvx.policies.Policy):
-    def __init__(self, target_weights, max_leverage=4.2, min_leverage=2.8):#, target_leverage=3.5):#, #margin_call_leverage=6.0):
+    def __init__(self, target_weights, max_leverage=4.2, min_leverage=2.8): #, target_leverage=3.5):#, #margin_call_leverage=6.0):
         self.target_weights = DataEstimator(target_weights, data_includes_cash=True)
         self.max_leverage = DataEstimator(max_leverage)
         self.min_leverage = DataEstimator(min_leverage)
@@ -127,7 +122,6 @@ class LeverageAdjustedFixedWeights(cvx.policies.Policy):
 
     def _rescale_weights_to_target(self, weights, scale_factor):
         lev = current_leverage = sum(abs(current_weights.iloc[:-1]))
-
 
     def values_in_time(self, t, current_weights, current_portfolio_value, **kwargs):
         # Calculate the current leverage
@@ -187,5 +181,3 @@ print('TARGET REBALANCE LEVERAGE')
 print(target_rebalance_leverage)
 target_rebalance_leverage.plot()
 plt.show()
-
-

@@ -93,8 +93,7 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
         return NotImplemented
 
     def __add__(self, other):
-        """Add cost expression to another cost expression.
-        """
+        """Add cost expression to another cost expression."""
         if isinstance(other, Cost):
             return SumCost(self, other)
         return NotImplemented
@@ -120,8 +119,7 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
         return other.__add__(-self)
 
     def __le__(self, other):
-        """Self <= other, return CostInequalityConstraint.
-        """
+        """Self <= other, return CostInequalityConstraint."""
         # TODO: if series, we should check that it is dt indexed
         # (DataEstimator should?)
         if isinstance(other, (Number, pd.Series)):
