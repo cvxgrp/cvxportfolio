@@ -79,6 +79,11 @@ class BacktestResult:
     :param costs: Simulator cost objects whose value is logged. Note: we use
         only the classes' **names** here.
     :type costs: list
+
+    .. note::
+
+        The initializer of this class is still experimental, we might still
+        change its signature without the guarantee of semantic versioning.
     """
 
     def __init__(self, universe, trading_calendar, costs):
@@ -236,6 +241,11 @@ class BacktestResult:
             :meth:`cvxportfolio.data.MarketData` for this period (also already
             included in ``simulator_time``).
         :type market_data_time: float
+
+        .. note::
+
+            This method is still experimental, we might change its signature
+            without the guarantee of semantic versioning.
         """
         timer = time.time()
         if not h.index.equals(self._current_universe):
@@ -276,6 +286,11 @@ class BacktestResult:
             simulator to propagate the holdings from t to t_next (other times
             are already accounted for).
         :type extra_simulator_time: float
+
+        .. note::
+
+            This method is still experimental, we might change its signature
+            without the guarantee of semantic versioning.
         """
         self._h.loc[t_next] = h
         self._simulator_times.loc[t] += extra_simulator_time
