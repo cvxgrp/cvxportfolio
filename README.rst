@@ -7,7 +7,7 @@
 
 Cvxportfolio is an object-oriented library for portfolio optimization
 and back-testing. It implements models described in the `accompanying paper
-<https://raw.githubusercontent.com/cvxgrp/cvxportfolio/tree/master/docs/_static/cvx_portfolio.pdf>`_.
+<https://cvxportfolio.readthedocs.org/en/master/_static/cvx_portfolio.pdf>`_.
 
 The documentation of the library is at
 `www.cvxportfolio.com <https://www.cvxportfolio.com>`__.
