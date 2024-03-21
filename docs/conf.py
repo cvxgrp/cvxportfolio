@@ -21,8 +21,6 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../'))
 
-
-
 # -- Project information -----------------------------------------------------
 
 project = 'Cvxportfolio'
@@ -38,6 +36,8 @@ release = "1.2.1"
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
 language = 'en'
+
+REPO = "https://github.com/cvxgrp/cvxportfolio/"
 
 # -- General configuration ---------------------------------------------------
 
@@ -59,6 +59,17 @@ extensions = ['sphinx.ext.autodoc',
 # # current approach is better
 # extensions.append('autoapi.extension')
 # autoapi_dirs = ['../cvxportfolio']
+
+# Link github source code browser from api documentation
+# uses https://sphinx-github-style.readthedocs.io/en/latest/index.html
+extensions += [
+    "sphinx_github_style",
+]
+linkcode_url = REPO
+
+# in this way we link to the tagged version in github
+linkcode_blob = release
+
 
 # External links
 extlinks = {
@@ -96,11 +107,12 @@ master_doc = 'index'
 #
 html_theme = 'furo'
 
-html_theme_options = {
-    "source_repository": "https://github.com/cvxgrp/cvxportfolio/",
-    "source_branch": "master",
-    "source_directory": "docs/",
-}
+# not used by FURO
+# html_theme_options = {
+#     "source_repository": REPO,
+#     "source_branch": "master",
+#     "source_directory": "docs/",
+# }
 
 # html_sidebars = {
 #    '**': [
