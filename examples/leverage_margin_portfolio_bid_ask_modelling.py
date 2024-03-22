@@ -11,7 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This example demonstrates how to use cvxportfolio to backtest a leveraged portfolio of US stocks
+"""
+This is a user-contributed example, and it's not finished.
+
+*Work in progress.*
+
+This example demonstrates how to use cvxportfolio to backtest a leveraged portfolio of US stocks
 denominated in Japanese Yen (JPYEN). It compares three strategies:
 
 1. Buy and hold: Purchase the target weights at the start and hold throughout the backtest period.

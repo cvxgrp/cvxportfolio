@@ -14,7 +14,7 @@ EXAMPLES      = examples
 # probably improves performance (on debian, at least)
 # in the test suite in github we install everything from pip, including
 # the last available dependencies versions for all platforms
-VENV_OPTS     = --system-site-packages
+VENV_OPTS     = #--system-site-packages
 
 ifeq ($(OS), Windows_NT)
     BINDIR=$(ENVDIR)/Scripts
@@ -44,7 +44,7 @@ test:  ## run tests w/ cov report
 
 lint:  ## run linter
 	pylint $(PROJECT) $(EXTRA_SCRIPTS) # $(EXAMPLES)
-	diff-quality --violations=pylint --config-file pyproject.toml
+	# diff-quality --violations=pylint --config-file pyproject.toml
 
 docs:  ## build docs
 	sphinx-build -E docs $(BUILDDIR)

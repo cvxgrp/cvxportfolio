@@ -191,6 +191,11 @@ class BaseForecast(Estimator):
             (usually, today).
         :type t: pd.Timestamp or None
 
+        .. note::
+
+            This method is not finalized! It is still experimental, and not
+            covered by semantic versioning guarantees.
+
         :raises ValueError: If the provided time t is not in the trading
             calendar.
 
