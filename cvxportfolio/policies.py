@@ -838,7 +838,7 @@ class MultiPeriodOptimization(Policy):
                 self.cvxpy_kwargs, t)
             # no point in managing exceptions here
             self._problem.solve(ignore_dpp=True, solver='SCS')
-            if self._problem.status == 'optimal':
+            if self._problem.status in ['optimal', 'optimal_inaccurate']:
                 logger.info('Fallback solution with SCS worked!')
             else:
                 raise PortfolioOptimizationError(
