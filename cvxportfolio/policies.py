@@ -830,10 +830,21 @@ class MultiPeriodOptimization(Policy):
                     warnings.filterwarnings("ignore", category=FutureWarning)
                 self._problem.solve(**self.cvxpy_kwargs)
         except cp.SolverError as exc:
-            raise PortfolioOptimizationError(
-                f"Numerical solver for policy {self.__class__.__name__} at"
-                + f" time {t} failed; try changing it, relaxing some"
-                + " constraints, or removing costs.") from exc
+            # try to solve with SCS; it's the most robust
+            logger.error(
+                'CVXPY with settings %s reported numerical solver failure'
+                ' at time %s;'
+                ' re-trying by using SCS with basic options.',
+                self.cvxpy_kwargs, t)
+            # no point in managing exceptions here
+            self._problem.solve(ignore_dpp=True, solver='SCS')
+            if self._problem.status == 'optimal':
+                logger.info('Fallback solution with SCS worked!')
+            else:
+                raise PortfolioOptimizationError(
+                    f"Numerical solver for policy {self.__class__.__name__} at"
+                    + f" time {t} failed; try changing it, relaxing some"
+                    + " constraints, or removing costs.") from exc
 
         if self._problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(

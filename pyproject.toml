@@ -8,7 +8,8 @@ authors = [{name = "Enzo Busseti"}, {name = "Stephen Boyd"},
     {name = "Steven Diamond"}, {name = "BlackRock Inc."}]
 maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
 dependencies = ["pandas", "numpy", "matplotlib", "requests", "cvxpy",
-    "multiprocess"]
+    "multiprocess", "scs" # it's hardcoded as fallback solver if num errors
+    ]
 
 [project.optional-dependencies]
 docs = ["sphinx", "furo", "sphinx-github-style"]
