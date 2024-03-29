@@ -1013,20 +1013,15 @@ class TestSimulator(CvxportfolioTest):
     def test_bankruptcy(self):
         """Test policy bankruptcy."""
 
-        market_data = cvx.DownloadedMarketData(
-            ['SPY', 'QQQ'],
-            base_location=self.datadir,
-            grace_period=self.data_grace_period)
         sim = cvx.StockMarketSimulator(
-            market_data=market_data, base_location=self.datadir)
+            market_data=self.market_data, base_location=self.datadir)
 
         policy = cvx.SinglePeriodOptimization(
-            cvx.ReturnsForecast(), [cvx.LeverageLimit(20)],
+            cvx.ReturnsForecast(), [cvx.LeverageLimit(30)],
             solver=self.default_qp_solver)
         with self.assertLogs(level='WARNING') as _:
             result = sim.backtest(policy,
-                start_time='2020-02-15', end_time='2020-04-15')
-        # print(result)
+                start_time='2014-12-01', end_time='2020-12-31')
         print(result.h)
         self.assertTrue(result.h.shape[0] < 20)
         self.assertTrue(result.final_value < 0)
