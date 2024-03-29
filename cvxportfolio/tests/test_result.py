@@ -83,7 +83,8 @@ class TestResult(CvxportfolioTest):
         bt_result1 = simulator.backtest(policy, start_time = rets.index[10],
             end_time = rets.index[20])
 
-        self.assertTrue(bt_result.sharpe_ratio == bt_result1.sharpe_ratio)
+        self.assertTrue(
+            np.isclose(bt_result.sharpe_ratio, bt_result1.sharpe_ratio))
 
     def test_backtest_with_ipos_and_delistings(self):
         """Test back-test with assets that both enter and exit."""
