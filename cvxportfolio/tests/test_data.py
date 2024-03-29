@@ -928,6 +928,23 @@ class TestData(CvxportfolioTest):
 class TestMarketData(CvxportfolioTest):
     """Test MarketData methods and interface."""
 
+    def test_prepare_data(self):
+        """Test that (Downloaded)MarketData is created correctly."""
+        market_data = cvx.DownloadedMarketData(
+            ['ZM', 'META'], grace_period = self.data_grace_period,
+            base_location=self.datadir)
+        self.assertTrue(market_data.returns.shape[1] == 3)
+        self.assertTrue(market_data.prices.shape[1] == 2)
+        self.assertTrue(market_data.volumes.shape[1] == 2)
+        # self.assertTrue( simulator.sigma_estimate.data.shape[1] == 2)
+        self.assertTrue(np.isnan(market_data.returns.iloc[-1, 0]))
+        self.assertTrue(np.isnan(market_data.volumes.iloc[-1, 1]))
+        self.assertTrue(not np.isnan(market_data.prices.iloc[-1, 0]))
+        self.assertTrue(
+            market_data.returns.index[-1] == market_data.volumes.index[-1])
+        self.assertTrue(
+            market_data.returns.index[-1] == market_data.prices.index[-1])
+
     def test_market_data_downsample(self):
         """Test downsampling of market data."""
         md = DownloadedMarketData(

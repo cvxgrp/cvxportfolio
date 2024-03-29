@@ -153,23 +153,6 @@ class TestSimulator(CvxportfolioTest):
                 volumes=pd.DataFrame([[0.]]),
                 min_history = pd.Timedelta('0d'))
 
-    def test_prepare_data(self):
-        """Test that (Downloaded)MarketData is created correctly."""
-        market_data = cvx.DownloadedMarketData(
-            ['ZM', 'META'], grace_period = self.data_grace_period,
-            base_location=self.datadir)
-        self.assertTrue(market_data.returns.shape[1] == 3)
-        self.assertTrue(market_data.prices.shape[1] == 2)
-        self.assertTrue(market_data.volumes.shape[1] == 2)
-        # self.assertTrue( simulator.sigma_estimate.data.shape[1] == 2)
-        self.assertTrue(np.isnan(market_data.returns.iloc[-1, 0]))
-        self.assertTrue(np.isnan(market_data.volumes.iloc[-1, 1]))
-        self.assertTrue(not np.isnan(market_data.prices.iloc[-1, 0]))
-        self.assertTrue(
-            market_data.returns.index[-1] == market_data.volumes.index[-1])
-        self.assertTrue(
-            market_data.returns.index[-1] == market_data.prices.index[-1])
-
     def test_holding_cost(self):
         """Test the simulator interface of cvx.HoldingCost."""
 
@@ -960,8 +943,13 @@ class TestSimulator(CvxportfolioTest):
     def test_cancel_trades(self):
         """Test trade cancellation."""
 
-        market_data = copy.deepcopy(self.market_data)
-        market_data.volumes['AAPL'] = 0.
+        vols = pd.DataFrame(self.volumes, copy=True)
+        vols['AAPL'] = 0.
+        market_data = cvx.UserProvidedMarketData(
+            returns=self.returns, volumes=vols, prices=self.prices,
+            cash_key='cash',
+            min_history=pd.Timedelta('0d'))
+
         sim = cvx.MarketSimulator(
             market_data=market_data, base_location=self.datadir)
 
