@@ -14,6 +14,7 @@
 """Unit tests for the market simulator and its backtest methods."""
 
 import copy
+import datetime
 import multiprocessing
 import re
 import time
@@ -92,7 +93,7 @@ class TestSimulator(CvxportfolioTest):
         vols = pd.DataFrame(
             cls.volumes.iloc[:, -assets:].loc[bs_index], copy=True)
         index = pd.date_range(
-            freq='1b', periods=len(rets), end=pd.Timestamp.utcnow().date())
+            freq='1b', periods=len(rets), end=datetime.date(2024,4,1))
         rets.index = index
         vols.index = index
         rets.iloc[-1] = np.nan
