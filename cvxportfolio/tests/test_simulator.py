@@ -736,11 +736,7 @@ class TestSimulator(CvxportfolioTest):
 
     def test_market_neutral(self):
         """Test SPO with market neutral constraint."""
-        market_data = cvx.DownloadedMarketData(
-            ['AAPL', 'MSFT', 'GE', 'GOOG', 'META', 'GLD'],
-            base_location=self.datadir,
-            grace_period=self.data_grace_period,
-            trading_frequency='monthly')
+        market_data = self.generate_market_data(nan_frac=.2)
         sim = cvx.MarketSimulator(
             market_data=market_data, base_location=self.datadir)
 
@@ -751,12 +747,11 @@ class TestSimulator(CvxportfolioTest):
             [], [cvx.MarketNeutral()], [cvx.DollarNeutral()]]]
 
         results = sim.backtest_many(
-            policies, start_time='2023-01-01',
+            policies, start_time='2023-01-01', end_time='2023-02-01',
             parallel=False)  # important for test coverage
 
         print(results)
 
-        # check that market neutral sol is closer to
         dists_from_dollar_neutral = [
             np.abs(result.w.iloc[:, -1] - 1).mean() for result in results]
         print('dists_from_dollar_neutral')
