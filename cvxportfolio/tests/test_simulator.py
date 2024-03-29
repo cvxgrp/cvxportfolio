@@ -15,6 +15,7 @@
 
 import copy
 import multiprocessing
+import re
 import time
 import unittest
 
@@ -959,21 +960,21 @@ class TestSimulator(CvxportfolioTest):
     def test_cancel_trades(self):
         """Test trade cancellation."""
 
-        market_data = cvx.DownloadedMarketData(
-            ['AAPL', 'ZM'],
-            base_location=self.datadir,
-            grace_period=self.data_grace_period,
-            trading_frequency='monthly')
+        market_data = copy.deepcopy(self.market_data)
+        market_data.volumes['AAPL'] = 0.
         sim = cvx.MarketSimulator(
             market_data=market_data, base_location=self.datadir)
-
-        sim.market_data.volumes['ZM'] = 0.
 
         objective = cvx.ReturnsForecast() - 5 * cvx.FullCovariance()
         policy = cvx.SinglePeriodOptimization(
             objective, [cvx.LongOnly(), cvx.LeverageLimit(1)])
 
-        sim.backtest(policy, start_time='2023-01-01')
+        result = sim.backtest(
+            policy, start_time='2014-12-01', end_time='2014-12-31')
+
+        self.assertEqual( # every day there's this log line
+            len(re.findall(
+                'the simulator canceled trades.*AAPL', result.logs)), 21)
 
     def test_svd_covariance_forecaster(self):
         """Test SVD covariance forecaster in simulation."""
