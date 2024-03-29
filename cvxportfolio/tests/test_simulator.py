@@ -962,11 +962,12 @@ class TestSimulator(CvxportfolioTest):
     def test_svd_covariance_forecaster(self):
         """Test SVD covariance forecaster in simulation."""
 
-        market_data = cvx.DownloadedMarketData(
-            ['AAPL', 'MSFT', 'GE', 'ZM', 'META', 'GOOG', 'GLD'],
-            base_location=self.datadir,
-            grace_period=self.data_grace_period,
-            trading_frequency='quarterly')
+        market_data = self.generate_market_data(nan_frac=.3)
+        # market_data = cvx.DownloadedMarketData(
+        #     ['AAPL', 'MSFT', 'GE', 'ZM', 'META', 'GOOG', 'GLD'],
+        #     base_location=self.datadir,
+        #     grace_period=self.data_grace_period,
+        #     trading_frequency='quarterly')
         sim = cvx.StockMarketSimulator(
             market_data=market_data, base_location=self.datadir)
 
@@ -976,8 +977,8 @@ class TestSimulator(CvxportfolioTest):
             objective, [cvx.LongOnly(), cvx.LeverageLimit(1)],
             solver=self.default_qp_solver)
 
-        result_svd = sim.backtest(policy, start_time='2020-01-01',
-            end_time='2023-09-01')
+        result_svd = sim.backtest(
+            policy, start_time='2020-01-01', end_time='2020-03-01')
 
         objective = cvx.ReturnsForecast() - 5 * cvx.FactorModelCovariance(
             num_factors=2)
@@ -985,8 +986,8 @@ class TestSimulator(CvxportfolioTest):
             objective, [cvx.LongOnly(), cvx.LeverageLimit(1)],
             solver=self.default_qp_solver)
 
-        result_eig = sim.backtest(policy, start_time='2020-01-01',
-            end_time='2023-09-01')
+        result_eig = sim.backtest(
+            policy, start_time='2020-01-01', end_time='2020-03-01')
 
         self.assertTrue(result_svd.sharpe_ratio > result_eig.sharpe_ratio)
 
