@@ -87,8 +87,10 @@ class TestSimulator(CvxportfolioTest):
         """
         rng = np.random.default_rng(seed=0)
         bs_index = rng.choice(cls.returns.index, size=len(cls.returns)*years)
-        rets = cls.returns.iloc[:, -assets-1:].loc[bs_index]
-        vols = cls.volumes.iloc[:, -assets:].loc[bs_index]
+        rets = pd.DataFrame(
+            cls.returns.iloc[:, -assets-1:].loc[bs_index], copy=True)
+        vols = pd.DataFrame(
+            cls.volumes.iloc[:, -assets:].loc[bs_index], copy=True)
         index = pd.date_range(
             freq='1b', periods=len(rets), end=pd.Timestamp.utcnow().date())
         rets.index = index
@@ -764,11 +766,15 @@ class TestSimulator(CvxportfolioTest):
     def test_timed_constraints(self):
         """Test some constraints that depend on time."""
 
-        market_data = cvx.DownloadedMarketData(
-            ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
-            base_location=self.datadir,
-            grace_period=self.data_grace_period,
-            trading_frequency='monthly')
+        # market_data = cvx.DownloadedMarketData(
+        #     ['AAPL', 'MSFT', 'GE', 'ZM', 'META'],
+        #     base_location=self.datadir,
+        #     grace_period=self.data_grace_period,
+        #     trading_frequency='monthly')
+        # stock = 'AAPL'
+
+        market_data = self.generate_market_data(assets=5, nan_frac=0.1)
+        stock = market_data.returns.columns[0]
 
         sim = cvx.StockMarketSimulator(
             market_data=market_data, base_location=self.datadir)
@@ -776,36 +782,43 @@ class TestSimulator(CvxportfolioTest):
         # cvx.NoTrade
         objective = cvx.ReturnsForecast() - 2 * cvx.FullCovariance()
 
-        no_trade_ts = [sim.market_data.returns.index[-2],
-                       sim.market_data.returns.index[-6]]
+        base_idx = market_data.returns.index.get_loc('2023-01-02')
+        no_trade_idx = [base_idx + 7, base_idx + 17]
+        no_trade_ts = [market_data.returns.index[idx] for idx in no_trade_idx]
 
         policy = cvx.SinglePeriodOptimization(
-            objective, [cvx.NoTrade('AAPL', no_trade_ts)],
+            objective, [cvx.NoTrade(stock, no_trade_ts)],
             solver=self.default_qp_solver)
 
-        result = sim.backtest(policy, start_time='2023-01-01')
+        result = sim.backtest(
+            policy, start_time='2023-01-01', end_time='2023-04-01')
         print(result.z)
         for t in no_trade_ts:
-            self.assertTrue(np.isclose(result.z['AAPL'].loc[t], 0., atol=1E-3))
+            self.assertTrue(np.isclose(result.z[stock].loc[t], 0., atol=1E-3))
 
         # cvx.MinWeightsAtTimes, cvx.MaxWeightsAtTimes
         policies = [cvx.MultiPeriodOpt(
             objective - cvx.StocksTransactionCost(),
             [cvx.MinWeightsAtTimes(0., no_trade_ts),
-            cvx.MaxWeightsAtTimes(0., no_trade_ts)],
+            cvx.MaxWeightsAtTimes(0., no_trade_ts),
+            cvx.LeverageLimit(5)],
             planning_horizon=p,
             solver=self.default_socp_solver) for p in [1, 3, 5]]
 
         results = sim.backtest_many(
-            policies, start_time='2023-01-01', initial_value=1E6,
+            policies, start_time='2023-01-01', end_time='2023-02-01', initial_value=1E7,
             parallel=False)  # important for test coverage
         print(results)
 
-        total_tcosts = [result.costs['StocksTransactionCost'].sum()
-                        for result in results]
-        print(total_tcosts)
-        self.assertTrue(total_tcosts[0] > total_tcosts[1])
-        self.assertTrue(total_tcosts[1] > total_tcosts[2])
+        # check that the more planning horizon, the less steep the change
+        # in the stock with the timed constraint
+
+        how_fast_trades = [
+            np.abs(result.w[stock].diff()).mean() / result.w[stock].mean()
+                for result in results]
+
+        self.assertGreater(how_fast_trades[0], how_fast_trades[1])
+        self.assertGreater(how_fast_trades[1], how_fast_trades[2])
 
     def test_eq_soft_constraints(self):
         """We check that soft DollarNeutral penalizes non-dollar-neutrality."""
@@ -923,7 +936,7 @@ class TestSimulator(CvxportfolioTest):
             policy, start_time='2014-11-01').sharpe_ratio
 
         simulator.optimize_hyperparameters(
-            policy, start_time='2014-11-01')#, end_time='2023-10-01')
+            policy, start_time='2014-11-01') #, end_time='2023-10-01')
 
         opt_sharpe = simulator.backtest(
             policy, start_time='2014-11-01').sharpe_ratio
@@ -963,11 +976,6 @@ class TestSimulator(CvxportfolioTest):
         """Test SVD covariance forecaster in simulation."""
 
         market_data = self.generate_market_data(nan_frac=.3)
-        # market_data = cvx.DownloadedMarketData(
-        #     ['AAPL', 'MSFT', 'GE', 'ZM', 'META', 'GOOG', 'GLD'],
-        #     base_location=self.datadir,
-        #     grace_period=self.data_grace_period,
-        #     trading_frequency='quarterly')
         sim = cvx.StockMarketSimulator(
             market_data=market_data, base_location=self.datadir)
 
