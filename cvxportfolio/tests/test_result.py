@@ -83,6 +83,8 @@ class TestResult(CvxportfolioTest):
         bt_result1 = simulator.backtest(policy, start_time = rets.index[10],
             end_time = rets.index[20])
 
+        print(bt_result)
+        print(bt_result1)
         self.assertTrue(
             np.isclose(bt_result.sharpe_ratio, bt_result1.sharpe_ratio))
 

@@ -946,8 +946,8 @@ class TestSimulator(CvxportfolioTest):
         vols = pd.DataFrame(self.volumes, copy=True)
         vols['AAPL'] = 0.
         market_data = cvx.UserProvidedMarketData(
-            returns=self.returns, volumes=vols, prices=self.prices,
-            cash_key='cash',
+            returns=pd.DataFrame(self.returns, copy=True), volumes=vols,
+            prices=pd.DataFrame(self.prices, copy=True), cash_key='cash',
             min_history=pd.Timedelta('0d'))
 
         sim = cvx.MarketSimulator(
