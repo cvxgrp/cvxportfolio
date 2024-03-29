@@ -13,6 +13,7 @@
 # limitations under the License.
 """Unit tests for the BacktestResult class and methods."""
 
+import logging
 import unittest
 
 import numpy as np
@@ -22,8 +23,8 @@ import cvxportfolio as cvx
 from cvxportfolio.tests import CvxportfolioTest
 
 
-class TestSimulator(CvxportfolioTest):
-    """Test MarketSimulator and assorted end-to-end tests."""
+class TestResult(CvxportfolioTest):
+    """Test BacktestResult class and methods."""
 
     def test_backtest_with_time_changing_universe(self):
         """Test back-test with user-defined time-varying universe."""
@@ -165,6 +166,56 @@ class TestSimulator(CvxportfolioTest):
         print(result)
         for attribute in dir(result):
             print(attribute, getattr(result, attribute))
+
+    @staticmethod
+    def _equal_logs(log1, log2, strip_pid=False):
+        """Because first ~25 chars are datetime, next 20 are process info."""
+        return [
+            el[50 if strip_pid else 25:] for el in log1.split('\n')] == [
+                el[50 if strip_pid else 25:] for el in log2.split('\n')]
+
+    def test_logs(self):
+        """Test correct recording of logs by BacktestResult."""
+
+        sim = cvx.MarketSimulator(
+            market_data = self.market_data, base_location=self.datadir)
+        result = sim.backtest(cvx.Uniform(), pd.Timestamp(
+            '2014-05-01'))
+        result_base = result.logs
+        self.assertGreater(len(result_base), 100)
+        self.assertGreater(len(result_base.split('\n')), 10)
+
+        opt_pol = cvx.SinglePeriodOptimization(
+                cvx.ReturnsForecast(), [cvx.LongOnly(applies_to_cash=True)])
+        result = sim.backtest(opt_pol, pd.Timestamp('2014-05-01'))
+        result_base1 = result.logs
+
+        self.assertGreater(len(result_base1), len(result_base))
+        self.assertGreater(len(result_base1.split('\n')), 10)
+
+        # setting different root logger levels
+        logger = logging.getLogger()
+        for level in ['DEBUG', 'INFO', 'WARNING', 'ERROR']:
+            logger.setLevel(level)
+            result = sim.backtest(cvx.Uniform(), pd.Timestamp(
+                '2014-05-01'))
+            self.assertTrue(self._equal_logs(result.logs, result_base))
+            # check final level is correct
+            self.assertEqual(logging.getLevelName(logger.level), level)
+
+        # with multiprocessing
+        policies = [cvx.Uniform(), opt_pol]
+
+        for level in ['DEBUG', 'INFO', 'WARNING', 'ERROR']:
+            logger.setLevel(level)
+            result1, result2 = sim.backtest_many(
+                policies, pd.Timestamp('2014-05-01'), parallel=True)
+            self.assertTrue(
+                self._equal_logs(result1.logs, result_base, strip_pid=True))
+            self.assertTrue(
+                self._equal_logs(result2.logs, result_base1, strip_pid=True))
+            self.assertEqual(logging.getLevelName(logger.level), level)
+
 
 if __name__ == '__main__':
 
