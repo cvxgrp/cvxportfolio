@@ -361,18 +361,23 @@ class TestSimulator(CvxportfolioTest):
 
         self.assertFalse((self.datadir / 'backtest_cache').exists())
 
-        simulator.backtest(
+        result_fresh = simulator.backtest(
             policy, start_time='2024-01-01', end_time='2024-02-01')
 
         self.assertTrue((self.datadir / 'backtest_cache').exists())
         self.assertTrue((self.datadir / 'backtest_cache').is_dir())
-
-        simulator.backtest(
-            policy, start_time='2024-01-01', end_time='2024-02-01')
-
         caches = list((self.datadir / 'backtest_cache').iterdir())
         self.assertEqual(len(caches), 1)
         self.assertEqual('.pkl', str(caches[0])[-4:])
+
+        result_w_cache = simulator.backtest(
+            policy, start_time='2024-01-01', end_time='2024-02-01')
+
+        self.assertTrue(np.allclose(result_fresh.w, result_w_cache.w))
+
+        caches_same = list((self.datadir / 'backtest_cache').iterdir())
+        self.assertEqual(len(caches_same), 1)
+        self.assertEqual(str(caches_same[0]), str(caches[0]))
 
     def test_simulate_policy(self):
         """Test basic policy simulation."""
