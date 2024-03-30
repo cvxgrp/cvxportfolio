@@ -93,7 +93,7 @@ class TestSimulator(CvxportfolioTest):
         vols = pd.DataFrame(
             cls.volumes.iloc[:, -assets:].loc[bs_index], copy=True)
         index = pd.date_range(
-            freq='1b', periods=len(rets), end=datetime.date(2024,4,1))
+            freq='1b', periods=len(rets), end=datetime.date(2024, 4, 1))
         rets.index = index
         vols.index = index
         rets.iloc[-1] = np.nan
@@ -341,6 +341,38 @@ class TestSimulator(CvxportfolioTest):
                     < np.linalg.norm(simulator.market_data.prices.loc[t]/2))
 
                 print(u)
+
+    def test_backtest_cache(self):
+        """Test methods of cache.py, which stores factorized covariances.
+
+        This is scheduled for refactoring, but currently only works with
+        downloaded data, so we have to use that.
+        """
+        simulator = StockMarketSimulator(
+            market_data = cvx.DownloadedMarketData(
+                ['META', 'AAPL'],
+                grace_period=self.data_grace_period,
+                base_location=self.datadir),
+                base_location=self.datadir) # need to specify for cache loc
+
+        policy = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast() - .5 * cvx.FullCovariance(),
+            [cvx.LongOnly(applies_to_cash=True)])
+
+        self.assertFalse((self.datadir / 'backtest_cache').exists())
+
+        simulator.backtest(
+            policy, start_time='2024-01-01', end_time='2024-02-01')
+
+        self.assertTrue((self.datadir / 'backtest_cache').exists())
+        self.assertTrue((self.datadir / 'backtest_cache').is_dir())
+
+        simulator.backtest(
+            policy, start_time='2024-01-01', end_time='2024-02-01')
+
+        caches = list((self.datadir / 'backtest_cache').iterdir())
+        self.assertEqual(len(caches), 1)
+        self.assertEqual('.pkl', str(caches[0])[-4:])
 
     def test_simulate_policy(self):
         """Test basic policy simulation."""
