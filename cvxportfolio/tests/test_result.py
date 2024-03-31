@@ -87,6 +87,7 @@ class TestResult(CvxportfolioTest):
 
         # print(bt_result)
         # print(bt_result1)
+        self.assertTrue(np.all(bt_result.w.isnull() == bt_result1.w.isnull()))
         self.assertTrue(np.allclose(bt_result.w, bt_result1.w, equal_nan=True))
 
     def test_backtest_with_ipos_and_delistings(self):
