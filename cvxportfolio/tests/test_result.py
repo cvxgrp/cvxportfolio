@@ -53,7 +53,7 @@ class TestResult(CvxportfolioTest):
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast() - 10 * cvx.FullCovariance(),
             [cvx.LongOnly(), cvx.LeverageLimit(1)],
-            solver=self.default_qp_solver)
+            solver=self.default_socp_solver)
 
         # with self.assertRaises(ValueError):
         #     simulator.backtest(policy, start_time = rets.index[10],
