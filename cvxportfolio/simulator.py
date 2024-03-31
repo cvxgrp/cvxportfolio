@@ -29,7 +29,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from multiprocess import Lock, Pool  # pylint: disable=no-name-in-module
+from multiprocessing import Lock, Pool  # pylint: disable=no-name-in-module
 
 from .cache import _load_cache, _mp_init, _store_cache
 from .costs import StocksHoldingCost, StocksTransactionCost
