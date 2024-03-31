@@ -8,7 +8,8 @@ authors = [{name = "Enzo Busseti"}, {name = "Stephen Boyd"},
     {name = "Steven Diamond"}, {name = "BlackRock Inc."}]
 maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
 dependencies = ["pandas", "numpy", "matplotlib", "requests", "cvxpy",
-    "scs" # it's hardcoded as fallback solver if num errors
+    "multiprocess", # robustifies usage w/ 3rd party modules
+    "scs" # it's hardcoded as fallback solver if numerical errors
     ]
 
 [project.optional-dependencies]
