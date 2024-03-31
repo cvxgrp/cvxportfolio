@@ -356,6 +356,17 @@ class CvxpyExpressionEstimator(Estimator):
         """
         raise NotImplementedError # pragma: no cover
 
+    def finalize_estimator(self, **kwargs):
+        """Delete references to internal CVXPY objects.
+
+        :param kwargs: Unused arguments to :meth:`finalize_estimator`.
+        :type kwargs: dict
+        """
+        for k, obj in self.__dict__.items():
+            if isinstance(obj, (cp.Parameter, cp.Variable)):
+                setattr(self, k, None)
+
+
 # pylint: disable=too-many-arguments
 class DataEstimator(SimulatorEstimator):
     """Estimator of point-in-time values from internal data.

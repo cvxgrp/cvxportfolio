@@ -668,7 +668,15 @@ class MultiPeriodOptimization(Policy):
 
         self.cvxpy_kwargs = kwargs
 
-        # redefined below
+        self._set_internal_vars_to_none()
+
+        # for recursive evaluation
+        self.__subestimators__ = tuple(
+            [self.benchmark] + self.objective + sum(
+                [list(con_at_lag) for con_at_lag in self.constraints], []))
+
+    def _set_internal_vars_to_none(self):
+        """Set internal variables to None, includes CVXPY objects."""
         self._cvxpy_objective = 0
         self._cvxpy_constraints = []
         self._problem = None
@@ -678,11 +686,6 @@ class MultiPeriodOptimization(Policy):
         self._w_plus_at_lags = None
         self._w_plus_minus_w_bm_at_lags = None
         self._cache = {}
-
-        # for recursive evaluation
-        self.__subestimators__ = tuple(
-            [self.benchmark] + self.objective + sum(
-                [list(con_at_lag) for con_at_lag in self.constraints], []))
 
     def _compile_to_cvxpy(self):
         """Compile all cvxpy expressions and the problem."""
@@ -763,6 +766,16 @@ class MultiPeriodOptimization(Policy):
         self._cache = {}
 
         self._compile_to_cvxpy()
+
+    def finalize_estimator_recursive(self, **kwargs):
+        """Finalize the policy, delete CVXPY objects.
+
+        :param kwargs: Unused arguments to :meth:`finalize_estimator`.
+        :type kwargs: dict
+        """
+
+        super().finalize_estimator_recursive(**kwargs)
+        self._set_internal_vars_to_none()
 
     def values_in_time_recursive( # pylint: disable=arguments-differ
             self, t, current_weights, current_portfolio_value, **kwargs):

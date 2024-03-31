@@ -288,9 +288,9 @@ class MarketSimulator:
 
     def _get_initialized_policy(self, orig_policy, universe, trading_calendar):
 
-        # TODO: more tests with object re-use and multiprocessing
-        # policy = orig_policy
-        policy = copy.deepcopy(orig_policy)
+        # TODO: more testing to make sure we don't need this any more
+        # policy = copy.deepcopy(orig_policy)
+        policy = orig_policy
 
         # caching will be handled here
         policy.initialize_estimator_recursive(
@@ -303,6 +303,7 @@ class MarketSimulator:
                 cost.initialize_estimator_recursive(
                     universe=universe, trading_calendar=trading_calendar)
 
+        # TODO: this will be handled by initialize_estimator of the forecasters
         # if policy uses a cache load it from disk
         if hasattr(policy, '_cache'):
             logger.info('Trying to load cache from disk...')
@@ -314,19 +315,21 @@ class MarketSimulator:
 
     def _finalize_policy(self, policy, universe):
 
-        policy.finalize_estimator_recursive() # currently unused
-
-        for cost in self.costs:
-            if hasattr(cost, 'finalize_estimator_recursive'):
-                # to support interface before 1.2.0
-                cost.finalize_estimator_recursive() # currently unused
-
+        # TODO: this will be handled by finalize_estimator of the forecasters
+        # save cache to disk
         if hasattr(policy, '_cache'):
             logger.info('Storing cache from policy to disk...')
             _store_cache(
               cache=policy._cache,
               signature=self.market_data.partial_universe_signature(universe),
               base_location=self.base_location)
+
+        policy.finalize_estimator_recursive() # currently unused
+
+        for cost in self.costs:
+            if hasattr(cost, 'finalize_estimator_recursive'):
+                # to support interface before 1.2.0
+                cost.finalize_estimator_recursive() # currently unused
 
     def _backtest(self, policy, start_time, end_time, h):
         """Run a backtest with changing universe."""
