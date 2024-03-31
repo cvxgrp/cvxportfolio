@@ -346,6 +346,17 @@ class SimulatorCost( # pylint: disable=abstract-method
     different :meth:`values_in_time` and :meth:`simulate` respectively.
     """
 
+    def __init__(self):
+        """Define internal variables."""
+        self._set_internal_vars_to_none()
+
+    def _set_internal_vars_to_none(self):
+        """Set internal variables to None, which are CVXPY objects."""
+        self._w_plus = None
+        self._z = None
+        self._w_plus_minus_w_bm = None
+        self._cvxpy_expression = 0.
+
     def initialize_estimator( # pylint: disable=arguments-differ
         self, universe, **kwargs):
         """Initialize cost by compiling its CVXPY expression (if applies).
@@ -358,7 +369,6 @@ class SimulatorCost( # pylint: disable=abstract-method
         :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-        # pylint: disable=attribute-defined-outside-init
         if hasattr(self, 'compile_to_cvxpy'):
             self._w_plus = cp.Variable(len(universe))
             self._z = cp.Variable(len(universe))
@@ -535,6 +545,7 @@ class HoldingCost(SimulatorCost):
         self._short_fees_parameter = None
         self._long_fees_parameter = None
         self._dividends_parameter = None
+        super().__init__()
 
     def initialize_estimator(self, universe, **kwargs):
         """Initialize cvxpy parameters.
@@ -810,6 +821,7 @@ class TransactionCost(SimulatorCost):
         self.exponent = exponent
         self._first_term_multiplier = None
         self._second_term_multiplier = None
+        super().__init__()
 
     def initialize_estimator(self, universe, **kwargs):
         """Initialize cvxpy parameters.

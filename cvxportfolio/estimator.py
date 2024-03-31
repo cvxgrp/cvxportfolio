@@ -363,7 +363,7 @@ class CvxpyExpressionEstimator(Estimator):
         :type kwargs: dict
         """
         for k, obj in self.__dict__.items():
-            if isinstance(obj, (cp.Parameter, cp.Variable)):
+            if isinstance(obj, (cp.Parameter, cp.Variable, cp.Expression)):
                 setattr(self, k, None)
 
 
@@ -432,6 +432,14 @@ class DataEstimator(SimulatorEstimator):
         self._universe_maybe_noncash = None
         self._data_includes_cash = data_includes_cash
         self._ignore_shape_check = ignore_shape_check
+        self.parameter = None
+
+    def finalize_estimator(self, **kwargs):
+        """Delete references to internal CVXPY objects.
+
+        :param kwargs: Unused arguments to :meth:`finalize_estimator`.
+        :type kwargs: dict
+        """
         self.parameter = None
 
     def initialize_estimator(self, universe, trading_calendar, **kwargs):

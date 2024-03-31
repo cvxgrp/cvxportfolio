@@ -324,7 +324,7 @@ class MarketSimulator:
               signature=self.market_data.partial_universe_signature(universe),
               base_location=self.base_location)
 
-        policy.finalize_estimator_recursive() # currently unused
+        policy.finalize_estimator_recursive()
 
         for cost in self.costs:
             if hasattr(cost, 'finalize_estimator_recursive'):
