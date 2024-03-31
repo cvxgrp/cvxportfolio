@@ -748,7 +748,7 @@ class TestSimulator(CvxportfolioTest):
         policies = [
             cvx.SinglePeriodOptimization(
                 objective, constraints, benchmark=bm,
-                solver=self.default_qp_solver)
+                solver=self.default_socp_solver)
             for bm in
                 [cvx.AllCash(), cvx.Uniform(), cvx.MarketBenchmark(), myunif]]
 
