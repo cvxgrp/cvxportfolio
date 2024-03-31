@@ -89,6 +89,9 @@ class BacktestResult:
     def __init__(self, universe, trading_calendar, costs):
         """Initialization of back-test result."""
         timer = time.time()
+        assert isinstance(trading_calendar, pd.DatetimeIndex)
+        # trading calendar must be monotonous increasing
+        assert np.all(trading_calendar[1:] > trading_calendar[:-1])
         self._h = pd.DataFrame(index=trading_calendar,
                               columns=universe, dtype=float)
         self._u = pd.DataFrame(index=trading_calendar,
@@ -1071,8 +1074,8 @@ class BacktestResult:
             "Avg. simulator time": f"{self.simulator_times.mean():.3f}s",
             "    Of which: market data":
                 f"{self.market_data_times.mean():.3f}s",
-            # "    Of which: result":
-            #     f"{self.result_times.mean():.3f}s",
+            "    Of which: result":
+                f"{self.result_times.mean():.3f}s",
             "Total time":
                 f"{self.simulator_times.sum() + self.policy_times.sum():.3f}s",
             }))

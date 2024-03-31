@@ -680,6 +680,34 @@ class TestPolicies(CvxportfolioTest):
         execution_online = policy.execute(market_data=market_data, h=h)
         self.assertTrue(np.all(execution[0] == execution_online[0]))
 
+    def test_policy_reuse(self): # pylint: disable=too-many-locals
+        """Test policy re-used by execute.
+
+        Checks no memory issues, because we allocate/deallocate many structs
+        from extension modules. Also checks results are close (some CVXPY
+        interfaced solvers have built-in randomness).
+        """
+
+        sim, t_s, t_e, policies = self._difficult_simulator_and_policies()
+
+        all_times = sim.market_data.trading_calendar()
+        valid_times = all_times[(all_times >= t_s) & (all_times <= t_e)]
+
+        results_1, results_2 = {}, {}
+
+        for result in (results_1, results_2):
+            for policy in policies:
+                for t in valid_times:
+                    uni = sim.market_data.universe_at_time(t)
+                    h_init = pd.Series(0., uni)
+                    h_init[sim.market_data.cash_key] = 1E6
+                    #print(f'executing {policy} at time {t}')
+                    u, _, _ = policy.execute(
+                        h=h_init, market_data=sim.market_data, t=t)
+                    result[(str(policy), t)] = u
+
+        for k, v in results_1.items():
+            self.assertTrue(np.allclose(v, results_2[k]))
 
 if __name__ == '__main__':
 

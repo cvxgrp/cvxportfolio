@@ -46,7 +46,9 @@ class TestResult(CvxportfolioTest):
             min_history=pd.Timedelta('0d'),
             universe_selection_in_time=universe_selection)
 
-        simulator = cvx.StockMarketSimulator(market_data=modified_market_data)
+        simulator = cvx.StockMarketSimulator(
+            market_data=modified_market_data,
+            base_location=self.datadir)
 
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast() - 10 * cvx.FullCovariance(),
@@ -83,10 +85,9 @@ class TestResult(CvxportfolioTest):
         bt_result1 = simulator.backtest(policy, start_time = rets.index[10],
             end_time = rets.index[20])
 
-        print(bt_result)
-        print(bt_result1)
-        self.assertTrue(
-            np.isclose(bt_result.sharpe_ratio, bt_result1.sharpe_ratio))
+        # print(bt_result)
+        # print(bt_result1)
+        self.assertTrue(np.allclose(bt_result.w, bt_result1.w, equal_nan=True))
 
     def test_backtest_with_ipos_and_delistings(self):
         """Test back-test with assets that both enter and exit."""
@@ -127,35 +128,24 @@ class TestResult(CvxportfolioTest):
 
     def test_backtest_with_difficult_universe_changes(self):
         """Test back-test with assets that both enter and exit at same time."""
-        rets = pd.DataFrame(self.returns.iloc[:, -10:], copy=True)
-        volumes = pd.DataFrame(self.volumes.iloc[:, -9:], copy=True)
-        prices = pd.DataFrame(self.prices.iloc[:, -9:], copy=True)
-        rets.iloc[15:25, 1:3] = np.nan
-        rets.iloc[9:17, 3:5] = np.nan
-        rets.iloc[8:15, 5:7] = np.nan
-        rets.iloc[17:29, 7:8] = np.nan
-        print(rets.iloc[10:20])
 
-        modified_market_data = cvx.UserProvidedMarketData(
-            returns=rets, volumes=volumes, prices=prices,
-            cash_key='cash',
-            min_history=pd.Timedelta('0d'))
-
-        simulator = cvx.StockMarketSimulator(market_data=modified_market_data)
+        market_data, t_start, t_end = self._difficult_market_data()
+        simulator = cvx.StockMarketSimulator(market_data=market_data)
 
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast() - 10 * cvx.FullSigma(),
             [cvx.LongOnly(), cvx.LeverageLimit(1)],
             solver=self.default_qp_solver)
 
-        bt_result = simulator.run_backtest(policy, start_time = rets.index[10],
-            end_time = rets.index[20])
+        bt_result = simulator.run_backtest(
+            policy, start_time = t_start, end_time = t_end)
 
         print(bt_result.w)
 
-        self.assertTrue(set(bt_result.w.columns) == set(rets.columns))
         self.assertTrue(
-            np.all(bt_result.w.iloc[:-1].isnull() == rets.iloc[
+            set(bt_result.w.columns) == set(market_data.full_universe))
+        self.assertTrue(
+            np.all(bt_result.w.iloc[:-1].isnull() == market_data.returns.iloc[
                 10:20].isnull()))
 
     def test_result(self):
@@ -172,10 +162,22 @@ class TestResult(CvxportfolioTest):
 
     @staticmethod
     def _equal_logs(log1, log2, strip_pid=False):
-        """Because first ~25 chars are datetime, next 20 are process info."""
+        """Because first ~25 chars are datetime, next 20 are process info.
+
+        Also need to skip first line if market data is doing masking of the
+        df's, might have to change if we change logging logic there.
+        """
+        # print(log1)
+        # print(log2)
+        log1 = log1.split('\n')
+        log2 = log2.split('\n')
+        if 'Masking internal' in log1[0]:
+            log1 = log1[1:] # pragma: no-cover
+        if 'Masking internal' in log2[0]:
+            log2 = log2[1:]
         return [
-            el[50 if strip_pid else 25:] for el in log1.split('\n')] == [
-                el[50 if strip_pid else 25:] for el in log2.split('\n')]
+            el[50 if strip_pid else 25:] for el in log1] == [
+                el[50 if strip_pid else 25:] for el in log2]
 
     def test_logs(self):
         """Test correct recording of logs by BacktestResult."""
@@ -189,7 +191,8 @@ class TestResult(CvxportfolioTest):
         self.assertGreater(len(result_base.split('\n')), 10)
 
         opt_pol = cvx.SinglePeriodOptimization(
-                cvx.ReturnsForecast(), [cvx.LongOnly(applies_to_cash=True)])
+                cvx.ReturnsForecast(), [cvx.LongOnly(applies_to_cash=True)],
+                solver=self.default_socp_solver) # OSQP may have randomness
         result = sim.backtest(opt_pol, pd.Timestamp('2014-05-01'))
         result_base1 = result.logs
 

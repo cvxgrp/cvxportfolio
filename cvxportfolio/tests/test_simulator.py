@@ -1077,6 +1077,28 @@ class TestSimulator(CvxportfolioTest):
             end_time = self.returns.index[20],
             )
 
+    def test_market_simulator_reuse(self):
+        """Test re-use of MarketSimulator."""
+
+        sim, t_s, t_e, policies = self._difficult_simulator_and_policies()
+
+        results_mp = sim.backtest_many(
+            policies, start_time=t_s, end_time=t_e, parallel=True)
+
+        results_seq = [
+            sim.backtest(pol, start_time=t_s, end_time=t_e)
+                for pol in policies]
+
+        for first_result, second_result in zip(results_mp, results_seq):
+            self.assertTrue(
+                np.allclose(first_result.w, second_result.w, equal_nan=True))
+
+        for first_result, second_result in zip(results_mp, results_seq):
+            self.assertTrue(
+                np.isclose(
+                    first_result.sharpe_ratio, second_result.sharpe_ratio))
+
+
 if __name__ == '__main__':
 
     unittest.main(warnings='error') # pragma: no cover

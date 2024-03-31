@@ -288,6 +288,8 @@ class MarketSimulator:
 
     def _get_initialized_policy(self, orig_policy, universe, trading_calendar):
 
+        # TODO: more tests with object re-use and multiprocessing
+        # policy = orig_policy
         policy = copy.deepcopy(orig_policy)
 
         # caching will be handled here

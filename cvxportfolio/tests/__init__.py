@@ -113,3 +113,45 @@ class CvxportfolioTest(unittest.TestCase):
         """Save timer for each test."""
         t = time.time() - self.start_time
         self.timers[str(self.id())] = t
+
+    def _difficult_market_data(self):
+        """Market data with difficult universe changes.
+
+        Used for BacktestResult correct handling of IPOs/delistings.
+        """
+        rets = pd.DataFrame(self.returns.iloc[:, -10:], copy=True)
+        volumes = pd.DataFrame(self.volumes.iloc[:, -9:], copy=True)
+        prices = pd.DataFrame(self.prices.iloc[:, -9:], copy=True)
+        rets.iloc[15:25, 1:3] = np.nan
+        rets.iloc[9:17, 3:5] = np.nan
+        rets.iloc[8:15, 5:7] = np.nan
+        rets.iloc[17:29, 7:8] = np.nan
+        # print(rets.iloc[10:20])
+        with self.assertLogs(level='WARNING'):
+            modified_market_data = cvx.UserProvidedMarketData(
+                returns=rets, volumes=volumes, prices=prices,
+                cash_key='cash',
+                min_history=pd.Timedelta('0d'))
+        t_start = rets.index[10]
+        t_end = rets.index[20]
+        return modified_market_data, t_start, t_end
+
+    def _difficult_simulator_and_policies(self):
+        """Get difficult simulator and policies.
+
+        Used for object re-use tests.
+        """
+        md, t_s, t_e = self._difficult_market_data()
+        simulator = cvx.StockMarketSimulator(
+            market_data=md, base_location=self.datadir)
+        policy1 = cvx.Uniform()
+        policy2 = cvx.MultiPeriodOptimization(
+            cvx.ReturnsForecast() - .5 * cvx.FullCovariance()
+                - cvx.StocksTransactionCost(),
+            [cvx.LongOnly(applies_to_cash=True)], planning_horizon=2)
+        policy3 = cvx.MultiPeriodOptimization(
+            cvx.ReturnsForecast() - .5 * cvx.FullCovariance(),
+            [cvx.LongOnly(applies_to_cash=True)],
+            planning_horizon=2, solver='OSQP')
+            # because OSQP allocates a C struct that can't be pickled
+        return simulator, t_s, t_e, (policy1, policy2, policy3)

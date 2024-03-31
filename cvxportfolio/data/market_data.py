@@ -212,6 +212,18 @@ class MarketDataInMemory(MarketData):
         """
         return self.returns.columns
 
+    def universe_at_time(self, t):
+        """Return trading universe at given time.
+
+        :param t: Trading time. It must be included in the timestamps returned
+            by :meth:`trading_calendar`.
+        :type t: pandas.Timestamp
+
+        :returns: Trading universe at time ``t``.
+        :rtype: pd.Index
+        """
+        return self.full_universe[self._universe_mask_at_time(t)]
+
     def serve(self, t):
         """Serve data for policy and simulator at time :math:`t`.
 
