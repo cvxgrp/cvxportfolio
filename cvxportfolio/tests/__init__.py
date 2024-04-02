@@ -103,7 +103,8 @@ class CvxportfolioTest(unittest.TestCase):
             universe=self.returns.columns,
             trading_calendar=self.returns.index)
         return model.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
 
     def setUp(self):
         """Timer for each test."""

@@ -22,7 +22,7 @@ __all__ = ['Constraint', 'EqualityConstraint', 'InequalityConstraint']
 class Constraint(CvxpyExpressionEstimator):
     """Base cvxpy constraint class."""
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm, **kwargs):
         """Compile constraint to cvxpy.
 
         :param w_plus: Post-trade weights.
@@ -32,6 +32,9 @@ class Constraint(CvxpyExpressionEstimator):
         :param w_plus_minus_w_bm: Post-trade weights minus benchmark
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Reserved for future expansion.
+        :type kwargs: dict
+
         :returns: some cvxpy.constraints object, or list of those
         :rtype: cvxpy.constraints, list
         """
@@ -50,7 +53,7 @@ class EqualityConstraint(Constraint):
     design of :class:`SoftConstraint` costs.
     """
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm, **kwargs):
         """Compile constraint to cvxpy.
 
         :param w_plus: Post-trade weights.
@@ -60,13 +63,17 @@ class EqualityConstraint(Constraint):
         :param w_plus_minus_w_bm: Post-trade weights minus benchmark
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Reserved for future expansion.
+        :type kwargs: dict
+
         :returns: Cvxpy constraints object.
         :rtype: cvxpy.constraints
         """
-        return self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) ==\
-            self._rhs()
+        return self._compile_constr_to_cvxpy(
+            w_plus=w_plus, z=z, w_plus_minus_w_bm=w_plus_minus_w_bm, **kwargs
+                ) == self._rhs()
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm, **kwargs):
         """Cvxpy expression of the left-hand side of the constraint."""
         raise NotImplementedError # pragma: no cover
 
@@ -87,7 +94,8 @@ class InequalityConstraint(Constraint):
     design of :class:`SoftConstraint` costs.
     """
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(
+            self, w_plus, z, w_plus_minus_w_bm, **kwargs):
         """Compile constraint to cvxpy.
 
         :param w_plus: Post-trade weights.
@@ -97,17 +105,24 @@ class InequalityConstraint(Constraint):
         :param w_plus_minus_w_bm: Post-trade weights minus benchmark
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Reserved for future expansion.
+        :type kwargs: dict
+
+        :raises ConvexityError: If the compiled constraint is not convex.
+
         :returns: Cvxpy constraints object.
         :rtype: cvxpy.constraints
         """
-        _ = self._compile_constr_to_cvxpy(w_plus, z, w_plus_minus_w_bm) <=\
-            self._rhs()
+
+        _ = self._compile_constr_to_cvxpy(
+            w_plus=w_plus, z=z, w_plus_minus_w_bm=w_plus_minus_w_bm, **kwargs
+                ) <= self._rhs()
         if not _.is_dcp():
             raise ConvexityError(f"The constraint {self} is not convex!")
         assert _.is_dcp(dpp=True)
         return _
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm, **kwargs):
         """Cvxpy expression of the left-hand side of the constraint."""
         raise NotImplementedError # pragma: no cover
 
@@ -129,9 +144,10 @@ class CostInequalityConstraint(InequalityConstraint):
         self.cost = cost
         self.value = DataEstimator(value, compile_parameter=True)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Compile constraint to cvxpy."""
-        return self.cost.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
+        return self.cost.compile_to_cvxpy(**kwargs)
 
     def _rhs(self):
         return self.value.parameter

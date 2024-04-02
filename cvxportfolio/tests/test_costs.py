@@ -42,11 +42,14 @@ class TestCosts(CvxportfolioTest):
         cost3.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
         expr3 = cost3.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         expr1 = cost1.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         expr2 = cost2.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         cost3.values_in_time_recursive(
             t=t, past_returns=self.returns.loc[self.returns.index < t],
             current_weights=None, current_portfolio_value=None,
@@ -55,28 +58,33 @@ class TestCosts(CvxportfolioTest):
 
         cost4 = cost1 * 2
         expr4 = cost4.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         self.assertTrue(expr4.value == expr1.value * 2)
 
         cost3 = cost1 + 3 * cost2
         expr3 = cost3.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         self.assertTrue(expr3.value == expr1.value + 3 * expr2.value)
 
         cost3 = 3 * cost1 + 2 * cost2
         expr3 = cost3.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         self.assertTrue(expr3.value == 3 * expr1.value + 2 * expr2.value)
 
         cost3 = .1 * cost1 + 2 * (cost2 + cost1)
         expr3 = cost3.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         self.assertTrue(np.isclose(expr3.value, .1 * expr1.value +
                         2 * (expr2.value + expr1.value)))
 
         cost3 = cost1 + 5 * (cost2 + cost1)
         expr3 = cost3.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         self.assertTrue(np.isclose(expr3.value, expr1.value +
                         5 * (expr2.value + expr1.value)))
 
@@ -123,7 +131,8 @@ class TestCosts(CvxportfolioTest):
                 universe=self.returns.columns,
                 trading_calendar=self.returns.index)
             expression = hcost.compile_to_cvxpy(
-                self.w_plus, self.z, self.w_plus_minus_w_bm)
+                w_plus=self.w_plus, z=self.z,
+                w_plus_minus_w_bm=self.w_plus_minus_w_bm)
             hcost.values_in_time_recursive(
                 t=self.returns.index[t], past_returns=self.returns.iloc[:t])
 
@@ -157,7 +166,8 @@ class TestCosts(CvxportfolioTest):
 
         with self.assertRaises(SyntaxError):
             bad_soft_constraint.compile_to_cvxpy(
-                self.w_plus, self.z, self.w_plus_minus_w_bm)
+                w_plus=self.w_plus, z=self.z,
+                w_plus_minus_w_bm=self.w_plus_minus_w_bm)
 
     def test_tcost(self):
         """Test tcost model."""
@@ -177,7 +187,8 @@ class TestCosts(CvxportfolioTest):
         tcost.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
         expression = tcost.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
 
         # only spread
 
@@ -249,7 +260,8 @@ class TestCosts(CvxportfolioTest):
         tcost.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
         expression = tcost.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
 
         tcost.values_in_time_recursive(
             t=self.returns.index[34],

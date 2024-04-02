@@ -107,16 +107,15 @@ class FullCovariance(Cost):
             self._sigma_sqrt.value = project_on_psd_cone_and_factorize(
                 self.Sigma.current_value)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus_minus_w_bm, **kwargs):
         """Compile risk term to cvxpy expression.
 
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
         :param w_plus_minus_w_bm: Post-trade weights minus benchmark
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: All other parameters to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
 
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
@@ -176,16 +175,15 @@ class RiskForecastError(Cost):
 
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus_minus_w_bm, **kwargs):
         """Compile risk term to cvxpy expression.
 
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
         :param w_plus_minus_w_bm: Post-trade weights minus benchmark
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: All other parameters to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
 
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
@@ -248,16 +246,15 @@ class DiagonalCovariance(Cost):
         sigma_squares = self.sigma_squares.current_value
         self.sigmas_parameter.value = np.sqrt(sigma_squares)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus_minus_w_bm, **kwargs):
         """Compile risk term to cvxpy expression.
 
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
         :param w_plus_minus_w_bm: Post-trade weights minus benchmark
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: All other parameters to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
 
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
@@ -414,16 +411,15 @@ class FactorModelCovariance(Cost):
 
         self.idyosync_sqrt_parameter.value = np.sqrt(d)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus_minus_w_bm, **kwargs):
         """Compile risk term to cvxpy expression.
 
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
         :param w_plus_minus_w_bm: Post-trade weights minus benchmark
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: All other parameters to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
 
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
@@ -462,23 +458,21 @@ class WorstCaseRisk(Cost):
         self.riskmodels = riskmodels
         self.__subestimators__ = self.riskmodels
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
-        """Compile risk term to cvxpy expression.
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Compile worst case risk term to cvxpy expression.
 
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: All parameters to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
+
+        :raises ConvexityError: If the compiled risk is not convex.
 
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
         """
         risks = []
         for risk in self.riskmodels:
-            _ = risk.compile_to_cvxpy(w_plus, z, w_plus_minus_w_bm)
+            _ = risk.compile_to_cvxpy(**kwargs)
             assert _.is_dcp(dpp=True)
             if not _.is_convex():
                 raise ConvexityError(f"The risk term {risk} is not convex!")

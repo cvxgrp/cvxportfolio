@@ -241,9 +241,11 @@ class TestRisks(CvxportfolioTest):
         assert cvxpy_expression.is_convex()
 
         cvxpy_expression0 = risk_model0.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         cvxpy_expression1 = risk_model1.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
 
         self.w_plus_minus_w_bm.value = np.ones(self.N)
 

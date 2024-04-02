@@ -691,8 +691,8 @@ class MultiPeriodOptimization(Policy):
         """Compile all cvxpy expressions and the problem."""
         self._cvxpy_objective = [
             el.compile_to_cvxpy(
-                self._w_plus_at_lags[i], self._z_at_lags[i],
-                self._w_plus_minus_w_bm_at_lags[i])
+                w_plus=self._w_plus_at_lags[i], z=self._z_at_lags[i],
+                w_plus_minus_w_bm=self._w_plus_minus_w_bm_at_lags[i])
             for i, el in enumerate(self.objective)]
         for el, term in zip(self.objective, self._cvxpy_objective):
             if not term.is_dcp():
@@ -703,8 +703,8 @@ class MultiPeriodOptimization(Policy):
 
         def _compile_and_check_constraint(constr, i):
             result = constr.compile_to_cvxpy(
-                self._w_plus_at_lags[i], self._z_at_lags[i],
-                self._w_plus_minus_w_bm_at_lags[i])
+                w_plus=self._w_plus_at_lags[i], z=self._z_at_lags[i],
+                w_plus_minus_w_bm=self._w_plus_minus_w_bm_at_lags[i])
             for el in (result if hasattr(result, '__iter__') else [result]):
                 if not el.is_dcp():
                     raise ConvexSpecificationError(constr)

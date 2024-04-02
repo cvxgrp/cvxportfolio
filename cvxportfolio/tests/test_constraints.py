@@ -36,7 +36,8 @@ class TestConstraints(CvxportfolioTest):
         constraint.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
         cvxpy_expression = constraint.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         constraint.values_in_time_recursive(
             t=pd.Timestamp("2020-01-01") if t is None else t,
             current_portfolio_value=1000,
@@ -412,7 +413,8 @@ class TestConstraints(CvxportfolioTest):
             universe=self.returns.columns,
             trading_calendar=self.returns.index)
         cons = model.compile_to_cvxpy(
-            self.w_plus, self.z, self.w_plus_minus_w_bm)
+            w_plus=self.w_plus, z=self.z,
+            w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         model.values_in_time_recursive(t=t, current_portfolio_value=value)
         print(model.portfolio_value.value)
         # cons = model.weight_expr(t, None, z, value)[0]

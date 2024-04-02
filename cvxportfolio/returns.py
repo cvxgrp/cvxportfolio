@@ -76,16 +76,14 @@ class CashReturn(Cost):
         if self.cash_returns is None:
             self._cash_return_parameter.value = past_returns.iloc[-1, -1]
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile to cvxpy expression.
 
         :param w_plus: Post-trade weights.
         :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: All other parameters to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
 
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
@@ -202,16 +200,14 @@ class ReturnsForecast(Cost):
             np.ones(self._r_hat_parameter.size) * \
             self.r_hat.current_value * self.decay**(mpo_step)
 
-    def compile_to_cvxpy(self,  w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile to cvxpy expression.
 
         :param w_plus: Post-trade weights.
         :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: All other parameters to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
 
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression
@@ -270,16 +266,15 @@ class ReturnsForecastError(Cost):
         """
         self._deltas_parameter.value = self.deltas.current_value
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus_minus_w_bm, **kwargs):
         """Compile to cvxpy expression.
 
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
         :param w_plus_minus_w_bm: Post-trade weights minus benchmark
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: All other parameters to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
 
         :returns: Cvxpy expression representing the risk model.
         :rtype: cvxpy.expression

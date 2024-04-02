@@ -164,11 +164,10 @@ class SumCost(Cost):
         self.right = right
         assert isinstance(right, Cost)
 
-    def compile_to_cvxpy(self, *args, **kwargs):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Compile cost by iterating over constituent costs.
 
-        :param args: Symbolic variables
-        :type args: tuple
         :param kwargs: Symbolic variables
         :type kwargs: dict
 
@@ -179,7 +178,7 @@ class SumCost(Cost):
         :rtype: cvxpy.Expression
         """
         s = self.left.compile_to_cvxpy(
-            *args, **kwargs) + self.right.compile_to_cvxpy(*args, **kwargs)
+            **kwargs) + self.right.compile_to_cvxpy(**kwargs)
         if not s.is_dcp():
             raise ConvexSpecificationError(self)
         return s
@@ -216,11 +215,10 @@ class MulCost(Cost):
         self.cost = cost
         assert isinstance(cost, Cost)
 
-    def compile_to_cvxpy(self, *args, **kwargs):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Compile cost by iterating over constituent costs.
 
-        :param args: Symbolic variables
-        :type args: tuple
         :param kwargs: Symbolic variables
         :type kwargs: dict
 
@@ -231,7 +229,7 @@ class MulCost(Cost):
         :rtype: cvxpy.Expression
         """
         mul = _resolve_hyperpar(
-            self.scalar) * self.cost.compile_to_cvxpy(*args, **kwargs)
+            self.scalar) * self.cost.compile_to_cvxpy(**kwargs)
         if not mul.is_dcp():
             raise ConvexSpecificationError(self) # pragma: no cover
         assert mul.is_dcp(dpp=True)
@@ -274,16 +272,13 @@ class SoftConstraint(Cost):
     def __init__(self, constraint):
         self.constraint = constraint
 
-    def compile_to_cvxpy( # pylint: disable=inconsistent-return-statements
-        self, w_plus, z, w_plus_minus_w_bm):
+    # pylint: disable=inconsistent-return-statements
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, **kwargs):
         """Compile cost to cvxpy expression.
 
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Symbolic variables.
+        :type kwargs: dict
 
         :raises SyntaxError: If the constraint is not a EqualityConstraint or
              InequalityConstraint.
@@ -294,7 +289,7 @@ class SoftConstraint(Cost):
 
         try:
             expr = (self.constraint._compile_constr_to_cvxpy(
-                w_plus, z, w_plus_minus_w_bm) - self.constraint._rhs())
+                **kwargs) - self.constraint._rhs())
 
         except AttributeError as exc:
             raise SyntaxError(
@@ -606,16 +601,14 @@ class HoldingCost(SimulatorCost):
                 np.ones(self._dividends_parameter.size
                 ) * self.dividends.current_value
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile cost to cvxpy expression.
 
         :param w_plus: Post-trade weights.
         :type w_plus: cvxpy.Variable
-        :param z: Trade weights.
-        :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Unused arguments to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
 
         :returns: Cvxpy expression.
         :rtype: cvxpy.expression
@@ -861,16 +854,14 @@ class TransactionCost(SimulatorCost):
                 ) / ((self.market_volumes.current_value + 1E-8)
                     / current_portfolio_value) ** (self.exponent - 1)
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(  # pylint: disable=arguments-differ
+            self, z, **kwargs):
         """Compile cost to cvxpy expression.
 
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
         :param z: Trade weights.
         :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark
-            weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Unused arguments to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
 
         :returns: Cvxpy expression.
         :rtype: cvxpy.expression

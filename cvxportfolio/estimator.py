@@ -331,7 +331,7 @@ class SimulatorEstimator(Estimator):
 class CvxpyExpressionEstimator(Estimator):
     """Base class for estimators that are Cvxpy expressions."""
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm, **kwargs):
         """Compile term to cvxpy expression.
 
         This is called by a Policy class on its terms before the start
@@ -344,7 +344,7 @@ class CvxpyExpressionEstimator(Estimator):
 
         In MultiPeriodOptimization policies this is called separately
         for costs and constraints at different look-ahead steps with the
-        corresponding w_plus and z.
+        corresponding symbolic variable objects.
 
         :param w_plus: Post-trade weights.
         :type w_plus: cvxpy.Variable
@@ -353,6 +353,8 @@ class CvxpyExpressionEstimator(Estimator):
         :param w_plus_minus_w_bm: Post-trade weights minus benchmark
             weights.
         :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Reserved for future expansion.
+        :type kwargs: dict
         """
         raise NotImplementedError # pragma: no cover
 

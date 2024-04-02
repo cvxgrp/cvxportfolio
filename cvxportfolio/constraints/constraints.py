@@ -17,8 +17,7 @@ import cvxpy as cp
 import numpy as np
 
 from ..estimator import DataEstimator, Estimator
-from ..forecast import (HistoricalFactorizedCovariance,
-                        project_on_psd_cone_and_factorize)
+from ..forecast import HistoricalFactorizedCovariance
 from ..policies import MarketBenchmark
 from .base_constraints import (Constraint, EqualityConstraint,
                                InequalityConstraint)
@@ -50,7 +49,8 @@ __all__ = [
 class NoCash(EqualityConstraint):
     """Require that the cash balance is zero at each period."""
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return w_plus[-1]
 
@@ -124,7 +124,8 @@ class MarketNeutral(EqualityConstraint):
         self._market_vector.value = np.array(
             factorized_covariance @ (factorized_covariance.T @ bm))
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return w_plus[:-1].T @ self._market_vector
 
@@ -153,7 +154,8 @@ class TurnoverLimit(InequalityConstraint):
     def __init__(self, delta):
         self.delta = DataEstimator(delta, compile_parameter=True)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, z, **kwargs):
         """Compile left hand side of the constraint expression."""
         return .5 * cp.norm1(z[:-1])
 
@@ -178,8 +180,10 @@ class ParticipationRateLimit(InequalityConstraint):
         self.max_participation_rate = DataEstimator(
             max_fraction_of_volumes)
         self.portfolio_value = cp.Parameter(nonneg=True)
+        self._parameter = None
 
-    def initialize_estimator(self, universe, **kwargs):
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
         """Initialize internal parameter.
 
         :param universe: Current trading universe.
@@ -203,7 +207,8 @@ class ParticipationRateLimit(InequalityConstraint):
             self.volumes.current_value
                 * self.max_participation_rate.current_value)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, z, **kwargs):
         """Compile left hand side of the constraint expression."""
         return cp.multiply(cp.abs(z[:-1]), self.portfolio_value)
 
@@ -233,7 +238,8 @@ class LongOnly(InequalityConstraint):
     def __init__(self, applies_to_cash=False):
         self.applies_to_cash = applies_to_cash
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Return a Cvxpy constraint."""
         return -(w_plus if self.applies_to_cash else w_plus[:-1])
 
@@ -292,15 +298,16 @@ class NoTrade(Constraint):
             self._low.value = -100.
             self._high.value = +100.
 
-    def compile_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def compile_to_cvxpy( # pylint: disable=arguments-differ
+            self, z, **kwargs):
         """Compile constraint to cvxpy, return list of two.
 
-        :param w_plus: Post-trade weights.
-        :type w_plus: cvxpy.Variable
         :param z: Trade weights.
         :type z: cvxpy.Variable
-        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
-        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Unused arguments to :meth:`compile_to_cvxpy`.
+        :type kwargs: dict
+
+
         :returns: Two constraints.
         :rtype: list of cvxpy.constraints
         """
@@ -329,7 +336,8 @@ class LeverageLimit(InequalityConstraint):
     def __init__(self, limit):
         self.limit = DataEstimator(limit, compile_parameter=True)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return cp.norm(w_plus[:-1], 1)
 
@@ -371,7 +379,8 @@ class MinCashBalance(InequalityConstraint):
         """
         self.rhs.value = self.c_min.current_value/current_portfolio_value
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return -w_plus[-1]
 
@@ -411,7 +420,8 @@ class DollarNeutral(EqualityConstraint):
     which is simply :math:`{(w_t + z_t)}_{n+1} = 1`.
     """
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return w_plus[-1]
 
@@ -451,7 +461,8 @@ class MaxWeights(InequalityConstraint):
     def __init__(self, limit):
         self.limit = DataEstimator(limit, compile_parameter=True)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return w_plus[:-1]
 
@@ -491,12 +502,14 @@ class MinWeights(InequalityConstraint):
     def __init__(self, limit):
         self.limit = DataEstimator(limit, compile_parameter=True)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return -w_plus[:-1]
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
+        # pylint: disable=invalid-unary-operand-type
         return -self.limit.parameter
 
 class MaxBenchmarkDeviation(MaxWeights):
@@ -530,7 +543,10 @@ class MaxBenchmarkDeviation(MaxWeights):
     :type limit: float, pandas.Series, pandas.DataFrame
     """
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(
+            # pylint pragma b/c we inherit from MaxWeights
+            # pylint: disable=arguments-renamed
+            self, w_plus_minus_w_bm, **kwargs):
         """Compile left hand side of the constraint expression."""
         return w_plus_minus_w_bm[:-1]
 
@@ -566,7 +582,10 @@ class MinBenchmarkDeviation(MinWeights):
     :type limit: float, pandas.Series, pandas.DataFrame
     """
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(
+            # pylint pragma b/c we inherit from MinWeights
+            # pylint: disable=arguments-renamed
+            self, w_plus_minus_w_bm, **kwargs):
         """Compile left hand side of the constraint expression."""
         return -w_plus_minus_w_bm[:-1]
 
@@ -641,13 +660,15 @@ class MinWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
 
     sign = -1.  # used in values_in_time of parent class
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(
+            # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return -w_plus[:-1]
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
-        return -self.limit
+        return -self.limit # pylint: disable=invalid-unary-operand-type
 
 
 class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
@@ -664,7 +685,9 @@ class MaxWeightsAtTimes(MinMaxWeightsAtTimes, InequalityConstraint):
     """
     sign = 1.  # used in values_in_time of parent class
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(
+            # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return w_plus[:-1]
 
@@ -718,7 +741,9 @@ class FactorMaxLimit(InequalityConstraint):
         self.limit = DataEstimator(limit, compile_parameter=True,
             ignore_shape_check=True)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(
+            # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return self.factor_exposure.parameter.T @ w_plus[:-1]
 
@@ -772,7 +797,9 @@ class FactorMinLimit(InequalityConstraint):
         self.limit = DataEstimator(limit, compile_parameter=True,
             ignore_shape_check=True)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(
+            # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return -self.factor_exposure.parameter.T @ w_plus[:-1]
 
@@ -827,7 +854,9 @@ class FactorGrossLimit(InequalityConstraint):
         self.limit = DataEstimator(limit, compile_parameter=True,
             ignore_shape_check=True)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(
+            # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return self.factor_exposure.parameter.T @ cp.abs(w_plus[:-1])
 
@@ -884,7 +913,9 @@ class FixedFactorLoading(EqualityConstraint):
             factor_exposure, compile_parameter=True)
         self.target = DataEstimator(target, compile_parameter=True)
 
-    def _compile_constr_to_cvxpy(self, w_plus, z, w_plus_minus_w_bm):
+    def _compile_constr_to_cvxpy(
+            # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
         """Compile left hand side of the constraint expression."""
         return self.factor_exposure.parameter.T @ w_plus[:-1]
 
