@@ -737,20 +737,15 @@ class MultiPeriodOptimization(Policy):
                 + " cvxportfolio terms and is probably due to a"
                 + " mis-specified custom term.")
 
-    def initialize_estimator_recursive( # pylint: disable=arguments-differ
+    def initialize_estimator( # pylint: disable=arguments-differ
             self, universe, **kwargs):
-        """Initialize the policy object with the trading universe.
-
-        We redefine the recursive version of :meth:`initialize_estimator`
-        because we initialize all objective and constraint objects.
+        """Initialize the policy object by defining all CVXPY terms.
 
         :param universe: Trading universe, including cash.
         :type universe: pandas.Index
         :param kwargs: Arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-
-        super().initialize_estimator_recursive(universe=universe, **kwargs)
 
         self._w_bm = cp.Parameter(len(universe))
 
@@ -767,14 +762,13 @@ class MultiPeriodOptimization(Policy):
 
         self._compile_to_cvxpy()
 
-    def finalize_estimator_recursive(self, **kwargs):
+    def finalize_estimator(self, **kwargs):
         """Finalize the policy, delete CVXPY objects.
 
         :param kwargs: Unused arguments to :meth:`finalize_estimator`.
         :type kwargs: dict
         """
 
-        super().finalize_estimator_recursive(**kwargs)
         self._set_internal_vars_to_none()
 
     def values_in_time_recursive( # pylint: disable=arguments-differ
@@ -782,7 +776,9 @@ class MultiPeriodOptimization(Policy):
         """Update all cvxpy parameters, solve, and return allocation weights.
 
         We redefine the recursive version of :meth:`values_in_time`
-        because we evaluate all objective and constraint objects.
+        because we change the variables that are passed down the tree:
+        we add ``cache`` and ``mpo_step``, and the latter is changed for the
+        different MPO steps.
 
         :param t: Current time.
         :type t: pandas.Timestamp
