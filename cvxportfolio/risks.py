@@ -333,7 +333,9 @@ class FactorModelCovariance(Cost):
         with ``num_factors``.
     :type F_and_d_Forecaster: cvxportfolio.forecast.BaseForecast
     """
-
+    # we use the first pylint pragma because Sigma_F and F_and_d_Forecaster are
+    # not PEP8 compliant; that was a bad naming choice
+    # pylint: disable=invalid-name,too-many-arguments
     def __init__(self, F=None, d=None, Sigma_F=None, num_factors=1,
             Sigma=HistoricalFactorizedCovariance,
             F_and_d_Forecaster=HistoricalLowRankCovarianceSVD):
@@ -357,7 +359,8 @@ class FactorModelCovariance(Cost):
             self.num_factors = num_factors
         else:
             self._fit = False
-        self.idyosync_sqrt_parameter = None
+        self._idyosync_sqrt_parameter = None
+        self._factor_exposures_parameter = None
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, universe, **kwargs):
@@ -368,18 +371,18 @@ class FactorModelCovariance(Cost):
         :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-        self.idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
+        self._idyosync_sqrt_parameter = cp.Parameter(len(universe)-1)
         if self._fit:
             effective_num_factors = min(self.num_factors, len(universe)-1)
-            self.factor_exposures_parameter = cp.Parameter(
+            self._factor_exposures_parameter = cp.Parameter(
                 (effective_num_factors, len(universe)-1))
         else:
             if self.Sigma_F is None:
-                self.factor_exposures_parameter = self.F.parameter
+                self._factor_exposures_parameter = self.F.parameter
             else:
                 # we could refactor the code here
                 # so we don't create duplicate parameters
-                self.factor_exposures_parameter = cp.Parameter(
+                self._factor_exposures_parameter = cp.Parameter(
                     self.F.parameter.shape)
 
     def values_in_time( # pylint: disable=arguments-differ
@@ -391,7 +394,7 @@ class FactorModelCovariance(Cost):
         """
         if self._fit:
             if hasattr(self, 'F_and_d_Forecaster'):
-                self.factor_exposures_parameter.value, d = \
+                self._factor_exposures_parameter.value, d = \
                     self.F_and_d_Forecaster.current_value
             else:
                 sigma_sqrt = self.Sigma.current_value \
@@ -399,17 +402,23 @@ class FactorModelCovariance(Cost):
                     else project_on_psd_cone_and_factorize(
                         self.Sigma.current_value)
                 # numpy eigendecomposition has largest eigenvalues last
-                self.factor_exposures_parameter.value = sigma_sqrt[
+                self._factor_exposures_parameter.value = sigma_sqrt[
                     :, -self.num_factors:].T
                 d = np.sum(sigma_sqrt[:, :-self.num_factors]**2, axis=1)
         else:
             d = self.d.current_value
             if not self.Sigma_F is None:
-                self.factor_exposures_parameter.value = (
-                    self.F.parameter.value.T @ np.linalg.cholesky(
-                        self.Sigma_F.current_value)).T
+                # we were originally using Cholesky here, but if the user
+                # provides factor Sigmas with zero eigenvalues (some vendors
+                # give such) that would break; eigh is more robust
+                # sigma_F_factorized = np.linalg.cholesky(
+                #     self.Sigma_F.current_value)
+                sigma_F_factorized = project_on_psd_cone_and_factorize(
+                    self.Sigma_F.current_value)
+                self._factor_exposures_parameter.value = (
+                    self.F.parameter.value.T @ sigma_F_factorized).T
 
-        self.idyosync_sqrt_parameter.value = np.sqrt(d)
+        self._idyosync_sqrt_parameter.value = np.sqrt(d)
 
     def compile_to_cvxpy( # pylint: disable=arguments-differ
             self, w_plus_minus_w_bm, **kwargs):
@@ -425,10 +434,10 @@ class FactorModelCovariance(Cost):
         :rtype: cvxpy.expression
         """
         cvxpy_expression = cp.sum_squares(cp.multiply(
-            self.idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
+            self._idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1]))
         assert cvxpy_expression.is_dcp(dpp=True)
 
-        cvxpy_expression += cp.sum_squares(self.factor_exposures_parameter @
+        cvxpy_expression += cp.sum_squares(self._factor_exposures_parameter @
                                           w_plus_minus_w_bm[:-1])
         assert cvxpy_expression.is_dcp(dpp=True)
         assert cvxpy_expression.is_convex()
