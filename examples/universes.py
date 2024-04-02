@@ -20,7 +20,7 @@ and check that the results make sense.
 We could also save each universe in a ``json`` file.
 """
 
-# This was generated on 2024-03-28 15:06:24.930315+00:00
+# This was generated on 2024-04-02 15:31:34.746073+00:00
 
 SP500 = \
 ['A', 'AAL', 'AAPL', 'ABBV', 'ABNB', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI',
@@ -62,15 +62,15 @@ SP500 = \
  'PPG', 'PPL', 'PRU', 'PSA', 'PSX', 'PTC', 'PWR', 'PXD', 'PYPL', 'QCOM',
  'QRVO', 'RCL', 'REG', 'REGN', 'RF', 'RHI', 'RJF', 'RL', 'RMD', 'ROK', 'ROL',
  'ROP', 'ROST', 'RSG', 'RTX', 'RVTY', 'SBAC', 'SBUX', 'SCHW', 'SHW', 'SJM',
- 'SLB', 'SMCI', 'SNA', 'SNPS', 'SO', 'SPG', 'SPGI', 'SRE', 'STE', 'STLD',
- 'STT', 'STX', 'STZ', 'SWK', 'SWKS', 'SYF', 'SYK', 'SYY', 'T', 'TAP', 'TDG',
- 'TDY', 'TECH', 'TEL', 'TER', 'TFC', 'TFX', 'TGT', 'TJX', 'TMO', 'TMUS', 'TPR',
- 'TRGP', 'TRMB', 'TROW', 'TRV', 'TSCO', 'TSLA', 'TSN', 'TT', 'TTWO', 'TXN',
- 'TXT', 'TYL', 'UAL', 'UBER', 'UDR', 'UHS', 'ULTA', 'UNH', 'UNP', 'UPS', 'URI',
- 'USB', 'V', 'VFC', 'VICI', 'VLO', 'VLTO', 'VMC', 'VRSK', 'VRSN', 'VRTX',
- 'VTR', 'VTRS', 'VZ', 'WAB', 'WAT', 'WBA', 'WBD', 'WDC', 'WEC', 'WELL', 'WFC',
- 'WM', 'WMB', 'WMT', 'WRB', 'WRK', 'WST', 'WTW', 'WY', 'WYNN', 'XEL', 'XOM',
- 'XRAY', 'XYL', 'YUM', 'ZBH', 'ZBRA', 'ZTS']
+ 'SLB', 'SMCI', 'SNA', 'SNPS', 'SO', 'SOLV', 'SPG', 'SPGI', 'SRE', 'STE',
+ 'STLD', 'STT', 'STX', 'STZ', 'SWK', 'SWKS', 'SYF', 'SYK', 'SYY', 'T', 'TAP',
+ 'TDG', 'TDY', 'TECH', 'TEL', 'TER', 'TFC', 'TFX', 'TGT', 'TJX', 'TMO', 'TMUS',
+ 'TPR', 'TRGP', 'TRMB', 'TROW', 'TRV', 'TSCO', 'TSLA', 'TSN', 'TT', 'TTWO',
+ 'TXN', 'TXT', 'TYL', 'UAL', 'UBER', 'UDR', 'UHS', 'ULTA', 'UNH', 'UNP', 'UPS',
+ 'URI', 'USB', 'V', 'VFC', 'VICI', 'VLO', 'VLTO', 'VMC', 'VRSK', 'VRSN',
+ 'VRTX', 'VTR', 'VTRS', 'VZ', 'WAB', 'WAT', 'WBA', 'WBD', 'WDC', 'WEC', 'WELL',
+ 'WFC', 'WM', 'WMB', 'WMT', 'WRB', 'WRK', 'WST', 'WTW', 'WY', 'WYNN', 'XEL',
+ 'XOM', 'XRAY', 'XYL', 'YUM', 'ZBH', 'ZBRA', 'ZTS']
 
 NDX100 = \
 ['AAPL', 'ABNB', 'ADBE', 'ADI', 'ADP', 'ADSK', 'AEP', 'AMAT', 'AMD', 'AMGN',
@@ -108,20 +108,20 @@ FTSE100 = \
 NIKKEI225 = \
 ['1332.T', '1605.T', '1721.T', '1801.T', '1802.T', '1803.T', '1808.T',
  '1812.T', '1925.T', '1928.T', '1963.T', '2002.T', '2269.T', '2282.T',
- '2413.T', '2432.T', '2501.T', '2502.T', '2503.T', '2531.T', '2768.T',
- '2801.T', '2802.T', '2871.T', '2914.T', '3086.T', '3099.T', '3289.T',
+ '2413.T', '2432.T', '2501.T', '2502.T', '2503.T', '2768.T', '2801.T',
+ '2802.T', '2871.T', '2914.T', '3086.T', '3092.T', '3099.T', '3289.T',
  '3382.T', '3401.T', '3402.T', '3405.T', '3407.T', '3436.T', '3659.T',
  '3861.T', '3863.T', '4004.T', '4005.T', '4021.T', '4042.T', '4043.T',
  '4061.T', '4063.T', '4151.T', '4183.T', '4188.T', '4208.T', '4324.T',
  '4385.T', '4452.T', '4502.T', '4503.T', '4506.T', '4507.T', '4519.T',
  '4523.T', '4543.T', '4568.T', '4578.T', '4631.T', '4661.T', '4689.T',
  '4704.T', '4751.T', '4755.T', '4901.T', '4902.T', '4911.T', '5019.T',
- '5020.T', '5101.T', '5108.T', '5201.T', '5214.T', '5232.T', '5233.T',
- '5301.T', '5332.T', '5333.T', '5401.T', '5406.T', '5411.T', '5541.T',
- '5631.T', '5706.T', '5711.T', '5713.T', '5714.T', '5801.T', '5802.T',
- '5803.T', '5831.T', '6098.T', '6103.T', '6113.T', '6178.T', '6273.T',
- '6301.T', '6302.T', '6305.T', '6326.T', '6361.T', '6367.T', '6471.T',
- '6472.T', '6473.T', '6479.T', '6501.T', '6503.T', '6504.T', '6506.T',
+ '5020.T', '5101.T', '5108.T', '5201.T', '5214.T', '5233.T', '5301.T',
+ '5332.T', '5333.T', '5401.T', '5406.T', '5411.T', '5631.T', '5706.T',
+ '5711.T', '5713.T', '5714.T', '5801.T', '5802.T', '5803.T', '5831.T',
+ '6098.T', '6103.T', '6113.T', '6146.T', '6178.T', '6273.T', '6301.T',
+ '6302.T', '6305.T', '6326.T', '6361.T', '6367.T', '6471.T', '6472.T',
+ '6473.T', '6479.T', '6501.T', '6503.T', '6504.T', '6506.T', '6526.T',
  '6594.T', '6645.T', '6674.T', '6701.T', '6702.T', '6723.T', '6724.T',
  '6752.T', '6753.T', '6758.T', '6762.T', '6770.T', '6841.T', '6857.T',
  '6861.T', '6902.T', '6920.T', '6952.T', '6954.T', '6971.T', '6976.T',
