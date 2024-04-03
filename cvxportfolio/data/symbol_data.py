@@ -594,9 +594,13 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
             getattr(logger, level)(
                 '%s("%s") has +/- infinity values, setting those to nan',
                 self.__class__.__name__, self.symbol)
-            data.iloc[:, :] = np.nan_to_num(
-                data.values, copy=True, nan=np.nan, posinf=np.nan,
-                neginf=np.nan)
+            with warnings.catch_warnings(): # op below warns on old pandas
+                if int(pd.__version__.split('.')[0]) < 2:
+                    warnings.filterwarnings( # pragma: no cover
+                        "ignore", category=FutureWarning)
+                data.iloc[:, :] = np.nan_to_num(
+                    data.values, copy=True, nan=np.nan, posinf=np.nan,
+                    neginf=np.nan)
 
     def _warn_on_extreme_logreturns(
             self, logreturns, threshold, what, level='warning'):
