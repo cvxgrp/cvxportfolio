@@ -650,6 +650,49 @@ class TestPolicies(CvxportfolioTest):
         with self.assertRaises(cvx.errors.ConvexSpecificationError):
             non_dcp_constr1.execute(market_data=self.market_data, h=h)
 
+    def test_MPO_difficult_errors(self):
+        """Test some error checks of MPO that are difficult to trigger."""
+
+        t = self.market_data.returns.index[50]
+        h = pd.Series(0., self.market_data.universe_at_time(t))
+        h[self.market_data.cash_key] = 1.
+
+        # check inside MultiPeriodOpt.values_in_time_recursive that
+        # the current value is positive; this check should be impossible
+        # to trigger by using the public interfaces
+        pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast())
+        pol.initialize_estimator_recursive(
+            universe=self.market_data.universe_at_time(t),
+            trading_calendar=self.market_data.trading_calendar())
+        with self.assertRaises(ValueError):
+            pol.values_in_time_recursive(
+                t, current_weights=h, current_portfolio_value=-1)
+
+        # numerical solver errors; these are known to happen with bad
+        # conditioning of the self-dual embedding matrix, but it's all
+        # solver-specific and hard to simulate; we simulate it by
+        # setting an extremely low maximum number of solver iterates;
+        # the fallback solver will work fine
+
+        pol = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast() - cvx.FullCovariance(),
+            solver=self.default_qp_solver, max_iter=10)
+        with self.assertLogs(level='WARNING'):
+            pol.execute(market_data=self.market_data, h=h, t=t)
+
+        # then, we create a problem that also breaks the fallback solver,
+        # because it's infeasible; infeasibility is not catched by the primary
+        # solver because it has an impossibly low max number of iterates
+
+        pol = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast() - cvx.FullCovariance(),
+            [cvx.MinWeights(1), cvx.MaxWeights(-1)],
+            solver=self.default_qp_solver, max_iter=1)
+
+        with self.assertLogs(level='WARNING'):
+            with self.assertRaises(cvx.errors.PortfolioOptimizationError):
+                pol.execute(market_data=self.market_data, h=h, t=t)
+
     def test_execute(self):
         """Test the ``execute`` method."""
 

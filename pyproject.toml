@@ -76,7 +76,7 @@ fail_under = 99
 
 [tool.autopep8]
 # these have been selected by hand, whitespaces and empty lines
-select = ["W291","W293","W391","E231","E225","E303"]
+select = ["W291","W292","W293","W391","E231","E225","E303"]
 
 [tool.docformatter]
 # tweaked to remove whitespaces and other simple fixes 
