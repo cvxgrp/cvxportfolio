@@ -195,7 +195,7 @@ class Estimator:
             # pylint: disable=assignment-from-no-return
             self._current_value = self.values_in_time(**kwargs)
             return self.current_value
-        return None
+        return None # pragma: no cover
 
     def collect_hyperparameters(self):
         """Collect (recursively) all hyperparameters defined in a policy.

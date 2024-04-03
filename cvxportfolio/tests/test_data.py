@@ -932,7 +932,7 @@ class TestMarketData(CvxportfolioTest):
         """Test that (Downloaded)MarketData is created correctly."""
         market_data = cvx.DownloadedMarketData(
             ['ZM', 'META'], grace_period = self.data_grace_period,
-            base_location=self.datadir)
+            base_location=self.datadir, datasource=YahooFinance)
         self.assertTrue(market_data.returns.shape[1] == 3)
         self.assertTrue(market_data.prices.shape[1] == 2)
         self.assertTrue(market_data.volumes.shape[1] == 2)
@@ -944,6 +944,23 @@ class TestMarketData(CvxportfolioTest):
             market_data.returns.index[-1] == market_data.volumes.index[-1])
         self.assertTrue(
             market_data.returns.index[-1] == market_data.prices.index[-1])
+
+    def test_market_data_remove_missing_recent(self):
+        """Test DownloadedMarketData logic to handle recent missing data."""
+
+        class YahooFinanceDelisted(YahooFinance): # pylint: disable-all
+            """Fake delistings of stocks."""
+
+            def _preload(self, raw):
+                if self.symbol == 'ZM':
+                    return super()._preload(
+                        pd.DataFrame(raw.iloc[:-2], copy=True))
+                else:
+                    return super()._preload(raw)
+        with self.assertLogs(level='WARNING'):
+            cvx.DownloadedMarketData(
+                ['ZM', 'META'], grace_period = self.data_grace_period,
+                base_location=self.datadir, datasource=YahooFinanceDelisted)
 
     def test_market_data_downsample(self):
         """Test downsampling of market data."""
