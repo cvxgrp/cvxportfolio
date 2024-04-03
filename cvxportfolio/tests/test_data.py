@@ -91,7 +91,7 @@ class TestData(CvxportfolioTest):
             symbol="DFF", storage_backend='pickle',
             base_location=self.datadir)
 
-        print(store.data)
+        # print(store.data)
         data = store.data
         self.assertTrue(np.isclose(data["2023-04-10"], 4.83))
         self.assertTrue(data.index[0] ==
@@ -314,7 +314,7 @@ class TestData(CvxportfolioTest):
         data = pd.DataFrame(np.random.randn(len(index), 3), index=index)
         data.columns = ["a", "b", "c"]
 
-        #print(data.index)
+        ## print(data.index)
         # print(data)
         # print(data.index.dtypes)
         # print(data.dtypes)
@@ -322,7 +322,7 @@ class TestData(CvxportfolioTest):
         storer("example", data, self.datadir)
         data1 = loader("example", self.datadir)
 
-        #print(data1.index)
+        ## print(data1.index)
         # print(data1)
         # print(data1.index.dtypes)
         # print(data1.dtypes)
@@ -479,7 +479,7 @@ class TestData(CvxportfolioTest):
             'AAPL', base_location=self.datadir,
             grace_period=pd.Timedelta('0d')).data
         self.assertTrue(np.allclose(initial, re_updated, equal_nan=True))
-        print(initial)
+        # print(initial)
 
         # change intraday data keeping it valid, nothing happens
         raw_data_intraday_changed = pd.DataFrame(raw_data, copy=True)
@@ -588,7 +588,7 @@ class TestData(CvxportfolioTest):
             self.assertTrue(np.any(
                 ['not append-only' in el for el in _.output]))
             # for el in _.output:
-            #     print(el)
+            #     # print(el)
         # print(re_updated)
         self.assertTrue(re_updated.iloc[-2, 0] == re_updated.iloc[-1, 0])
         self.assertFalse(np.allclose(initial, re_updated, equal_nan=True))
@@ -610,7 +610,7 @@ class TestData(CvxportfolioTest):
                 'AAPL', base_location=self.datadir,
                 grace_period=pd.Timedelta('0d')).data
             # for el in _.output:
-            #     print(el)
+            #     # print(el)
             self.assertTrue(np.any(
                 ['is eliminating data' in el for el in _.output]))
 
@@ -641,7 +641,7 @@ class TestData(CvxportfolioTest):
             self.assertTrue(np.any(
                 ['re-downloading from the start' in el for el in _.output]))
             # for el in _.output:
-            #     print(el)
+            #     # print(el)
         # print(re_updated)
         # last open hasn't changed (re-download is with same bad data, but
         # ffill will work on fresh re-download)
@@ -916,13 +916,13 @@ class TestData(CvxportfolioTest):
     #                 res.index = list(res.index)[:-1] + [
     #                     res.index[-1] - pd.Timedelta('3h')]
     #             self.counter += 1
-    #             print(res)
+    #             # print(res)
     #             return res
     #
     #     storer = YahooFinanceErroneous4('GOOGL', base_location=self.datadir)
-    #     print(storer.data)
+    #     # print(storer.data)
     #     #storer.update(pd.Timedelta('0d'))
-    #     #print(storer.data)
+    #     ## print(storer.data)
 
 
 class TestMarketData(CvxportfolioTest):
@@ -970,18 +970,18 @@ class TestMarketData(CvxportfolioTest):
 
             # pylint: disable=protected-access
             new_md._downsample(freq)
-            print(new_md.returns)
+            # print(new_md.returns)
             self.assertTrue(np.isnan(new_md.returns.GOOG.iloc[0]))
             self.assertTrue(np.isnan(new_md.volumes.GOOG.iloc[0]))
             self.assertTrue(np.isnan(new_md.prices.GOOG.iloc[0]))
 
             if freq == 'weekly':
-                print((new_md.returns.index.weekday < 2).mean())
+                # print((new_md.returns.index.weekday < 2).mean())
                 self.assertTrue(
                     (new_md.returns.index.weekday < 2).mean() > .95)
 
             if freq == 'monthly':
-                print((new_md.returns.index.day < 5).mean())
+                # print((new_md.returns.index.day < 5).mean())
                 self.assertTrue((new_md.returns.index.day < 5).mean() > .95)
 
             self.assertTrue(
@@ -1200,7 +1200,7 @@ class TestMarketData(CvxportfolioTest):
             grace_period=self.data_grace_period,
             base_location=self.datadir)
 
-        print(md.partial_universe_signature(md.full_universe))
+        # print(md.partial_universe_signature(md.full_universe))
 
 if __name__ == '__main__':
 

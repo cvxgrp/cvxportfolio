@@ -416,7 +416,7 @@ class TestConstraints(CvxportfolioTest):
             w_plus=self.w_plus, z=self.z,
             w_plus_minus_w_bm=self.w_plus_minus_w_bm)
         model.values_in_time_recursive(t=t, current_portfolio_value=value)
-        print(model.portfolio_value.value)
+        # print(model.portfolio_value.value)
         # cons = model.weight_expr(t, None, z, value)[0]
         tmp = np.zeros(self.N)
         tmp[:-1] = self.volumes.loc[t].values / value * 0.05

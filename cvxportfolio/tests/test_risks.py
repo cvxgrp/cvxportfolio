@@ -61,10 +61,10 @@ class TestRisks(CvxportfolioTest):
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
 
         risk_model.values_in_time_recursive(t=t, past_returns=past)
-        print(cvxpy_expression.value)
+        # print(cvxpy_expression.value)
 
-        print(self.w_plus_minus_w_bm.value[:-1] @
-              should_be @ self.w_plus_minus_w_bm.value[:-1])
+        # print(self.w_plus_minus_w_bm.value[:-1] @
+        #      should_be @ self.w_plus_minus_w_bm.value[:-1])
 
         self.assertTrue(
             np.isclose(cvxpy_expression.value,
@@ -126,10 +126,10 @@ class TestRisks(CvxportfolioTest):
 
         risk_model.values_in_time_recursive(t=t, past_returns='hello')
 
-        print(cvxpy_expression.value)
-        print((np.abs(
-            self.w_plus_minus_w_bm.value[:-1])
-                @ np.sqrt(historical_variances.loc[t]))**2)
+        # print(cvxpy_expression.value)
+        # print((np.abs(
+        #    self.w_plus_minus_w_bm.value[:-1])
+        #        @ np.sqrt(historical_variances.loc[t]))**2)
         self.assertTrue(
             np.isclose(cvxpy_expression.value,
             (np.abs(self.w_plus_minus_w_bm.value[:-1])
@@ -256,9 +256,9 @@ class TestRisks(CvxportfolioTest):
             current_weights=None, current_portfolio_value=None,
             past_volumes=None, current_prices=None)
 
-        print(cvxpy_expression.value)
-        print(cvxpy_expression0.value)
-        print(cvxpy_expression1.value)
+        # print(cvxpy_expression.value)
+        # print(cvxpy_expression0.value)
+        # print(cvxpy_expression1.value)
         self.assertTrue(cvxpy_expression.value == cvxpy_expression0.value)
         self.assertTrue(cvxpy_expression.value > cvxpy_expression1.value)
 

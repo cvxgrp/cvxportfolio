@@ -54,8 +54,8 @@ class TestReturns(CvxportfolioTest):
         alpha_model.values_in_time_recursive(
             t=self.returns.index[123], past_returns=None)
         self.w_plus.value = np.random.randn(self.N)
-        print(cvxpy_expression.value)
-        print(self.w_plus[:-1].value @ self.returns.iloc[123][:-1])
+        # print(cvxpy_expression.value)
+        # print(self.w_plus[:-1].value @ self.returns.iloc[123][:-1])
         self.assertTrue(np.isclose(cvxpy_expression.value,
                         self.w_plus[:-1].value @ self.returns.iloc[123][:-1]))
 
@@ -96,8 +96,8 @@ class TestReturns(CvxportfolioTest):
         error_risk.values_in_time_recursive(t=t, past_returns=past_returns)
         self.w_plus_minus_w_bm.value = np.random.randn(self.N)
         delta = past_returns.std(ddof=0) / np.sqrt(past_returns.count())
-        print(cvxpy_expression.value)
-        print(np.abs(self.w_plus_minus_w_bm.value[:-1]) @ delta[:-1])
+        # print(cvxpy_expression.value)
+        # print(np.abs(self.w_plus_minus_w_bm.value[:-1]) @ delta[:-1])
         self.assertTrue(np.isclose(cvxpy_expression.value, np.abs(
             self.w_plus_minus_w_bm.value[:-1]) @ delta[:-1]))
 

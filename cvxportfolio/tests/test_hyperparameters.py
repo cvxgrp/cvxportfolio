@@ -58,7 +58,7 @@ class TestHyperparameters(CvxportfolioTest):
         obj = cvx.ReturnsForecast() - cvx.Gamma() * cvx.FullCovariance()\
             - cvx.Gamma() * cvx.StocksTransactionCost()
 
-        print(obj)
+        str(obj)
 
         ref = ('ReturnsForecast(r_hat=HistoricalMeanReturn(half_life=inf,'
             + ' rolling=inf), decay=1.0)'
@@ -73,21 +73,21 @@ class TestHyperparameters(CvxportfolioTest):
             + "rolling=Timedelta('365 days 05:45:36'), kelly=True), "
             + 'exponent=1.5, pershare_cost=0.005)')
 
-        print(ref)
+        # print(ref)
 
         self.assertTrue(str(obj) == ref)
 
-        print(cvx.Gamma() * cvx.Gamma())
-        print(cvx.Gamma() - cvx.Gamma())
-        print(cvx.Gamma() - (2 * cvx.Gamma()))
-        print(cvx.Gamma() - (-2 * cvx.Gamma()))
-        print(cvx.Gamma() - (cvx.Gamma() * -2))
-        print(cvx.Gamma() - (cvx.Gamma() * -2))
-        print(cvx.Gamma() * -1 * (cvx.Gamma() * -2))
-        print(2 * cvx.Gamma() - 3 * cvx.Gamma())
-        print(2 * cvx.Gamma() * ( cvx.ReturnsForecast()
+        str(cvx.Gamma() * cvx.Gamma())
+        str(cvx.Gamma() - cvx.Gamma())
+        str(cvx.Gamma() - (2 * cvx.Gamma()))
+        str(cvx.Gamma() - (-2 * cvx.Gamma()))
+        str(cvx.Gamma() - (cvx.Gamma() * -2))
+        str(cvx.Gamma() - (cvx.Gamma() * -2))
+        str(cvx.Gamma() * -1 * (cvx.Gamma() * -2))
+        str(2 * cvx.Gamma() - 3 * cvx.Gamma())
+        str(2 * cvx.Gamma() * ( cvx.ReturnsForecast()
             - 3 * cvx.Gamma() * cvx.FullCovariance()))
-        print(cvx.Gamma() * 2 * ( cvx.ReturnsForecast()
+        str(cvx.Gamma() * 2 * ( cvx.ReturnsForecast()
             - cvx.Gamma() * (-3) *  cvx.FullCovariance()))
 
     def test_basic_hyper_parameters(self):
@@ -141,7 +141,7 @@ class TestHyperparameters(CvxportfolioTest):
         pol = cvx.SinglePeriodOptimization(GammaRisk() * cvx.FullCovariance())
 
         res = pol.collect_hyperparameters()
-        print(res)
+        # print(res)
         self.assertTrue(len(res) == 1)
 
         pol = cvx.SinglePeriodOptimization(
@@ -149,7 +149,7 @@ class TestHyperparameters(CvxportfolioTest):
             - GammaTrade() * cvx.TransactionCost())
 
         res = pol.collect_hyperparameters()
-        print(res)
+        # print(res)
         self.assertTrue(len(res) == 2)
 
         pol = cvx.SinglePeriodOptimization(
@@ -157,7 +157,7 @@ class TestHyperparameters(CvxportfolioTest):
             - GammaTrade() * cvx.TransactionCost())
 
         res = pol.collect_hyperparameters()
-        print(res)
+        # print(res)
         self.assertTrue(len(res) == 3)
 
 

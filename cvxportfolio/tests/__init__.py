@@ -13,6 +13,7 @@
 # limitations under the License.
 """We make the tests a sub-package so we can ship them."""
 
+import logging
 import shutil
 import tempfile
 import time
@@ -25,6 +26,7 @@ import pandas as pd
 
 import cvxportfolio as cvx
 
+logger = logging.getLogger()
 
 class CvxportfolioTest(unittest.TestCase):
     """Base class for Cvxportfolio unit tests."""
@@ -33,7 +35,7 @@ class CvxportfolioTest(unittest.TestCase):
     def setUpClass(cls):
         """Initialize test class."""
         cls.datadir = Path(tempfile.mkdtemp())
-        print('created', cls.datadir)
+        logger.info('created', cls.datadir)
 
         cls.sigma = pd.read_csv(
             Path(__file__).parent / "sigmas.csv",
@@ -71,7 +73,7 @@ class CvxportfolioTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Finalize test class."""
-        print('removing', cls.datadir)
+        logger.info('removing', cls.datadir)
         shutil.rmtree(cls.datadir)
         print('Timing report:')
         print(pd.Series(cls.timers))

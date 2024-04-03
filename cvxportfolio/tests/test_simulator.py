@@ -190,7 +190,7 @@ class TestSimulator(CvxportfolioTest):
             hcost = -(np.exp(np.log(1.05)/365.24)-1) * sum(
                 -np.minimum(h_plus, 0.)[:-1])
             hcost += dividends @ h_plus[:-1]
-            print(hcost, -sim_hcost)
+            # print(hcost, -sim_hcost)
             self.assertTrue(np.isclose(hcost, -sim_hcost))
 
     def test_transaction_cost_syntax(self):
@@ -309,7 +309,7 @@ class TestSimulator(CvxportfolioTest):
             tcost -= sum((np.abs(u.iloc[:-1])**1.5
                 ) * self.returns.loc[self.returns.index <=
                 t].iloc[-252:, :-1].std(ddof=0) / np.sqrt(self.volumes.loc[t]))
-            print(tcost, sim_cost)
+            # print(tcost, sim_cost)
             self.assertTrue(np.isclose(tcost, -sim_cost))
 
     def test_methods(self):
@@ -340,7 +340,7 @@ class TestSimulator(CvxportfolioTest):
                     np.linalg.norm(rounded[:-1] - u[:-1])
                     < np.linalg.norm(simulator.market_data.prices.loc[t]/2))
 
-                print(u)
+                # print(u)
 
     def test_backtest_cache(self):
         """Test methods of cache.py, which stores factorized covariances.
@@ -480,7 +480,7 @@ class TestSimulator(CvxportfolioTest):
                     current_prices=current_prices)
                 tcost, hcost = costs['StocksTransactionCost'
                     ], costs['StocksHoldingCost']
-                print(h)
+                # print(h)
                 # print(tcost, stock_hcost, cash_hcost)
 
             self.assertTrue(
@@ -502,7 +502,7 @@ class TestSimulator(CvxportfolioTest):
         result = sim.backtest(pol, pd.Timestamp(
             '2014-06-01'), pd.Timestamp('2014-08-20'))
 
-        print(result)
+        # print(result)
 
     def test_wrong_worstcase(self):
         """Test wrong worst-case convexity."""
@@ -528,7 +528,7 @@ class TestSimulator(CvxportfolioTest):
 
         sim = cvx.MarketSimulator(
             market_data=self.md_2assets_nan, base_location=self.datadir)
-        print(sim.market_data.returns)
+        # print(sim.market_data.returns)
         pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
                                            cvx.ReturnsForecastError() -
                                            .5 * cvx.FullCovariance(),
@@ -548,7 +548,7 @@ class TestSimulator(CvxportfolioTest):
         self.assertTrue(len(ridx) == len(sim.market_data.returns.loc[
             (sim.market_data.returns.index >= ridx[0]) & (
             sim.market_data.returns.index <= ridx[-1])]))
-        print(result)
+        # print(result)
 
     def test_multiple_backtest(self):
         """Test multiple back-tests (in parallel)."""
@@ -655,9 +655,9 @@ class TestSimulator(CvxportfolioTest):
         ]
         results = sim.backtest_many(pols, pd.Timestamp(
             start), pd.Timestamp(end), parallel=True)
-        print(np.linalg.norm(results[0].w.sum()[:2] - .5))
-        print(np.linalg.norm(results[1].w.sum()[:2] - .5))
-        print(np.linalg.norm(results[2].w.sum()[:2] - .5))
+        # print(np.linalg.norm(results[0].w.sum()[:2] - .5))
+        # print(np.linalg.norm(results[1].w.sum()[:2] - .5))
+        # print(np.linalg.norm(results[2].w.sum()[:2] - .5))
         self.assertTrue(np.linalg.norm(results[1].w.sum()[
                         :2] - .5) < np.linalg.norm(
                         results[0].w.sum()[:2] - .5))
@@ -686,7 +686,7 @@ class TestSimulator(CvxportfolioTest):
             [cvx.LeverageLimit(1)], solver=self.default_socp_solver)
             s = time.time()
             results_first.append(sim.backtest(pol, pd.Timestamp('2020-12-01')))
-            print(results_first[-1])
+            # print(results_first[-1])
             time_first += time.time() - s
 
         with self.assertRaises(SyntaxError):
@@ -720,14 +720,14 @@ class TestSimulator(CvxportfolioTest):
             s = time.time()
             results_second.append(sim.backtest(
                 pol, pd.Timestamp('2020-12-01')))
-            print(results_second[-1])
+            # print(results_second[-1])
             time_second += time.time() - s
 
         # example is too small to see speed difference w/ cache
         # sadly we have to drop this test element (also cache is not enabled
         # with user-provided data, currently)
         # self.assertTrue(time_second < time_first)
-        print(time_second, time_first)
+        # print(time_second, time_first)
         for i, _ in enumerate(results_first):
             self.assertTrue(
                 np.isclose(_.sharpe_ratio, results_second[i].sharpe_ratio))
@@ -771,7 +771,7 @@ class TestSimulator(CvxportfolioTest):
         norm_smaller = (
             (results[1].w.iloc[:, :-1] - 0.2)
               ** 2).mean(1) < ((results[2].w.iloc[:, :-1] - 0.2)**2).mean(1)
-        print(norm_smaller.describe())
+        # print(norm_smaller.describe())
         self.assertTrue(norm_smaller.mean() > .5)
 
     def test_market_neutral(self):
@@ -790,12 +790,12 @@ class TestSimulator(CvxportfolioTest):
             policies, start_time='2023-01-01', end_time='2023-02-01',
             parallel=False)  # important for test coverage
 
-        print(results)
+        # print(results)
 
         dists_from_dollar_neutral = [
             np.abs(result.w.iloc[:, -1] - 1).mean() for result in results]
-        print('dists_from_dollar_neutral')
-        print(dists_from_dollar_neutral)
+        # print('dists_from_dollar_neutral')
+        # print(dists_from_dollar_neutral)
         self.assertTrue(
             dists_from_dollar_neutral[2] < dists_from_dollar_neutral[1])
         self.assertTrue(
@@ -830,7 +830,7 @@ class TestSimulator(CvxportfolioTest):
 
         result = sim.backtest(
             policy, start_time='2023-01-01', end_time='2023-04-01')
-        print(result.z)
+        # print(result.z)
         for t in no_trade_ts:
             self.assertTrue(np.isclose(result.z[stock].loc[t], 0., atol=1E-3))
 
@@ -846,7 +846,7 @@ class TestSimulator(CvxportfolioTest):
         results = sim.backtest_many(
             policies, start_time='2023-01-01', end_time='2023-02-01', initial_value=1E7,
             parallel=False)  # important for test coverage
-        print(results)
+        # print(results)
 
         # check that the more planning horizon, the less steep the change
         # in the stock with the timed constraint
@@ -874,9 +874,9 @@ class TestSimulator(CvxportfolioTest):
         results = sim.backtest_many(
             policies, start_time='2014-06-01',
             parallel=False)  # important for test coverage
-        print(results)
+        # print(results)
         allcashpos = [((res.w.iloc[:, -1]-1)**2).mean() for res in results]
-        print(allcashpos)
+        # print(allcashpos)
         self.assertTrue(allcashpos[0] > allcashpos[1])
         self.assertTrue(allcashpos[1] > allcashpos[2])
         self.assertTrue(allcashpos[2] > allcashpos[3])
@@ -899,10 +899,10 @@ class TestSimulator(CvxportfolioTest):
         results = sim.backtest_many(
             policies, start_time='2014-10-01',
             parallel=False)  # important for test coverage
-        print(results)
+        # print(results)
         allshorts = [np.minimum(res.w.iloc[:, :-1], 0.).sum().sum()
                      for res in results]
-        print(allshorts)
+        # print(allshorts)
         self.assertTrue(allshorts[0] < allshorts[1])
         self.assertTrue(allshorts[1] < allshorts[2])
 
@@ -922,7 +922,7 @@ class TestSimulator(CvxportfolioTest):
             policies, start_time='2014-11-01',
             parallel=False)  # important for test coverage
 
-        print(results)
+        # print(results)
 
         self.assertTrue(results[0].volatility < results[1].volatility)
         self.assertTrue(results[1].volatility < results[2].volatility)
@@ -981,8 +981,8 @@ class TestSimulator(CvxportfolioTest):
 
         self.assertTrue(opt_sharpe >= init_sharpe)
 
-        print(gamma_risk.current_value)
-        print(gamma_trade.current_value)
+        # print(gamma_risk.current_value)
+        # print(gamma_trade.current_value)
         # self.assertTrue(np.isclose(gamma_risk.current_value, 1.1))
         # self.assertTrue(np.isclose(gamma_trade.current_value, 1.61051))
 
@@ -1037,8 +1037,8 @@ class TestSimulator(CvxportfolioTest):
 
         self.assertTrue(result_svd.sharpe_ratio > result_eig.sharpe_ratio)
 
-        print(result_svd)
-        print(result_eig)
+        # print(result_svd)
+        # print(result_eig)
 
     def test_bankruptcy(self):
         """Test policy bankruptcy."""
@@ -1052,7 +1052,7 @@ class TestSimulator(CvxportfolioTest):
         with self.assertLogs(level='WARNING') as _:
             result = sim.backtest(policy,
                 start_time='2014-12-01', end_time='2020-12-31')
-        print(result.h)
+        # print(result.h)
         self.assertTrue(result.h.shape[0] < 20)
         self.assertTrue(result.final_value < 0)
 

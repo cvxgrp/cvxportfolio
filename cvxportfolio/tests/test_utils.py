@@ -28,10 +28,10 @@ class TestUtils(unittest.TestCase):
         """Test hashing function."""
         a = np.array([1, 2, 3])
         re = repr_numpy_pandas(a)
-        print(re)
+        # print(re)
         b = np.array([[1, 2, 3]])
         re1 = repr_numpy_pandas(b)
-        print(re1)
+        # print(re1)
         self.assertTrue(re == re1)
 
         with self.assertRaises(NotImplementedError):
@@ -39,10 +39,10 @@ class TestUtils(unittest.TestCase):
 
         a = pd.Series([1, 2, 3], ['2020-01-01', '2021-01-01', '2022-01-01'])
         re = repr_numpy_pandas(a)
-        print(re)
+        # print(re)
         b = pd.Series(a.values, a.index)
         re1 = repr_numpy_pandas(b)
-        print(re1)
+        # print(re1)
         self.assertTrue(re == re1)
 
         # multiindexed df
@@ -54,13 +54,13 @@ class TestUtils(unittest.TestCase):
                         "cinque", "sei", "sette", "otto", "nove", "dieci"]
 
         re = repr_numpy_pandas(data)
-        print(re)
+        # print(re)
 
         data1 = pd.DataFrame(data.values,
                              index=data.index, columns=data.columns)
 
         re1 = repr_numpy_pandas(data1)
-        print(re1)
+        # print(re1)
         self.assertTrue(re == re1)
 
     def test_make_numeric(self):

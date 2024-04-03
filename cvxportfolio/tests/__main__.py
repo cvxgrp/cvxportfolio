@@ -31,4 +31,4 @@ from .test_utils import TestUtils
 
 if __name__ == '__main__':
 
-    unittest.main()#warnings='error')
+    unittest.main(warnings='error')

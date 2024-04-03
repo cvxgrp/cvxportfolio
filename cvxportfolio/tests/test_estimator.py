@@ -112,11 +112,11 @@ class TestEstimator(unittest.TestCase):
     def test_series_timeindex(self):
         """Test DataEstimator with time-indexed series."""
         index = pd.date_range("2022-01-01", "2022-01-30")
-        print(index)
+        # print(index)
         data = pd.Series(np.arange(len(index)), index)
         estimator = DataEstimator(data)
 
-        print(estimator.values_in_time_recursive(t="2022-01-05"))
+        # print(estimator.values_in_time_recursive(t="2022-01-05"))
         self.assertTrue(estimator.values_in_time_recursive(
             t="2022-01-05") == data.loc["2022-01-05"])
 
@@ -147,7 +147,7 @@ class TestEstimator(unittest.TestCase):
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
         estimator = DataEstimator(data)
 
-        print(estimator.values_in_time_recursive(t="2022-01-05"))
+        # print(estimator.values_in_time_recursive(t="2022-01-05"))
         self.assertTrue(np.all(estimator.values_in_time_recursive(
             t="2022-01-05") == data.loc["2022-01-05"]))
 
@@ -251,7 +251,7 @@ class TestEstimator(unittest.TestCase):
         second_level = ["hello", "ciao", "hola"]
         index = pd.MultiIndex.from_product([timeindex, second_level])
         data = pd.DataFrame(np.random.randn(len(index), 10), index=index)
-        print(data.index)
+        # print(data.index)
         estimator = DataEstimator(data)
         self.assertTrue(np.all(estimator.values_in_time_recursive(
             t="2022-01-05") == data.loc["2022-01-05"]))
@@ -328,18 +328,18 @@ class TestEstimator(unittest.TestCase):
 
     def test_repr_dataestimator(self):
         """Test __repr__ magic method of DataEstimator."""
-        print(DataEstimator(3))
-        print(DataEstimator(np.array([1, 2, 3])))
-        print(DataEstimator(pd.Series([1, 2, 3])))
-        print(DataEstimator(pd.DataFrame([1, 2, 3])))
+        str(DataEstimator(3))
+        str(DataEstimator(np.array([1, 2, 3])))
+        str(DataEstimator(pd.Series([1, 2, 3])))
+        str(DataEstimator(pd.DataFrame([1, 2, 3])))
 
     def test_repr(self):
         """Test other assorted __repr__ methods of derived objects."""
-        print(cvx.FactorModelCovariance(num_factors=10))
-        print(cvx.ReturnsForecast() - .5 * cvx.FullCovariance())
-        print(cvx.SinglePeriodOptimization(cvx.ReturnsForecast(),
+        str(cvx.FactorModelCovariance(num_factors=10))
+        str(cvx.ReturnsForecast() - .5 * cvx.FullCovariance())
+        str(cvx.SinglePeriodOptimization(cvx.ReturnsForecast(),
                                            [cvx.LongOnly()]))
-        print(cvx.LeverageLimit(3))
+        str(cvx.LeverageLimit(3))
 
 
 if __name__ == '__main__':

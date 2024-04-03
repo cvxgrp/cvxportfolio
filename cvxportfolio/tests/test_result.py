@@ -38,7 +38,7 @@ class TestResult(CvxportfolioTest):
         universe_selection.iloc[9:17, 3:5] = False
         universe_selection.iloc[8:15, 5:7] = False
         universe_selection.iloc[16:29, 7:8] = False
-        print(universe_selection.iloc[10:20])
+        # print(universe_selection.iloc[10:20])
 
         modified_market_data = cvx.UserProvidedMarketData(
             returns=rets, volumes=volumes, prices=prices,
@@ -62,7 +62,7 @@ class TestResult(CvxportfolioTest):
         bt_result = simulator.backtest(policy, start_time = rets.index[10],
             end_time = rets.index[20])
 
-        print(bt_result.w)
+        # print(bt_result.w)
 
         self.assertTrue(set(bt_result.w.columns) == set(rets.columns))
         self.assertTrue(
@@ -72,7 +72,7 @@ class TestResult(CvxportfolioTest):
         # try without repeating the uni
         reduced = pd.DataFrame(universe_selection.iloc[10:20], copy=True)
         reduced = pd.DataFrame(reduced.iloc[[0, 4, 5, 6, 7]], copy=True)
-        print(reduced)
+        # print(reduced)
 
         modified_market_data = cvx.UserProvidedMarketData(
             returns=rets, volumes=volumes, prices=prices,
@@ -99,7 +99,7 @@ class TestResult(CvxportfolioTest):
         rets.iloc[9:17, 3:5] = np.nan
         rets.iloc[8:15, 5:7] = np.nan
         rets.iloc[16:29, 7:8] = np.nan
-        print(rets.iloc[10:20])
+        # print(rets.iloc[10:20])
 
         modified_market_data = cvx.UserProvidedMarketData(
             returns=rets, volumes=volumes, prices=prices,
@@ -120,7 +120,7 @@ class TestResult(CvxportfolioTest):
         bt_result = simulator.backtest(policy, start_time = rets.index[10],
             end_time = rets.index[20])
 
-        print(bt_result.w)
+        # print(bt_result.w)
 
         self.assertTrue(set(bt_result.w.columns) == set(rets.columns))
         self.assertTrue(
@@ -141,7 +141,7 @@ class TestResult(CvxportfolioTest):
         bt_result = simulator.run_backtest(
             policy, start_time = t_start, end_time = t_end)
 
-        print(bt_result.w)
+        # print(bt_result.w)
 
         self.assertTrue(
             set(bt_result.w.columns) == set(market_data.full_universe))
@@ -157,9 +157,10 @@ class TestResult(CvxportfolioTest):
             '2014-05-01'))
         result.plot(show=False)
         result.times_plot(show=False)
-        print(result)
+        str(result)
         for attribute in dir(result):
-            print(attribute, getattr(result, attribute))
+            # print(attribute, getattr(result, attribute))
+            str(getattr(result, attribute))
 
     @staticmethod
     def _equal_logs(log1, log2, strip_pid=False):
@@ -173,7 +174,7 @@ class TestResult(CvxportfolioTest):
         log1 = log1.split('\n')
         log2 = log2.split('\n')
         if 'Masking internal' in log1[0]:
-            log1 = log1[1:] # pragma: no-cover
+            log1 = log1[1:] # pragma: no cover
         if 'Masking internal' in log2[0]:
             log2 = log2[1:]
         return [

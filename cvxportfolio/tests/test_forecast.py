@@ -458,9 +458,9 @@ class TestForecast(CvxportfolioTest):
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
                 (7, 24), (1, 15), (13, 22)]:
-            print(count_matrix.iloc[indexes[0], indexes[1]])
-            print(len((returns.iloc[:, indexes[0]] *
-                  returns.iloc[:, indexes[1]]).dropna()))
+            # print(count_matrix.iloc[indexes[0], indexes[1]])
+            # print(len((returns.iloc[:, indexes[0]] *
+            #       returns.iloc[:, indexes[1]]).dropna()))
             self.assertTrue(
                 np.isclose(count_matrix.iloc[indexes[0], indexes[1]],
                     len((returns.iloc[:, indexes[0]]
@@ -481,10 +481,10 @@ class TestForecast(CvxportfolioTest):
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
                 (7, 24), (1, 15), (13, 22)]:
-            print()
-            print(sum_matrix.iloc[indexes[0], indexes[1]])
-            print((returns.iloc[:, indexes[0]] *
-                  returns.iloc[:, indexes[1]]).sum())
+            # print()
+            # print(sum_matrix.iloc[indexes[0], indexes[1]])
+            # print((returns.iloc[:, indexes[0]] *
+            #       returns.iloc[:, indexes[1]]).sum())
             self.assertTrue(np.isclose(
                 sum_matrix.iloc[indexes[0], indexes[1]],
                 (returns.iloc[:, indexes[0]] *
@@ -549,7 +549,7 @@ class TestForecast(CvxportfolioTest):
             j_nanmasker = np.zeros(len(rets))
             j_nanmasker[rets.iloc[:, j].isnull()] = np.nan
             j_nanmasker[~(rets.iloc[:, j].isnull())] = 1.
-            print(i_nanmasker, j_nanmasker)
+            # print(i_nanmasker, j_nanmasker)
             return np.nanmean(rets.iloc[:, i] * rets.iloc[:, j]
                 ) - np.nanmean(rets.iloc[:, i] * j_nanmasker
                     ) * np.nanmean(rets.iloc[:, j] * i_nanmasker)
@@ -615,12 +615,12 @@ class TestForecast(CvxportfolioTest):
             sigma_eigh = (
                 sigma_fact[:, -num_factors:] @ sigma_fact[:, -num_factors:].T
                 + np.diag((sigma_fact[:, :-num_factors]**2).sum(1)))
-            print(sigma_svd)
-            print(sigma_eigh)
-            print(np.linalg.norm(sigma_svd),
-                  np.linalg.norm(sigma_eigh),
-                  np.linalg.norm(sigma_eigh-sigma_svd)
-                  )
+            # print(sigma_svd)
+            # print(sigma_eigh)
+            # print(np.linalg.norm(sigma_svd),
+            #      np.linalg.norm(sigma_eigh),
+            #      np.linalg.norm(sigma_eigh-sigma_svd)
+            #      )
 
             forecaster3 = HistoricalLowRankCovarianceSVD(num_factors=1,
                 svd='scipy')
@@ -646,15 +646,15 @@ class TestForecast(CvxportfolioTest):
         diff3 = _compare_with_eigh(returns)
         self.assertTrue(diff2 < diff3)
 
-        print(returns.isnull().mean())
+        # print(returns.isnull().mean())
         returns.iloc[4:-3, -2] = np.nan
-        print(returns.isnull().mean())
+        # print(returns.isnull().mean())
         diff4 = _compare_with_eigh(returns)
         self.assertTrue(diff3 < diff4)
 
         returns.iloc[:50, 0] = np.nan
         returns.iloc[50:, 1] = np.nan
-        print(returns.isnull().mean())
+        # print(returns.isnull().mean())
 
         with self.assertRaises(ForecastError):
             forecaster2.values_in_time_recursive(t=t, past_returns=returns)
@@ -664,13 +664,13 @@ class TestForecast(CvxportfolioTest):
             t=t, past_returns=returns)
 
         returns.iloc[56:, 0] = np.nan
-        print(returns.isnull().mean())
+        # print(returns.isnull().mean())
 
         forecaster.values_in_time_recursive(
             t=t, past_returns=returns)
 
         returns.iloc[:70, 1] = np.nan
-        print(returns.isnull().mean())
+        # print(returns.isnull().mean())
 
         with self.assertRaises(ForecastError):
             forecaster.values_in_time_recursive(

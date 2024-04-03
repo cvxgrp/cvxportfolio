@@ -140,7 +140,7 @@ class TestCosts(CvxportfolioTest):
                 self.w_plus.value = np.random.randn(self.N)
                 self.w_plus.value[-1] = 1 - np.sum(self.w_plus.value[:-1])
 
-                print(expression.value)
+                # print(expression.value)
 
                 self.assertTrue(
                     np.isclose(expression.value,
@@ -180,9 +180,10 @@ class TestCosts(CvxportfolioTest):
         b = pd.Series([0., 0., 1.], [self.returns.index[12],
                       self.returns.index[23], self.returns.index[34]])
 
-        tcost = cvx.StocksTransactionCost(
-            a=0.001/2, pershare_cost=pershare_cost,
-            b=b, window_sigma_est=250, window_volume_est=250, exponent=1.5)
+        with self.assertWarns(DeprecationWarning):
+            tcost = cvx.StocksTransactionCost(
+                a=0.001/2, pershare_cost=pershare_cost,
+                b=b, window_sigma_est=250, window_volume_est=250, exponent=1.5)
 
         tcost.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
@@ -203,8 +204,8 @@ class TestCosts(CvxportfolioTest):
         self.z.value[-1] = -np.sum(self.z.value[:-1])
 
         est_tcost_lin = sum(np.abs(self.z.value[:-1]) * 0.0005)
-        print(est_tcost_lin)
-        print(expression.value)
+        # print(est_tcost_lin)
+        # print(expression.value)
         self.assertTrue(np.isclose(expression.value, est_tcost_lin))
 
         # spread and fixed cost
@@ -223,8 +224,8 @@ class TestCosts(CvxportfolioTest):
 
         est_tcost_lin = sum(np.abs(self.z.value[:-1]) * 0.0005)
         est_tcost_lin += np.abs(self.z.value[:-1]) @ (0.005 / prices)
-        print(est_tcost_lin)
-        print(expression.value)
+        # print(est_tcost_lin)
+        # print(expression.value)
         self.assertTrue(np.isclose(expression.value, est_tcost_lin))
 
         # spread and nonlin cost
@@ -246,17 +247,18 @@ class TestCosts(CvxportfolioTest):
         est_tcost_nonnlin = (
             np.abs(self.z.value[:-1])**(3/2)) @ (
                 sigmas_est * np.sqrt(value / volumes_est))
-        print(est_tcost_lin)
-        print(est_tcost_nonnlin)
-        print(expression.value)
+        # print(est_tcost_lin)
+        # print(est_tcost_nonnlin)
+        # print(expression.value)
         self.assertTrue(np.isclose(expression.value,
                         est_tcost_lin+est_tcost_nonnlin))
 
         # also c
-        tcost = cvx.StocksTransactionCost(
-            a=0.001/2, pershare_cost=pershare_cost,
-            b=b, window_sigma_est=250, window_volume_est=250, c=0.001,
-             exponent=1.5)
+        with self.assertWarns(DeprecationWarning):
+            tcost = cvx.StocksTransactionCost(
+                a=0.001/2, pershare_cost=pershare_cost,
+                b=b, window_sigma_est=250, window_volume_est=250, c=0.001,
+                exponent=1.5)
         tcost.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
         expression = tcost.compile_to_cvxpy(
@@ -281,13 +283,13 @@ class TestCosts(CvxportfolioTest):
             np.abs(self.z.value[:-1])**(3/2)) @ (
                 sigmas_est * np.sqrt(value / volumes_est))
         est_tcost_c = np.sum(self.z.value[:-1] * 0.001)
-        print(est_tcost_lin)
-        print(est_tcost_nonnlin)
-        print(expression.value)
+        # print(est_tcost_lin)
+        # print(est_tcost_nonnlin)
+        # print(expression.value)
         self.assertTrue(np.isclose(expression.value,
                         est_tcost_lin+est_tcost_nonnlin+est_tcost_c))
 
 
 if __name__ == '__main__':
 
-    unittest.main() # pragma: no cover
+    unittest.main(warnings='error') # pragma: no cover
