@@ -847,8 +847,12 @@ class MultiPeriodOptimization(Policy):
                 ' at time %s;'
                 ' re-trying by using SCS with basic options.',
                 self.cvxpy_kwargs, t)
-            # no point in managing exceptions here
-            self._problem.solve(ignore_dpp=True, solver='SCS')
+            # we could refactor code to handle solve errors also here
+            try:
+                self._problem.solve(ignore_dpp=True, solver='SCS')
+             # old cvxpy had no ignore_dpp
+            except TypeError: # pragma: no cover
+                self._problem.solve(solver='SCS') # pragma: no cover
             if self._problem.status in ['optimal', 'optimal_inaccurate']:
                 logger.info('Fallback solution with SCS worked!')
             else:

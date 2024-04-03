@@ -612,7 +612,7 @@ class UserProvidedMarketData(MarketDataInMemory):
                 ' incorrect missing values structure. For each asset, missing'
                 ' returns should only be at the start and/or at the end.'
                 ' You should use universe_selection_in_time if you wanted to'
-                ' specify changes of universe in time.', list(bad_assets))
+                ' specify changes of universe in time.', bad_assets.index)
 
 
 class DownloadedMarketData(MarketDataInMemory):
