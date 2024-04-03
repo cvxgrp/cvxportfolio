@@ -231,7 +231,7 @@ class MulCost(Cost):
         mul = _resolve_hyperpar(
             self.scalar) * self.cost.compile_to_cvxpy(**kwargs)
         if not mul.is_dcp():
-            raise ConvexSpecificationError(self) # pragma: no cover
+            raise ConvexSpecificationError(self)
         assert mul.is_dcp(dpp=True)
         return mul
 

@@ -97,6 +97,19 @@ class TestPolicies(CvxportfolioTest):
     def test_proportional_trade(self):
         """Test proportional trade policy."""
 
+        # targets do not sum to 1
+        wrong_targets = pd.Series(0, self.returns.columns)
+        wrong_targets = pd.DataFrame(
+            {self.returns.index[3]: wrong_targets,
+            self.returns.index[15]: wrong_targets}).T
+        with self.assertRaises(ValueError):
+            policy = cvx.ProportionalTradeToTargets(wrong_targets)
+            valid_start = pd.Series(0, self.returns.columns)
+            valid_start['cash'] = 1.
+            policy.execute(
+                market_data=self.market_data, h=valid_start,
+                t=self.returns.index[7])
+
         a = pd.Series(1., self.returns.columns)
         a.iloc[-1] = 1 - sum(a.iloc[:-1])
         b = pd.Series(-1., self.returns.columns)
@@ -115,8 +128,8 @@ class TestPolicies(CvxportfolioTest):
             self.returns.columns)
         start_portfolio.iloc[-1] = 1 - sum(start_portfolio.iloc[:-1])
         for t in self.returns.index[:17]:
-            print(t)
-            print(start_portfolio)
+            # print(t)
+            # print(start_portfolio)
 
             wplus = policy.values_in_time_recursive(
                 t=t, current_weights=start_portfolio)
@@ -125,7 +138,7 @@ class TestPolicies(CvxportfolioTest):
 
             if t in targets.index:
                 self.assertTrue(np.all(start_portfolio == targets.loc[t]))
-        print('trade', trade)
+        # print('trade', trade)
         self.assertTrue(np.allclose(trade, 0.))
 
     def test_sell_all(self):
@@ -270,7 +283,7 @@ class TestPolicies(CvxportfolioTest):
             t=self.returns.index[2], current_weights=wplus)
         trade2 = wplus2 - wplus
         self.assertTrue(np.allclose(trade, trade2))
-        print(trade + trade2 + init, target)
+        # print(trade + trade2 + init, target)
         self.assertTrue(np.allclose(trade + trade2 + init, target))
 
     def test_adaptive_rebalance(self):
@@ -323,7 +336,6 @@ class TestPolicies(CvxportfolioTest):
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
-        # policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -340,7 +352,7 @@ class TestPolicies(CvxportfolioTest):
 
         cvxportfolio_result = pd.Series(result, self.returns.columns)
 
-        print(cvxportfolio_result)
+        # print(cvxportfolio_result)
 
         # print(np.linalg.eigh(self.returns.iloc[:121, :-1].cov().values)[0])
 
@@ -356,9 +368,9 @@ class TestPolicies(CvxportfolioTest):
 
         cvxpy_result = pd.Series(w.value, self.returns.columns)
 
-        print(cvxpy_result)
+        # print(cvxpy_result)
 
-        print(cvxportfolio_result - cvxpy_result)
+        # print(cvxportfolio_result - cvxpy_result)
         self.assertTrue(np.allclose(
             cvxportfolio_result - cvxpy_result, 0., atol=1e-5))
 
@@ -378,7 +390,6 @@ class TestPolicies(CvxportfolioTest):
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
-        # policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -425,7 +436,6 @@ class TestPolicies(CvxportfolioTest):
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
-        # policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -453,7 +463,6 @@ class TestPolicies(CvxportfolioTest):
 
         policy.initialize_estimator_recursive(
             universe=self.returns.columns, trading_calendar=self.returns.index)
-        # policy.compile_to_cvxpy()
 
         curw = np.zeros(self.N)
         curw[-1] = 1.
@@ -491,7 +500,6 @@ class TestPolicies(CvxportfolioTest):
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
                 trading_calendar=self.returns.index)
-            # policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
@@ -529,7 +537,6 @@ class TestPolicies(CvxportfolioTest):
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
                 trading_calendar=self.returns.index)
-            # policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
@@ -586,7 +593,6 @@ class TestPolicies(CvxportfolioTest):
             policy.initialize_estimator_recursive(
                 universe=self.returns.columns,
                 trading_calendar=self.returns.index)
-            # policy.compile_to_cvxpy()
 
             curw = np.zeros(self.N)
             curw[-1] = 1.
@@ -608,6 +614,42 @@ class TestPolicies(CvxportfolioTest):
         self.assertTrue(np.linalg.norm(
             diff_to_benchmarks[1]) < np.linalg.norm(diff_to_benchmarks[2]))
 
+    def test_dcp_check_MPO(self):
+        """Test DCP checks in S/MPO."""
+
+        t = self.market_data.returns.index[50]
+        h = pd.Series(0., self.market_data.universe_at_time(t))
+        h[self.market_data.cash_key] = 1.
+
+        class _NonDCP(cvx.costs.Cost): # pylint: disable=all
+            """Non DCP cost."""
+            def compile_to_cvxpy(self, w_plus, **kwargs):
+                """Making it convex to trigger specific check."""
+                return -w_plus[:-1] @ w_plus[:-1]
+
+        non_dcp_obj = cvx.SinglePeriodOptimization(
+            _NonDCP(), include_cash_return=False)
+
+        with self.assertRaises(cvx.errors.ConvexSpecificationError):
+            non_dcp_obj.execute(market_data=self.market_data, h=h)
+
+        # try with constraint; this one triggers a line in costs.py
+        non_dcp_constr = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast(), [_NonDCP() >= 0.])
+        with self.assertRaises(cvx.errors.ConvexSpecificationError):
+            non_dcp_constr.execute(market_data=self.market_data, h=h)
+
+        class _NonDCPConstr(cvx.constraints.Constraint):
+            # pylint: disable=all
+            """Non DCP, but convex, constraint."""
+            def compile_to_cvxpy(self, w_plus, **kwargs):
+                return w_plus[:-1] @ w_plus[:-1] <= 0
+
+        non_dcp_constr1 = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast(), [_NonDCPConstr()])
+        with self.assertRaises(cvx.errors.ConvexSpecificationError):
+            non_dcp_constr1.execute(market_data=self.market_data, h=h)
+
     def test_execute(self):
         """Test the ``execute`` method."""
 
@@ -615,7 +657,7 @@ class TestPolicies(CvxportfolioTest):
         h = pd.Series(0., self.returns.columns)
         h.iloc[-1] = 10000
         u, t, shares_traded = policy.execute(market_data=self.market_data, h=h)
-        print(t, u, shares_traded)
+        # print(t, u, shares_traded)
         self.assertTrue(np.isclose(u.sum(), 0.))
         self.assertTrue(t == self.returns.index[-1])
         self.assertTrue(len(set(u.iloc[:-1])) == 1)
@@ -631,7 +673,7 @@ class TestPolicies(CvxportfolioTest):
                     min_history=pd.Timedelta('0d'))
 
         execution = policy.execute(market_data=market_data, h=h)
-        print(execution)
+        # print(execution)
         u, t, shares_traded = execution
         self.assertTrue(shares_traded is None)
         self.assertTrue(np.isclose(u.sum(), 0.))
@@ -701,7 +743,7 @@ class TestPolicies(CvxportfolioTest):
                     uni = sim.market_data.universe_at_time(t)
                     h_init = pd.Series(0., uni)
                     h_init[sim.market_data.cash_key] = 1E6
-                    #print(f'executing {policy} at time {t}')
+                    # print(f'executing {policy} at time {t}')
                     u, _, _ = policy.execute(
                         h=h_init, market_data=sim.market_data, t=t)
                     result[(str(policy), t)] = u

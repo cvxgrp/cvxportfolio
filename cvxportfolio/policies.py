@@ -299,6 +299,8 @@ class ProportionalTradeToTargets(Policy):
     """
 
     def __init__(self, targets):
+        assert isinstance(targets, pd.DataFrame)
+        assert isinstance(targets.index, pd.DatetimeIndex)
         self.targets = targets
         self.trading_days = None
 
@@ -729,8 +731,8 @@ class MultiPeriodOptimization(Policy):
             self._cvxpy_constraints.append(w == self.terminal_constraint)
         self._problem = cp.Problem(cp.Maximize(
             self._cvxpy_objective), self._cvxpy_constraints)
-        if not self._problem.is_dcp():  # dpp=True)
-            raise SyntaxError(
+        if not self._problem.is_dcp(): # this one can't be triggered, I think
+            raise SyntaxError( # pragma: no cover
               f"The optimization problem compiled by {self.__class__.__name__}"
                 + " does not follow the convex optimization rules."
                 + " This should not happen if you're using the default "
