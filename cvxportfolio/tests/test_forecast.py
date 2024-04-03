@@ -88,7 +88,7 @@ class TestForecast(CvxportfolioTest):
 
         md = copy.deepcopy(self.market_data)
         rets = pd.DataFrame(self.market_data.returns, copy=True)
-        rets.loc[rets.index <= rets.index[10], 'AAPL'] = np.nan
+        rets.loc[rets.index <= rets.index[6], 'AAPL'] = np.nan
         rets.loc[rets.index <= rets.index[5], 'WMT'] = np.nan
         assert rets.iloc[0].isnull().sum() > 0
         md.returns = set_pd_read_only(rets)
@@ -108,7 +108,7 @@ class TestForecast(CvxportfolioTest):
             t = returns.index[9]
             past_returns = returns.loc[returns.index < t]
             regr_mean_ret.values_in_time_recursive(
-                    past_returns=past_returns, t=t)
+                past_returns=past_returns, t=t)
 
         for tidx in [-30, -29, -25, -24, -23]:
             t = returns.index[tidx]
@@ -132,6 +132,9 @@ class TestForecast(CvxportfolioTest):
                 # print(local_result)
                 # print(result[asset])
                 self.assertTrue(np.isclose(local_result, result[asset]))
+
+        # so it also calls finalize_estimator
+        regr_mean_ret.estimate(market_data=md, t=md.returns.index[30])
 
     def test_historical_mean_volume(self):
         """Test mean volume forecaster."""
