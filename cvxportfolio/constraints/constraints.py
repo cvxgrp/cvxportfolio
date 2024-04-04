@@ -805,6 +805,7 @@ class FactorMinLimit(InequalityConstraint):
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
+        # pylint: disable=invalid-unary-operand-type
         return -self.limit.parameter
 
 

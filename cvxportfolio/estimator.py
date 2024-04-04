@@ -369,7 +369,7 @@ class CvxpyExpressionEstimator(Estimator):
                 setattr(self, k, None)
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,too-many-instance-attributes
 class DataEstimator(SimulatorEstimator):
     """Estimator of point-in-time values from internal data.
 
@@ -500,6 +500,7 @@ class DataEstimator(SimulatorEstimator):
             f"{self.__class__.__name__}.values_in_time_recursive result"
             + " is not a scalar or array.")
 
+    # pylint: disable=too-many-return-statements
     def _universe_subselect(self, data):
         """This function subselects from ``data`` the relevant universe.
 

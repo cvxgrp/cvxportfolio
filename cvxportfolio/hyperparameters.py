@@ -47,8 +47,8 @@ class HyperParameter:
     """
 
     def __mul__(self, other):
-        if np.isscalar(other) or isinstance(other, HyperParameter) \
-                or isinstance(other, pd.Timedelta):
+        if np.isscalar(other) or isinstance(
+                other, (HyperParameter, pd.Timedelta)):
             return CombinedHyperParameter([self], [other])
         return NotImplemented
 

@@ -13,6 +13,8 @@
 # limitations under the License.
 """This module defines :class:`SymbolData` and derived classes."""
 
+# pylint: disable=too-many-lines
+
 import datetime
 import logging
 import sqlite3
@@ -442,7 +444,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
 
         return new_data
 
-    def _fillna_and_message(
+    def _fillna_and_message( # pylint: disable=too-many-arguments
         self, data, col_name, message, filler_arg=None, level='warning'):
         """Fill NaNs in column with chosen method and arg."""
         bad_indexes = data.index[data[col_name].isnull()]
@@ -453,8 +455,8 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
                 self.symbol, col_name, bad_indexes, message)
             data[col_name] = data[col_name].fillna(filler_arg)
 
-    def _ffill(self, data, col_name, message, saved_data=None,
-            level='warning'):
+    def _ffill( # pylint: disable=too-many-arguments
+            self, data, col_name, message, saved_data=None, level='warning'):
         """Forward-fill column also using saved data if present."""
         bad_indexes = data.index[data[col_name].isnull()]
         if len(bad_indexes) > 0:
@@ -473,7 +475,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
                         saved_data.index < data.index[0], col_name].iloc[-2:],
                     data[col_name]]).ffill().loc[data.index]
 
-    def _nan_anomalous_prices(
+    def _nan_anomalous_prices( # pylint: disable=too-many-arguments
             self, new_data, price_name, threshold, saved_data=None,
                 level='warning'):
         """Set to NaN given price name on its anomalous logrets to close."""
@@ -512,7 +514,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
             columns_to_nan=price_name, message=f'anomalous {price_name} price',
             level=level)
 
-    def _nan_values(
+    def _nan_values( # pylint: disable=too-many-arguments
             self, data, condition, columns_to_nan, message, level='warning'):
         """Set to NaN in-place for indexing condition and chosen columns."""
 
@@ -662,7 +664,7 @@ class OLHCV(SymbolData): # pylint: disable=abstract-method
         # pure OLHCV data source there is no need to store the open-to-open
         # returns, they can be computed here
         if not 'return' in data.columns:
-           data['return'] = data[
+            data['return'] = data[
                 'open'].pct_change().shift(-1) # pragma: no cover
 
         self._quality_check(data)
@@ -1030,6 +1032,9 @@ class YahooFinance(OLHCV):
             result = self._process(updated)
             # we remove first row if it contains NaNs
             if np.any(result.iloc[0].isnull()):
+                logger.info(
+                    '%s(%s) is removing data at %s because there are NaNs',
+                    self, self.symbol, result.index[0])
                 result = result.iloc[1:]
             return result
         if (now_timezoned() - current.index[-1]

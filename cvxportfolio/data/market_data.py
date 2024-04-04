@@ -23,7 +23,9 @@ import pandas as pd
 from ..errors import DataError
 from ..utils import (hash_, make_numeric, periods_per_year_from_datetime_index,
                      resample_returns, set_pd_read_only)
-from .symbol_data import *
+from .symbol_data import ( # pylint: disable=unused-import
+    _loader_csv, _loader_pickle, _loader_sqlite, _storer_csv, _storer_pickle,
+    _storer_sqlite, Fred, SymbolData, YahooFinance, BASE_LOCATION)
 from .symbol_data import OLHCV
 
 logger = logging.getLogger(__name__)
@@ -133,10 +135,12 @@ RATES = {
 class MarketDataInMemory(MarketData):
     """Market data that is stored in memory when initialized."""
 
+    # pylint: disable=too-many-instance-attributes
+
     # this is overwritten in the derived classes' initializers
     returns = None
 
-    def __init__(
+    def __init__( # pylint: disable=too-many-arguments
         self, trading_frequency, base_location, cash_key, min_history,
         online_usage = False, universe_selection_in_time=None):
         """This must be called by the derived classes."""

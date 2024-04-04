@@ -244,7 +244,20 @@ class TestSimulator(CvxportfolioTest):
                             past_volumes=None,
                             current_volumes=None,
                             current_portfolio_value=None,
-                            current_weights=None,)
+                            current_weights=None)
+
+        tcost = cvx.TransactionCost(b=0., volume_hat=1.)
+        tcost.initialize_estimator_recursive(
+                universe=current_returns.index, trading_calendar=[t])
+        with self.assertRaises(SyntaxError):
+            tcost.simulate_recursive(t=t, u=u, current_prices=None,
+                        t_next=None, h_plus=pd.Series(1., u.index),
+                        past_returns=past_returns,
+                        current_returns=current_returns,
+                        past_volumes=past_volumes,
+                        current_volumes=current_volumes,
+                        current_portfolio_value=1000,
+                        current_weights=None,)
 
         with self.assertWarns(DeprecationWarning):
             tcost = cvx.StocksTransactionCost(window_volume_est=252)

@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 
 def _mp_init(l):
     """Shared lock to disk access for multiprocessing."""
-    global LOCK
+    # pylint: disable=global-variable-undefined
+    global LOCK # pragma: no cover
     LOCK = l # pragma: no cover
 
 # def _hash_universe(universe):
@@ -59,7 +60,7 @@ def _load_cache(signature, base_location):
     except FileNotFoundError:
         logger.info('Cache not found!')
         return {}
-    except EOFError:
+    except EOFError: # pragma: no cover
         logger.warning(
             'Cache file %s is corrupt! Discarding it.',
                 name) # pragma: no cover

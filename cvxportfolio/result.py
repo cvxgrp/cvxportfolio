@@ -29,6 +29,7 @@ prints an instance.
     back-tests run in parallel!
 """
 
+# pylint: disable=too-many-lines
 
 from __future__ import annotations, print_function
 
@@ -48,7 +49,9 @@ __all__ = ['BacktestResult']
 
 # Module level constants, should be exposed to user (move to configuration.py?)
 RECORD_LOGS = 'INFO'
-LOG_FORMAT = '| %(asctime)s | %(levelname)s | process:%(process)d | %(pathname)s:%(lineno)s | %(message)s '
+LOG_FORMAT = (
+    '| %(asctime)s | %(levelname)s | process:%(process)d |'
+    + ' %(pathname)s:%(lineno)s | %(message)s ')
 
 
 logger = logging.getLogger(__name__)
@@ -60,7 +63,7 @@ logger = logging.getLogger(__name__)
 #     return "Q%i %s" % (quarter, year)
 
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods,too-many-instance-attributes
 class BacktestResult:
     """Store the data from a back-test and produce metrics and plots.
 
@@ -114,6 +117,7 @@ class BacktestResult:
         self._current_universe = pd.Index(universe)
         self._indexer = np.arange(len(universe), dtype=int)
         self._init_timer = time.time() - timer
+        self._log = ''
 
     def __enter__(self):
         """Set up logging context to record back-test logs."""
@@ -121,7 +125,6 @@ class BacktestResult:
         # pylint: disable=attribute-defined-outside-init
 
         # record logs
-        self._log = ''
         self._root_logger = logging.getLogger()
 
         # We modify the root logger to filter at our chosen level (or lower

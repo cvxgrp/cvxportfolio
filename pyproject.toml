@@ -34,7 +34,7 @@ packages = ["cvxportfolio", "cvxportfolio.data", "cvxportfolio.constraints",
 "cvxportfolio.tests" = ["*.csv"]
 
 [tool.pylint.main]
-fail-under = 9.5
+fail-under = 9.75
 jobs = 0 # multiprocessing pylint
 max-line-length = 79 # PEP8 default
 load-plugins =["pylint.extensions.docparams", "pylint.extensions.docstyle"]

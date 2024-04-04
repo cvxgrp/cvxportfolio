@@ -14,7 +14,6 @@
 """This module contains miscellaneous functions."""
 
 import hashlib
-from numbers import Number
 
 import numpy as np
 import pandas as pd

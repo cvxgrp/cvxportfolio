@@ -445,7 +445,8 @@ class TestData(CvxportfolioTest):
                     self, symbol, start=None, *args, **kwargs):
                 return pd.DataFrame(
                     self.mock_data if start is None else
-                    self.mock_data.loc[self.mock_data.index >= start], copy=True)
+                    self.mock_data.loc[self.mock_data.index >= start],
+                    copy=True)
 
             @classmethod
             def _set_mock_data(cls, mock_data):
@@ -890,6 +891,30 @@ class TestData(CvxportfolioTest):
             'new_data.iloc[-1,0] = new_data.iloc[-1,0] *  0.5;'
             + 'new_data.iloc[-1,1] = new_data.iloc[-1,0]',
             'anomalous open price', level='INFO')
+
+    def test_yahoo_finance_delete_first_line(self):
+        """Test that we correct last time if intraday."""
+
+        class YahooFinanceNanInFirstLine(YahooFinance):
+            # pylint: disable=all
+
+            @staticmethod
+            def _get_data_yahoo(
+                ticker, start='1900-01-01', end='2100-01-01'):
+                """Modified download method."""
+                index = pd.date_range('2020-01-01', '2021-01-01', 10)
+                index = pd.DatetimeIndex(index).tz_localize('UTC')
+                columns = [
+                    'open', 'low', 'high', 'close', 'adjclose', 'volume']
+                data = np.ones((10, 6))
+                result = pd.DataFrame(data, index=index, columns=columns)
+                result.iloc[0, 0] = np.nan
+                return result
+
+        with self.assertLogs(level='INFO') as logs:
+            YahooFinanceNanInFirstLine('XXX', base_location=self.datadir)
+            self.assertTrue(
+                np.any(['is removing data at' in el for el in logs.output]))
 
     # def test_yahoo_finance_wrong_last_time(self):
     #     """Test that we correct last time if intraday."""
