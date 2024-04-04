@@ -849,7 +849,10 @@ class MultiPeriodOptimization(Policy):
                 self.cvxpy_kwargs, t)
             # we could refactor code to handle solve errors also here
             try:
-                self._problem.solve(ignore_dpp=True, solver='SCS')
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore", message='Solution may be inaccurate')
+                    self._problem.solve(ignore_dpp=True, solver='SCS')
              # old cvxpy had no ignore_dpp
             except TypeError: # pragma: no cover
                 self._problem.solve(solver='SCS') # pragma: no cover
