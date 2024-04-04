@@ -151,6 +151,7 @@ class RiskForecastError(Cost):
             sigma_squares = sigma_squares()
 
         self.sigma_squares = DataEstimator(sigma_squares)
+        self._sigmas_parameter = None
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, universe, **kwargs):
@@ -161,7 +162,7 @@ class RiskForecastError(Cost):
         :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-        self.sigmas_parameter = cp.Parameter(
+        self._sigmas_parameter = cp.Parameter(
             len(universe)-1, nonneg=True)  # +self.kelly))
 
     def values_in_time( # pylint: disable=arguments-differ
@@ -173,7 +174,7 @@ class RiskForecastError(Cost):
         """
         sigma_squares = self.sigma_squares.current_value
 
-        self.sigmas_parameter.value = np.sqrt(sigma_squares)
+        self._sigmas_parameter.value = np.sqrt(sigma_squares)
 
     def compile_to_cvxpy( # pylint: disable=arguments-differ
             self, w_plus_minus_w_bm, **kwargs):
@@ -189,7 +190,7 @@ class RiskForecastError(Cost):
         :rtype: cvxpy.expression
         """
         cvxpy_expression = cp.square(
-            cp.abs(w_plus_minus_w_bm[:-1]).T @ self.sigmas_parameter)
+            cp.abs(w_plus_minus_w_bm[:-1]).T @ self._sigmas_parameter)
         assert cvxpy_expression.is_dcp(dpp=True)
         assert cvxpy_expression.is_convex()
         return cvxpy_expression
@@ -224,6 +225,7 @@ class DiagonalCovariance(Cost):
         if isinstance(sigma_squares, type):
             sigma_squares = sigma_squares()
         self.sigma_squares = DataEstimator(sigma_squares)
+        self._sigmas_parameter = None
 
     def initialize_estimator( # pylint: disable=arguments-differ
             self, universe, **kwargs):
@@ -234,7 +236,7 @@ class DiagonalCovariance(Cost):
         :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
-        self.sigmas_parameter = cp.Parameter(len(universe)-1)
+        self._sigmas_parameter = cp.Parameter(len(universe)-1)
 
     def values_in_time( # pylint: disable=arguments-differ
             self, **kwargs):
@@ -244,7 +246,7 @@ class DiagonalCovariance(Cost):
         :type kwargs: dict
         """
         sigma_squares = self.sigma_squares.current_value
-        self.sigmas_parameter.value = np.sqrt(sigma_squares)
+        self._sigmas_parameter.value = np.sqrt(sigma_squares)
 
     def compile_to_cvxpy( # pylint: disable=arguments-differ
             self, w_plus_minus_w_bm, **kwargs):
@@ -260,20 +262,22 @@ class DiagonalCovariance(Cost):
         :rtype: cvxpy.expression
         """
         cvxpy_expression = cp.sum_squares(cp.multiply(w_plus_minus_w_bm[:-1],
-            self.sigmas_parameter))
+            self._sigmas_parameter))
         assert cvxpy_expression.is_dcp(dpp=True)
         assert cvxpy_expression.is_convex()
         return cvxpy_expression
 
 
 class FactorModelCovariance(Cost):
+    # pylint: disable=too-many-instance-attributes
     r"""Factor model covariance, either user-provided or fitted from the data.
 
     It represents the objective term:
 
     .. math::
 
-        {(w^+_t - w^\text{b}_t )}^T (F \Sigma_{F} F^T + \mathbf{diag}(d)) (w^+_t - w^\text{b}_t)
+        {(w^+_t - w^\text{b}_t )}^T (F \Sigma_{F} F^T
+            + \mathbf{diag}(d)) (w^+_t - w^\text{b}_t)
 
     where the factors exposure :math:`F` has as many rows as the number of
     assets and as many columns as the number of factors,
