@@ -830,6 +830,7 @@ class TestSimulator(CvxportfolioTest):
 
         result = sim.backtest(
             policy, start_time='2023-01-01', end_time='2023-04-01')
+        str(result)
         # print(result.z)
         for t in no_trade_ts:
             self.assertTrue(np.isclose(result.z[stock].loc[t], 0., atol=1E-3))
