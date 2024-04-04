@@ -833,9 +833,14 @@ class MultiPeriodOptimization(Policy):
         self._w_current.value = current_weights.values
 
         with warnings.catch_warnings():
+            # these warnings are thrown on numerical inaccuracies reported by
+            # the solver and accounted for by cvxpy; we expect expert users
+            # to set the solver options explicitely and/or setting verbose=True
+            # in the cvxpy_kwargs
             warnings.filterwarnings(
-                "ignore", message='Solution may be inaccurate')
-            # suppress cvxpy 1.4 ECOS deprecation warnings
+                "ignore", category=UserWarning,
+                message='Solution may be inaccurate')
+            # cvxpy 1.4 FutureWarnings
             if cp.__version__[:3] == '1.4':
                 warnings.filterwarnings("ignore", category=FutureWarning)
             try:
@@ -855,8 +860,8 @@ class MultiPeriodOptimization(Policy):
                     self._problem.solve(solver='SCS') # pragma: no cover
                 if self._problem.status in ['optimal', 'optimal_inaccurate']:
                     logger.info('Fallback solution with SCS worked!')
-                else:
-                    raise PortfolioOptimizationError(
+                else: # pragma: no cover
+                    raise PortfolioOptimizationError( # pragma: no cover
                       f"Numerical solver for policy {self.__class__.__name__}"
                       + f" at time {t} failed; try changing it, relaxing some"
                       + " constraints, or removing costs.") from exc
