@@ -701,11 +701,11 @@ class TestPolicies(CvxportfolioTest):
         with self.assertLogs(level='INFO') as logs:
             with self.assertRaises(cvx.errors.PortfolioOptimizationError):
                 pol.execute(market_data=self.market_data, h=h, t=t)
-                
+
                 self.assertTrue(np.any([
                     'reported numerical solver failure at time'
                         in el for el in logs.output]))
-                
+
                 # on some combinations of platform and version, SCS
                 # actually solves this problem
                 if 'Fallback solution with SCS worked!' in logs.output[-1]:

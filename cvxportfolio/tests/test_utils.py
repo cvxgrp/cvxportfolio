@@ -72,7 +72,8 @@ class TestUtils(unittest.TestCase):
             self.assertTrue(make_numeric(data) is data)
 
         for data in [
-                np.array([1, 2], dtype=object), pd.Series([1, 2, 3], dtype=object),
+                np.array([1, 2], dtype=object),
+                pd.Series([1, 2, 3], dtype=object),
                 pd.DataFrame([[1, 2., 3], [4, 5., 6]], dtype=object)]:
             self.assertTrue(np.all(make_numeric(data) == data))
 

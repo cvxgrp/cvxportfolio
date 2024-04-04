@@ -13,6 +13,8 @@
 # limitations under the License.
 """Unit tests for the market simulator and its backtest methods."""
 
+# pylint: disable=too-many-lines
+
 import copy
 import datetime
 import multiprocessing
@@ -29,6 +31,7 @@ from cvxportfolio.simulator import MarketSimulator, StockMarketSimulator
 from cvxportfolio.tests import CvxportfolioTest
 
 
+# pylint: disable=too-many-public-methods
 class TestSimulator(CvxportfolioTest):
     """Test MarketSimulator and assorted end-to-end tests."""
 
@@ -85,6 +88,9 @@ class TestSimulator(CvxportfolioTest):
         :type assets: int
         :param nan_frac: Fraction of NaNs (approximate).
         :type nan_frac: float
+
+        :returns: Market data object.
+        :rtype: cvx.UserProvidedMarketData
         """
         rng = np.random.default_rng(seed=0)
         bs_index = rng.choice(cls.returns.index, size=len(cls.returns)*years)
@@ -379,7 +385,7 @@ class TestSimulator(CvxportfolioTest):
         self.assertEqual(len(caches_same), 1)
         self.assertEqual(str(caches_same[0]), str(caches[0]))
 
-    def test_simulate_policy(self):
+    def test_simulate_policy(self): # pylint: disable=too-many-locals
         """Test basic policy simulation."""
         simulator = StockMarketSimulator(
             # because we modify it
@@ -501,8 +507,7 @@ class TestSimulator(CvxportfolioTest):
         # print(self.md_3assets.returns)
         result = sim.backtest(pol, pd.Timestamp(
             '2014-06-01'), pd.Timestamp('2014-08-20'))
-
-        # print(result)
+        str(result)
 
     def test_wrong_worstcase(self):
         """Test wrong worst-case convexity."""
@@ -550,7 +555,7 @@ class TestSimulator(CvxportfolioTest):
             sim.market_data.returns.index <= ridx[-1])]))
         # print(result)
 
-    def test_multiple_backtest(self):
+    def test_multiple_backtest(self): # pylint: disable=too-many-locals
         """Test multiple back-tests (in parallel)."""
         pol = cvx.SinglePeriodOptimization(cvx.ReturnsForecast() -
                                            cvx.ReturnsForecastError() -
@@ -845,8 +850,8 @@ class TestSimulator(CvxportfolioTest):
             solver=self.default_socp_solver) for p in [1, 3, 5]]
 
         results = sim.backtest_many(
-            policies, start_time='2023-01-01', end_time='2023-02-01', initial_value=1E7,
-            parallel=False)  # important for test coverage
+            policies, start_time='2023-01-01', end_time='2023-02-01',
+            initial_value=1E7, parallel=False)  # important for test coverage
         # print(results)
 
         # check that the more planning horizon, the less steep the change

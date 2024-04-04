@@ -35,7 +35,7 @@ class CvxportfolioTest(unittest.TestCase):
     def setUpClass(cls):
         """Initialize test class."""
         cls.datadir = Path(tempfile.mkdtemp())
-        logger.info('created', cls.datadir)
+        logger.info('created %s', cls.datadir)
 
         cls.sigma = pd.read_csv(
             Path(__file__).parent / "sigmas.csv",
@@ -73,7 +73,7 @@ class CvxportfolioTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Finalize test class."""
-        logger.info('removing', cls.datadir)
+        logger.info('removing %s', cls.datadir)
         shutil.rmtree(cls.datadir)
         print('Timing report:')
         print(pd.Series(cls.timers))

@@ -31,7 +31,7 @@ from cvxportfolio.tests import CvxportfolioTest
 from cvxportfolio.utils import set_pd_read_only
 
 
-class TestForecast(CvxportfolioTest):
+class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
     """Test forecast estimators and their caching.
 
     In most cases we test against the relevant pandas function as reference.
@@ -63,7 +63,7 @@ class TestForecast(CvxportfolioTest):
         """Test nested evaluation with caching."""
 
         forecaster = HistoricalVariance(kelly=False)
-        forecaster._CACHED = True
+        forecaster._CACHED = True # pylint: disable=protected-access
         md = self.market_data
         returns = md.returns
         cache = {}
@@ -79,7 +79,7 @@ class TestForecast(CvxportfolioTest):
         self.assertEqual(len(cache), 1)
         self.assertEqual(len(list(cache.values())[0]), 5)
 
-    def test_regression_mean_return(self):
+    def test_regression_mean_return(self): # pylint: disable=too-many-locals
         """Test historical mean return with regression."""
 
         # will be refactored
@@ -100,7 +100,7 @@ class TestForecast(CvxportfolioTest):
         regr_mean_ret.initialize_estimator_recursive(
             universe=self.market_data.returns.columns,
             trading_calendar=self.market_data.returns.index)
-        regr_mean_ret._CACHED = True
+        regr_mean_ret._CACHED = True # pylint: disable=protected-access
         returns = md.returns
 
         # ValueError thrown by UserProvidedRegressor (not enough history)
@@ -356,8 +356,8 @@ class TestForecast(CvxportfolioTest):
 
     def _base_test_exponential_moving_window_vector_update(
             self, forecaster, fc_kwargs, df_callable=None, with_nans=True):
-        """Base test for vector quantities using an exponential moving window,
-        and an exponential moving window in combination with a moving window."""
+        """Base test for vector quantities w/ exponential moving window,
+        and exponential moving window + moving window."""
         half_life = pd.Timedelta('20d')
         inst_forecaster = forecaster(**fc_kwargs, half_life=half_life)
         returns = pd.DataFrame(self.returns, copy=True)

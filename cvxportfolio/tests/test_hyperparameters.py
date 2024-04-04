@@ -18,8 +18,8 @@ import unittest
 import cvxportfolio as cvx
 from cvxportfolio.tests import CvxportfolioTest
 
-GAMMA_RISK_RANGE = [.5, 1., 2., 5., 10.]
-GAMMA_COST_RANGE = [0., .1, .2, .5, 1., 2., 5., 10.]
+GAMMA_RISK_RANGE = (.5, 1., 2., 5., 10.)
+GAMMA_COST_RANGE = (0., .1, .2, .5, 1., 2., 5., 10.)
 
 class GammaRisk(cvx.RangeHyperParameter):
     """Multiplier of a risk term."""
@@ -108,6 +108,8 @@ class TestHyperparameters(CvxportfolioTest):
 
     def test_range_hyper_parameter(self):
         """Test range hyperparameter."""
+
+        # pylint: disable=protected-access
 
         gamma = GammaRisk(current_value=1)
         self.assertTrue((gamma).current_value == 1)

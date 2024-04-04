@@ -73,8 +73,6 @@ class TestData(CvxportfolioTest):
         """Test YfinanceBase."""
 
         storer = YahooFinance('AAPL', base_location=self.datadir)
-
-        # pylint: disable=protected-access
         data = storer._download("AAPL", start="2023-04-01", end="2023-04-15")
 
         self.assertTrue(np.isclose(
@@ -100,7 +98,6 @@ class TestData(CvxportfolioTest):
         # test update
         olddata = pd.Series(data.iloc[:-123], copy=True)
         olddata.index = olddata.index.tz_localize(None)
-        # pylint: disable=protected-access
         newdata = store._preload(store._download("DFF", olddata))
         self.assertTrue(np.all(store.data == newdata))
 
@@ -339,7 +336,6 @@ class TestData(CvxportfolioTest):
             'AAPL', grace_period=self.data_grace_period,
             base_location=self.datadir)
         # with self.assertRaises(SyntaxError):
-        #     # pylint: disable=protected-access
         #     storer._download('AAPL', overlap=1)
 
         class YahooFinanceErroneous(YahooFinance):
@@ -427,7 +423,6 @@ class TestData(CvxportfolioTest):
 
     def test_yahoo_finance_update(self):
         """Test specific issues when updating already stored data."""
-        # pylint: disable=protected-access
 
         raw_data = pd.DataFrame(
             # skip last day because there might actually be issues
@@ -668,8 +663,6 @@ class TestData(CvxportfolioTest):
     def test_yahoo_finance_preload_warnings(self):
         """Test warnings on _preload if data has issues."""
 
-        # pylint: disable=protected-access
-
         raw_data = YahooFinance._get_data_yahoo('ZM')
         empty_instance = YahooFinance.__new__(YahooFinance)
         empty_instance._symbol = 'ZM' # because the warnings use the symbol
@@ -679,7 +672,7 @@ class TestData(CvxportfolioTest):
                 data_transformation, part_of_message, level='WARNING'):
             """Test that warning is raised w/ message containing some word."""
             data = pd.DataFrame(cleaned, copy=True)
-            exec(data_transformation) # pylint: disable=exec-used
+            exec(data_transformation)
             # print(data)
             with self.assertLogs(level=level) as _:
                 empty_instance._preload(data)
@@ -756,7 +749,6 @@ class TestData(CvxportfolioTest):
     def test_yahoo_finance_cleaning_granular(self):
         """Test each step of cleaning."""
 
-        # pylint: disable=protected-access
         raw_data = YahooFinance._get_data_yahoo('ZM')
         # print(raw_data)
         empty_instance = YahooFinance.__new__(YahooFinance)
@@ -766,7 +758,7 @@ class TestData(CvxportfolioTest):
                 data_transformation, part_of_message, level='WARNING'):
             """Test that warning is raised w/ message containing some word."""
             data = pd.DataFrame(raw_data, copy=True)
-            exec(data_transformation) # pylint: disable=exec-used
+            exec(data_transformation)
             with self.assertLogs(level=level) as _:
                 _cleaned = empty_instance._process(data, None)
                 self.assertTrue(
@@ -782,7 +774,7 @@ class TestData(CvxportfolioTest):
             # no need to make it precise
             saved_data['return'] = np.log(saved_data.adjclose).diff()
             del saved_data['adjclose']
-            exec(data_transformation) # pylint: disable=exec-used
+            exec(data_transformation)
             with self.assertLogs(level=level) as _:
                 _cleaned = empty_instance._process(new_data, saved_data)
                 self.assertTrue(
