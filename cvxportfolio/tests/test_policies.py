@@ -680,13 +680,22 @@ class TestPolicies(CvxportfolioTest):
         with self.assertLogs(level='WARNING'):
             pol.execute(market_data=self.market_data, h=h, t=t)
 
-        # then, we create a problem that also breaks the fallback solver,
-        # because it's infeasible; infeasibility is not catched by the primary
-        # solver because it has an impossibly low max number of iterates
+        # then, we create a problem that also breaks the fallback solver
+
+        np.random.seed(0)
+        N = len(self.market_data.universe_at_time(t))-1
+        Sigma = np.random.randn(N, N)
+        Sigma = Sigma.T @ Sigma
+        eival, eivec = np.linalg.eigh(Sigma)
+        eival **= 10
+        Sigma = eivec @ np.diag(eival) @ eivec.T
+
+        randmu = np.random.randn(N)
+        randlim = np.random.randn(N)*100
 
         pol = cvx.SinglePeriodOptimization(
-            cvx.ReturnsForecast() - cvx.FullCovariance(),
-            [cvx.MinWeights(1), cvx.MaxWeights(-1)],
+            cvx.ReturnsForecast(randmu) - cvx.FullCovariance(Sigma),
+            [cvx.MinWeights(randlim-1), cvx.MaxWeights(randlim+1)],
             solver=self.default_qp_solver, max_iter=1)
 
         with self.assertLogs(level='WARNING'):
