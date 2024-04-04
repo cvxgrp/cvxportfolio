@@ -832,37 +832,34 @@ class MultiPeriodOptimization(Policy):
             ) else np.array(self.benchmark.current_value)
         self._w_current.value = current_weights.values
 
-        try:
-            with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore", message='Solution may be inaccurate')
-                # suppress cvxpy 1.4 ECOS deprecation warnings
-                if cp.__version__[:3] == '1.4':
-                    warnings.filterwarnings("ignore", category=FutureWarning)
-                self._problem.solve(**self.cvxpy_kwargs)
-        except cp.SolverError as exc:
-            # try to solve with SCS; it's the most robust
-            logger.error(
-                'CVXPY with settings %s reported numerical solver failure'
-                ' at time %s;'
-                ' re-trying by using SCS with basic options.',
-                self.cvxpy_kwargs, t)
-            # we could refactor code to handle solve errors also here
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message='Solution may be inaccurate')
+            # suppress cvxpy 1.4 ECOS deprecation warnings
+            if cp.__version__[:3] == '1.4':
+                warnings.filterwarnings("ignore", category=FutureWarning)
             try:
-                with warnings.catch_warnings():
-                    warnings.filterwarnings(
-                        "ignore", message='Solution may be inaccurate')
+                self._problem.solve(**self.cvxpy_kwargs)
+            except cp.SolverError as exc:
+                # try to solve with SCS; it's the most robust
+                logger.error(
+                    'CVXPY with settings %s reported numerical solver failure'
+                    ' at time %s;'
+                    ' re-trying by using SCS with basic options.',
+                    self.cvxpy_kwargs, t)
+                # we could refactor code to handle solve errors also here
+                try:
                     self._problem.solve(ignore_dpp=True, solver='SCS')
-             # old cvxpy had no ignore_dpp
-            except TypeError: # pragma: no cover
-                self._problem.solve(solver='SCS') # pragma: no cover
-            if self._problem.status in ['optimal', 'optimal_inaccurate']:
-                logger.info('Fallback solution with SCS worked!')
-            else:
-                raise PortfolioOptimizationError(
-                    f"Numerical solver for policy {self.__class__.__name__} at"
-                    + f" time {t} failed; try changing it, relaxing some"
-                    + " constraints, or removing costs.") from exc
+                # old cvxpy had no ignore_dpp
+                except TypeError: # pragma: no cover
+                    self._problem.solve(solver='SCS') # pragma: no cover
+                if self._problem.status in ['optimal', 'optimal_inaccurate']:
+                    logger.info('Fallback solution with SCS worked!')
+                else:
+                    raise PortfolioOptimizationError(
+                      f"Numerical solver for policy {self.__class__.__name__}"
+                      + f" at time {t} failed; try changing it, relaxing some"
+                      + " constraints, or removing costs.") from exc
 
         if self._problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise PortfolioOptimizationError(

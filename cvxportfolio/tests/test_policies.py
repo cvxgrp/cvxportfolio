@@ -698,7 +698,7 @@ class TestPolicies(CvxportfolioTest):
             [cvx.MinWeights(randlim-1), cvx.MaxWeights(randlim+1)],
             solver=self.default_qp_solver, max_iter=1)
 
-        with self.assertLogs(level='WARNING'):
+        with self.assertLogs(level='ERROR'):
             with self.assertRaises(cvx.errors.PortfolioOptimizationError):
                 pol.execute(market_data=self.market_data, h=h, t=t)
 
