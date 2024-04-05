@@ -893,7 +893,7 @@ class TestData(CvxportfolioTest):
             'anomalous open price', level='INFO')
 
     def test_yahoo_finance_delete_first_line(self):
-        """Test that we correct last time if intraday."""
+        """Test that the first line is deleted if there are NaNs."""
 
         class YahooFinanceNanInFirstLine(YahooFinance):
             # pylint: disable=all
