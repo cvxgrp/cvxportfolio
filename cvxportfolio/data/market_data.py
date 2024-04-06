@@ -24,9 +24,9 @@ from ..errors import DataError
 from ..utils import (hash_, make_numeric, periods_per_year_from_datetime_index,
                      resample_returns, set_pd_read_only)
 from .symbol_data import ( # pylint: disable=unused-import
-    _loader_csv, _loader_pickle, _loader_sqlite, _storer_csv, _storer_pickle,
-    _storer_sqlite, Fred, SymbolData, YahooFinance, BASE_LOCATION)
-from .symbol_data import OLHCV
+    BASE_LOCATION, OLHCV, Fred, SymbolData, YahooFinance, _loader_csv,
+    _loader_pickle, _loader_sqlite, _storer_csv, _storer_pickle,
+    _storer_sqlite)
 
 logger = logging.getLogger(__name__)
 

@@ -11,77 +11,154 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""REQUIRES cvxportfolio >= 0.4.4.
+"""Simple example for providing user-defined forecasters to Cvxportfolio.
 
-This example shows how the user can provide custom-made
-predictors for expected returns and covariances,
-at each point in time of the backtest. These can be
-used seamlessly inside a cvxportfolio backtest routine.
+This example shows how the user can provide custom-made predictors for expected
+returns and covariances, at each point in time (when used in back-test). These
+forecasters can be used seamlessly inside a cvxportfolio back-test, or online
+execution.
+
+.. note::
+
+    No attempt is being made here to find good values of the hyper-parameters;
+    this is simply used to show how to provide custom forecasters.
+
+One interesting feature of this is that Cvxportfolio **guarantees** that no
+look-ahead biases are introduced when making these forecasts. The data is
+sliced so that, at each point in time, only past data is provided to the
+forecasters.
+
+More advanced custom predictors can be provided as well; the relevant
+interfaces will be documented in the future. Internally, Cvxportfolio
+forecasters use something very similar to this, but also have a recursive
+execution model which enables them to compose objects, are aware of the current
+trading universe and future (expected) trading calendar (for multi-period
+applications), and have a destructor which is used for memory safety when
+parallelizing back-tests. However, this simple interface is guaranteed to work.
+
+You can see the documentation of the
+:meth:`cvxportfolio.estimator.Estimator.values_in_time` method that is used
+here for the full list of available arguments.
 """
 
-import cvxportfolio as cvx
+import os
 
+import matplotlib.pyplot as plt
 
-# Here we define a class to forecast expected returns
-class WindowMeanReturn:
-    """Expected return as mean of recent window of past returns."""
+if __name__ == '__main__':
 
-    def __init__(self, window=20):
-        self.window = window
+    import cvxportfolio as cvx
 
-    def values_in_time(self, past_returns, **kwargs):
-        """This method computes the quantity of interest.
+    # Here we define a class to forecast expected returns
+    # There is no need to inherit from a base class, in this simple case
+    class WindowMeanReturns: # pylint: disable=too-few-public-methods
+        """Expected return as mean of recent window of past returns.
 
-        It has many arguments, we only need to use past_returns
-        in this case.
+        This is only meant as an example of how to define a custom forecaster;
+        it is not very interesting. Since version ``1.2.0`` a similar
+        functionality has been included in the default forecasters classes.
 
-        NOTE: the last column of `past_returns` are the cash returns.
-        You need to explicitely skip them otherwise the compiler will
-        throw an error.
+        :param window: Window used for the mean returns.
+        :type window: int
         """
-        return past_returns.iloc[-self.window:, :-1].mean()
 
+        def __init__(self, window=20):
+            self.window = window
 
-# Here we define a class to forecast covariances
-class WindowCovariance:
-    """Covariance computed on recent window of past returns."""
+        def values_in_time(self, past_returns, **kwargs):
+            """This method computes the quantity of interest.
 
-    def __init__(self, window=20):
-        self.window = window
+            It has many arguments, we only need to use ``past_returns`` in this
+            case.
 
-    def values_in_time(self, past_returns, **kwargs):
-        """This method computes the quantity of interest.
+            :param past_returns: Historical market returns for all assets in
+                the current trading universe, up to each time at which the
+                policy is evaluated.
+            :type past_returns: pd.DataFrame
+            :param kwargs: Other, unused, arguments to :meth:`values_in_time`.
+            :type kwargs: dict
 
-        It has many arguments, we only need to use past_returns
-        in this case.
+            :returns: Estimated mean returns.
+            :rtype: pd.Series
 
-        NOTE: the last column of `past_returns` are the cash returns.
-        You need to explicitely skip them otherwise the compiler will
-        throw an error.
+            .. note::
+
+                The last column of ``past_returns`` are the cash returns.
+                You need to explicitely skip them otherwise Cvxportfolio will
+                throw an error.
+            """
+            return past_returns.iloc[-self.window:, :-1].mean()
+
+    # Here we define a class to forecast covariances
+    # There is no need to inherit from a base class, in this simple case
+    class WindowCovariance: # pylint: disable=too-few-public-methods
+        """Covariance computed on recent window of past returns.
+
+        This is only meant as an example of how to define a custom forecaster;
+        it is not very interesting. Since version ``1.2.0`` a similar
+        functionality has been included in the default forecasters classes.
+
+        :param window: Window used for the covariance computation.
+        :type window: int
         """
-        return past_returns.iloc[-self.window:, :-1].cov()
 
+        def __init__(self, window=20):
+            self.window = window
 
-# define the hyperparameters
-WINDOWMU = 125
-WINDOWSIGMA = 125
-GAMMA_RISK = 5
-GAMMA_TRADE = 3
+        def values_in_time(self, past_returns, **kwargs):
+            """This method computes the quantity of interest.
 
-# define the policy
-policy = cvx.SinglePeriodOptimization(
-    objective = cvx.ReturnsForecast(WindowMeanReturn(WINDOWMU))
-        - GAMMA_RISK * cvx.FullCovariance(WindowCovariance(WINDOWSIGMA))
-        - GAMMA_TRADE * cvx.StocksTransactionCost(),
-    constraints = [cvx.LongOnly(), cvx.LeverageLimit(1)]
-    )
+            It has many arguments, we only need to use ``past_returns`` in this
+            case.
 
-# define the simulator
-simulator = cvx.StockMarketSimulator(['AAPL', 'GOOG', 'MSFT', 'AMZN'])
+            :param past_returns: Historical market returns for all assets in
+                the current trading universe, up to each time at which the
+                policy is evaluated.
+            :type past_returns: pd.DataFrame
+            :param kwargs: Other, unused, arguments to :meth:`values_in_time`.
+            :type kwargs: dict
 
-# backtest
-result = simulator.backtest(policy, start_time='2020-01-01')
+            :returns: Estimated covariance.
+            :rtype: pd.DataFrame
 
-# show the result
-print(result)
-result.plot()
+            .. note::
+
+                The last column of ``past_returns`` are the cash returns.
+                You need to explicitely skip them otherwise Cvxportfolio will
+                throw an error.
+            """
+            return past_returns.iloc[-self.window:, :-1].cov()
+
+    # define the hyper-parameters
+    WINDOWMU = 252
+    WINDOWSIGMA = 252
+    GAMMA_RISK = 5
+    GAMMA_TRADE = 3
+
+    # define the forecasters
+    mean_return_forecaster = WindowMeanReturns(WINDOWMU)
+    covariance_forecaster = WindowCovariance(WINDOWSIGMA)
+
+    # define the policy
+    policy = cvx.SinglePeriodOptimization(
+        objective = cvx.ReturnsForecast(r_hat = mean_return_forecaster)
+            - GAMMA_RISK * cvx.FullCovariance(Sigma = covariance_forecaster)
+            - GAMMA_TRADE * cvx.StocksTransactionCost(),
+        constraints = [cvx.LongOnly(), cvx.LeverageLimit(1)]
+        )
+
+    # define the simulator
+    simulator = cvx.StockMarketSimulator(['AAPL', 'GOOG', 'MSFT', 'AMZN'])
+
+    # back-test
+    result = simulator.backtest(policy, start_time='2020-01-01')
+
+    # show the result
+    print(result)
+    figure = result.plot()
+
+    # we use this to save the plots for the documentation
+    if 'CVXPORTFOLIO_SAVE_PLOTS' in os.environ:
+        figure.savefig('user_provided_forecasters.png')
+    else:
+        plt.show()
