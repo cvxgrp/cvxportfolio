@@ -10,8 +10,8 @@ Trading policies
 
 .. toctree::
 
-    optimization_policies
     simple_policies
+    optimization_policies
 
 
 Base policy class (for defining your own policy)

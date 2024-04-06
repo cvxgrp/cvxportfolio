@@ -7,7 +7,7 @@
 
 Cvxportfolio is an object-oriented library for portfolio optimization
 and back-testing. It implements models described in the `accompanying paper
-<https://cvxportfolio.readthedocs.org/en/master/_static/cvx_portfolio.pdf>`_.
+<https://cvxportfolio.readthedocs.io/en/master/_static/cvx_portfolio.pdf>`_.
 
 The documentation of the library is at
 `www.cvxportfolio.com <https://www.cvxportfolio.com>`__.
@@ -105,7 +105,7 @@ Other examples
 --------------
 
 `Many examples 
-<https://www.cvxportfolio.com/en/stable/examples.html>`_
+<https://cvxportfolio.readthedocs.io/en/stable/examples.html>`_
 are shown in the documentation website, along with
 their output and comments.
 
@@ -118,10 +118,10 @@ are available in the code repository.
 are visible in a dedicated branch,
 and are being translated to run with the stable versions (``1.0.0`` and above) of the
 library. The translations are visible at `this documentation page
-<https://www.cvxportfolio.com/en/stable/examples/paper_examples.html>`_.
+<https://cvxportfolio.readthedocs.io/en/stable/examples/paper_examples.html>`_.
 
 We show in the example on `user-provided
-forecasters <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/user_provided_forecasters.py>`__
+forecasters <https://cvxportfolio.readthedocs.io/en/stable/examples/user_provided_forecasters.html>`__
 how the user can define custom classes to forecast the expected returns
 and covariances. These provide callbacks that are executed at each point
 in time during the back-test. The system enforces causality and safety
@@ -130,9 +130,9 @@ forecasters that we provide in any analysis you may do, since they are
 very robust and well-tested.
 
 We show in the examples on `DOW30
-components <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/dow30_example.py>`__
+components <https://cvxportfolio.readthedocs.io/en/stable/examples/dow30.html>`__
 and `wide assets-classes
-ETFs <https://github.com/cvxgrp/cvxportfolio/blob/master/examples/etfs_example.py>`__
+ETFs <https://cvxportfolio.readthedocs.io/en/stable/examples/etfs.py>`__
 how a simple sweep over hyper-parameters, taking advantage of our
 sophisticated parallel backtest machinery, quickly provides results on
 the best strategy to apply to any given selection of assets.

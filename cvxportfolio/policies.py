@@ -172,11 +172,11 @@ class AllCash(Policy):
         return result
 
 class MarketBenchmark(Policy):
-    """Allocation weighted by last year's average market traded volumes.
+    """Allocation weighted by average market traded volumes.
 
     This policy provides an approximation of a market capitalization-weighted
     allocation, by using the average of traded volumes in units of value (e.g.,
-    USDOLLAR) over the previous year as proxy.
+    USDOLLAR) over the previous year (by default, can be changed) as proxy.
 
     .. versionadded:: 1.2.0
 
@@ -357,7 +357,7 @@ class SellAll(AllCash):
 
 
 class FixedTrades(Policy):
-    """Each day trade the provided trade weights vector.
+    """Each day trade the provided *trade weights* vector.
 
     If there are no weights defined for the given day, default to no
     trades.
@@ -409,7 +409,7 @@ class FixedTrades(Policy):
 
 
 class FixedWeights(Policy):
-    """Each day trade to the provided trade weights vector.
+    """Each day trade to the provided *weights* vector.
 
     If there are no weights defined for the given day, default to no
     trades.
@@ -464,7 +464,8 @@ class FixedWeights(Policy):
 class Uniform(FixedWeights):
     """Uniform allocation on non-cash assets.
 
-    :param leverage: Leverage of the allocation.
+    :param leverage: Leverage of the allocation. Default is 1, corresponding to
+        the classic :math:`1/n` allocation.
     :type leverage: float
     """
 
@@ -538,8 +539,10 @@ class AdaptiveRebalance(Policy):
     :param target: target weights to rebalance to.
         It is assumed a constant if it is a Series. If it varies in
         time (you must specify it for every trading day) pass a
-        DataFrame indexed by time.
-    :type target: pd.Series or pd.DataFrame
+        DataFrame indexed by time. You can also pass a policy object instance
+        and its resulting weights will be used as targets, at each point in
+        time.
+    :type target: pd.Series or pd.DataFrame or cvx.policy.Policy instance
     :param tracking_error: we trade to match the target
         weights whenever the 2-norm of our weights minus the
         target is larger than this. Pass a Series if you want to vary it in
