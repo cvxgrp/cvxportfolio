@@ -12,8 +12,8 @@ DOW30 monthly
 This is the output printed to screen when executing this script. You can see
 many statistics of the back-tests.
 
-.. include:: ../_static/dow30_output.txt
-   :literal:
+.. literalinclude:: ../_static/dow30_output.txt
+   :language: text
 
 And these are the figure that are plotted.
 The result of the :class:`cvxportfolio.MultiPeriodOptimization` policy

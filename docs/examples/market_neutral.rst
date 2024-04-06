@@ -21,6 +21,7 @@ back-tested returns have low correlation with the market benchmark,
 thanks to the :class:`cvxportfolio.constraints.MarketNeutral` constraint.
 
 .. literalinclude:: ../_static/market_neutral_output.txt
+   :language: text
 
 And this is the figure that is plotted, the result of hyper-parameter
 optimization with largest Sharpe ratio.

@@ -12,6 +12,7 @@ Market-Neutral Portfolio (Without Costs)
 This is the output printed to screen when executing this script.
 
 .. literalinclude:: ../_static/market_neutral_nocosts_output.txt
+   :language: text
 
 And this is the figure that is plotted.
 

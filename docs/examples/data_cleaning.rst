@@ -13,8 +13,8 @@ This is the output printed to screen when executing this script. You can see
 many diagnostics of the data cleaning. Scroll down to the pictures to see
 what is actually going on.
 
-.. include:: ../_static/data_cleaning_output.txt
-   :literal:
+.. literalinclude:: ../_static/data_cleaning_output.txt
+   :language: text
 
 And these are the figure that are plotted. For each of the test stocks, we
 see the original Yahoo Finance data, which has many issues, and the cleaned

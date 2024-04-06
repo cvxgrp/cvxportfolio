@@ -18,6 +18,7 @@ is very accurate, and coincides (with a tiny difference) with what is reported
 by Python's ``time`` here in the script.
 
 .. literalinclude:: ../_static/timing_output.txt
+   :language: text
 
 And these are the figures that are plotted. The first run, with longer
 time spent in the policy (which does the covariance estimation,

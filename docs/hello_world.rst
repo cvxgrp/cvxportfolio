@@ -13,8 +13,8 @@ This is the output printed to screen when executing this script. You can see
 many statistics of the back-tests. The timestamps of the back-test are the
 open times of the New York stock market (9.30am New York time) expressed in UTC.
 
-.. include:: _static/hello_world_output.txt
-   :literal:
+.. literalinclude:: _static/hello_world_output.txt
+   :language: text
 
 And these are the figure that are plotted.
 The result of the :class:`cvxportfolio.MultiPeriodOptimization` policy:
