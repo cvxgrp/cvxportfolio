@@ -29,7 +29,6 @@ import os
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import numpy as np
-    import pandas as pd
 
     import cvxportfolio as cvx
 
@@ -86,7 +85,7 @@ if __name__ == '__main__':
     # These are risk model coefficients. They don't seem to have
     # a strong effect on this example.
     NUM_FACTORS = 5
-    kappa = 0.1
+    KAPPA = 0.1
 
     # This is the multi-period planning horizon. We plan for 6 months
     # in the future.
@@ -99,7 +98,7 @@ if __name__ == '__main__':
         policies.append(cvx.MultiPeriodOptimization(
             cvx.ReturnsForecast() - gamma_risk * (
             cvx.FactorModelCovariance(num_factors=NUM_FACTORS)
-            + kappa * cvx.RiskForecastError())
+            + KAPPA * cvx.RiskForecastError())
                 - cvx.TransactionCost(a=LINEAR_TCOST, b=None),
                     [cvx.LongOnly(applies_to_cash=True)],
                         planning_horizon=HORIZON,

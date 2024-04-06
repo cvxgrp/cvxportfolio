@@ -38,6 +38,7 @@ holding costs.
 """
 
 import os
+import matplotlib.pyplot as plt
 
 # Uncomment the logging lines to get online information from the back-test
 # import logging

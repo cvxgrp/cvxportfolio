@@ -59,6 +59,17 @@ if __name__ == '__main__':
     sim = cvx.StockMarketSimulator(UNIVERSE, trading_frequency='monthly')
 
     def make_policy(gamma_trade, gamma_risk):
+        """Create policy object given hyper-parameter values.
+
+        :param gamma_trade: Choice of the trading aversion multiplier.
+        :type gamma_trade: float
+        :param gamma_risk: Choice of the risk aversion multiplier.
+        :type gamma_risk: float
+
+        :returns: Policy object with given choices of hyper-parameters.
+        :rtype: cvx.policies.Policy instance
+
+        """
         return cvx.MultiPeriodOptimization(cvx.ReturnsForecast()
             - gamma_risk * cvx.FactorModelCovariance(num_factors=10)
             - gamma_trade * cvx.StocksTransactionCost(),

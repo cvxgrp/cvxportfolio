@@ -19,8 +19,6 @@ might take a while (about half an hour on a 2020s computer),
 especially the first run which computes and caches the risk model each day.
 """
 
-import matplotlib.pyplot as plt
-
 import cvxportfolio as cvx
 
 from .universes import NDX100, SP500

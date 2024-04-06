@@ -40,10 +40,8 @@ optimization to maximize the information ratio, in back-test,
 versus the index ETF.
 """
 
-import os
 from pprint import pprint
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 

@@ -29,14 +29,14 @@ if __name__ == '__main__':
     # risk aversion parameter (Chapter 4.2)
     # chosen to match resulting volatility with the
     # uniform portfolio (for illustrative purpose)
-    gamma = 2.5
+    GAMMA = 2.5
 
     # covariance forecast error risk parameter (Chapter 4.3)
     # this can help regularize a noisy covariance estimate
-    kappa = 0.05
+    KAPPA = 0.05
 
-    objective = cvx.ReturnsForecast() - gamma * (
-        cvx.FullCovariance() + kappa * cvx.RiskForecastError()
+    objective = cvx.ReturnsForecast() - GAMMA * (
+        cvx.FullCovariance() + KAPPA * cvx.RiskForecastError()
     ) - cvx.StocksTransactionCost()
 
     constraints = [cvx.LeverageLimit(3)]

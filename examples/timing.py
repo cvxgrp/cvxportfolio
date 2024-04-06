@@ -110,8 +110,7 @@ if __name__ == '__main__':
             policy,
             start_time=pd.Timestamp.today() - pd.Timedelta(f'{365.24*5}d'))
 
-        print('\n\n' + run.upper() + ' RUN; RESULT:')
-        print(result)
+        print('\n\n' + run.upper() + ' RUN')
 
         print('BACK-TEST TOOK:', time.time() - s)
         print(
@@ -120,6 +119,9 @@ if __name__ == '__main__':
         print(
             'AVERAGE TIME PER ITERATION:',
             result.simulator_times.mean() + result.policy_times.mean())
+
+        print('RESULT:')
+        print(result)
 
         # plot; this method was introduced in Cvxportfolio 1.3.0
         figures[run] = result.times_plot()

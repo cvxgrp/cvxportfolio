@@ -161,7 +161,7 @@ if __name__ == '__main__':
             'column_number': 1,
         },
         'dow30': {
-            'page': "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average",
+         'page': "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average",
             'table_number': 0,
             'column_number': 1,
         },
