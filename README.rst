@@ -1,5 +1,5 @@
-`Cvxportfolio <https://www.cvxportfolio.com>`__
-===============================================
+`Cvxportfolio <https://www.cvxportfolio.com>`_
+==============================================
 
 |CVXportfolio on PyPI| |linting: pylint| |Coverage Status|
 |Documentation Status| |Apache 2.0 License| |Anaconda-Server Badge|
@@ -10,7 +10,7 @@ and back-testing. It implements models described in the `accompanying paper
 <https://cvxportfolio.readthedocs.io/en/master/_static/cvx_portfolio.pdf>`_.
 
 The documentation of the library is at
-`www.cvxportfolio.com <https://www.cvxportfolio.com>`__.
+`www.cvxportfolio.com <https://www.cvxportfolio.com>`_.
 
 .. Installation
 
@@ -33,7 +33,7 @@ environment by simple:
    pip install -U cvxportfolio
 
 You can see how this works on our `Installation and Hello
-World <https://youtu.be/1ThOKEu371M>`__ youtube video. 
+World <https://youtu.be/1ThOKEu371M>`_ youtube video.
 Anaconda installs 
 `are also supported <https://anaconda.org/conda-forge/cvxportfolio>`_.
 
@@ -121,7 +121,7 @@ library. The translations are visible at `this documentation page
 <https://cvxportfolio.readthedocs.io/en/stable/examples/paper_examples.html>`_.
 
 We show in the example on `user-provided
-forecasters <https://cvxportfolio.readthedocs.io/en/stable/examples/user_provided_forecasters.html>`__
+forecasters <https://cvxportfolio.readthedocs.io/en/stable/examples/user_provided_forecasters.html>`_
 how the user can define custom classes to forecast the expected returns
 and covariances. These provide callbacks that are executed at each point
 in time during the back-test. The system enforces causality and safety
@@ -130,9 +130,9 @@ forecasters that we provide in any analysis you may do, since they are
 very robust and well-tested.
 
 We show in the examples on `DOW30
-components <https://cvxportfolio.readthedocs.io/en/stable/examples/dow30.html>`__
+components <https://cvxportfolio.readthedocs.io/en/stable/examples/dow30.html>`_
 and `wide assets-classes
-ETFs <https://cvxportfolio.readthedocs.io/en/stable/examples/etfs.py>`__
+ETFs <https://cvxportfolio.readthedocs.io/en/stable/examples/etfs.html>`_
 how a simple sweep over hyper-parameters, taking advantage of our
 sophisticated parallel backtest machinery, quickly provides results on
 the best strategy to apply to any given selection of assets.
@@ -178,7 +178,7 @@ Development
 
 To set up a development environment locally you should clone the
 repository (or, `fork on
-Github <https://docs.github.com/en/get-started/quickstart/fork-a-repo>`__
+Github <https://docs.github.com/en/get-started/quickstart/fork-a-repo>`_
 and then clone your fork)
 
 .. code:: bash
@@ -187,8 +187,8 @@ and then clone your fork)
    cd cvxportfolio
 
 Then, you should have a look at our
-`Makefile <https://www.gnu.org/software/make/manual/make.html#Introduction>`__
-and possibly change the ``PYTHON`` variable to match your system’s
+`Makefile <https://www.gnu.org/software/make/manual/make.html#Introduction>`_
+and possibly change the ``PYTHON`` variable to match your system's
 python interpreter. Once you have done that,
 
 .. code:: bash
@@ -197,7 +197,7 @@ python interpreter. Once you have done that,
    make test
 
 This will replicate our `development
-environment <https://docs.python.org/3/library/venv.html>`__ and run our
+environment <https://docs.python.org/3/library/venv.html>`_ and run our
 test suite.
 
 You activate the shell environment with one of scripts in ``env/bin``
@@ -209,13 +209,13 @@ You activate the shell environment with one of scripts in ``env/bin``
 
 and from the environment you can run any of the scripts in the examples
 (the cvxportfolio package is installed in `editable
-mode <https://setuptools.pypa.io/en/latest/userguide/development_mode.html>`__).
+mode <https://setuptools.pypa.io/en/latest/userguide/development_mode.html>`_).
 Or, if you don't want to activate the environment, you can just run
 scripts directly using ``env/bin/python`` (or ``env\Scripts\python`` on
 Windows) like we do in the Makefile.
 
 Additionally, to match our CI/CD pipeline, you may set the following
-`git hooks <https://git-scm.com/docs/githooks>`__
+`git hooks <https://git-scm.com/docs/githooks>`_
 
 .. code:: bash
 
