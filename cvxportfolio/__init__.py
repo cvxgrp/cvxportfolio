@@ -17,7 +17,7 @@ This module only republishes the api of a selection of cvxportfolio
 modules. The __all__ attribute of each is used.
 """
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 from .constraints import *
 from .costs import *
