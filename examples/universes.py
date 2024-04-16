@@ -20,7 +20,7 @@ and check that the results make sense.
 We could also save each universe in a ``json`` file.
 """
 
-# This was generated on 2024-04-06 08:22:26.696576+00:00
+# This was generated on 2024-04-16 10:00:08.708941+00:00
 
 SP500 = \
 ['A', 'AAL', 'AAPL', 'ABBV', 'ABNB', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI',
@@ -238,7 +238,9 @@ if __name__ == '__main__':
         :rtype: list
         """
 
-        return [el.replace('.', '-') + suffix for el in tickers_list]
+        # this is
+        return [el.replace(
+                    '.', '-').rstrip('-') + suffix for el in tickers_list]
 
     # re-write this file
 

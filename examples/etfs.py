@@ -68,7 +68,6 @@ if __name__ == '__main__':
 
         :returns: Policy object with given choices of hyper-parameters.
         :rtype: cvx.policies.Policy instance
-
         """
         return cvx.MultiPeriodOptimization(cvx.ReturnsForecast()
             - gamma_risk * cvx.FactorModelCovariance(num_factors=10)

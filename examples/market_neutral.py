@@ -43,6 +43,7 @@ forecaster class, and passing either as argument to
 # python -m examples.market_neutral
 
 import os
+
 import matplotlib.pyplot as plt
 
 # Uncomment the logging lines to get online information
