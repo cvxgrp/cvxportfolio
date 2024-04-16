@@ -23,8 +23,8 @@ import pandas as pd
 from ..errors import DataError
 from ..utils import (hash_, make_numeric, periods_per_year_from_datetime_index,
                      resample_returns, set_pd_read_only)
-from .symbol_data import (BASE_LOCATION,  # pylint: disable=unused-import
-                          OLHCV, Fred, SymbolData, YahooFinance, _loader_csv,
+from .symbol_data import BASE_LOCATION  # pylint: disable=unused-import
+from .symbol_data import (OLHCV, Fred, SymbolData, YahooFinance, _loader_csv,
                           _loader_pickle, _loader_sqlite, _storer_csv,
                           _storer_pickle, _storer_sqlite)
 
