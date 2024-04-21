@@ -49,7 +49,7 @@ def cache_name(signature, base_location):
     :returns: Storage location.
     :rtype: pathlib.Path
     """
-    if base_location is not None:
+    if base_location is not None: # pragma: no cover
         return (base_location / 'backtest_cache') / (signature + '.pkl')
     else:
         return 'backtest_cache___' + signature
@@ -96,7 +96,7 @@ def _store_cache(cache, signature, base_location):
         logger.debug( # pragma: no cover
             'Acquiring cache lock from process %s', os.getpid())
         LOCK.acquire() # pragma: no cover
-    if isinstance(name, Path):
+    if isinstance(name, Path): # pragma: no cover
         name.parent.mkdir(exist_ok=True)
     with (open(name, 'wb') if isinstance(name, Path)
             else BytesIO()) as f:

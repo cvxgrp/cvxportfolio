@@ -114,7 +114,7 @@ class SymbolData:
 
         :rtype: pathlib.Path
         """
-        if self._base_location is not None:
+        if self._base_location is not None: # pragma: no cover
             loc = self._base_location / f"{self.__class__.__name__}"
             loc.mkdir(parents=True, exist_ok=True)
             return loc
