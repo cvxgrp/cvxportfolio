@@ -19,6 +19,7 @@ import datetime
 import logging
 import sqlite3
 import warnings
+from io import BytesIO
 from pathlib import Path
 from pickle import UnpicklingError
 from urllib.error import URLError
@@ -33,7 +34,14 @@ from ..utils import set_pd_read_only
 
 logger = logging.getLogger(__name__)
 
+# change to None for defaulting to in-memory storage
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
+
+# this global dict is used to store raw file buffers if base_location is set
+# to None; it will be copied in full to child processes if parallelizing;
+# however, any edit done in a child process, which don't normally happen
+# with code in this module, will be lost as the child process is terminated
+_IN_MEMORY_FILE_STORE = {}
 
 __all__ = [
     '_loader_csv', '_loader_pickle', '_loader_sqlite',
@@ -80,8 +88,9 @@ class SymbolData:
     :type storage_backend: str
     :param base_location: The location of the storage. We store in a
         subdirectory named after the class which derives from this. By default
-        it's a directory named ``cvxportfolio_data`` in your home folder.
-    :type base_location: pathlib.Path
+        it's a directory named ``cvxportfolio_data`` in your home folder. Use
+        ``None`` for in-memory storage.
+    :type base_location: pathlib.Path or None
     :param grace_period: If the most recent observation in the data is less
         old than this we do not download new data. By default it's one day.
     :type grace_period: pandas.Timedelta
@@ -105,9 +114,12 @@ class SymbolData:
 
         :rtype: pathlib.Path
         """
-        loc = self._base_location / f"{self.__class__.__name__}"
-        loc.mkdir(parents=True, exist_ok=True)
-        return loc
+        if self._base_location is not None:
+            loc = self._base_location / f"{self.__class__.__name__}"
+            loc.mkdir(parents=True, exist_ok=True)
+            return loc
+        else:
+            return f"{self.__class__.__name__}___"
 
     @property
     def symbol(self):
@@ -131,9 +143,11 @@ class SymbolData:
         loader = globals()['_loader_' + self._storage_backend]
         try:
             logger.info(
-                f"{self.__class__.__name__} is trying to load {self.symbol}"
-                + f" with {self._storage_backend} backend"
-                + f" from {self.storage_location}")
+                "%s is trying to load %s with %s backend from %s%s",
+                self.__class__.__name__, self.symbol, self._storage_backend,
+                self.storage_location,
+                ', in memory' if not isinstance(self.storage_location, Path)
+                    else '')
             return loader(self.symbol, self.storage_location)
         except FileNotFoundError:
             return None
@@ -155,9 +169,10 @@ class SymbolData:
         # we could implement multiprocess safety here
         storer = globals()['_storer_' + self._storage_backend]
         logger.info(
-            f"{self.__class__.__name__} is storing {self.symbol}"
-            + f" with {self._storage_backend} backend"
-            + f" in {self.storage_location}")
+            "%s is storing %s with %s backend in %s%s",
+            self.__class__.__name__, self.symbol, self._storage_backend,
+            self.storage_location, ', in memory' if not
+                isinstance(self.storage_location, Path) else '')
         storer(self.symbol, data, self.storage_location)
 
     def _print_difference(self, current, new):
@@ -1134,6 +1149,8 @@ class Fred(SymbolData):
 #
 
 def _open_sqlite(storage_location):
+    assert isinstance(storage_location, Path), \
+        'This storage back-end can not be used in-memory'
     return sqlite3.connect(storage_location/"db.sqlite")
 
 def _close_sqlite(connection):
@@ -1220,8 +1237,17 @@ def _storer_sqlite(symbol, data, storage_location):
 
 def _loader_pickle(symbol, storage_location):
     """Load data in pickle format."""
+
+    if isinstance(storage_location, Path):
+        data_path = storage_location / f"{symbol}.pickle"
+    else:
+        data_path = storage_location + f"{symbol}___pickle"
+        if not data_path in _IN_MEMORY_FILE_STORE:
+            raise FileNotFoundError
     try:
-        return pd.read_pickle(storage_location / f"{symbol}.pickle")
+        with (open(data_path, 'rb') if isinstance(data_path, Path)
+                else BytesIO(_IN_MEMORY_FILE_STORE[data_path])) as f:
+            return pd.read_pickle(f)
     except (EOFError, UnpicklingError) as e:
         logger.warning(
             'Data file %s is corrupt! Discarding it.',
@@ -1230,8 +1256,17 @@ def _loader_pickle(symbol, storage_location):
 
 def _storer_pickle(symbol, data, storage_location):
     """Store data in pickle format."""
-    data.to_pickle(storage_location / f"{symbol}.pickle")
 
+    if isinstance(storage_location, Path):
+        data_path = storage_location / f"{symbol}.pickle"
+    else:
+        data_path = storage_location + f"{symbol}___pickle"
+
+    with (open(data_path, 'wb') if isinstance(data_path, Path)
+            else BytesIO()) as f:
+        data.to_pickle(f)
+        if not isinstance(data_path, Path):
+            _IN_MEMORY_FILE_STORE[data_path] = f.getvalue()
 #
 # Csv storage backend.
 #
@@ -1239,13 +1274,20 @@ def _storer_pickle(symbol, data, storage_location):
 def _loader_csv(symbol, storage_location):
     """Load data in csv format."""
 
-    index_dtypes = pd.read_csv(
-        storage_location / f"{symbol}___index_dtypes.csv",
-        index_col=0)["0"]
+    assert isinstance(storage_location, Path), \
+        'This storage back-end can not be used in-memory'
 
-    dtypes = pd.read_csv(
-        storage_location / f"{symbol}___dtypes.csv", index_col=0,
-        dtype={"index": "str", "0": "str"})
+    index_dtypes_path = storage_location / f"{symbol}___index_dtypes.csv"
+    dtypes_path = storage_location / f"{symbol}___dtypes.csv"
+    data_path = storage_location / f"{symbol}.csv"
+
+    with open(index_dtypes_path, 'r', encoding='utf-8') as f:
+        index_dtypes = pd.read_csv(f, index_col=0)["0"]
+
+    with open(dtypes_path, 'r', encoding='utf-8') as f:
+        dtypes = pd.read_csv(
+            f, index_col=0, dtype={"index": "str", "0": "str"})
+
     dtypes = dict(dtypes["0"])
     new_dtypes = {}
     parse_dates = []
@@ -1258,18 +1300,30 @@ def _loader_csv(symbol, storage_location):
         else:
             new_dtypes[el] = dtypes[el]
 
-    tmp = pd.read_csv(storage_location / f"{symbol}.csv",
-        index_col=list(range(len(index_dtypes))),
-        parse_dates=parse_dates, dtype=new_dtypes)
+    with open(data_path, 'r', encoding='utf-8') as f:
+        tmp = pd.read_csv(
+            f, index_col=list(range(len(index_dtypes))),
+            parse_dates=parse_dates, dtype=new_dtypes)
 
     return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
 
 
 def _storer_csv(symbol, data, storage_location):
     """Store data in csv format."""
-    pd.DataFrame(data.index.dtypes if hasattr(data.index, 'levels')
-        else [data.index.dtype]).astype("string").to_csv(
-        storage_location / f"{symbol}___index_dtypes.csv")
-    pd.DataFrame(data).dtypes.astype("string").to_csv(
-        storage_location / f"{symbol}___dtypes.csv")
-    data.to_csv(storage_location / f"{symbol}.csv")
+
+    assert isinstance(storage_location, Path), \
+        'This storage back-end can not be used in-memory'
+
+    index_dtypes_path = storage_location / f"{symbol}___index_dtypes.csv"
+    dtypes_path = storage_location / f"{symbol}___dtypes.csv"
+    data_path = storage_location / f"{symbol}.csv"
+
+    with open(index_dtypes_path, 'w', encoding='utf-8') as f:
+        pd.DataFrame(data.index.dtypes if hasattr(data.index, 'levels')
+            else [data.index.dtype]).astype("string").to_csv(f)
+
+    with open(dtypes_path, 'w', encoding='utf-8') as f:
+        pd.DataFrame(data).dtypes.astype("string").to_csv(f)
+
+    with open(data_path, 'w', encoding='utf-8') as f:
+        data.to_csv(f)
