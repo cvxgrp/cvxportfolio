@@ -17,6 +17,8 @@ import socket
 import sys
 import unittest
 from copy import deepcopy
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 import pandas as pd
@@ -153,44 +155,61 @@ class TestData(CvxportfolioTest):
         and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
     def test_sqlite3_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        with self.assertWarns(UserWarning):
-            self._base_test_series(_loader_sqlite, _storer_sqlite)
+        with TemporaryDirectory() as datadir:
+            with self.assertWarns(UserWarning):
+                self._base_test_series(
+                    _loader_sqlite, _storer_sqlite, Path(datadir))
 
     @unittest.skipIf(sys.version_info.major == 3
         and sys.version_info.minor < 11, "Issues with timezoned timestamps.")
     def test_local_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        self._base_test_series(_loader_csv, _storer_csv)
+        with TemporaryDirectory() as datadir:
+            self._base_test_series(
+                _loader_csv, _storer_csv, Path(datadir))
 
     def test_pickle_store_series(self):
         """Test storing and retrieving of a Series with datetime index."""
-        self._base_test_series(_loader_pickle, _storer_pickle)
+        with TemporaryDirectory() as datadir:
+            self._base_test_series(
+                _loader_pickle, _storer_pickle, Path(datadir))
 
     def test_sqlite3_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self._base_test_dataframe(_loader_sqlite, _storer_sqlite)
+        with TemporaryDirectory() as datadir:
+            self._base_test_dataframe(
+                _loader_sqlite, _storer_sqlite, Path(datadir))
 
     def test_local_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self._base_test_dataframe(_loader_csv, _storer_csv)
+        with TemporaryDirectory() as datadir:
+            self._base_test_dataframe(
+                _loader_csv, _storer_csv, Path(datadir))
 
     def test_pickle_store_dataframe(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self._base_test_dataframe(_loader_pickle, _storer_pickle)
+        with TemporaryDirectory() as datadir:
+            self._base_test_dataframe(
+                _loader_pickle, _storer_pickle, Path(datadir))
 
     def test_local_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self._base_test_multiindex(_loader_csv, _storer_csv)
+        with TemporaryDirectory() as datadir:
+            self._base_test_multiindex(_loader_csv, _storer_csv, Path(datadir))
 
     def test_sqlite3_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self._base_test_multiindex(_loader_sqlite, _storer_sqlite)
+        with TemporaryDirectory() as datadir:
+            self._base_test_multiindex(
+                _loader_sqlite, _storer_sqlite, Path(datadir))
 
     def test_pickle_store_multiindex(self):
         """Test storing and retrieving of a DataFrame with datetime index."""
-        self._base_test_multiindex(_loader_pickle, _storer_pickle)
+        with TemporaryDirectory() as datadir:
+            self._base_test_multiindex(
+                _loader_pickle, _storer_pickle, Path(datadir))
 
-    def _base_test_series(self, loader, storer):
+    def _base_test_series(self, loader, storer, datadir_location=None):
         """Test storing and retrieving of a Series with datetime index."""
 
         for data in [
@@ -226,9 +245,9 @@ class TestData(CvxportfolioTest):
             # print(data.index.dtype)
             # print(data.dtypes)
 
-            storer(data.name, data, self.datadir)
+            storer(data.name, data, datadir_location)
 
-            data1 = loader(data.name, self.datadir)
+            data1 = loader(data.name, datadir_location)
             # print(data1)
             # print(data1.index)
             # print(data1.index[0])
@@ -243,11 +262,11 @@ class TestData(CvxportfolioTest):
 
         # test load not existent
         try:
-            self.assertTrue(loader('blahblah', self.datadir) is None)
+            self.assertTrue(loader('blahblah', datadir_location) is None)
         except FileNotFoundError:
             pass
 
-    def _base_test_dataframe(self, loader, storer):
+    def _base_test_dataframe(self, loader, storer, datadir_location=None):
         """Test storing and retrieving of a DataFrame with datetime index."""
 
         index = pd.date_range("2020-01-01", "2020-01-02", freq="h", tz='UTC')
@@ -264,8 +283,8 @@ class TestData(CvxportfolioTest):
         # print(data.index.dtype)
         # print(data.dtypes)
 
-        storer("example", data, self.datadir)
-        data1 = loader("example", self.datadir)
+        storer("example", data, datadir_location)
+        data1 = loader("example", datadir_location)
         # print(data1)
         # print(data1.index.dtype)
         # print(data1.dtypes)
@@ -274,7 +293,7 @@ class TestData(CvxportfolioTest):
         self.assertTrue(all(data.index == data1.index))
         self.assertTrue(all(data.dtypes == data1.dtypes))
 
-    def _base_test_multiindex(self, loader, storer):
+    def _base_test_multiindex(self, loader, storer, datadir_location=None):
         """Test storing and retrieving of a Series or DataFrame with multi-.
 
         index.
@@ -291,8 +310,8 @@ class TestData(CvxportfolioTest):
         # print(data.index.dtype)
         # print(data.dtypes)
 
-        storer("example", data, self.datadir)
-        data1 = loader("example", self.datadir)
+        storer("example", data, datadir_location)
+        data1 = loader("example", datadir_location)
 
         # print(data1.index)
         # print(data1)
@@ -316,8 +335,8 @@ class TestData(CvxportfolioTest):
         # print(data.index.dtypes)
         # print(data.dtypes)
 
-        storer("example", data, self.datadir)
-        data1 = loader("example", self.datadir)
+        storer("example", data, datadir_location)
+        data1 = loader("example", datadir_location)
 
         ## print(data1.index)
         # print(data1)

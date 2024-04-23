@@ -25,6 +25,12 @@ This is not really an example, and one method shown here
 (:meth:`cvxportfolio.YahooFinance._get_data_yahoo`) is not public,
 so not covered by the semantic versioning agreeement (it could change
 without notice).
+
+.. note::
+
+    You need cvxportfolio 1.4.0 to run this, we added the
+    ``base_location=None`` option to store data in-memory instead of on-disk.
+    (Otherwise you need to set a file path there.)
 """
 
 # You run this from the root directory of the development environment by:
@@ -38,9 +44,6 @@ import os
 
 if __name__ == '__main__':
 
-    import shutil
-    import tempfile
-    from pathlib import Path
     from time import sleep
 
     import matplotlib.pyplot as plt
@@ -77,9 +80,7 @@ if __name__ == '__main__':
         print(f'{stock}: YAHOO FINANCE RAW')
         print(raw_yfinance)
 
-        tmpdir = Path(tempfile.mkdtemp())
-        cvx_cleaned = cvx.YahooFinance(stock, base_location=tmpdir).data
-        shutil.rmtree(tmpdir)
+        cvx_cleaned = cvx.YahooFinance(stock, base_location=None).data
         print(f'{stock}: CVXPORTFOLIO CLEANED')
         print(cvx_cleaned)
 

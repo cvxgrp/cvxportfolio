@@ -105,8 +105,9 @@ class MarketSimulator:
         derived class. If provided, all previous arguments are ignored.
     :type market_data: :class:`cvxportfolio.data.MarketData` instance or None
     :param base_location: The location of the storage. By default
-        it's a directory named ``cvxportfolio_data`` in your home folder.
-    :type base_location: pathlib.Path
+        it's a directory named ``cvxportfolio_data`` in your home folder. Use
+        ``None`` for in-memory storage.
+    :type base_location: pathlib.Path or None
 
     :param costs: List of costs that are applied at each time in a back-test.
     :type costs: list of :class:`cvxportfolio.costs.SimulatorCost` classes or
@@ -131,7 +132,8 @@ class MarketSimulator:
                  trading_frequency=None,
                  backtest_result_cls=BacktestResult):
         """Initialize the Simulator and download data if necessary."""
-        self.base_location = Path(base_location)
+        self.base_location = None if base_location is None else Path(
+            base_location)
 
         if not market_data is None:
             self.market_data = market_data
@@ -738,8 +740,9 @@ class StockMarketSimulator(MarketSimulator):
     :type trading_frequency: str or None
 
     :param base_location: The location of the storage. By default
-        it's a directory named ``cvxportfolio_data`` in your home folder.
-    :type base_location: pathlib.Path
+        it's a directory named ``cvxportfolio_data`` in your home folder. Use
+        ``None`` for in-memory storage.
+    :type base_location: pathlib.Path or None
     :param costs: List of costs that are applied at each time in a back-test.
         By default we add :class:`cvxportfolio.StocksTransactionCost`
         and :class:`cvxportfolio.StocksHoldingCost`.
