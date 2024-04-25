@@ -73,8 +73,13 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest, macos-latest-large] # last 2 are aarch64 and amd64
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        exclude:
+          - os: macos-latest # aarch64
+            python-version: '3.8'
+          - os: macos-latest # aarch64
+            python-version: '3.9'
 
     steps:
 
