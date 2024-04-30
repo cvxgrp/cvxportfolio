@@ -876,7 +876,7 @@ class TransactionCost(SimulatorCost):
                     ) @ self._second_term_multiplier
             assert expression.is_convex()
         if self.c is not None:
-            expression += cp.sum(z[:-1] * self.c.parameter)
+            expression += z[:-1] @ self.c.parameter
         return expression
 
 # Backward compatibility before 1.2.0
