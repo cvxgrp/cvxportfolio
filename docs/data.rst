@@ -39,6 +39,8 @@ Base classes (for using other data sources)
 .. autoclass:: MarketData
     
     .. automethod:: serve
+
+    .. automethod:: universe_at_time
     
     .. automethod:: trading_calendar
     
