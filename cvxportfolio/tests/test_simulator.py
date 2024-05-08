@@ -374,38 +374,29 @@ class TestSimulator(CvxportfolioTest):
                 base_location=self.datadir),
                 base_location=self.datadir) # need to specify for cache loc
 
-        def _get_backtest_caches_names(): # because we use in-memory store
-            # pylint: disable=protected-access
-            return [key for key in cvx.data.symbol_data._IN_MEMORY_FILE_STORE
-                if 'backtest_cache' in key]
-
         policy = cvx.SinglePeriodOptimization(
             cvx.ReturnsForecast() - .5 * cvx.FullCovariance(),
             [cvx.LongOnly(applies_to_cash=True)])
 
-        self.assertEqual(len(_get_backtest_caches_names()), 0)
-        # self.assertFalse((self.datadir / 'backtest_cache').exists())
+        self.assertFalse((self.datadir / 'backtest_cache').exists())
 
         result_fresh = simulator.backtest(
             policy, start_time='2024-01-01', end_time='2024-02-01')
 
-        previous_caches = tuple(_get_backtest_caches_names())
-        self.assertEqual(len(previous_caches), 1)
-        # self.assertTrue((self.datadir / 'backtest_cache').exists())
-        # self.assertTrue((self.datadir / 'backtest_cache').is_dir())
-        # caches = list((self.datadir / 'backtest_cache').iterdir())
-        # self.assertEqual(len(caches), 1)
-        # self.assertEqual('.pkl', str(caches[0])[-4:])
+        self.assertTrue((self.datadir / 'backtest_cache').exists())
+        self.assertTrue((self.datadir / 'backtest_cache').is_dir())
+        caches = list((self.datadir / 'backtest_cache').iterdir())
+        self.assertEqual(len(caches), 1)
+        self.assertEqual('.pkl', str(caches[0])[-4:])
 
         result_w_cache = simulator.backtest(
             policy, start_time='2024-01-01', end_time='2024-02-01')
 
         self.assertTrue(np.allclose(result_fresh.w, result_w_cache.w))
 
-        same_caches = tuple(_get_backtest_caches_names())
-        # caches_same = list((self.datadir / 'backtest_cache').iterdir())
-        self.assertEqual(len(same_caches), 1)
-        self.assertEqual(str(same_caches[0]), str(previous_caches[0]))
+        caches_same = list((self.datadir / 'backtest_cache').iterdir())
+        self.assertEqual(len(caches_same), 1)
+        self.assertEqual(str(caches_same[0]), str(caches[0]))
 
     def test_simulate_policy(self): # pylint: disable=too-many-locals
         """Test basic policy simulation."""

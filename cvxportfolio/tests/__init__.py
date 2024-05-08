@@ -14,6 +14,8 @@
 """We make the tests a sub-package so we can ship them."""
 
 import logging
+import shutil
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -32,7 +34,8 @@ class CvxportfolioTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Initialize test class."""
-        cls.datadir = None # using in-memory storage
+        cls.datadir = Path(tempfile.mkdtemp())
+        logger.info('created %s', cls.datadir)
 
         cls.sigma = pd.read_csv(
             Path(__file__).parent / "sigmas.csv",
@@ -70,9 +73,8 @@ class CvxportfolioTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Finalize test class."""
-        logger.info('Clearing in-memory file store...')
-        # pylint: disable=protected-access
-        cvx.data.symbol_data._IN_MEMORY_FILE_STORE.clear()
+        logger.info('removing %s', cls.datadir)
+        shutil.rmtree(cls.datadir)
         print('Timing report:')
         print(pd.Series(cls.timers))
 

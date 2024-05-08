@@ -158,8 +158,7 @@ class MarketDataInMemory(MarketData):
         self._masked_returns = None
         self._masked_volumes = None
         self._masked_prices = None
-        self.base_location = None if base_location is None else Path(
-            base_location)
+        self.base_location = Path(base_location)
         self.cash_key = cash_key
         self._min_history_timedelta = min_history
         self.online_usage = online_usage
@@ -524,9 +523,8 @@ class UserProvidedMarketData(MarketDataInMemory):
     :type min_history: pandas.Timedelta
     :param base_location: The location of the storage, only used
         in case it downloads the cash returns. By default
-        it's a directory named ``cvxportfolio_data`` in your home folder. Use
-        ``None`` for in-memory storage.
-    :type base_location: pathlib.Path or None
+        it's a directory named ``cvxportfolio_data`` in your home folder.
+    :type base_location: pathlib.Path
     :param cash_key: Name of the cash account. If not the last column
         of the provided returns, it will be added. In that case you should
         make sure your provided dataframes have a timezone aware datetime
@@ -579,8 +577,7 @@ class UserProvidedMarketData(MarketDataInMemory):
             raise SyntaxError(
                 "If you don't specify a universe you should pass `returns`.")
 
-        self.base_location = None if base_location is None else Path(
-            base_location)
+        self.base_location = Path(base_location)
         self.cash_key = cash_key
 
         self.returns = pd.DataFrame(
@@ -643,9 +640,8 @@ class DownloadedMarketData(MarketDataInMemory):
         or ``cash``, which sets the cash returns to 0. Default ``USDOLLAR``.
     :type cash_key: str
     :param base_location: The location of the storage. By default
-        it's a directory named ``cvxportfolio_data`` in your home folder. Use
-        ``None`` for in-memory storage.
-    :type base_location: pathlib.Path or None
+        it's a directory named ``cvxportfolio_data`` in your home folder.
+    :type base_location: pathlib.Path
     :param storage_backend: The storage backend, implemented ones are
         ``'pickle'``, ``'csv'``, and ``'sqlite'``. By default ``'pickle'``.
     :type storage_backend: str
@@ -706,8 +702,7 @@ class DownloadedMarketData(MarketDataInMemory):
         # drop duplicates and ensure ordering
         universe = sorted(set(universe))
 
-        self.base_location = None if base_location is None else Path(
-            base_location)
+        self.base_location = Path(base_location)
         self.cash_key = cash_key
         if isinstance(datasource, type):
             self.datasource = datasource

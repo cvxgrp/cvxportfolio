@@ -16,14 +16,6 @@
 import logging
 import os
 import pickle
-from io import BytesIO
-from pathlib import Path
-
-# this global dict is used to store raw file buffers if base_location is set
-# to None; it will be copied in full to child processes if parallelizing;
-# however, any edit done in a child process (e.g., estimated covariances with
-# some HP changed) will be lost as the child process is terminated
-from .data.symbol_data import _IN_MEMORY_FILE_STORE
 
 logger = logging.getLogger(__name__)
 
@@ -42,17 +34,13 @@ def cache_name(signature, base_location):
 
     :param signature: Signature of the market data server.
     :type signature: str
-    :param base_location: Base storage location. Use ``None`` for
-        in-memory storage.
-    :type base_location: pathlib.Path or None
+    :param base_location: Base storage location.
+    :type base_location: pathlib.Path
 
     :returns: Storage location.
     :rtype: pathlib.Path
     """
-    if base_location is not None: # pragma: no cover
-        return (base_location / 'backtest_cache') / (signature + '.pkl')
-    else:
-        return 'backtest_cache___' + signature
+    return (base_location / 'backtest_cache') / (signature + '.pkl')
 
 def _load_cache(signature, base_location):
     """Load cache from disk."""
@@ -64,11 +52,8 @@ def _load_cache(signature, base_location):
         logger.debug( # pragma: no cover
             'Acquiring cache lock from process %s', os.getpid())
         LOCK.acquire() # pragma: no cover
-    if not isinstance(name, Path) and not name in _IN_MEMORY_FILE_STORE:
-        return {}
     try:
-        with (open(name, 'rb') if isinstance(name, Path)
-                else BytesIO(_IN_MEMORY_FILE_STORE[name])) as f:
+        with open(name, 'rb') as f:
             res = pickle.load(f)
             logger.info('Loaded cache %s', name)
             return res
@@ -96,14 +81,10 @@ def _store_cache(cache, signature, base_location):
         logger.debug( # pragma: no cover
             'Acquiring cache lock from process %s', os.getpid())
         LOCK.acquire() # pragma: no cover
-    if isinstance(name, Path): # pragma: no cover
-        name.parent.mkdir(exist_ok=True)
-    with (open(name, 'wb') if isinstance(name, Path)
-            else BytesIO()) as f:
+    name.parent.mkdir(exist_ok=True)
+    with open(name, 'wb') as f:
         logger.info('Storing cache %s', name)
         pickle.dump(cache, f)
-        if not isinstance(name, Path):
-            _IN_MEMORY_FILE_STORE[name] = f.getvalue()
     if 'LOCK' in globals():
         logger.debug( # pragma: no cover
             'Releasing cache lock from process %s', os.getpid())
