@@ -38,9 +38,8 @@ import os
 
 if __name__ == '__main__':
 
-    import shutil
-    import tempfile
     from pathlib import Path
+    from tempfile import TemporaryDirectory
     from time import sleep
 
     import matplotlib.pyplot as plt
@@ -77,9 +76,9 @@ if __name__ == '__main__':
         print(f'{stock}: YAHOO FINANCE RAW')
         print(raw_yfinance)
 
-        tmpdir = Path(tempfile.mkdtemp())
-        cvx_cleaned = cvx.YahooFinance(stock, base_location=tmpdir).data
-        shutil.rmtree(tmpdir)
+        with TemporaryDirectory() as datadir:
+            cvx_cleaned = cvx.YahooFinance(
+                stock, base_location=Path(datadir)).data
         print(f'{stock}: CVXPORTFOLIO CLEANED')
         print(cvx_cleaned)
 

@@ -41,29 +41,29 @@ clean:  ## clean environment
 update: clean env  ## update environment
 	
 test:  ## run tests w/ cov report
-	$(BINDIR)/coverage run -m $(PROJECT).tests
-	$(BINDIR)/coverage report
-	$(BINDIR)/coverage xml
+	$(BINDIR)/python -m coverage run -m $(PROJECT).tests
+	$(BINDIR)/python -m coverage report
+	$(BINDIR)/python -m coverage xml
 	$(BINDIR)/diff-cover coverage.xml --config-file pyproject.toml
 
 lint:  ## run linter
-	$(BINDIR)/pylint $(PROJECT) $(EXTRA_SCRIPTS) # $(EXAMPLES)
+	$(BINDIR)/python -m pylint $(PROJECT) $(EXTRA_SCRIPTS) # $(EXAMPLES)
 	$(BINDIR)/diff-quality --violations=pylint --config-file pyproject.toml
 
 docs:  ## build docs
-	$(BINDIR)/sphinx-build -E docs $(BUILDDIR)
+	$(BINDIR)/python -m sphinx --build -E docs $(BUILDDIR)
 
 opendocs: docs  ## open html docs
 	open build/index.html
 
 coverage:  ## open html cov report
-	$(BINDIR)/coverage html --fail-under=0 # overwrite pyproject.toml default
+	$(BINDIR)/python -m coverage html --fail-under=0 # overwrite pyproject.toml default
 	open htmlcov/index.html
 
 fix:  ## auto-fix code
 	# selected among many code auto-fixers, tweaked in pyproject.toml
-	$(BINDIR)/autopep8 -i -r $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
-	$(BINDIR)/isort $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
+	$(BINDIR)/python -m autopep8 -i -r $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
+	$(BINDIR)/python -m isort $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 	# this is the best found for the purpose
 	$(BINDIR)/docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 
@@ -71,8 +71,8 @@ release: update lint test  ## update version, publish to pypi
 	$(BINDIR)/python bumpversion.py
 	git push --no-verify
 	$(BINDIR)/python -m build
-	$(BINDIR)/twine check dist/*
-	$(BINDIR)/twine upload --skip-existing dist/*
+	$(BINDIR)/python -m twine check dist/*
+	$(BINDIR)/python -m twine upload --skip-existing dist/*
 
 # Thanks to Francoise at marmelab.com for this
 .DEFAULT_GOAL := help
