@@ -65,8 +65,12 @@ class CvxportfolioTest(unittest.TestCase):
         # for new data during the test execution
         cls.data_grace_period = pd.Timedelta('10d')
 
-        # with this we suppress the warnings thrown in Cvxpy 1.4
-        cls.default_socp_solver = 'ECOS'
+        # working around CVXPY-ECOS deprecation issues
+        try:
+            import ecos as _  # pylint: disable=import-outside-toplevel
+            cls.default_socp_solver = 'ECOS'
+        except ImportError: # pragma: no cover
+            cls.default_socp_solver = None # lets CVXPY choose
 
         # not necessary for now, but good to control
         cls.default_qp_solver = 'OSQP'

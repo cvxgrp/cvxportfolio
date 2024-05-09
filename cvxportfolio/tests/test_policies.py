@@ -14,6 +14,7 @@
 """Unit tests for the policy objects."""
 
 import unittest
+import warnings
 
 import cvxpy as cp
 import numpy as np
@@ -360,11 +361,15 @@ class TestPolicies(CvxportfolioTest):
 
         covariance = self.returns.iloc[:121, :-1].cov(ddof=0).values
         w = cp.Variable(self.N)
-        cp.Problem(
-            cp.Maximize(w[:-1].T @ self.returns.iloc[:121, :-1].mean().values -
-            2 * cp.quad_form(w[:-1], covariance) -
-            5 * 1E-4 * cp.sum(cp.abs(w - curw)[:-1])),
-            [w >= 0, w <= 1, sum(w) == 1]).solve(solver='ECOS')
+        with warnings.catch_warnings():
+            if cp.__version__[:3] in ['1.4', '1.5']:
+                warnings.filterwarnings("ignore", category=FutureWarning)
+            cp.Problem(
+                cp.Maximize(w[:-1].T @ self.returns.iloc[:121, :-1].mean().values -
+                2 * cp.quad_form(w[:-1], covariance) -
+                5 * 1E-4 * cp.sum(cp.abs(w - curw)[:-1])),
+                [w >= 0, w <= 1, sum(w) == 1]).solve(
+                    solver=self.default_socp_solver)
 
         cvxpy_result = pd.Series(w.value, self.returns.columns)
 
