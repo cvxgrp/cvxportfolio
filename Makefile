@@ -51,7 +51,7 @@ lint:  ## run linter
 	$(BINDIR)/diff-quality --violations=pylint --config-file pyproject.toml
 
 docs:  ## build docs
-	$(BINDIR)/python -m sphinx --build -E docs $(BUILDDIR)
+	$(BINDIR)/python -m sphinx build -E docs $(BUILDDIR)
 
 opendocs: docs  ## open html docs
 	open build/index.html
