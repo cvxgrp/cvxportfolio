@@ -19,6 +19,7 @@ import datetime
 import logging
 import sqlite3
 import warnings
+from io import StringIO
 from pathlib import Path
 from pickle import UnpicklingError
 from urllib.error import URLError
@@ -1087,10 +1088,11 @@ class Fred(SymbolData):
 
     def _internal_download(self, symbol):
         try:
+            _downloaded = requests.get(self.URL + f'?id={symbol}', timeout=10)
+            _csv = StringIO(_downloaded.text)
             return pd.to_numeric(pd.read_csv(
-                self.URL + f'?id={symbol}',
-                index_col=0, parse_dates=[0])[symbol], errors='coerce')
-        except URLError as exc:
+                _csv, index_col=0, parse_dates=[0])[symbol], errors='coerce')
+        except requests.ConnectionError as exc:
             raise DataError(f"Download of {symbol}"
                 + f" from {self.__class__.__name__} failed."
                 + " Are you connected to the Internet?") from exc
