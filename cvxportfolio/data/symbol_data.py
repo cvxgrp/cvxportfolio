@@ -1089,6 +1089,12 @@ class Fred(SymbolData):
     def _internal_download(self, symbol):
         try:
             _downloaded = requests.get(self.URL + f'?id={symbol}', timeout=10)
+
+            if _downloaded.status_code != 200: # pragma: no cover
+                raise DataError(
+                    f'Fred download of {symbol} failed. Response: ' +
+                    str(_downloaded.reason))
+
             _csv = StringIO(_downloaded.text)
             return pd.to_numeric(pd.read_csv(
                 _csv, index_col=0, parse_dates=[0])[symbol], errors='coerce')
