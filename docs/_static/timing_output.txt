@@ -1,97 +1,101 @@
 Updating data.......................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
 
 
-FIRST RUN; RESULT:
+FIRST RUN
+BACK-TEST TOOK: 260.66519236564636
+SIMULATOR + POLICY TIMES: 260.6166265010834
+AVERAGE TIME PER ITERATION: 0.20716742965109966
+RESULT:
 
 #################################################################
-Universe size                                                 502
-Initial timestamp                       2019-03-22 13:30:00+00:00
-Final timestamp                         2024-03-20 13:30:00+00:00
-Number of periods                                            1258
+Universe size                                                 501
+Initial timestamp                       2019-05-13 13:30:00+00:00
+Final timestamp                         2024-05-10 13:30:00+00:00
+Number of periods                                            1259
 Initial value (USDOLLAR)                                1.000e+06
-Final value (USDOLLAR)                                  2.898e+06
-Profit (USDOLLAR)                                       1.898e+06
+Final value (USDOLLAR)                                  4.112e+06
+Profit (USDOLLAR)                                       3.112e+06
                                                                  
-Avg. return (annualized)                                    52.0%
-Volatility (annualized)                                     77.3%
-Avg. excess return (annualized)                             50.0%
-Avg. active return (annualized)                             50.0%
-Excess volatility (annualized)                              77.3%
-Active volatility (annualized)                              77.3%
+Avg. return (annualized)                                    59.4%
+Volatility (annualized)                                     77.9%
+Avg. excess return (annualized)                             57.4%
+Avg. active return (annualized)                             57.4%
+Excess volatility (annualized)                              77.9%
+Active volatility (annualized)                              77.9%
                                                                  
-Avg. growth rate (annualized)                               21.3%
-Avg. excess growth rate (annualized)                        19.4%
-Avg. active growth rate (annualized)                        19.4%
+Avg. growth rate (annualized)                               28.3%
+Avg. excess growth rate (annualized)                        26.3%
+Avg. active growth rate (annualized)                        26.3%
                                                                  
 Avg. StocksTransactionCost                                    0bp
 Max. StocksTransactionCost                                    9bp
 Avg. StocksHoldingCost                                        1bp
 Max. StocksHoldingCost                                        5bp
                                                                  
-Sharpe ratio                                                 0.65
-Information ratio                                            0.65
+Sharpe ratio                                                 0.74
+Information ratio                                            0.74
                                                                  
-Avg. drawdown                                              -47.0%
-Min. drawdown                                              -89.1%
-Avg. leverage                                              300.0%
-Max. leverage                                              403.0%
-Avg. turnover                                                3.8%
+Avg. drawdown                                              -48.2%
+Min. drawdown                                              -88.3%
+Avg. leverage                                              299.9%
+Max. leverage                                              399.6%
+Avg. turnover                                                3.9%
 Max. turnover                                              150.0%
                                                                  
-Avg. policy time                                           0.232s
-Avg. simulator time                                        0.094s
-    Of which: market data                                  0.016s
-Total time                                               408.823s
+Avg. policy time                                           0.150s
+Avg. simulator time                                        0.057s
+    Of which: market data                                  0.018s
+    Of which: result                                       0.015s
+Total time                                               260.617s
 #################################################################
 
-BACK-TEST TOOK: 409.0286121368408
-SIMULATOR + POLICY TIMES: 408.8231477737427
-AVERAGE TIME PER ITERATION: 0.32523718995524475
 
 
-SECOND RUN; RESULT:
+SECOND RUN
+BACK-TEST TOOK: 149.64058017730713
+SIMULATOR + POLICY TIMES: 149.59178948402405
+AVERAGE TIME PER ITERATION: 0.11891239227664868
+RESULT:
 
 #################################################################
-Universe size                                                 502
-Initial timestamp                       2019-03-22 13:30:00+00:00
-Final timestamp                         2024-03-20 13:30:00+00:00
-Number of periods                                            1258
+Universe size                                                 501
+Initial timestamp                       2019-05-13 13:30:00+00:00
+Final timestamp                         2024-05-10 13:30:00+00:00
+Number of periods                                            1259
 Initial value (USDOLLAR)                                1.000e+06
-Final value (USDOLLAR)                                  2.898e+06
-Profit (USDOLLAR)                                       1.898e+06
+Final value (USDOLLAR)                                  4.112e+06
+Profit (USDOLLAR)                                       3.112e+06
                                                                  
-Avg. return (annualized)                                    52.0%
-Volatility (annualized)                                     77.3%
-Avg. excess return (annualized)                             50.0%
-Avg. active return (annualized)                             50.0%
-Excess volatility (annualized)                              77.3%
-Active volatility (annualized)                              77.3%
+Avg. return (annualized)                                    59.4%
+Volatility (annualized)                                     77.9%
+Avg. excess return (annualized)                             57.4%
+Avg. active return (annualized)                             57.4%
+Excess volatility (annualized)                              77.9%
+Active volatility (annualized)                              77.9%
                                                                  
-Avg. growth rate (annualized)                               21.3%
-Avg. excess growth rate (annualized)                        19.4%
-Avg. active growth rate (annualized)                        19.4%
+Avg. growth rate (annualized)                               28.3%
+Avg. excess growth rate (annualized)                        26.3%
+Avg. active growth rate (annualized)                        26.3%
                                                                  
 Avg. StocksTransactionCost                                    0bp
 Max. StocksTransactionCost                                    9bp
 Avg. StocksHoldingCost                                        1bp
 Max. StocksHoldingCost                                        5bp
                                                                  
-Sharpe ratio                                                 0.65
-Information ratio                                            0.65
+Sharpe ratio                                                 0.74
+Information ratio                                            0.74
                                                                  
-Avg. drawdown                                              -47.0%
-Min. drawdown                                              -89.1%
-Avg. leverage                                              300.0%
-Max. leverage                                              403.0%
-Avg. turnover                                                3.8%
+Avg. drawdown                                              -48.2%
+Min. drawdown                                              -88.3%
+Avg. leverage                                              299.9%
+Max. leverage                                              399.6%
+Avg. turnover                                                3.9%
 Max. turnover                                              150.0%
                                                                  
-Avg. policy time                                           0.135s
-Avg. simulator time                                        0.079s
-    Of which: market data                                  0.014s
-Total time                                               268.317s
+Avg. policy time                                           0.066s
+Avg. simulator time                                        0.053s
+    Of which: market data                                  0.017s
+    Of which: result                                       0.015s
+Total time                                               149.592s
 #################################################################
 
-BACK-TEST TOOK: 268.54603695869446
-SIMULATOR + POLICY TIMES: 268.3172538280487
-AVERAGE TIME PER ITERATION: 0.2134584358218367

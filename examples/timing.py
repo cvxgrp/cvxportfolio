@@ -34,13 +34,16 @@ job accounting for and reporting the time spent doing a back-test and in its
 various components. You can expect it will do even more granular reporting in
 future releases.
 
+The results shown below are obtained on a Linux workstation with the latest
+versions, at the time of writing, of most libraries.
+
 .. note::
 
     To reproduce what is shown here you should make sure that the first
     time this script is run there are no covariance matrices already saved
     for the historical market data used here. If you run it from scratch, that
     is OK, but if you re-run this script it will pick up the covariance
-    matrices already estimated. There is currently (Cvxportfolio ``1.3.0``) no
+    matrices already estimated. There is currently (Cvxportfolio ``1.3``) no
     easy way to remove caches other than manually deleting files in
     ``~/cvxportfolio_data``, which you can always safely do.
 """
@@ -67,7 +70,7 @@ if __name__ == '__main__':
     # number we had in the paper examples
     NUM_RISK_FACTORS = 15
 
-    # if you change this to 2 (quadratic model) the resulting problem is a QP
+    # if you change this to 2 (quadratic model) the resulting program is a QP
     # and can be solved faster
     TCOST_EXPONENT = 1.5
 
@@ -83,13 +86,19 @@ if __name__ == '__main__':
             cvx.LeverageLimit(3),
         ],
 
-        # You can select any CVXPY solver here to see how it affects
-        # performance of your particular problem. This one  is the default for
-        # this type of problems
-        solver='ECOS',
+        # You can select any CVXPY-interfaced solver here to see how it affects
+        # execution time of your particular program. Different solvers apply
+        # different roundings and other numerical heuristics; their solutions
+        # may also have (small) differences in other back-test statistics, such
+        # as Sharpe Ratio. This solver is the default open-source one for this
+        # type of programs, as of CVXPY 1.5.0. Other open-source solvers that
+        # work well for this type of programs are ECOS and SCS, and there are
+        # numerous commercial ones as well, see the CVXPY docs for a full list
+        # https://www.cvxpy.org/tutorial/solvers/index.html
+        solver='CLARABEL',
 
         # this is a CVXPY compilation flag, it is recommended for large
-        # optimization problems (like this one) but not for small ones
+        # optimization programs (like this one) but not for small ones
         ignore_dpp=True,
 
         # you can add any other cvxpy.Problem.solve option
