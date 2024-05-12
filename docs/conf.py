@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'Cvxportfolio'
-copyright = '2023, The Cvxportfolio Authors'
+copyright = '2024, The Cvxportfolio Authors'
 author = 'The Cvxportfolio Authors'
 
 # The full version, including alpha/beta/rc tags
@@ -105,7 +105,7 @@ master_doc = 'index'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'furo'
+html_theme = 'pydata_sphinx_theme'
 
 # not used by FURO
 # html_theme_options = {

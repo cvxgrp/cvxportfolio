@@ -78,18 +78,10 @@ Table of Contents
 -----------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    
    manual
-   simulator
-   policies
-   returns
-   risks
-   costs
-   constraints
-   result
-   data
-   internals
+   api
    examples
    contributing
    

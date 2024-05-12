@@ -13,7 +13,7 @@ dependencies = ["pandas", "numpy", "matplotlib", "requests", "cvxpy",
     ]
 
 [project.optional-dependencies]
-docs = ["sphinx", "furo", "sphinx-github-style"]
+docs = ["sphinx", "pydata_sphinx_theme", "sphinx-github-style"]
 dev = ["build", "twine", "diff_cover", "pylint", "isort",
     "autopep8", "docformatter", "beautifulsoup4"]
 examples = ['beautifulsoup4', 'lxml', 'clarabel', 'ecos']
