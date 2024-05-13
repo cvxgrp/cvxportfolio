@@ -1,6 +1,9 @@
 Manual
 ======
 
+.. py:module:: cvxportfolio
+    :noindex:
+
 Here we explain some concepts that apply throughout the library and are useful
 to know. The code blocks in this document assume the following imports
 
@@ -61,8 +64,8 @@ You can :ref:`pass Pandas dataframes <passing-data>` for those, and in that
 case your dataframes should contain the assets' names you want to trade. 
 Or, if you want, or you can rely on :doc:`forecasters <forecasts>` to compute those
 (iteratively, in back-testing) using past data. That is what happens in the 
-code shown above, the default parameters of :class:`cvxportfolio.ReturnsForecast`
-and :class:`cvxportfolio.FullCovariance` are forecasters that compute historical
+code shown above, the default parameters of :class:`ReturnsForecast`
+and :class:`FullCovariance` are forecasters that compute historical
 means and historical covariances respectively, at each point in time if running in a back-test
 or once, if running live, by using the policy's :meth:`execute` method.
 
@@ -268,7 +271,7 @@ because they didn't exist) because that data won't be accessed.
 Cash account
 ~~~~~~~~~~~~
 Many Cvxportfolio internal variables, such as the weights and holdings vectors
-that you can access in a :class:`cvxportfolio.BacktestResult` object, include
+that you can access in a :class:`result.BacktestResult` object, include
 the cash account as their last element. In most cases used-provided data is not
 concerned with the cash account (such as all examples above) and so it can be
 ignored. Exceptions are noted in the documentation of each object.
@@ -283,10 +286,10 @@ defined by Cvxportfolio (although it is not the only one). It is discussed
 in :paper:`section 5 of the paper <chapter.5>`, and it is based on
 model-predictive control, the industrial engineering standard for dynamic
 control. The relevant Cvxportfolio object we deal with here is the 
-:class:`cvxportfolio.MultiPeriodOptimization` policy.
+:class:`MultiPeriodOptimization` policy.
 
 We note that the simpler single-period optimization model, implemented by 
-:class:`cvxportfolio.SinglePeriodOptimization` and defined in
+:class:`SinglePeriodOptimization` and defined in
 :paper:`section 4 of the paper <chapter.4>`, is in fact a special
 case of multi-period optimization with the planning horizon equal to 1. So,
 understanding the content of this section also helps you use the single-period
@@ -384,5 +387,85 @@ We note also that there's a simpler way to initialize :class:`cvxportfolio.Multi
 by providing a single objective and a single list of constraints, and specifying
 the ``planning_horizon`` argument to, for example, 2. This simply copies the terms
 for each step of planning horizon.
+
+
+Disk Access
+-----------
+
+If you only use Cvxportfolio with user-provided data, meaning via the
+:class:`UserProvidedMarketData` server, and are careful to specify the
+``cash_key`` attribute so that the risk-free rates are not downloaded from the
+FED website, Cvxportfolio will not access on-disk storage.
+
+Objects in the :doc:`data` submodule, to be precise the :class:`data.SymbolData`
+classes, may try to access on-disk storage.
+These are objects that download single-symbol historical data from the Internet
+and store the time series locally.
+On subsequent runs, only the most recent data gets updated, and older
+observations are kept to the values stored beforehand.
+That is important for reproducibility.
+The storage format can be controlled with the ``storage_backend`` option to
+:class:`data.SymbolData` classes, which is also exposed by the
+:class:`DownloadedMarketData` constructor.
+In addition to the default ``'pickle'``, we provide a ``'csv'`` backend which
+is very useful when manual inspection of the data is needed, and a ``'sqlite'``
+one which doubles as a prototype for SQL backends.
+In all cases the data is stored in a single folder, which is specified by the
+``base_location`` argument to the :doc:`data interfaces <data>` objects, also
+taken by the :doc:`market simulator <simulator>` objects. That is, by default,
+a folder called ``'cvxportfolio_data'`` in your user home directory.
+It contains subfolders named after each of the single symbol data interfaces,
+which in turn contain the relevant files, with intuitive names.
+You can delete that folder, or any of its subfolders, if you wish.
+That will simply make Cvxportfolio objects re-download each series from the
+start.
+
+On-disk storage by the classes that download historical data from the Internet
+can not be disabled, but if you wish you can simply remove the folder after
+each Cvxportfolio run.
+
+In addition, internal Cvxportfolio interfaces are used
+to store back-test cache files, in the subdirectory with the same name of
+the ``'cvxportfolio_data'`` folder, or whichever you specify as
+``base_location`` to the :doc:`market simulator constructor <simulator>`. You
+can see in the :doc:`back-test timing example <examples/timing>` how that is indeed very
+useful in speeding up the work-flow of re-running a similar back-test multiple
+times.
+
+Back-tests executed with the :class:`UserProvidedMarketData` server do not use
+on-disk caching (because that class does not define the
+:meth:`data.MarketData.partial_universe_signature` method).
+
+Lastly, some examples and the test suite use temporary file-system storage,
+via the `temporary directory <https://docs.python.org/3/library/tempfile.html#tempfile.TemporaryDirectory>`_
+object from Python's Standard Library. That is otherwise not used by Cvxportfolio.
+
+
+Network Access
+--------------
+
+The same objects in the :doc:`data interfaces <data>` submodule discussed in the previous section,
+*i.e.,* the :class:`YahooFinance` and :class:`Fred` single-symbol data
+interfaces, are the only two objects that access the Internet in the
+Cvxportfolio library code.
+They make standard HTTPS GET calls through
+the `requests <https://requests.readthedocs.io/>`_ module, which is
+one of our dependencies.
+
+There are other internet calls in the examples, for example the
+:doc:`script that downloads stock indexes components <examples/universes>`,
+but the examples are not part of the Cvxportfolio library (they are not
+included in the pip packages).
+
+If you wish to use Cvxportfolio in an environment without Internet access, or
+are otherwise concerned about accessing the Internet, you simply need to use
+Cvxportfolio via the :class:`UserProvidedMarketData` object (and not
+:class:`DownloadedMarketData`), being careful to specify the ``cash_key``
+attribute so that the risk-free rates are not downloaded by :class:`Fred`.
+
+The test-suite makes a limited number of calls to the two classes that require
+internet access. If you run the test suite (by ``python -m cvxportfolio.tests``)
+on a computer without internet access you should see a few tests, mostly
+in the ``test_data.py`` module, failing, but most of the test suite will run.
 
 *To be continued.*
