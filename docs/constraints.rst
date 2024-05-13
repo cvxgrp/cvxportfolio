@@ -95,8 +95,8 @@ can not be used as soft constraints. See their documentation for more details.
 Cost inequality as constraint
 -----------------------------
 
-Since version ``0.4.6`` you can use any term described in 
-:ref:`the objective terms page <objective-terms-page>` as part 
+Since version ``0.4.6`` you can use any objective function term,
+such as :doc:`returns`, :doc:`risks`, and :doc:`costs`, as part
 of an inequality constraint. 
 In fact, you can use any linear combination of objective terms.
 For a minimal example see the following risk-constrained policy.

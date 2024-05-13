@@ -107,6 +107,29 @@ master_doc = 'index'
 #
 html_theme = 'pydata_sphinx_theme'
 
+# PYDATA_SPHINX_THEME configuration
+
+html_sidebars = { # disable left sidebar on certain pages
+  "manual": [],
+  "contributing": []
+}
+
+html_theme_options = { # button to let users send PR to GH
+    "use_edit_page_button": True,
+}
+
+html_context = {
+    "github_url": "https://github.com",
+    "github_user": "cvxgrp",
+    "github_repo": "cvxportfolio",
+    "github_version": "master", # don't know if can point to tag of the page?
+    "doc_path": "docs",
+}
+
+# however this seems confusing to me
+# html_show_sourcelink = False
+
+
 # not used by FURO
 # html_theme_options = {
 #     "source_repository": REPO,
@@ -159,7 +182,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'cvxportfolio.tex', 'Cvxportfolio Documentation',
-     'The Cvxportfolio Contributors', 'manual'),
+     'The Cvxportfolio Authors and Contributors', 'manual'),
 ]
 
 
@@ -180,6 +203,6 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'cvxportfolio', 'Cvxportfolio Documentation',
-     author, 'cvxportfolio', 'One line description of project.',
+     author, 'cvxportfolio', 'Portfolio Optimization and Back-Testing.',
      'Miscellaneous'),
 ]

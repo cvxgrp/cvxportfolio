@@ -7,9 +7,7 @@ API documentation
 
     simulator
     policies
-    returns
-    risks
-    costs
+    objective_terms
     constraints
     result
     data
