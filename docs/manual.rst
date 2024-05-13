@@ -468,4 +468,68 @@ internet access. If you run the test suite (by ``python -m cvxportfolio.tests``)
 on a computer without internet access you should see a few tests, mostly
 in the ``test_data.py`` module, failing, but most of the test suite will run.
 
+
+CVXPY
+-----
+
+`CVXPY <https://cvxpy.org>`_ is an object-oriented Python library that offers
+a simple user interface for the specification of optimization programs,
+translates them into the formats required by high-performance
+optimization solvers, runs a solver chosen by the user (or, heuristically,
+by CVXPY itself, if the user doesn't require a specific one), and returns the
+solution in the original format specified by the user. This is done
+automatically, so the intricacies of numerical optimization are not exposed
+to the end user, and the solver can be easily replaced (each solver typically
+requires a different specification format, but those are handled by CVXPY).
+CVXPY was born not very long before Cvxportfolio, and is now a very successful
+library with lots of users and contributors, in both the applied and
+theoretical optimization communities.
+
+In the days before such high-level
+libraries were available, users typically had to code their application programs
+against the APIs offered directly by the solvers, resulting in complex, difficult
+to debug, and un-maintainable codes. Today, the maintainers of the numerical
+solvers (both open-source and commercial) are themselves involved in developing
+and maintaining the interfaces from CVXPY to their solvers, ensuring best
+compatibility. Cvxportfolio users need not be expert or even familiar with
+CVXPY, since Cvxportfolio offers an even higher level interface, automating
+the definition and management of optimization objects like variables and
+constraints.
+
+One area however in which awareness of the underlying CVXPY process might be
+useful is the choice and configuration of the numerical solver. Cvxportfolio
+exposes the `relevant CVXPY API
+<https://www.cvxpy.org/tutorial/solvers/index.html#solve>`_
+through the constructor of the optimization-based policies. For example:
+
+.. code-block:: python
+
+    policy = cvx.SinglePeriodOptimization(
+        objective = cvx.ReturnsForecast(),
+        constraints = [
+            cvx.FullCovariance() <= target_daily_vol**2,
+            cvx.LongOnly(),
+            cvx.LeverageLimit(1),
+        ]
+        # the following **kwargs are passed to cvxpy.Problem.solve
+        solver='SCS',
+        eps=1e-14,
+        verbose=True,
+    )
+
+This policy object is instructed to solve its optimization program
+with the CVXPY-interfaced solver called ``'SCS'``, which is
+`a modern first-order conic solver <https://cvxgrp.org/scs>`_,
+it also requires a target accuracy at convergence of :math:`10^{-14}`,
+and will print verbose output from both CVXPY and SCS.
+
+The `full list of solvers available, along with their options
+<https://www.cvxpy.org/tutorial/solvers/index.html>`_, can be found on CVXPY's
+documentation website, and it's always growing. Other options
+to the `solve method <https://www.cvxpy.org/tutorial/solvers/index.html#solve>`_
+can also be useful, like the ``ignore_dpp=True`` which is sometimes used in
+the examples; that disables a form of matrix caching done by CVXPY which can
+slow down execution in certain instances.
+
+
 *To be continued.*
