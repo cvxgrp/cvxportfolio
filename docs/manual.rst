@@ -531,5 +531,43 @@ can also be useful, like the ``ignore_dpp=True`` which is sometimes used in
 the examples; that disables a form of matrix caching done by CVXPY which can
 slow down execution in certain instances.
 
+Familiarity with CVXPY syntax (and peculiarities!) is needed only if you wish
+to extend Cvxportfolio with user-defined optimization terms, like custom
+costs and constraints. Cvxportfolio is designed to make that process as simple
+as possible, while maintaning a unified system that provides accurate
+accounting, manages market and derived data, enables multi-processing for
+parallel back-tests, ....
+In the next section we explain how Cvxportfolio policy objects work,
+which is useful to know when extending them.
+
+Policy execution model
+----------------------
+
+Cvxportfolio policy objects and their internal components inherit from the
+:class:`cvxportfolio.estimator.Estimator` base class. That abstraction
+provides three methods with both a recursive and a simple version. Then,
+the :class:`cvxportfolio.estimator.CvxpyExpressionEstimator` subclass adds
+one other method that is used to provide the CVXPY specific code for
+optimization policies and objects.
+
+All objects that inherit from these base classes typically inherit empty base
+implementations for all methods. Then each object redefines what it needs
+in order to function. In this way we manage to keep the infrastructural code
+limited to :doc:`one module <estimators>`, and each specific object the user
+interacts with contains the code that is strictly pertaining to it. (That is
+very much unlike how CVXPY is designed, encapsulation is much less strict in
+its codebase.)
+
+Here's a brief discussion of these methods are and what they are or can be used
+for:
+
+- **Initialization.** :meth:`cvxportfolio.estimator.Estimator.initialize_estimator` and its
+  recursive version :meth:`cvxportfolio.estimator.Estimator.initialize_estimator_recursive`
+- **Evaluation.** :meth:`cvxportfolio.estimator.Estimator.values_in_time` and its recursive
+  version :meth:`cvxportfolio.estimator.Estimator.values_in_time_recursive`
+- **Finalization.** :meth:`cvxportfolio.estimator.Estimator.finalize_estimator` and its
+  recursive version :meth:`cvxportfolio.estimator.Estimator.finalize_estimator_recursive`
+- **CVXPY specific.** :meth:`cvxportfolio.estimator.CvxpyExpressionEstimator.compile_to_cvxpy`
+
 
 *To be continued.*
