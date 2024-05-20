@@ -64,8 +64,11 @@ class Policy(Estimator):
             (the last element).
         :type h: pandas.Series
         :param market_data: :class:`MarketData` instance used to provide
-            data to the policy
-        :type market_data: cvxportfolio.MarketData instance
+            data to the policy. If set to ``None``, the policy needs to
+            have *all* data specified. Exceptions are raised if some data
+            are missing. In particular, no built-in :doc:`forecaster
+            <forecasts>` can be used.
+        :type market_data: cvxportfolio.MarketData instance or None
         :param t: Time at which we execute. If None (the default), the
             last timestamp in the trading calendar provided by the
             :class:`MarketData` instance is used. Note: if you use a default
@@ -80,14 +83,27 @@ class Policy(Estimator):
         :rtype: pandas.Series, pandas.Timestamp, pandas.Series
         """
 
-        trading_calendar = market_data.trading_calendar()
+        if market_data is not None:
 
-        if t is None:
-            t = trading_calendar[-1]
+            trading_calendar = market_data.trading_calendar()
 
-        if not t in trading_calendar:
-            raise ValueError(f'Provided time {t} must be in the '
-            + 'trading calendar implied by the market data server.')
+            if t is None:
+                t = trading_calendar[-1]
+
+            if not t in trading_calendar:
+                raise ValueError(f'Provided time {t} must be in the '
+                + 'trading calendar implied by the market data server.')
+        else:
+            if t is None:
+                raise ValueError(
+                    "If market_data is None you must specify t.")
+            # TODO: should be possible to pass trading_calendar
+            trading_calendar = pd.DateTimeIndex([t])
+
+        if np.any(h.isnull()):
+            raise ValueError(
+                f"Holdings provided to {self.__class__.__name__}.execute "
+                + " have missing values!")
 
         v = np.sum(h)
 
@@ -96,19 +112,24 @@ class Policy(Estimator):
                 f"Holdings provided to {self.__class__.__name__}.execute "
                 + " have negative sum.")
 
-        past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
+        if market_data is not None:
+            past_returns, _, past_volumes, _, current_prices = \
+                market_data.serve(t)
 
-        if sorted(h.index) != sorted(past_returns.columns):
-            raise DataError(
-                "Holdings provided don't match the universe"
-                " implied by the market data server.")
+            if sorted(h.index) != sorted(past_returns.columns):
+                raise DataError(
+                    "Holdings provided don't match the universe"
+                    " implied by the market data server.")
 
-        h = h[past_returns.columns]
+            h = h[past_returns.columns]
+        else:
+            past_returns, past_volumes, current_prices = None, None, None
+
         w = h / v
 
         # consider adding caching logic here
         self.initialize_estimator_recursive(
-            universe=past_returns.columns,
+            universe=h.index,
             trading_calendar=trading_calendar[trading_calendar >= t])
 
         w_plus = self.values_in_time_recursive(

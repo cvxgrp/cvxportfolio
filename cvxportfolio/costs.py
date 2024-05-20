@@ -453,7 +453,12 @@ class YearDividedByTradingPeriod(SimulatorEstimator):
         :returns: Trading periods per year.
         :rtype: float
         """
+
         if self.periods_per_year is None:
+            if past_returns is None:
+                raise ValueError(
+                    "If not using Cvxportfolio's Market Data servers you"
+                    + " have to specify periods_per_year")
             return periods_per_year_from_datetime_index(past_returns.index)
         return self.periods_per_year
 
@@ -906,7 +911,10 @@ class SimpleSigmaEst(SimulatorEstimator):
         :returns: Estimated sigma
         :rtype: np.array
         """
-
+        if past_returns is None:
+            raise ValueError(
+                "If not using Cvxportfolio's Market Data servers you"
+                + " have to specify sigma")
         return np.sqrt(
             (past_returns.iloc[-self.window_sigma_est:, :-1]**2).mean()).values
 
