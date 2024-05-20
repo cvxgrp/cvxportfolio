@@ -22,7 +22,6 @@ import warnings
 from io import StringIO
 from pathlib import Path
 from pickle import UnpicklingError
-from urllib.error import URLError
 
 import numpy as np
 import pandas as pd

@@ -22,7 +22,8 @@ import numpy as np
 import pandas as pd
 
 from .errors import (ConvexityError, ConvexSpecificationError, DataError,
-                     MissingTimesError, PortfolioOptimizationError)
+                     MissingTimesError, NumericalSolverError,
+                     ProgramInfeasible, ProgramUnbounded, UserDataError)
 from .estimator import DataEstimator, Estimator
 from .forecast import HistoricalMeanVolume
 from .returns import CashReturn
@@ -60,6 +61,12 @@ class Policy(Estimator):
         Series of the number of shares to trade, if you pass a Market
         Data server which provides open prices (or None).
 
+        .. versionadded:: 1.4.0
+
+           The option to pass ``market_data=None``, bypassing all Cvxportfolio
+           market data management.
+
+
         :param h: Holdings vector, in dollars, including the cash account
             (the last element).
         :type h: pandas.Series
@@ -76,8 +83,8 @@ class Policy(Estimator):
             argument to ``True``.
         :type t: pandas.Timestamp or None
 
-        :raises cvxportfolio.errors.DataError: Holdings vector sum to a
-            negative value or don't match the market data server's universe.
+        :raises cvxportfolio.errors.UserDataError: Holdings vector sum to a
+            negative value, don't match the market data server's universe, ...
 
         :returns: u, t, shares_traded
         :rtype: pandas.Series, pandas.Timestamp, pandas.Series
@@ -91,24 +98,24 @@ class Policy(Estimator):
                 t = trading_calendar[-1]
 
             if not t in trading_calendar:
-                raise ValueError(f'Provided time {t} must be in the '
+                raise UserDataError(f'Provided time {t} must be in the '
                 + 'trading calendar implied by the market data server.')
         else:
             if t is None:
-                raise ValueError(
+                raise UserDataError(
                     "If market_data is None you must specify t.")
             # TODO: should be possible to pass trading_calendar
-            trading_calendar = pd.DateTimeIndex([t])
+            trading_calendar = pd.DatetimeIndex([t])
 
         if np.any(h.isnull()):
-            raise ValueError(
+            raise UserDataError(
                 f"Holdings provided to {self.__class__.__name__}.execute "
                 + " have missing values!")
 
         v = np.sum(h)
 
         if v < 0.:
-            raise DataError(
+            raise UserDataError(
                 f"Holdings provided to {self.__class__.__name__}.execute "
                 + " have negative sum.")
 
@@ -117,7 +124,7 @@ class Policy(Estimator):
                 market_data.serve(t)
 
             if sorted(h.index) != sorted(past_returns.columns):
-                raise DataError(
+                raise UserDataError(
                     "Holdings provided don't match the universe"
                     " implied by the market data server.")
 
@@ -176,21 +183,41 @@ class AllCash(Policy):
     :class:`MultiPeriodOptimization` policies.
     """
 
+    _universe = None
+
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
+        """Save universe.
+
+        :param universe: Current universe.
+        :type universe: pd.Index
+        :param kwargs: Other unused arguments.
+        :type kwargs: dict
+        """
+
+        self._universe = universe
+
     def values_in_time( # pylint: disable=arguments-differ
-            self, past_returns, **kwargs):
+            self, **kwargs):
         """Return all cash weights.
 
-        :param past_returns: Past market returns (used to infer universe).
-        :type past_returns: pandas.DataFrame
         :param kwargs: Unused arguments to :meth:`values_in_time`.
         :type kwargs: dict
 
         :returns: All cash weights.
         :rtype: pandas.Series
         """
-        result = pd.Series(0., past_returns.columns)
+        result = pd.Series(0., self._universe)
         result.iloc[-1] = 1.
         return result
+
+    def finalize_estimator(self, **kwargs):
+        """De-reference universe.
+
+        :param kwargs: Unused arguments.
+        :type kwargs: dict
+        """
+        self._universe = None
 
 class MarketBenchmark(Policy):
     """Allocation weighted by average market traded volumes.
@@ -223,13 +250,24 @@ class MarketBenchmark(Policy):
         self.mean_volume_forecast = DataEstimator(
             mean_volume_forecast, data_includes_cash=False)
 
+    _universe = None
+
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, universe, **kwargs):
+        """Save universe.
+
+        :param universe: Current universe.
+        :type universe: pd.Index
+        :param kwargs: Other unused arguments.
+        :type kwargs: dict
+        """
+
+        self._universe = universe
+
     def values_in_time( # pylint: disable=arguments-differ
-            self, past_returns, **kwargs):
+            self, **kwargs):
         """Return market benchmark weights.
 
-        :param past_returns: Past market returns (used to infer universe with
-            cash).
-        :type past_returns: pandas.DataFrame
         :param kwargs: Unused arguments to :meth:`values_in_time`.
         :type kwargs: dict
 
@@ -243,7 +281,15 @@ class MarketBenchmark(Policy):
         meanvolumes = self.mean_volume_forecast.current_value
         result = np.zeros(len(meanvolumes) + 1)
         result[:-1] = meanvolumes / sum(meanvolumes)
-        return pd.Series(result, index=past_returns.columns)
+        return pd.Series(result, index=self._universe)
+
+    def finalize_estimator(self, **kwargs):
+        """De-reference universe.
+
+        :param kwargs: Unused arguments.
+        :type kwargs: dict
+        """
+        self._universe = None
 
 class RankAndLongShort(Policy):
     """Rank assets by signal; long highest and short lowest.
@@ -355,7 +401,7 @@ class ProportionalTradeToTargets(Policy):
 
         next_targets = self.targets.loc[self.targets.index >= t]
         if not np.allclose(next_targets.sum(1), 1.):
-            raise ValueError(
+            raise UserDataError(
                 f"The target weights provided to {self.__class__.__name__} at"
                 + f" time {t} do not sum to 1.")
         if len(next_targets) == 0:
@@ -514,6 +560,13 @@ class Uniform(FixedWeights):
         target_weights.iloc[-1] = 1. - target_weights.sum()
         self.target_weights = DataEstimator(target_weights)
 
+    def finalize_estimator(self, **kwargs):
+        """Clean up local variables.
+
+        :param kwargs: Unused arguments.
+        :type kwargs: dict
+        """
+        self.target_weights = None
 
 class PeriodicRebalance(FixedWeights):
     """Track a target weight vector rebalancing at given times.
@@ -885,20 +938,23 @@ class MultiPeriodOptimization(Policy):
                 if self._problem.status in ['optimal', 'optimal_inaccurate']:
                     logger.warning('Fallback solution with SCS worked!')
                 else: # pragma: no cover
-                    raise PortfolioOptimizationError( # pragma: no cover
+                    raise NumericalSolverError( # pragma: no cover
                       f"Numerical solver for policy {self.__class__.__name__}"
                       + f" at time {t} failed; try changing it, relaxing some"
                       + " constraints, or removing costs.") from exc
 
         if self._problem.status in ["unbounded", "unbounded_inaccurate"]:
-            raise PortfolioOptimizationError(
+            raise ProgramUnbounded(
                 f"Policy {self.__class__.__name__} at time "
-                + f"{t} resulted in an unbounded problem.")
+                + f"{t} resulted in an unbounded optimization program. "
+                + "You can fix this by adding constraints, like LeverageLimit.")
 
         if self._problem.status in ["infeasible", 'infeasible_inaccurate']:
-            raise PortfolioOptimizationError(
+            raise ProgramInfeasible(
                 f"Policy {self.__class__.__name__} at time "
-                + f"{t} resulted in an infeasible problem.")
+                + f"{t} resulted in an infeasible problem. "
+                + "You can fix this by replacing some constraints with "
+                + "equivalent SoftConstraints in the objective.")
 
         result = current_weights + pd.Series(
             self._z_at_lags[0].value, current_weights.index)

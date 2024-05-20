@@ -450,13 +450,16 @@ class YearDividedByTradingPeriod(SimulatorEstimator):
             :meth:`Estimator.values_in_time`.
         :type kwargs: dict
 
+        :raises SyntaxError: If the user forgets to specify ``periods_per_year``
+            when running without market data.
+
         :returns: Trading periods per year.
         :rtype: float
         """
 
         if self.periods_per_year is None:
             if past_returns is None:
-                raise ValueError(
+                raise SyntaxError(
                     "If not using Cvxportfolio's Market Data servers you"
                     + " have to specify periods_per_year")
             return periods_per_year_from_datetime_index(past_returns.index)
@@ -908,11 +911,14 @@ class SimpleSigmaEst(SimulatorEstimator):
         :param kwargs: Other unused arguments.
         :type kwargs: dict
 
+        :raises SyntaxError: If the user tries to estimate sigma when
+            running without market data.
+
         :returns: Estimated sigma
         :rtype: np.array
         """
         if past_returns is None:
-            raise ValueError(
+            raise SyntaxError(
                 "If not using Cvxportfolio's Market Data servers you"
                 + " have to specify sigma")
         return np.sqrt(

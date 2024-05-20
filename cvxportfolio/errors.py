@@ -13,14 +13,19 @@
 # limitations under the License.
 """This module defines some Exceptions thrown by Cvxportfolio objects."""
 
-__all__ = ['DataError', 'MissingTimesError',
+__all__ = ['DataError', 'UserDataError', 'MissingTimesError',
            'NaNError', 'MissingAssetsError', 'ForecastError',
-           'PortfolioOptimizationError', 'Bankruptcy',
-           'ConvexSpecificationError', 'ConvexityError']
+           'PortfolioOptimizationError',
+           'ProgramInfeasible', 'ProgramUnbounded',
+           'Bankruptcy', 'ConvexSpecificationError', 'ConvexityError']
 
 
 class DataError(ValueError):
     """Base class for exception related to data."""
+
+
+class UserDataError(DataError, SyntaxError):
+    """Exception for errors in data provided by the user."""
 
 
 class MissingTimesError(DataError):
@@ -41,6 +46,18 @@ class ForecastError(DataError):
 
 class PortfolioOptimizationError(Exception):
     """Errors with portfolio optimization problems."""
+
+
+class NumericalSolverError(PortfolioOptimizationError):
+    """Numerical solver failed to produce a solution."""
+
+
+class ProgramInfeasible(PortfolioOptimizationError):
+    """Optimization program is infeasible."""
+
+
+class ProgramUnbounded(PortfolioOptimizationError):
+    """Optimization program is unbounded."""
 
 
 class Bankruptcy(Exception):

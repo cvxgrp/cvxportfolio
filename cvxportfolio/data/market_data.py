@@ -23,10 +23,8 @@ import pandas as pd
 from ..errors import DataError
 from ..utils import (hash_, make_numeric, periods_per_year_from_datetime_index,
                      resample_returns, set_pd_read_only)
-from .symbol_data import BASE_LOCATION  # pylint: disable=unused-import
-from .symbol_data import (OLHCV, Fred, SymbolData, YahooFinance, _loader_csv,
-                          _loader_pickle, _loader_sqlite, _storer_csv,
-                          _storer_pickle, _storer_sqlite)
+from . import symbol_data
+from .symbol_data import BASE_LOCATION, OLHCV, Fred
 
 logger = logging.getLogger(__name__)
 
@@ -707,7 +705,7 @@ class DownloadedMarketData(MarketDataInMemory):
         if isinstance(datasource, type):
             self.datasource = datasource
         else: # try to load in current module
-            self.datasource = globals()[datasource]
+            self.datasource = getattr(symbol_data, datasource)
         self._get_market_data(
             universe, grace_period=grace_period,
             storage_backend=storage_backend)
