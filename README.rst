@@ -10,7 +10,7 @@ and back-testing. It implements models described in the `accompanying paper
 <https://cvxportfolio.readthedocs.io/en/master/_static/cvx_portfolio.pdf>`_.
 
 The documentation of the library is at
-`cvxportfolio.readthedocs.io <https://cvxportfolio.readthedocs.io/en/stable/>`_.
+`www.cvxportfolio.com <https://www.cvxportfolio.com>`_.
 
 .. Installation
 
