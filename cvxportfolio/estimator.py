@@ -81,6 +81,7 @@ class Estimator:
             subestimator.initialize_estimator_recursive(**kwargs)
         if hasattr(self, "initialize_estimator"):
             self.initialize_estimator(**kwargs)
+        self._current_value = None
 
     def finalize_estimator(self, **kwargs):
         """Finalize estimator instance (currently unused).
@@ -96,7 +97,6 @@ class Estimator:
         :param kwargs: Reserved for future expansion.
         :type kwargs: dict
         """
-
         # we don't raise NotImplementedError because this is called
         # on classes that don't re-define it
 
@@ -115,6 +115,7 @@ class Estimator:
             subestimator.finalize_estimator_recursive(**kwargs)
         if hasattr(self, "finalize_estimator"):
             self.finalize_estimator(**kwargs)
+        self._current_value = None
 
     _current_value = None
 
@@ -195,7 +196,7 @@ class Estimator:
             # pylint: disable=assignment-from-no-return
             self._current_value = self.values_in_time(**kwargs)
             return self.current_value
-        return None # pragma: no cover
+        return self.current_value # pragma: no cover
 
     def collect_hyperparameters(self):
         """Collect (recursively) all hyperparameters defined in a policy.

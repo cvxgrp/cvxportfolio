@@ -68,7 +68,10 @@ class Policy(Estimator):
 
 
         :param h: Holdings vector, in dollars, including the cash account
-            (the last element).
+            (the last element). Making sure that the last element is the cash
+            accont is particularly important if you run without market data
+            (``market_data=None``), because Cvxportfolio has no other way to
+            check it.
         :type h: pandas.Series
         :param market_data: :class:`MarketData` instance used to provide
             data to the policy. If set to ``None``, the policy needs to
