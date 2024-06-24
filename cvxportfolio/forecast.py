@@ -636,7 +636,7 @@ class SumPastReturns(VectorSum, OnPastReturns):
 class SumPastReturnsSquared(VectorSum, OnPastReturnsSquared):
     """Sum non-nan past returns squared, excluding cash."""
 
-class SumPastVolumes(VectorCount, OnPastVolumes):
+class SumPastVolumes(VectorSum, OnPastVolumes):
     """Sum non-nan past volumes."""
 
 class HistoricalMeanReturn(BaseForecast):
@@ -651,15 +651,15 @@ class HistoricalMeanReturn(BaseForecast):
         # breakpoint()
         return self._numerator.current_value / self._denominator.current_value
 
-class NewHistoricalVariance(BaseForecast):
+class HistoricalVariance(BaseForecast):
     """Test."""
 
-    def __init__(self, kelly=True):
+    def __init__(self, kelly=True, **kwargs):
         self.kelly = kelly
-        self._denominator = CountPastReturns()
-        self._numerator = SumPastReturnsSquared()
+        self._denominator = CountPastReturns(**kwargs)
+        self._numerator = SumPastReturnsSquared(**kwargs)
         if not self.kelly:
-            self._correction = NewMeanHistoricalReturns()
+            self._correction = HistoricalMeanReturn(**kwargs)
 
     def values_in_time(self, **kwargs):
         """Current value."""
@@ -668,23 +668,63 @@ class NewHistoricalVariance(BaseForecast):
             result -= self._correction.current_value ** 2
         return result
 
-class NewHistoricalStandardDeviation(BaseForecast):
+class HistoricalMeanError(HistoricalVariance):
+    r"""Historical standard deviations of the mean of non-cash returns.
+
+    .. versionadded:: 1.2.0
+
+        Added the ``half_life`` and ``rolling`` parameters.
+
+    For a given time series of past returns :math:`r_{t-1}, r_{t-2},
+    \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
+    missing values we ignore them, both to compute the variance and the
+    count.
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    :param kelly: Same as in :class:`cvxportfolio.forecast.HistoricalVariance`.
+        Default False.
+    :type kelly: bool
+    """
+
+    def __init__(self, rolling=np.inf, half_life=np.inf, kelly=False):
+        super().__init__(rolling=rolling, half_life=half_life, kelly=kelly)
+
+    def values_in_time(self, **kwargs):
+        """Obtain current value either by update or from scratch.
+
+        :param kwargs: All arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Standard deviation of the mean of past returns (excluding
+            cash).
+        :rtype: numpy.array
+        """
+        variance = super().values_in_time(**kwargs)
+        return np.sqrt(variance / self._denominator.current_value)
+
+class HistoricalStandardDeviation(BaseForecast):
     """Test."""
 
-    def __init__(self, kelly=True):
-        self.kelly = kelly
-        self._variance = NewHistoricalVariance(kelly=kelly)
+    def __init__(self, **kwargs):
+        self._variance = HistoricalVariance(**kwargs)
 
     def values_in_time(self, **kwargs):
         """Current value."""
         return np.sqrt(self._variance.current_value)
 
-class NewMeanHistoricalVolumes(BaseForecast):
+class HistoricalMeanVolume(BaseForecast):
     """Test."""
 
-    def __init__(self):
-        self._denominator = CountPastVolumes()
-        self._numerator = SumPastVolumes()
+    def __init__(self, **kwargs):
+        self._denominator = CountPastVolumes(**kwargs)
+        self._numerator = SumPastVolumes(**kwargs)
 
     def values_in_time(self, **kwargs):
         """Current value."""
@@ -734,7 +774,7 @@ class MatrixSum(AssociativeForecaster):
 class CovarianceNumerator(MatrixSum, OnPastReturns):
     """Compute numerator of (Kelly) covariance of past returns."""
 
-class NewHistoricalCovariance(NewHistoricalVariance):
+class NewHistoricalCovariance(HistoricalVariance):
     """Test."""
 
     def __init__(self, kelly=True):
@@ -1183,7 +1223,7 @@ class RegressionMeanReturn(BaseForecast):
     #     return df.multiply(regr_on_df, axis=0).dropna(how='all')
 
 
-class HistoricalMeanVolume(BaseMeanForecast):
+class OldHistoricalMeanVolume(BaseMeanForecast):
     r"""Historical means of traded volume in units of value (e.g., dollars).
 
     .. versionadded:: 1.2.0
@@ -1206,7 +1246,7 @@ class HistoricalMeanVolume(BaseMeanForecast):
                 + " provides market volumes.")
         return past_volumes
 
-class HistoricalVariance(BaseMeanForecast):
+class OldHistoricalVariance(BaseMeanForecast):
     r"""Historical variances of non-cash returns.
 
     .. versionadded:: 1.2.0
@@ -1272,7 +1312,7 @@ class HistoricalVariance(BaseMeanForecast):
         return past_returns.iloc[:, :-1]**2
 
 
-class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
+class OldHistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     """Historical standard deviation of non-cash returns.
 
     .. versionadded:: 1.2.0
@@ -1332,7 +1372,7 @@ class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
             current_prices=kwargs['current_prices']
         )
 
-class HistoricalMeanError(HistoricalVariance):
+class OldHistoricalMeanError(HistoricalVariance):
     r"""Historical standard deviations of the mean of non-cash returns.
 
     .. versionadded:: 1.2.0
