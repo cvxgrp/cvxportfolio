@@ -680,6 +680,7 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
                 t=t, past_returns=returns)
 
 
-if __name__ == '__main__':
-
-    unittest.main(warnings='error') # pragma: no cover
+if __name__ == '__main__': # pragma: no cover
+    import logging
+    logging.basicConfig(level='DEBUG')
+    unittest.main(warnings='error')
