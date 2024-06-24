@@ -736,12 +736,25 @@ class HistoricalMeanError(HistoricalVariance):
         variance = super().values_in_time(**kwargs)
         return np.sqrt(variance / self._denominator.current_value)
 
-class HistoricalStandardDeviation(HistoricalVariance):
+class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
     """Test."""
 
     def values_in_time(self, **kwargs):
         """Current value."""
         return np.sqrt(super().values_in_time(**kwargs))
+
+    def simulate(self, **kwargs):
+        # TODO could take last return as well
+        # with new design of forecasters we need to launch recursive loop
+        # here...
+        return self.values_in_time_recursive(
+            t=kwargs['t'],
+            current_weights=kwargs['current_weights'],
+            current_portfolio_value=kwargs['current_portfolio_value'],
+            past_returns=kwargs['past_returns'],
+            past_volumes=kwargs['past_volumes'],
+            current_prices=kwargs['current_prices']
+        )
 
 class HistoricalMeanVolume(BaseForecast):
     """Test."""

@@ -573,9 +573,10 @@ class DataEstimator(SimulatorEstimator):
     def _internal_values_in_time(self, t, **kwargs):
         """Internal method called by :meth:`values_in_time`."""
 
-        # here we trust the result (change?)
+        # here we trust the result, assuming it's internal class
         if hasattr(self.data, "values_in_time_recursive"):
-            return self.data.current_value
+            return self.data.current_value.values if hasattr(
+                self.data.current_value, 'values') else self.data.current_value
 
         # here (probably user-provided) we check
         if hasattr(self.data, "values_in_time"):
