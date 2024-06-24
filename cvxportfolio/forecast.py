@@ -112,8 +112,6 @@ logger = logging.getLogger(__name__)
 class BaseForecast(Estimator):
     """Base class for forecasters."""
 
-    _last_time = None
-
     # Will be exposed to the user, for now it's a class-level constant
     _CACHED = False
 
@@ -199,24 +197,6 @@ class BaseForecast(Estimator):
 
         # return None # pragma: no cover
 
-    def initialize_estimator( # pylint: disable=arguments-differ
-            self, **kwargs):
-        """Initialize internal variables.
-
-        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
-        :type kwargs: dict
-        """
-        self._last_time = None
-
-    def finalize_estimator( # pylint: disable=arguments-differ
-            self, **kwargs):
-        """Dereference internal variables.
-
-        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
-        :type kwargs: dict
-        """
-        self._last_time = None
-
     def estimate(self, market_data, t=None):
         """Estimate the forecaster at given time on given market data.
 
@@ -271,7 +251,43 @@ class BaseForecast(Estimator):
 
         return forecast, t
 
-    def _agnostic_update(self, t, past_returns, **kwargs): # TODO rename this to values_in_time
+
+def _is_timedelta_or_inf(value):
+    if isinstance(value, pd.Timedelta):
+        if value <= pd.Timedelta('0d'):
+            raise ValueError(
+                '(Exponential) moving average window must be positive')
+        return True
+    if isinstance(value, float) and np.isposinf(value):
+        return False
+    raise ValueError(
+        '(Exponential) moving average window can only be'
+        ' pandas Timedeltas or np.inf.')
+
+class UpdatingForecaster(BaseForecast):
+    """Forecaster that updates internal forecast at each period."""
+
+    _last_time = None
+
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Initialize internal variables.
+
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
+        """
+        self._last_time = None
+
+    def finalize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Dereference internal variables.
+
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
+        """
+        self._last_time = None
+
+    def values_in_time(self, t, past_returns, **kwargs): # TODO rename this to values_in_time
         """Choose whether to make forecast from scratch or update last one."""
         if (self._last_time is None) or (
             self._last_time != past_returns.index[-1]):
@@ -295,19 +311,7 @@ class BaseForecast(Estimator):
         """Update forecast from period before."""
         raise NotImplementedError # pragma: no cover
 
-def _is_timedelta_or_inf(value):
-    if isinstance(value, pd.Timedelta):
-        if value <= pd.Timedelta('0d'):
-            raise ValueError(
-                '(Exponential) moving average window must be positive')
-        return True
-    if isinstance(value, float) and np.isposinf(value):
-        return False
-    raise ValueError(
-        '(Exponential) moving average window can only be'
-        ' pandas Timedeltas or np.inf.')
-
-class AssociativeForecaster(BaseForecast):
+class AssociativeForecaster(UpdatingForecaster):
     """Base forecaster that only operates on one DataFrame."""
 
     def __init__(self, half_life=np.inf, rolling=np.inf):
@@ -438,39 +442,45 @@ class AssociativeForecaster(BaseForecast):
         """
         return self._dataframe_selector(**kwargs).iloc[-1]
 
-    def values_in_time(self, **kwargs):
-        """Temporary."""
-        return self._agnostic_update(**kwargs)
+    # def values_in_time(self, **kwargs):
+    #     """Temporary."""
+    #     return self._agnostic_update(**kwargs)
 
 class OnPastReturns(AssociativeForecaster):
     """Intermediate class, operate on past returns."""
 
     def _dataframe_selector(self, past_returns, **kwargs):
         """Returns, skipping cash."""
+        if past_returns is None:
+            raise DataError(
+                f"{self.__class__.__name__} can only be used if MarketData is"
+                + " not None.")
         return past_returns.iloc[:, :-1]
 
-class OnPastReturnsSquared(AssociativeForecaster):
+class OnPastReturnsSquared(OnPastReturns):
     """Intermediate class, operate on past returns squared, override update."""
 
-    def _dataframe_selector(self, past_returns, **kwargs):
+    def _dataframe_selector(self, **kwargs):
         """Past returns squared, skipping cash."""
-        return past_returns.iloc[:, :-1]**2
+        return super()._dataframe_selector(**kwargs)**2
 
-    def _get_last_row(self, past_returns, **kwargs):
+    def _get_last_row(self, **kwargs):
         """Most recent past returns."""
-        return past_returns.iloc[-1, :-1]**2
+        return super()._dataframe_selector(**kwargs).iloc[-1]**2
 
 class OnPastVolumes(AssociativeForecaster):
     """Intermediate class, operate on past volumes."""
 
     def _dataframe_selector(self, past_volumes, **kwargs):
         """Past volumes."""
+        if past_volumes is None:
+            raise DataError(
+                f"{self.__class__.__name__} can only be used if MarketData"
+                + " provides market volumes.")
         return past_volumes
 
 class VectorCount(AssociativeForecaster):
     """Count of non-NaN values of vectors."""
-
-    # TODO: checks that too few counts
 
     def _batch_compute(self, df, emw_weights):
         """Compute from scratch."""
@@ -482,6 +492,24 @@ class VectorCount(AssociativeForecaster):
     def _single_compute(self, last_row):
         """Update with last observation."""
         return ~(last_row.isnull())
+
+    def values_in_time(self, t, **kwargs):
+        """Override to check that we have enough observations."""
+        result = super().values_in_time(t=t, **kwargs)
+
+        mindenom = np.min(result)
+        if mindenom == 0:
+            raise ForecastError(
+                f'{self.__class__.__name__} can not compute the forecast at'
+                + f' time {t} because there are no observation for either some'
+                ' asset or some pair of assets (in the case of covariance).')
+        if mindenom < 5:
+            logger.warning(
+                '%s at time %s is given 5 or less observations for either some'
+                + ' asset or some pair of assets (in the case of covariance).',
+                self.__class__.__name__, t)
+
+        return result
 
 
 # class WithEmwMw(SingleDataFrameForecaster):
@@ -648,7 +676,6 @@ class HistoricalMeanReturn(BaseForecast):
 
     def values_in_time(self, **kwargs):
         """Current value."""
-        # breakpoint()
         return self._numerator.current_value / self._denominator.current_value
 
 class HistoricalVariance(BaseForecast):
@@ -709,15 +736,12 @@ class HistoricalMeanError(HistoricalVariance):
         variance = super().values_in_time(**kwargs)
         return np.sqrt(variance / self._denominator.current_value)
 
-class HistoricalStandardDeviation(BaseForecast):
+class HistoricalStandardDeviation(HistoricalVariance):
     """Test."""
-
-    def __init__(self, **kwargs):
-        self._variance = HistoricalVariance(**kwargs)
 
     def values_in_time(self, **kwargs):
         """Current value."""
-        return np.sqrt(self._variance.current_value)
+        return np.sqrt(super().values_in_time(**kwargs))
 
 class HistoricalMeanVolume(BaseForecast):
     """Test."""
@@ -730,7 +754,7 @@ class HistoricalMeanVolume(BaseForecast):
         """Current value."""
         return self._numerator.current_value / self._denominator.current_value
 
-class MatrixCount(AssociativeForecaster):
+class MatrixCount(VectorCount): # inheritance is for the min counts check
     """Joint count, e.g., for the denominator of covariances."""
 
     # TODO: checks that too few counts
@@ -774,15 +798,43 @@ class MatrixSum(AssociativeForecaster):
 class CovarianceNumerator(MatrixSum, OnPastReturns):
     """Compute numerator of (Kelly) covariance of past returns."""
 
-class NewHistoricalCovariance(HistoricalVariance):
+class JointMean(AssociativeForecaster):
+    """Corrector that we need for non-Kelly covariance."""
+
+    def _batch_compute(self, df, emw_weights):
+        r"""Compute precursor of :math:`\Sigma_{i,j} =
+        \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
+        nonnull = (~df.isnull()) * 1.
+        if emw_weights is None:
+            return nonnull.T @ df.fillna(0.)
+        return nonnull.T @ df.fillna(0.).multiply(emw_weights, axis=0)
+
+    def _single_compute(self, last_row):
+        r"""Update precursor of :math:`\Sigma_{i,j} =
+        \mathbf{E}[r^{i}]\mathbf{E}[r^{j}]`."""
+        return last_row.fillna(0.)
+
+class JointMeanReturns(JointMean, OnPastReturns):
+    """Compute corrector for non-Kelly covariance."""
+
+
+class HistoricalCovariance(HistoricalVariance): # inheritance maybe not needed
     """Test."""
 
-    def __init__(self, kelly=True):
+    def __init__(self, kelly=True, **kwargs):
         self.kelly = kelly
-        self._denominator = CovarianceDenominator()
-        self._numerator = CovarianceNumerator()
-        # if not self.kelly: # TODO: implement
-        #     self._correction = NewMeanHistoricalReturns()
+        self._denominator = CovarianceDenominator(**kwargs)
+        self._numerator = CovarianceNumerator(**kwargs)
+        if not self.kelly:
+            self._correction = JointMeanReturns(**kwargs)
+
+    def values_in_time(self, **kwargs):
+        """Current value."""
+        result = self._numerator.current_value / self._denominator.current_value
+        if not self.kelly:
+            tmp = self._correction.current_value / self._denominator.current_value
+            result -= tmp.T * tmp
+        return result
 
 
 class BaseMeanVarForecast(BaseForecast):
@@ -1414,7 +1466,7 @@ class OldHistoricalMeanError(HistoricalVariance):
         return np.sqrt(variance / self._denominator.values)
 
 
-class HistoricalCovariance(BaseMeanVarForecast):
+class OldHistoricalCovariance(BaseMeanVarForecast):
     r"""Historical covariance matrix."""
 
     _joint_mean = None
