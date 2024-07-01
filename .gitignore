@@ -103,3 +103,4 @@ ENV/
 
 # pytest cache
 .pytest_cache
+.aider*
