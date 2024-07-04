@@ -367,6 +367,15 @@ class MinCashBalance(InequalityConstraint):
 
     def __init__(self, c_min):
         self.c_min = DataEstimator(c_min)
+        self.rhs = None
+
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Initialize estimator instance.
+
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
+        """
         self.rhs = cp.Parameter()
 
     def values_in_time( # pylint: disable=arguments-differ
