@@ -179,7 +179,7 @@ class ParticipationRateLimit(InequalityConstraint):
         self.volumes = DataEstimator(volumes)
         self.max_participation_rate = DataEstimator(
             max_fraction_of_volumes)
-        self.portfolio_value = cp.Parameter(nonneg=True)
+        self._portfolio_value = None
         self._parameter = None
 
     def initialize_estimator( # pylint: disable=arguments-differ
@@ -191,6 +191,7 @@ class ParticipationRateLimit(InequalityConstraint):
         :param kwargs: Unused arguments to initialize estimator.
         :type kwargs: dict
         """
+        self._portfolio_value = cp.Parameter(nonneg=True)
         self._parameter = cp.Parameter(len(universe) - 1)
 
     def values_in_time( # pylint: disable=arguments-differ
@@ -202,7 +203,7 @@ class ParticipationRateLimit(InequalityConstraint):
         :param kwargs: Unused arguments passed to :meth:`values_in_time`.
         :type kwargs: dict
         """
-        self.portfolio_value.value = current_portfolio_value
+        self._portfolio_value.value = current_portfolio_value
         self._parameter.value = (
             self.volumes.current_value
                 * self.max_participation_rate.current_value)
@@ -210,7 +211,7 @@ class ParticipationRateLimit(InequalityConstraint):
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
             self, z, **kwargs):
         """Compile left hand side of the constraint expression."""
-        return cp.multiply(cp.abs(z[:-1]), self.portfolio_value)
+        return cp.multiply(cp.abs(z[:-1]), self._portfolio_value)
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
