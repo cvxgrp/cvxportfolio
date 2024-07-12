@@ -311,8 +311,8 @@ The latter is also the first chapter of this PhD thesis:
 Licensing
 ---------
 
-Cvxportfolio is licensed under the `Apache 2.0 <https://www.apache.org/licenses/LICENSE-2.0>`_ permissive
-open source license.
+Cvxportfolio is licensed under the `General Public License version 3 <https://www.gnu.org/licenses/gpl-3.0.html>`_
+free software license.
 
 .. |CVXportfolio on PyPI| image:: https://img.shields.io/pypi/v/cvxportfolio.svg
    :target: https://pypi.org/project/cvxportfolio/
