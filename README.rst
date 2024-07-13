@@ -1,3 +1,20 @@
+.. Copyright (C) 2023-2024 Enzo Busseti
+.. Copyright (C) 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+
+.. This file is part of Cvxportfolio.
+
+.. Cvxportfolio is free software: you can redistribute it and/or modify it under
+.. the terms of the GNU General Public License as published by the Free Software
+.. Foundation, either version 3 of the License, or (at your option) any later
+.. version.
+
+.. Cvxportfolio is distributed in the hope that it will be useful, but WITHOUT
+.. ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+.. FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+.. details.
+
+.. You should have received a copy of the GNU General Public License along with
+.. Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
 `Cvxportfolio <https://www.cvxportfolio.com>`_
 ==============================================
 
@@ -5,9 +22,10 @@
 |Documentation Status| |GPLv3| |Anaconda-Server Badge|
 
 
-Cvxportfolio is an object-oriented library for portfolio optimization
-and back-testing. It implements models described in the `accompanying paper
-<https://cvxportfolio.readthedocs.io/en/master/_static/cvx_portfolio.pdf>`_.
+`Cvxportfolio <https://cvxportfolio.readthedocs.io>`_ is an object-oriented
+library for portfolio optimization and back-testing. It implements models
+described in the `accompanying paper
+<https://cvxportfolio.readthedocs.io/en/stable/_static/cvx_portfolio.pdf>`_.
 
 The documentation of the library is at
 `www.cvxportfolio.com <https://www.cvxportfolio.com>`_.
@@ -18,22 +36,26 @@ The documentation of the library is at
 
    Since end of 2023 we're running daily `example strategies
    <https://github.com/cvxgrp/cvxportfolio/tree/master/examples/strategies>`_
-   using the development version (master branch); each day we commit target
-   weights and initial holdings to the repository. All the code that runs them,
-   including the cron script, is in the repository.
+   using the `development (main) branch
+   <https://github.com/cvxgrp/cvxportfolio/tree/main/>`_.; each day we commit
+   target weights and initial holdings to the repository. All the code that
+   runs them, including the `cron script
+   <https://github.com/cvxgrp/cvxportfolio/blob/master/strategies_runner.sh>`_,
+   is in the repository.
 
 Installation
 ------------
 
-Cvxportolio is written in Python and can be easily installed in any Python
-environment by simple:
+Cvxportolio is written in `Python <https://docs.python.org/>`_ and can be
+installed in any `Python environment
+<https://docs.python.org/3/library/venv.html>`_ by simple:
 
 .. code:: bash
 
    pip install -U cvxportfolio
 
 You can see how this works on our `Installation and Hello
-World <https://youtu.be/1ThOKEu371M>`_ youtube video.
+World <https://youtu.be/1ThOKEu371M>`_ Youtube video.
 Anaconda installs 
 `are also supported <https://anaconda.org/conda-forge/cvxportfolio>`_.
 
@@ -42,6 +64,20 @@ interfacing with numerical solvers and `Pandas <https://pandas.pydata.org/>`_
 for interfacing with databases. We don't require any specific version of our
 dependencies and test against all recent ones (up to a few years ago).
 
+Advanced: install development version
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can also install the development version. It is tested daily by the
+example strategies. We host it in the `main branch
+<https://github.com/cvxgrp/cvxportfolio/tree/main/>`_. It is named after
+the current stable version; each time we make a release we update to the new
+version and merge to the master branch, which is shown on the homepage of
+the repository. If this sounds complicated, avoid installing the development
+version.
+
+.. code:: bash
+
+   pip install --upgrade --force-reinstall git+https://github.com/cvxgrp/cvxportfolio@main
 
 .. Test
 

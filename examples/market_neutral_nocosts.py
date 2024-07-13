@@ -1,4 +1,4 @@
-# Copyright 2024 Enzo Busseti
+# Copyright (C) 2024 Enzo Busseti
 #
 # This file is part of Cvxportfolio.
 #
