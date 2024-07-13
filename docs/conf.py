@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'Cvxportfolio'
-copyright = '2024, The Cvxportfolio Authors'
+copyright = '2016-2024, The Cvxportfolio Authors'
 author = 'The Cvxportfolio Authors'
 
 # The full version, including alpha/beta/rc tags

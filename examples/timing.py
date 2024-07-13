@@ -93,10 +93,11 @@ if __name__ == '__main__':
         # execution time of your particular program. Different solvers apply
         # different roundings and other numerical heuristics; their solutions
         # may also have (small) differences in other back-test statistics, such
-        # as Sharpe Ratio. This solver is the default open-source one for this
-        # type of programs, as of CVXPY 1.5.0. Other open-source solvers that
-        # work well for this type of programs are ECOS and SCS, and there are
-        # numerous commercial ones as well, see the CVXPY docs for a full list
+        # as Sharpe Ratio. This solver is the default one for this
+        # type of programs, as of CVXPY 1.5.0. Other freely available solvers
+        # that work well for this type of programs are for example CVXOPT, ECOS
+        # and SCS. There are numerous commercial ones as well. See the CVXPY
+        # documentation for the full list
         # https://www.cvxpy.org/tutorial/solvers/index.html
         solver='CLARABEL',
 

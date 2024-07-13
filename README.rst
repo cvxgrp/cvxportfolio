@@ -169,7 +169,7 @@ the best strategy to apply to any given selection of assets.
 Similar projects
 ----------------
 
-There are many open-source projects for portfolio optimization and back-testing.
+There are many software projects for portfolio optimization and back-testing.
 Some notable ones in the Python ecosystem are `Zipline <https://github.com/quantopian/zipline>`_,
 which implements a call-back model for back-testing very similar to the one
 we provide, `Riskfolio-Lib <https://riskfolio-lib.readthedocs.io/en/latest/examples.html>`_
@@ -214,6 +214,11 @@ and then clone your fork)
 
    git clone https://github.com/cvxgrp/cvxportfolio.git
    cd cvxportfolio
+
+We develop in the ``main`` branch. So you should `check out
+<https://git-scm.com/docs/git-checkout>`_ that one. The default branch shown on
+the homepage of the repository is the ``master`` branch. It hosts the last
+release.
 
 Then, you should have a look at our
 `Makefile <https://www.gnu.org/software/make/manual/make.html#Introduction>`_
