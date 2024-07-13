@@ -94,10 +94,11 @@ if __name__ == '__main__':
         # different roundings and other numerical heuristics; their solutions
         # may also have (small) differences in other back-test statistics, such
         # as Sharpe Ratio. This solver is the default one for this
-        # type of programs, as of CVXPY 1.5.0. Other free solvers that work
-        # well for this type of programs are for example CVXOPT, ECOS and SCS.
-        # There are numerous commercial ones as well, see the CVXPY docs for a
-        # full list https://www.cvxpy.org/tutorial/solvers/index.html
+        # type of programs, as of CVXPY 1.5.0. Other freely available solvers
+        # that work well for this type of programs are for example CVXOPT, ECOS
+        # and SCS. There are numerous commercial ones as well. See the CVXPY
+        # documentation for the full list
+        # https://www.cvxpy.org/tutorial/solvers/index.html
         solver='CLARABEL',
 
         # this is a CVXPY compilation flag, it is recommended for large
