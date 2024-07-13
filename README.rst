@@ -215,6 +215,11 @@ and then clone your fork)
    git clone https://github.com/cvxgrp/cvxportfolio.git
    cd cvxportfolio
 
+We develop in the ``main`` branch. So you should `check out
+<https://git-scm.com/docs/git-checkout>`_ that one. The default branch shown on
+the homepage of the repository is the ``master`` branch. It hosts the last
+release.
+
 Then, you should have a look at our
 `Makefile <https://www.gnu.org/software/make/manual/make.html#Introduction>`_
 and possibly change the ``PYTHON`` variable to match your system's
