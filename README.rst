@@ -22,9 +22,10 @@
 |Documentation Status| |GPLv3| |Anaconda-Server Badge|
 
 
-Cvxportfolio is an object-oriented library for portfolio optimization
-and back-testing. It implements models described in the `accompanying paper
-<https://cvxportfolio.readthedocs.io/en/master/_static/cvx_portfolio.pdf>`_.
+`Cvxportfolio <https://cvxportfolio.readthedocs.io>`_ is an object-oriented
+library for portfolio optimization and back-testing. It implements models
+described in the `accompanying paper
+<https://cvxportfolio.readthedocs.io/en/stable/_static/cvx_portfolio.pdf>`_.
 
 The documentation of the library is at
 `www.cvxportfolio.com <https://www.cvxportfolio.com>`_.
@@ -45,15 +46,16 @@ The documentation of the library is at
 Installation
 ------------
 
-Cvxportolio is written in Python and can be easily installed in any Python
-environment by simple:
+Cvxportolio is written in `Python <https://docs.python.org/>`_ and can be
+installed in any `Python environment
+<https://docs.python.org/3/library/venv.html>`_ by simple:
 
 .. code:: bash
 
    pip install -U cvxportfolio
 
 You can see how this works on our `Installation and Hello
-World <https://youtu.be/1ThOKEu371M>`_ youtube video.
+World <https://youtu.be/1ThOKEu371M>`_ Youtube video.
 Anaconda installs 
 `are also supported <https://anaconda.org/conda-forge/cvxportfolio>`_.
 
