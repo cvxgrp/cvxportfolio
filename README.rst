@@ -1,5 +1,5 @@
-.. Copyright 2023-2024 Enzo Busseti
-.. Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+.. Copyright (C) 2023-2024 Enzo Busseti
+.. Copyright (C) 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
 
 .. This file is part of Cvxportfolio.
 

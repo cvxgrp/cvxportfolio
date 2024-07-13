@@ -1,4 +1,4 @@
-# Copyright 2024 The Cvxportfolio Contributors
+# Copyright (C) 2024 The Cvxportfolio Contributors
 #
 # This file is part of Cvxportfolio.
 #

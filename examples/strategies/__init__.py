@@ -1,4 +1,4 @@
-# Copyright 2023-2024 Enzo Busseti
+# Copyright (C) 2023-2024 Enzo Busseti
 #
 # This file is part of Cvxportfolio.
 #
