@@ -1,5 +1,5 @@
-Hello World (original)
-======================
+Hello World (legacy)
+====================
 
 This example script is
 `available in the repository 
@@ -12,4 +12,4 @@ using Cvxportfolio's stable API.
 
 .. literalinclude:: ../../../examples/paper_examples/hello_world.py
    :language: python
-   :lines: 14-
+   :lines: 15-

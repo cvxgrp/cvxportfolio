@@ -113,13 +113,6 @@ their output and comments.
 <https://github.com/cvxgrp/cvxportfolio/blob/master/examples>`_ 
 are available in the code repository. 
 
-`The original examples from the paper 
-<https://github.com/cvxgrp/cvxportfolio/tree/0.0.X/examples>`_ 
-are visible in a dedicated branch,
-and are being translated to run with the stable versions (``1.0.0`` and above) of the
-library. The translations are visible at `this documentation page
-<https://cvxportfolio.readthedocs.io/en/stable/examples/paper_examples.html>`_.
-
 We show in the example on `user-provided
 forecasters <https://cvxportfolio.readthedocs.io/en/stable/examples/user_provided_forecasters.html>`_
 how the user can define custom classes to forecast the expected returns
@@ -308,11 +301,12 @@ The latter is also the first chapter of this PhD thesis:
     }
 
 
-Licensing
----------
+Legal
+-----
 
-Cvxportfolio is licensed under the `General Public License version 3 <https://www.gnu.org/licenses/gpl-3.0.html>`_
-free software license.
+Cvxportfolio is `free software <https://www.gnu.org/philosophy/free-sw.html>`_.
+It is released under the terms of the `General Public License, version 3
+<https://www.gnu.org/licenses/gpl-3.0.html>`_.
 
 .. |CVXportfolio on PyPI| image:: https://img.shields.io/pypi/v/cvxportfolio.svg
    :target: https://pypi.org/project/cvxportfolio/
