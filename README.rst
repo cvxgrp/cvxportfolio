@@ -2,7 +2,7 @@
 ==============================================
 
 |CVXportfolio on PyPI| |linting: pylint| |Coverage Status|
-|Documentation Status| |Apache 2.0 License| |Anaconda-Server Badge|
+|Documentation Status| |GPLv3| |Anaconda-Server Badge|
 
 
 Cvxportfolio is an object-oriented library for portfolio optimization
@@ -322,7 +322,7 @@ free software license.
    :target: https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master
 .. |Documentation Status| image:: https://readthedocs.org/projects/cvxportfolio/badge/?version=stable
    :target: https://cvxportfolio.readthedocs.io/en/stable/?badge=stable
-.. |Apache 2.0 License| image:: https://img.shields.io/badge/License-Apache%202.0-green.svg
-   :target: https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE
+.. |GPLv3| image:: https://img.shields.io/badge/License-GPLv3-blue.svg
+   :target: https://www.gnu.org/licenses/gpl-3.0
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/cvxportfolio/badges/version.svg
    :target: https://anaconda.org/conda-forge/cvxportfolio
