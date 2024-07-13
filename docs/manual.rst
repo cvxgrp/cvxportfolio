@@ -502,15 +502,14 @@ CVXPY was born not very long before Cvxportfolio, and is now a very successful
 library with lots of users and contributors, in both the applied and
 theoretical optimization communities.
 
-In the days before such high-level
-libraries were available, users typically had to code their application programs
-against the APIs offered directly by the solvers, resulting in complex, difficult
-to debug, and un-maintainable codes. Today, the maintainers of the numerical
-solvers (both open-source and commercial) are themselves involved in developing
-and maintaining the interfaces from CVXPY to their solvers, ensuring best
-compatibility. Cvxportfolio users need not be expert or even familiar with
-CVXPY, since Cvxportfolio offers an even higher level interface, automating
-the definition and management of optimization objects like variables and
+In the days before such high-level libraries were available, users typically
+had to code their application programs against the APIs offered directly by the
+solvers, resulting in complex, difficult to debug, and un-maintainable codes.
+Today, the maintainers of the numerical solvers are themselves involved in
+developing and maintaining the interfaces from CVXPY to their solvers, ensuring
+best compatibility. Cvxportfolio users need not be expert or even familiar with
+CVXPY, since Cvxportfolio offers an even higher level interface, automating the
+definition and management of optimization objects like variables and
 constraints.
 
 One area however in which awareness of the underlying CVXPY process might be

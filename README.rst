@@ -169,7 +169,7 @@ the best strategy to apply to any given selection of assets.
 Similar projects
 ----------------
 
-There are many open-source projects for portfolio optimization and back-testing.
+There are many software projects for portfolio optimization and back-testing.
 Some notable ones in the Python ecosystem are `Zipline <https://github.com/quantopian/zipline>`_,
 which implements a call-back model for back-testing very similar to the one
 we provide, `Riskfolio-Lib <https://riskfolio-lib.readthedocs.io/en/latest/examples.html>`_
