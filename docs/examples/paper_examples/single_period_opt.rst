@@ -12,4 +12,4 @@ using Cvxportfolio's stable API.
 
 .. literalinclude:: ../../../examples/paper_examples/single_period_opt.py
    :language: python
-   :lines: 14-
+   :lines: 15-

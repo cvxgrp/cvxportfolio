@@ -1,16 +1,20 @@
+# Copyright 2017-2024 Enzo Busseti
 # Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# This file is part of Cvxportfolio.
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+# Cvxportfolio is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Cvxportfolio is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
 """This module defines user-facing constraints."""
 
 import cvxpy as cp
@@ -179,7 +183,7 @@ class ParticipationRateLimit(InequalityConstraint):
         self.volumes = DataEstimator(volumes)
         self.max_participation_rate = DataEstimator(
             max_fraction_of_volumes)
-        self.portfolio_value = cp.Parameter(nonneg=True)
+        self._portfolio_value = None
         self._parameter = None
 
     def initialize_estimator( # pylint: disable=arguments-differ
@@ -191,6 +195,7 @@ class ParticipationRateLimit(InequalityConstraint):
         :param kwargs: Unused arguments to initialize estimator.
         :type kwargs: dict
         """
+        self._portfolio_value = cp.Parameter(nonneg=True)
         self._parameter = cp.Parameter(len(universe) - 1)
 
     def values_in_time( # pylint: disable=arguments-differ
@@ -202,7 +207,7 @@ class ParticipationRateLimit(InequalityConstraint):
         :param kwargs: Unused arguments passed to :meth:`values_in_time`.
         :type kwargs: dict
         """
-        self.portfolio_value.value = current_portfolio_value
+        self._portfolio_value.value = current_portfolio_value
         self._parameter.value = (
             self.volumes.current_value
                 * self.max_participation_rate.current_value)
@@ -210,7 +215,7 @@ class ParticipationRateLimit(InequalityConstraint):
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
             self, z, **kwargs):
         """Compile left hand side of the constraint expression."""
-        return cp.multiply(cp.abs(z[:-1]), self.portfolio_value)
+        return cp.multiply(cp.abs(z[:-1]), self._portfolio_value)
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
@@ -366,6 +371,15 @@ class MinCashBalance(InequalityConstraint):
 
     def __init__(self, c_min):
         self.c_min = DataEstimator(c_min)
+        self.rhs = None
+
+    def initialize_estimator( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Initialize estimator instance.
+
+        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :type kwargs: dict
+        """
         self.rhs = cp.Parameter()
 
     def values_in_time( # pylint: disable=arguments-differ
