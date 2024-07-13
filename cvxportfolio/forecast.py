@@ -130,8 +130,7 @@ class BaseForecast(Estimator):
         :type kwargs: dict
         """
 
-        # # better to make sure in callers cache is never None
-        # if cache is not None:
+        # TODO: implement workspace logic
 
         #     # initialize workspace
         #     if 'workspace' not in cache:
@@ -163,43 +162,6 @@ class BaseForecast(Estimator):
 
         return super().values_in_time_recursive(t=t, cache=cache, **kwargs)
 
-        # if not self._CACHED:
-        #     return super().values_in_time_recursive(t=t, cache=cache, **kwargs)
-        # else:
-        #     # this part is copied from Estimator
-        #     # TODO: could refactor upstream to avoid copy-pasting these clauses
-        #     for _, subestimator in self.__dict__.items():
-        #         if hasattr(subestimator, "values_in_time_recursive"):
-        #             subestimator.values_in_time_recursive(
-        #                 t=t, cache=cache, **kwargs)
-        #     for subestimator in self.__subestimators__:
-        #         subestimator.values_in_time_recursive(
-        #             t=t, cache=cache, **kwargs)
-
-        # # here goes caching
-        # if hasattr(self, "values_in_time"):
-
-        #     if cache is None:  # e.g., in execute() cache is disabled
-        #         cache = {}
-
-        #     if str(self) not in cache:
-        #         cache[str(self)] = {}
-
-        #     if t in cache[str(self)]:
-        #         logger.info(
-        #             '%s.values_in_time at time %s is retrieved from cache.',
-        #             self, t)
-        #         self._current_value = cache[str(self)][t]
-        #     else:
-        #         self._current_value = self.values_in_time(
-        #             t=t, cache=cache, **kwargs)
-        #         logger.info('%s.values_in_time at time %s is stored in cache.',
-        #             self, t)
-        #         cache[str(self)][t] = self._current_value
-        #     return self.current_value
-
-        # return None # pragma: no cover
-
     def estimate(self, market_data, t=None):
         """Estimate the forecaster at given time on given market data.
 
@@ -229,6 +191,7 @@ class BaseForecast(Estimator):
             (for safety checking).
         :rtype: (np.array, pd.Timestamp)
         """
+        # TODO: make sure Pandas objects are returned
 
         trading_calendar = market_data.trading_calendar()
 
@@ -256,6 +219,7 @@ class BaseForecast(Estimator):
 
 
 def _is_timedelta_or_inf(value):
+    """Check that a value is pd.Timedelta, or np.inf; else raise exception."""
     if isinstance(value, pd.Timedelta):
         if value <= pd.Timedelta('0d'):
             raise ValueError(
@@ -272,26 +236,41 @@ class UpdatingForecaster(BaseForecast):
 
     _last_time = None
 
+    # Gets populated with current universe; should probably be done upstream
+    _universe = None
+
     def initialize_estimator( # pylint: disable=arguments-differ
-            self, **kwargs):
+            self, universe, **kwargs):
         """Initialize internal variables.
 
-        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :param universe: Current trading universe, including cash.
+        :type universe: pd.Index
+        :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
         """
         self._last_time = None
+        self._universe = universe
 
-    def finalize_estimator( # pylint: disable=arguments-differ
-            self, **kwargs):
+    def finalize_estimator(self, **kwargs):
         """Dereference internal variables.
 
-        :param kwargs: Unused arguments to :meth:`initialize_estimator`.
+        :param kwargs: Unused arguments to :meth:`finalize_estimator`.
         :type kwargs: dict
         """
         self._last_time = None
+        self._universe = None
 
-    def values_in_time(self, t, past_returns, **kwargs): # TODO rename this to values_in_time
-        """Choose whether to make forecast from scratch or update last one."""
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, past_returns, **kwargs):
+        """Choose whether to make forecast from scratch or update last one.
+
+        :param t: Current trading time.
+        :type t: pd.Timestamp
+        :param past_returns: Past market returns.
+        :type past_returns: pd.DataFrame
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         if (self._last_time is None) or (
             self._last_time != past_returns.index[-1]):
             logger.debug(
@@ -299,12 +278,11 @@ class UpdatingForecaster(BaseForecast):
                 self, t)
             return self._initial_compute(
                 t=t, past_returns=past_returns, **kwargs)
-        else:
-            logger.debug(
-              '%s.values_in_time at time %s is updated from previous value.',
-              self, t)
-            return self._online_update(
-                t=t, past_returns=past_returns, **kwargs)
+        logger.debug(
+            '%s.values_in_time at time %s is updated from previous value.',
+            self, t)
+        return self._online_update(
+            t=t, past_returns=past_returns, **kwargs)
 
     def _initial_compute(self, **kwargs):
         """Make forecast from scratch."""
@@ -314,24 +292,53 @@ class UpdatingForecaster(BaseForecast):
         """Update forecast from period before."""
         raise NotImplementedError # pragma: no cover
 
-class AssociativeForecaster(UpdatingForecaster):
-    """Base forecaster that only operates on one DataFrame."""
+class SumForecaster(UpdatingForecaster):
+    """Base forecaster that implements a sum operation.
+
+    We use this to implement the logic for rolling sum and exponential
+    smoothing. Actual forecasters typically are the composition of two of
+    these: they are means, so both their numerator and denominator are
+    subclasses of this.
+
+    :param half_life: Length of the exponential smoothing half-life.
+    :type half_life: pd.Timedelta or np.inf
+    :param rolling: Length of the rolling window.
+    :type rolling: pd.Timedelta or np.inf
+    """
 
     def __init__(self, half_life=np.inf, rolling=np.inf):
         self.half_life = half_life
         self.rolling = rolling
-        self._last_time = None
-
-    def _emw_weights(self, index, t):
-        """Get weights to apply to the past obs for EMW."""
-        index_in_halflifes = (index - t) / _resolve_hyperpar(self.half_life)
-        return np.exp(index_in_halflifes * np.log(2))
 
     def _batch_compute(self, df, emw_weights):
-        raise NotImplementedError
+        """Compute the value for a batch of observations (vectorization)."""
+        raise NotImplementedError # pragma: no cover
 
     def _single_compute(self, last_row):
-        raise NotImplementedError
+        """Compute the value for a single observation."""
+        raise NotImplementedError # pragma: no cover
+
+    def _dataframe_selector(self, **kwargs):
+        """Return dataframe we work with.
+
+        This method receives the **kwargs passed to :meth:`values_in_time`.
+        """
+        raise NotImplementedError # pragma: no cover
+
+    def _get_last_row(self, **kwargs):
+        """Return last row of the dataframe we work with.
+
+        This method receives the **kwargs passed to :meth:`values_in_time`.
+
+        You may redefine it if obtaining the full dataframe is expensive,
+        during online update (in most cases) only this method is required.
+        """
+        return self._dataframe_selector(**kwargs).iloc[-1]
+
+    def _emw_weights(self, index, t):
+        """Get weights to apply to the past observations for EMW."""
+        index_in_halflifes = (index - t) / _resolve_hyperpar(self.half_life)
+        return np.exp(index_in_halflifes * np.log(2))
 
     def _initial_compute(self, t, **kwargs): # pylint: disable=arguments-differ
         """Make forecast from scratch.
@@ -351,16 +358,11 @@ class AssociativeForecaster(UpdatingForecaster):
             emw_weights = None
 
         result = self._batch_compute(df, emw_weights)
+
+        # update internal timestamp
         self._last_time = t
+
         return result
-
-        # self._denominator = self._compute_denominator(df, emw_weights)
-        # self._check_denominator_valid(t)
-        # self._numerator = self._compute_numerator(df, emw_weights)
-        # self._last_time = t
-
-        # # used by covariance forecaster
-        # return df, emw_weights
 
     def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
         """Update forecast from period before.
@@ -374,9 +376,6 @@ class AssociativeForecaster(UpdatingForecaster):
             time_passed_in_halflifes = (
                 self._last_time - t)/_resolve_hyperpar(self.half_life)
             discount_factor = np.exp(time_passed_in_halflifes * np.log(2))
-            # self._current_value *= discount_factor
-            # self._denominator *= discount_factor
-            # self._numerator *= discount_factor
         else:
             discount_factor = 1.
 
@@ -386,26 +385,18 @@ class AssociativeForecaster(UpdatingForecaster):
         # emw discounting
         result *= discount_factor
 
-        # self._numerator += self._update_numerator(last_row) * discount_factor
-
         # Moving average window logic: subtract elements that have gone out
         if _is_timedelta_or_inf(_resolve_hyperpar(self.rolling)):
             df = self._dataframe_selector(t=t, **kwargs)
-            #observations_to_subtract, emw_weights_of_subtract = \
             result = self._remove_part_gone_out_of_ma(result, df, t)
-        # else:
-        #    observations_to_subtract, emw_weights_of_subtract = None, None
 
+        # update internal timestamp
         self._last_time = t
 
         return result
 
-        # used by covariance forecaster
-        # return (
-        #     discount_factor, observations_to_subtract, emw_weights_of_subtract)
-
     def _remove_part_gone_out_of_ma(self, result, df, t):
-        """Subtract from numerator and denominator too old observations."""
+        """Subtract value from observations that are too old, if rolling."""
 
         observations_to_subtract = df.loc[
             (df.index >= (self._last_time - _resolve_hyperpar(self.rolling)))
@@ -419,71 +410,59 @@ class AssociativeForecaster(UpdatingForecaster):
 
         result -= self._batch_compute(
             observations_to_subtract, emw_weights)
-        # self._check_denominator_valid(t)
-        # self._numerator -= self._compute_numerator(
-        #     observations_to_subtract, emw_weights).fillna(0.)
-
-        # used by covariance forecaster
-        # return observations_to_subtract, emw_weights
 
         return result
 
-    def _dataframe_selector(self, **kwargs):
-        """Return dataframe we work with.
-
-        This method receives the **kwargs passed to :meth:`values_in_time`.
-        """
-        raise NotImplementedError # pragma: no cover
-
-    def _get_last_row(self, **kwargs):
-        """Return last row of the dataframe we work with.
-
-        This method receives the **kwargs passed to :meth:`values_in_time`.
-
-        You may redefine it if obtaining the full dataframe is expensive,
-        during online update (in most cases) only this method is required.
-        """
-        return self._dataframe_selector(**kwargs).iloc[-1]
-
-    # def values_in_time(self, **kwargs):
-    #     """Temporary."""
-    #     return self._agnostic_update(**kwargs)
-
-class OnPastReturns(AssociativeForecaster):
+class OnPastReturns(SumForecaster): # pylint: disable=abstract-method
     """Intermediate class, operate on past returns."""
 
-    def _dataframe_selector(self, past_returns, **kwargs):
-        """Returns, skipping cash."""
+    def _dataframe_selector( # pylint: disable=arguments-differ
+            self, past_returns, **kwargs):
+        """Past returns, skipping cash.
+
+        This method receives the full arguments to :meth:`values_in_time`.
+        """
         if past_returns is None:
             raise DataError(
                 f"{self.__class__.__name__} can only be used if MarketData is"
                 + " not None.")
         return past_returns.iloc[:, :-1]
 
-class OnPastReturnsSquared(OnPastReturns):
-    """Intermediate class, operate on past returns squared, override update."""
+class OnPastReturnsSquared(OnPastReturns): # pylint: disable=abstract-method
+    """Intermediate class, operate on past returns squared."""
 
-    def _dataframe_selector(self, **kwargs):
-        """Past returns squared, skipping cash."""
+    def _dataframe_selector( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Past returns squared, skipping cash.
+
+        This method receives the full arguments to :meth:`values_in_time`.
+        """
         return super()._dataframe_selector(**kwargs)**2
 
     def _get_last_row(self, **kwargs):
-        """Most recent past returns."""
+        """Most recent past returns.
+
+        This method receives the full arguments to :meth:`values_in_time`.
+        """
         return super()._dataframe_selector(**kwargs).iloc[-1]**2
 
-class OnPastVolumes(AssociativeForecaster):
+class OnPastVolumes(SumForecaster): # pylint: disable=abstract-method
     """Intermediate class, operate on past volumes."""
 
-    def _dataframe_selector(self, past_volumes, **kwargs):
-        """Past volumes."""
+    def _dataframe_selector( # pylint: disable=arguments-differ
+            self, past_volumes, **kwargs):
+        """Past volumes.
+
+        This method receives the full arguments to :meth:`values_in_time`.
+        """
         if past_volumes is None:
             raise DataError(
                 f"{self.__class__.__name__} can only be used if MarketData"
                 + " provides market volumes.")
         return past_volumes
 
-class VectorCount(AssociativeForecaster):
-    """Count of non-NaN values of vectors."""
+class VectorCount(SumForecaster): # pylint: disable=abstract-method
+    """Intermediate class, count of non-NaN values of vectors."""
 
     def _batch_compute(self, df, emw_weights):
         """Compute from scratch."""
@@ -496,8 +475,21 @@ class VectorCount(AssociativeForecaster):
         """Update with last observation."""
         return ~(last_row.isnull())
 
-    def values_in_time(self, t, **kwargs):
-        """Override to check that we have enough observations."""
+    def values_in_time( # pylint: disable=arguments-differ
+            self, t, **kwargs):
+        """Check that we have enough observations, call super() method.
+
+        :param t: Current trading time.
+        :type t: pd.Timestamp
+        :param kwargs: Other arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :raises ForecastError: If there are not enough observations to compute
+            derived quantities.
+
+        :returns: Current count of non-NaN values.
+        :rtype: pd.Series or np.array
+        """
         result = super().values_in_time(t=t, **kwargs)
 
         mindenom = np.min(result)
@@ -514,145 +506,17 @@ class VectorCount(AssociativeForecaster):
 
         return result
 
-
-# class WithEmwMw(SingleDataFrameForecaster):
-#     """Intermediate class, add EMW+MW logic.
-
-#     Blueprint:
-#     - put this stuff in the single dataframe f'c
-
-#     EMW:
-#     - add logic to the _initial_compute of all other guys to get the weights
-#     - add a super() call in the online updates, which does EMW discounting
-
-#     MW:
-#     - add logic in all DF selectors to call method defined here that slices
-#         by rolling
-#     - create instance in __init__ from self, override its dataframe selector
-#         helper method using
-#         https://stackoverflow.com/questions/48210900/is-it-possible-to-do-dynamic-method-overriding-from-a-method-of-another-class-i
-#         simply, the dynamically overridden method is defined by a lambda;
-#         that is the "scraps" forecaster, and override values_in_time here
-#         to subtract from my current_value the current_value of the scraps
-#     """
-
-#     # TODO: Think about edge cases, what happens if the MA window is shorter
-#     # than t - (t-1) ?
-
-#     def __init__(self, half_life=np.inf, rolling=np.inf):
-#         self.half_life = half_life
-#         self.rolling = rolling
-#         self._last_time = None
-
-#     def initialize_estimator(self, **kwargs):
-#         self._last_time = None
-
-#     def finalize_estimator(self, **kwargs):
-#         self._last_time = None
-
-#     def _compute_weights(self, index, t, **kwargs):
-#         """Get weights to apply to the past obs for EMW."""
-#         index_in_halflifes = (index - t) / _resolve_hyperpar(self.half_life)
-#         return np.exp(index_in_halflifes * np.log(2))
-
-#     # TODO: method above make it based in SingleDataFrameForecaster with
-#     # return None, each guy below implements logic to deal with it if it returns
-#     # something else than None
-
-#     def _dataframe_selector(self, t, **kwargs):
-#         """Select only part that is in the MW."""
-#         all_past = super()._dataframe_selector(t=t, **kwargs)
-#         if _is_timedelta_or_inf(_resolve_hyperpar(self.rolling)): # TODO: rename that function
-#             return all_past.loc[
-#                 all_past.index >= (t - _resolve_hyperpar(self.rolling))]
-#         return all_past
-
-#     def _online_update(self, **kwargs):
-#         """Apply EMW and MW logic."""
-
-#     def _online_update(self, t, **kwargs): # pylint: disable=arguments-differ
-#         """Update forecast from period before.
-
-#         This method receives the **kwargs passed to :meth:`values_in_time`.
-#         """
-#         last_row = self._get_last_row(t=t, **kwargs)
-
-#         # TODO: this breaks if loaded from cache last value but computing this one
-#         assert self._last_time is not None, "online update called ..."
-
-#         super()._online_update(self, t=t, **kwargs)
-
-#         # if emw discount past
-#         if _is_timedelta_or_inf(_resolve_hyperpar(self.half_life)):
-#             time_passed_in_halflifes = (
-#                 self._last_time - t)/_resolve_hyperpar(self.half_life)
-#             discount_factor = np.exp(time_passed_in_halflifes * np.log(2))
-#             self._current_value *= discount_factor
-
-#         self._current_value -= self._values_out_of_mw.current_value
-
-#         # Moving average window logic: subtract elements that have gone out
-#         if _is_timedelta_or_inf(_resolve_hyperpar(self.rolling)):
-#             df = self._dataframe_selector(t=t, **kwargs)
-#             # observations_to_subtract, emw_weights_of_subtract = \
-#             self._remove_part_gone_out_of_ma(df, t)
-#         #else:
-#         #    observations_to_subtract, emw_weights_of_subtract = None, None
-
-#         self._last_time = t
-
-#         # used by covariance forecaster
-#         # return (
-#         #     discount_factor, observations_to_subtract, emw_weights_of_subtract)
-
-#     def _remove_part_gone_out_of_ma(self, df, t):
-#         """Subtract too old observations."""
-
-#         observations_to_subtract = df.loc[
-#             (df.index >= (self._last_time - _resolve_hyperpar(self.rolling)))
-#             & (df.index < (t - _resolve_hyperpar(self.rolling)))]
-
-#         # If EMW, compute weights here
-#         if _is_timedelta_or_inf(_resolve_hyperpar(self.half_life)):
-#             emw_weights = self._emw_weights(observations_to_subtract.index, t)
-#         else:
-#             emw_weights = None
-
-#         self._emw_mw_value -= self._compute(
-#             observations_to_subtract, emw_weights)
-#         # self._check_denominator_valid(t)
-#         # self._numerator -= self._compute_numerator(
-#         #     observations_to_subtract, emw_weights).fillna(0.)
-
-#         # used by covariance forecaster
-#         # return observations_to_subtract, emw_weights
-
-
-# #     def _compute(self, df, emw_weights):
-# #         """Exponential moving window (optional) denominator."""
-# #         if emw_weights is None:
-# #             return df.count()
-# #         ones = (~df.isnull()) * 1.
-# #         return ones.multiply(emw_weights, axis=0).sum()
-
-# #     def _add_update(self, last_row):
-# #         """Update with last observation.
-
-# #         Emw (if any) is applied upstream.
-# #         """
-# #         return ~(last_row.isnull())
-
 class CountPastReturns(VectorCount, OnPastReturns):
     """Count non-nan past returns, excluding cash."""
 
 class CountPastVolumes(VectorCount, OnPastVolumes):
     """Count non-nan past volumes."""
 
-class VectorSum(AssociativeForecaster):
-    """Sum of non-NaN values of vectors."""
+class VectorSum(SumForecaster): # pylint: disable=abstract-method
+    """Intermediate class, sum of non-NaN values of vectors."""
 
     def _batch_compute(self, df, emw_weights):
-        """Exponential moving window (optional) numerator."""
+        """Compute from scratch."""
         if emw_weights is None:
             return df.sum()
         return df.multiply(emw_weights, axis=0).sum()
@@ -792,7 +656,7 @@ class MatrixCount(VectorCount): # inheritance is for the min counts check
 class CovarianceDenominator(MatrixCount, OnPastReturns):
     """Compute denominator of (Kelly) covariance of past returns."""
 
-class MatrixSum(AssociativeForecaster):
+class MatrixSum(SumForecaster):
     """Joint sum, e.g., for the numerator of covariances."""
 
     def _batch_compute(self, df, emw_weights):
@@ -814,7 +678,7 @@ class MatrixSum(AssociativeForecaster):
 class CovarianceNumerator(MatrixSum, OnPastReturns):
     """Compute numerator of (Kelly) covariance of past returns."""
 
-class JointMean(AssociativeForecaster):
+class JointMean(SumForecaster):
     """Corrector that we need for non-Kelly covariance."""
 
     def _batch_compute(self, df, emw_weights):

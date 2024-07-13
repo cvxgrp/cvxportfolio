@@ -15,7 +15,6 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
-
 """We make the tests a sub-package so we can ship them."""
 
 import logging
