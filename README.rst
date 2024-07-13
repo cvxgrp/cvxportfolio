@@ -1,3 +1,20 @@
+.. Copyright 2023-2024 Enzo Busseti
+.. Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+
+.. This file is part of Cvxportfolio.
+
+.. Cvxportfolio is free software: you can redistribute it and/or modify it under
+.. the terms of the GNU General Public License as published by the Free Software
+.. Foundation, either version 3 of the License, or (at your option) any later
+.. version.
+
+.. Cvxportfolio is distributed in the hope that it will be useful, but WITHOUT
+.. ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+.. FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+.. details.
+
+.. You should have received a copy of the GNU General Public License along with
+.. Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
 `Cvxportfolio <https://www.cvxportfolio.com>`_
 ==============================================
 
@@ -18,9 +35,12 @@ The documentation of the library is at
 
    Since end of 2023 we're running daily `example strategies
    <https://github.com/cvxgrp/cvxportfolio/tree/master/examples/strategies>`_
-   using the development version (master branch); each day we commit target
-   weights and initial holdings to the repository. All the code that runs them,
-   including the cron script, is in the repository.
+   using the `development (main) branch
+   <https://github.com/cvxgrp/cvxportfolio/tree/main/>`_.; each day we commit
+   target weights and initial holdings to the repository. All the code that
+   runs them, including the `cron script
+   <https://github.com/cvxgrp/cvxportfolio/blob/master/strategies_runner.sh>`_,
+   is in the repository.
 
 Installation
 ------------
@@ -42,6 +62,20 @@ interfacing with numerical solvers and `Pandas <https://pandas.pydata.org/>`_
 for interfacing with databases. We don't require any specific version of our
 dependencies and test against all recent ones (up to a few years ago).
 
+Advanced: install development version
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can also install the development version. It is tested daily by the
+example strategies. We host it in the `main branch
+<https://github.com/cvxgrp/cvxportfolio/tree/main/>`_. It is named after
+the current stable version; each time we make a release we update to the new
+version and merge to the master branch, which is shown on the homepage of
+the repository. If this sounds complicated, avoid installing the development
+version.
+
+.. code:: bash
+
+   pip install --upgrade --force-reinstall git+https://github.com/cvxgrp/cvxportfolio@main
 
 .. Test
 
