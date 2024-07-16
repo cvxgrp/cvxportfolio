@@ -30,4 +30,4 @@ using Cvxportfolio's stable API.
 
 .. literalinclude:: ../../../examples/paper_examples/real_time_optimization.py
    :language: python
-   :lines: 16-
+   :lines: 35-
