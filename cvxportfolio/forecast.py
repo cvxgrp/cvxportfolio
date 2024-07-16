@@ -535,29 +535,112 @@ class SumPastVolumes(VectorSum, OnPastVolumes):
     """Sum non-nan past volumes."""
 
 class HistoricalMeanReturn(BaseForecast):
-    """Test."""
+    r"""Historical means of non-cash returns.
 
-    def __init__(self, **kwargs):
-        self._denominator = CountPastReturns( **kwargs)
-        self._numerator = SumPastReturns(**kwargs)
+    .. versionadded:: 1.2.0
 
-    def values_in_time(self, **kwargs):
-        """Current value."""
+        Added the ``half_life`` and ``rolling`` parameters.
+
+    When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
+
+    .. code-block::
+
+        past_returns.iloc[:,:-1].mean()
+
+    where ``past_returns`` is a time-indexed dataframe containing the past
+    returns (if in back-test that's relative to each point in time, ), and its
+    last column, which we skip over, are the cash returns. We use the same
+    logic as Pandas to handle ``np.nan`` values.
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    """
+    def __init__(self, half_life=np.inf, rolling=np.inf):
+        self.half_life = half_life
+        self.rolling = rolling
+        self._numerator = SumPastReturns(
+            half_life=half_life, rolling=rolling)
+        self._denominator = CountPastReturns(
+            half_life=half_life, rolling=rolling)
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Mean of the past returns, excluding cash.
+
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Mean of the past returns, excluding cash.
+        :rtype: pd.Series
+        """
         return self._numerator.current_value / self._denominator.current_value
 
 class HistoricalVariance(BaseForecast):
-    """Test."""
+    r"""Historical variances of non-cash returns.
 
-    def __init__(self, kelly=True, **kwargs):
+    .. versionadded:: 1.2.0
+
+        Added the ``half_life`` and ``rolling`` parameters.
+
+    When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
+
+    .. code-block::
+
+        past_returns.iloc[:,:-1].var(ddof=0)
+
+    if you set ``kelly=False`` and
+
+    .. code-block::
+
+        (past_returns**2).iloc[:,:-1].mean()
+
+    otherwise (we use the same logic to handle ``np.nan`` values).
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    :param kelly: if ``True`` compute :math:`\mathbf{E}[r^2]`, else
+        :math:`\mathbf{E}[r^2] - {\mathbf{E}[r]}^2`. The second corresponds
+        to the classic definition of variance, while the first is what is
+        obtained by Taylor approximation of the Kelly gambling objective.
+        See discussion above. Default True.
+    :type kelly: bool
+    """
+    def __init__(self, half_life=np.inf, rolling=np.inf, kelly=True):
         self.kelly = kelly
-        self._denominator = CountPastReturns(**kwargs)
-        self._numerator = SumPastReturnsSquared(**kwargs)
+        self.half_life = half_life
+        self.rolling = rolling
+        self._denominator = CountPastReturns(
+            half_life=half_life, rolling=rolling)
+        self._numerator = SumPastReturnsSquared(
+            half_life=half_life, rolling=rolling)
         if not self.kelly:
-            self._correction = HistoricalMeanReturn(**kwargs)
+            self._correction = HistoricalMeanReturn(
+                half_life=half_life, rolling=rolling)
 
-    def values_in_time(self, **kwargs):
-        """Current value."""
-        result = self._numerator.current_value / self._denominator.current_value
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Variance of the past returns, excluding cash.
+
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Variance of the past returns, excluding cash.
+        :rtype: pd.Series
+        """
+        result = (
+            self._numerator.current_value / self._denominator.current_value)
         if not self.kelly:
             result -= self._correction.current_value ** 2
         return result
@@ -598,7 +681,7 @@ class HistoricalMeanError(HistoricalVariance):
 
         :returns: Standard deviation of the mean of past returns (excluding
             cash).
-        :rtype: numpy.array
+        :rtype: pd.Series
         """
         variance = super().values_in_time(**kwargs)
         return np.sqrt(variance / self._denominator.current_value)
@@ -624,14 +707,37 @@ class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
         )
 
 class HistoricalMeanVolume(BaseForecast):
-    """Test."""
+    r"""Historical means of traded volume in units of value (e.g., dollars).
 
-    def __init__(self, **kwargs):
-        self._denominator = CountPastVolumes(**kwargs)
-        self._numerator = SumPastVolumes(**kwargs)
+    .. versionadded:: 1.2.0
 
-    def values_in_time(self, **kwargs):
-        """Current value."""
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    """
+    def __init__(self, half_life=np.inf, rolling=np.inf):
+        self.half_life = half_life
+        self.rolling = rolling
+        self._numerator = SumPastVolumes(
+            half_life=half_life, rolling=rolling)
+        self._denominator = CountPastVolumes(
+            half_life=half_life, rolling=rolling)
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Mean of the past volumes.
+
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Mean of the past volumes.
+        :rtype: pd.Series
+        """
         return self._numerator.current_value / self._denominator.current_value
 
 class MatrixCount(VectorCount): # inheritance is for the min counts check
@@ -933,37 +1039,37 @@ class BaseMeanForecast(BaseMeanVarForecast): # pylint: disable=abstract-method
         return ~(last_row.isnull())
 
 
-class OldHistoricalMeanReturn(BaseMeanForecast):
-    r"""Historical means of non-cash returns.
+# class OldHistoricalMeanReturn(BaseMeanForecast):
+#     r"""Historical means of non-cash returns.
 
-    .. versionadded:: 1.2.0
+#     .. versionadded:: 1.2.0
 
-        Added the ``half_life`` and ``rolling`` parameters.
+#         Added the ``half_life`` and ``rolling`` parameters.
 
-    When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
+#     When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
 
-    .. code-block::
+#     .. code-block::
 
-        past_returns.iloc[:,:-1].mean()
+#         past_returns.iloc[:,:-1].mean()
 
-    where ``past_returns`` is a time-indexed dataframe containing the past
-    returns (if in back-test that's relative to each point in time, ), and its
-    last column, which we skip over, are the cash returns. We use the same
-    logic as Pandas to handle ``np.nan`` values.
+#     where ``past_returns`` is a time-indexed dataframe containing the past
+#     returns (if in back-test that's relative to each point in time, ), and its
+#     last column, which we skip over, are the cash returns. We use the same
+#     logic as Pandas to handle ``np.nan`` values.
 
-    :param half_life: Half-life of exponential smoothing, expressed as
-        Pandas Timedelta. If in back-test, that is with respect to each point
-        in time. Default ``np.inf``, meaning no exponential smoothing.
-    :type half_life: pandas.Timedelta or np.inf
-    :param rolling: Rolling window used: observations older than this Pandas
-        Timedelta are skipped over. If in back-test, that is with respect to
-        each point in time. Default ``np.inf``, meaning that all past is used.
-    :type rolling: pandas.Timedelta or np.inf
-    """
-    # pylint: disable=arguments-differ
-    def _dataframe_selector(self, past_returns, **kwargs):
-        """Return dataframe to compute the historical means of."""
-        return past_returns.iloc[:, :-1]
+#     :param half_life: Half-life of exponential smoothing, expressed as
+#         Pandas Timedelta. If in back-test, that is with respect to each point
+#         in time. Default ``np.inf``, meaning no exponential smoothing.
+#     :type half_life: pandas.Timedelta or np.inf
+#     :param rolling: Rolling window used: observations older than this Pandas
+#         Timedelta are skipped over. If in back-test, that is with respect to
+#         each point in time. Default ``np.inf``, meaning that all past is used.
+#     :type rolling: pandas.Timedelta or np.inf
+#     """
+#     # pylint: disable=arguments-differ
+#     def _dataframe_selector(self, past_returns, **kwargs):
+#         """Return dataframe to compute the historical means of."""
+#         return past_returns.iloc[:, :-1]
 
 
 class RegressionXtY(HistoricalMeanReturn):
@@ -1155,93 +1261,93 @@ class RegressionMeanReturn(BaseForecast):
     #     return df.multiply(regr_on_df, axis=0).dropna(how='all')
 
 
-class OldHistoricalMeanVolume(BaseMeanForecast):
-    r"""Historical means of traded volume in units of value (e.g., dollars).
+# class OldHistoricalMeanVolume(BaseMeanForecast):
+#     r"""Historical means of traded volume in units of value (e.g., dollars).
 
-    .. versionadded:: 1.2.0
+#     .. versionadded:: 1.2.0
 
-    :param half_life: Half-life of exponential smoothing, expressed as
-        Pandas Timedelta. If in back-test, that is with respect to each point
-        in time. Default ``np.inf``, meaning no exponential smoothing.
-    :type half_life: pandas.Timedelta or np.inf
-    :param rolling: Rolling window used: observations older than this Pandas
-        Timedelta are skipped over. If in back-test, that is with respect to
-        each point in time. Default ``np.inf``, meaning that all past is used.
-    :type rolling: pandas.Timedelta or np.inf
-    """
-    # pylint: disable=arguments-differ
-    def _dataframe_selector(self, past_volumes, **kwargs):
-        """Return dataframe to compute the historical means of."""
-        if past_volumes is None:
-            raise DataError(
-                f"{self.__class__.__name__} can only be used if MarketData"
-                + " provides market volumes.")
-        return past_volumes
+#     :param half_life: Half-life of exponential smoothing, expressed as
+#         Pandas Timedelta. If in back-test, that is with respect to each point
+#         in time. Default ``np.inf``, meaning no exponential smoothing.
+#     :type half_life: pandas.Timedelta or np.inf
+#     :param rolling: Rolling window used: observations older than this Pandas
+#         Timedelta are skipped over. If in back-test, that is with respect to
+#         each point in time. Default ``np.inf``, meaning that all past is used.
+#     :type rolling: pandas.Timedelta or np.inf
+#     """
+#     # pylint: disable=arguments-differ
+#     def _dataframe_selector(self, past_volumes, **kwargs):
+#         """Return dataframe to compute the historical means of."""
+#         if past_volumes is None:
+#             raise DataError(
+#                 f"{self.__class__.__name__} can only be used if MarketData"
+#                 + " provides market volumes.")
+#         return past_volumes
 
-class OldHistoricalVariance(BaseMeanForecast):
-    r"""Historical variances of non-cash returns.
+# class OldHistoricalVariance(BaseMeanForecast):
+#     r"""Historical variances of non-cash returns.
 
-    .. versionadded:: 1.2.0
+#     .. versionadded:: 1.2.0
 
-        Added the ``half_life`` and ``rolling`` parameters.
+#         Added the ``half_life`` and ``rolling`` parameters.
 
-    When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
+#     When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
 
-    .. code-block::
+#     .. code-block::
 
-        past_returns.iloc[:,:-1].var(ddof=0)
+#         past_returns.iloc[:,:-1].var(ddof=0)
 
-    if you set ``kelly=False`` and
+#     if you set ``kelly=False`` and
 
-    .. code-block::
+#     .. code-block::
 
-        (past_returns**2).iloc[:,:-1].mean()
+#         (past_returns**2).iloc[:,:-1].mean()
 
-    otherwise (we use the same logic to handle ``np.nan`` values).
+#     otherwise (we use the same logic to handle ``np.nan`` values).
 
-    :param half_life: Half-life of exponential smoothing, expressed as
-        Pandas Timedelta. If in back-test, that is with respect to each point
-        in time. Default ``np.inf``, meaning no exponential smoothing.
-    :type half_life: pandas.Timedelta or np.inf
-    :param rolling: Rolling window used: observations older than this Pandas
-        Timedelta are skipped over. If in back-test, that is with respect to
-        each point in time. Default ``np.inf``, meaning that all past is used.
-    :type rolling: pandas.Timedelta or np.inf
-    :param kelly: if ``True`` compute :math:`\mathbf{E}[r^2]`, else
-        :math:`\mathbf{E}[r^2] - {\mathbf{E}[r]}^2`. The second corresponds
-        to the classic definition of variance, while the first is what is
-        obtained by Taylor approximation of the Kelly gambling objective.
-        See discussion above.
-    :type kelly: bool
-    """
+#     :param half_life: Half-life of exponential smoothing, expressed as
+#         Pandas Timedelta. If in back-test, that is with respect to each point
+#         in time. Default ``np.inf``, meaning no exponential smoothing.
+#     :type half_life: pandas.Timedelta or np.inf
+#     :param rolling: Rolling window used: observations older than this Pandas
+#         Timedelta are skipped over. If in back-test, that is with respect to
+#         each point in time. Default ``np.inf``, meaning that all past is used.
+#     :type rolling: pandas.Timedelta or np.inf
+#     :param kelly: if ``True`` compute :math:`\mathbf{E}[r^2]`, else
+#         :math:`\mathbf{E}[r^2] - {\mathbf{E}[r]}^2`. The second corresponds
+#         to the classic definition of variance, while the first is what is
+#         obtained by Taylor approximation of the Kelly gambling objective.
+#         See discussion above.
+#     :type kelly: bool
+#     """
 
-    def __init__(self, rolling=np.inf, half_life=np.inf, kelly=True):
-        super().__init__(rolling=rolling, half_life=half_life)
-        self.kelly = kelly
+#     def __init__(self, rolling=np.inf, half_life=np.inf, kelly=True):
+#         super().__init__(rolling=rolling, half_life=half_life)
+#         self.kelly = kelly
 
-        if not self.kelly:
-            self.meanforecaster = HistoricalMeanReturn(
-                half_life=_resolve_hyperpar(self.half_life),
-                rolling=_resolve_hyperpar(self.rolling))
+#         if not self.kelly:
+#             self.meanforecaster = HistoricalMeanReturn(
+#                 half_life=_resolve_hyperpar(self.half_life),
+#                 rolling=_resolve_hyperpar(self.rolling))
 
-    def values_in_time(self, **kwargs):
-        """Obtain current value either by update or from scratch.
+#     def values_in_time(self, **kwargs):
+#         """Obtain current value either by update or from scratch.
 
-        :param kwargs: All arguments to :meth:`values_in_time`.
-        :type kwargs: dict
+#         :param kwargs: All arguments to :meth:`values_in_time`.
+#         :type kwargs: dict
 
-        :returns: Variances of past returns (excluding cash).
-        :rtype: numpy.array
-        """
-        result = super().values_in_time(**kwargs)
-        if not self.kelly:
-            result -= self.meanforecaster.current_value**2
-        return result
+#         :returns: Variances of past returns (excluding cash).
+#         :rtype: numpy.array
+#         """
+#         result = super().values_in_time(**kwargs)
+#         if not self.kelly:
+#             result -= self.meanforecaster.current_value**2
+#         return result
 
-    # pylint: disable=arguments-differ
-    def _dataframe_selector(self, past_returns, **kwargs):
-        """Return dataframe to compute the historical means of."""
-        return past_returns.iloc[:, :-1]**2
+#     # pylint: disable=arguments-differ
+#     def _dataframe_selector(self, past_returns, **kwargs):
+#         """Return dataframe to compute the historical means of."""
+#         return past_returns.iloc[:, :-1]**2
 
 
 class OldHistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
@@ -1304,46 +1410,46 @@ class OldHistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
             current_prices=kwargs['current_prices']
         )
 
-class OldHistoricalMeanError(HistoricalVariance):
-    r"""Historical standard deviations of the mean of non-cash returns.
+# class OldHistoricalMeanError(HistoricalVariance):
+#     r"""Historical standard deviations of the mean of non-cash returns.
 
-    .. versionadded:: 1.2.0
+#     .. versionadded:: 1.2.0
 
-        Added the ``half_life`` and ``rolling`` parameters.
+#         Added the ``half_life`` and ``rolling`` parameters.
 
-    For a given time series of past returns :math:`r_{t-1}, r_{t-2},
-    \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
-    missing values we ignore them, both to compute the variance and the
-    count.
+#     For a given time series of past returns :math:`r_{t-1}, r_{t-2},
+#     \ldots, r_0` this is :math:`\sqrt{\text{Var}[r]/t}`. When there are
+#     missing values we ignore them, both to compute the variance and the
+#     count.
 
-    :param half_life: Half-life of exponential smoothing, expressed as
-        Pandas Timedelta. If in back-test, that is with respect to each point
-        in time. Default ``np.inf``, meaning no exponential smoothing.
-    :type half_life: pandas.Timedelta or np.inf
-    :param rolling: Rolling window used: observations older than this Pandas
-        Timedelta are skipped over. If in back-test, that is with respect to
-        each point in time. Default ``np.inf``, meaning that all past is used.
-    :type rolling: pandas.Timedelta or np.inf
-    :param kelly: Same as in :class:`cvxportfolio.forecast.HistoricalVariance`.
-        Default False.
-    :type kelly: bool
-    """
+#     :param half_life: Half-life of exponential smoothing, expressed as
+#         Pandas Timedelta. If in back-test, that is with respect to each point
+#         in time. Default ``np.inf``, meaning no exponential smoothing.
+#     :type half_life: pandas.Timedelta or np.inf
+#     :param rolling: Rolling window used: observations older than this Pandas
+#         Timedelta are skipped over. If in back-test, that is with respect to
+#         each point in time. Default ``np.inf``, meaning that all past is used.
+#     :type rolling: pandas.Timedelta or np.inf
+#     :param kelly: Same as in :class:`cvxportfolio.forecast.HistoricalVariance`.
+#         Default False.
+#     :type kelly: bool
+#     """
 
-    def __init__(self, rolling=np.inf, half_life=np.inf, kelly=False):
-        super().__init__(rolling=rolling, half_life=half_life, kelly=kelly)
+#     def __init__(self, rolling=np.inf, half_life=np.inf, kelly=False):
+#         super().__init__(rolling=rolling, half_life=half_life, kelly=kelly)
 
-    def values_in_time(self, **kwargs):
-        """Obtain current value either by update or from scratch.
+#     def values_in_time(self, **kwargs):
+#         """Obtain current value either by update or from scratch.
 
-        :param kwargs: All arguments to :meth:`values_in_time`.
-        :type kwargs: dict
+#         :param kwargs: All arguments to :meth:`values_in_time`.
+#         :type kwargs: dict
 
-        :returns: Standard deviation of the mean of past returns (excluding
-            cash).
-        :rtype: numpy.array
-        """
-        variance = super().values_in_time(**kwargs)
-        return np.sqrt(variance / self._denominator.values)
+#         :returns: Standard deviation of the mean of past returns (excluding
+#             cash).
+#         :rtype: numpy.array
+#         """
+#         variance = super().values_in_time(**kwargs)
+#         return np.sqrt(variance / self._denominator.values)
 
 
 class OldHistoricalCovariance(BaseMeanVarForecast):
@@ -1631,7 +1737,7 @@ class HistoricalLowRankCovarianceSVD(BaseForecast):
     #
     # matches original 2016 method from example
     # notebooks with new heuristic for NaNs. can probably be improved
-    # by terminating early if idyosyncratic becomes negative
+    # by terminating early if idiosyncratic becomes negative
 
     @staticmethod
     def build_low_rank_model(rets, num_factors=10, iters=10, svd='numpy'):

@@ -35,9 +35,9 @@ import cvxportfolio as cvx
 from cvxportfolio.estimator import DataEstimator
 from cvxportfolio.utils import set_pd_read_only
 
+
 class ForecastIndicator(object):
-    """
-    A simple forecast indicator that predicts future market stress based on historical volatility.
+    """A simple forecast indicator that predicts future market stress based on historical volatility.
 
     The indicator provides a forecast value between 0 and 1, where a higher value indicates a higher predicted market stress.
     """
@@ -45,13 +45,10 @@ class ForecastIndicator(object):
         self.lookback_period = lookback_period
 
     def calculate_indicator(self, returns):
-        """
-        Calculate the forecast indicator based on the volatility of the returns over the lookback period.
-        """
+        """Calculate the forecast indicator based on the volatility of the returns over the lookback period."""
         volatility = returns[-self.lookback_period:].std()
         indicator = np.clip(volatility / 0.05, 0, 1)  # Normalize and clip the indicator value
         return indicator
-
 
 
 class StressModel(object):
@@ -149,9 +146,7 @@ class ForeignCurrencyMarketData(cvx.DownloadedMarketData):
 
 
 class LeverageBasedOnIndicator(cvx.policies.Policy):
-    """
-    A policy that adjusts the leverage of the portfolio based on a forecast indicator.
-    """
+    """A policy that adjusts the leverage of the portfolio based on a forecast indicator."""
     def __init__(self, target_weights, forecast_indicator, max_leverage=3.0, min_leverage=1.0):
         self.target_weights = DataEstimator(target_weights, data_includes_cash=True)
         self.forecast_indicator = forecast_indicator
