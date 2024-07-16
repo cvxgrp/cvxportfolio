@@ -238,8 +238,7 @@ class Estimator:
         for name, attr in self.__dict__.items():
             if attr is None:
                 continue
-            if hasattr(attr, "values_in_time_recursive") or\
-                    hasattr(attr, "values_in_time") or (name[0] != '_'):
+            if name[0] != '_':
                 core += name + '=' + attr.__repr__() + ', '
         core = core[:-2]  # remove trailing comma and space if present
         rhs = ')'

@@ -61,7 +61,9 @@ class TestHyperparameters(CvxportfolioTest):
         obj = cvx.ReturnsForecast() - cvx.Gamma() * cvx.FullCovariance()\
             - cvx.Gamma() * cvx.StocksTransactionCost()
 
-        str(obj)
+        # print()
+        # print(obj)
+        # print()
 
         ref = ('ReturnsForecast(r_hat=HistoricalMeanReturn(half_life=inf,'
             + ' rolling=inf), decay=1.0)'
@@ -76,7 +78,9 @@ class TestHyperparameters(CvxportfolioTest):
             + "rolling=Timedelta('365 days 05:45:36'), kelly=True), "
             + 'exponent=1.5, pershare_cost=0.005)')
 
+        # print()
         # print(ref)
+        # print()
 
         self.assertTrue(str(obj) == ref)
 

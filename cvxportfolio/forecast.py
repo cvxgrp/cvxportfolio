@@ -111,7 +111,6 @@ from .hyperparameters import _resolve_hyperpar
 
 logger = logging.getLogger(__name__)
 
-
 class BaseForecast(Estimator):
     """Base class for forecasters."""
 
@@ -128,6 +127,10 @@ class BaseForecast(Estimator):
         :type cache: dict or None
         :param kwargs: Various arguments to :meth:`values_in_time_recursive`.
         :type kwargs: dict
+
+        :returns: Forecasted value for this period, possibly retrieved from
+            cache.
+        :rtype: pd.Series, pd.DataFrame, pd.Series
         """
 
         # TODO: implement workspace logic
@@ -162,45 +165,55 @@ class BaseForecast(Estimator):
 
         return super().values_in_time_recursive(t=t, cache=cache, **kwargs)
 
-    def estimate(self, market_data, t=None):
+    def estimate(self, market_data, t):
         """Estimate the forecaster at given time on given market data.
 
         This uses the same logic used by a trading policy to evaluate the
         forecaster at a given point in time.
 
         :param market_data: Market data server, used to provide data to the
-            forecaster.
+            forecaster. If you wish to forecast the value for the last
+            period available (``market_data.trading_calendar()[-1]``), you
+            typically need to set ``online_usage=True`` in its constructor.
         :type market_data: cvx.MarketData instance
-        :param t: Time at which to estimate the forecaster. Must be among
-            the ones returned by ``market_data.trading_calendar()``. Default is
-            ``None``, meaning that the last valid timestamp is chosen. Note
-            that with default market data servers you need to set
-            ``online_usage=True`` if forecasting on the last timestamp
-            (usually, today).
-        :type t: pd.Timestamp or None
+        :param t: Trading period at which to make the forecast. **Only data
+            available at that time or before is used**, like ``past_returns``.
+            It must be among the timestamps provided by the
+            :meth:`cvxportfolio.data.MarketData.trading_calendar` method of the
+            market data server.
+        :type t: str, pd.Timestamp
 
-        .. note::
+        :Example:
 
-            This method is not finalized! It is still experimental, and not
-            covered by semantic versioning guarantees.
+        >>> md = cvx.DownloadedMarketData(['AAPL', 'MSFT', 'GOOG'])
+        >>> cvx.forecast.HistoricalCovariance().estimate(
+            market_data=md, t=md.trading_calendar()[-3])
 
         :raises ValueError: If the provided time t is not in the trading
             calendar.
 
-        :returns: Forecasted value and time at which the forecast is made
-            (for safety checking).
-        :rtype: (np.array, pd.Timestamp)
+        :returns: Forecasted value.
+        :rtype: np.array, pd.DataFrame
         """
-        # TODO: make sure Pandas objects are returned
 
         trading_calendar = market_data.trading_calendar()
-
-        if t is None:
-            t = trading_calendar[-1]
+        t = pd.Timestamp(t)
 
         if not t in trading_calendar:
+            if (t.tz is None and (trading_calendar.tz is not None)) or \
+                (t.tz is not None and (trading_calendar.tz is None)):
+                raise ValueError(
+                    f"Provided time {t} does not have timezone and the "
+                    "market data does, or the other way round.")
+            before = trading_calendar[trading_calendar < t]
+            after = trading_calendar[trading_calendar > t]
             raise ValueError(f'Provided time {t} must be in the '
-            + 'trading calendar implied by the market data server.')
+            + 'trading calendar implied by the market data server; '
+            + (f'last valid timestamp before t is {before[-1]}; '
+                if len(before) > 0 else '')
+            + (f'first valid timestamp after t is {after[0]}; '
+                if len(after) > 0 else '')
+            )
 
         past_returns, _, past_volumes, _, current_prices = market_data.serve(t)
 
@@ -215,7 +228,7 @@ class BaseForecast(Estimator):
 
         self.finalize_estimator_recursive()
 
-        return forecast, t
+        return forecast
 
 
 def _is_timedelta_or_inf(value):
@@ -270,6 +283,10 @@ class UpdatingForecaster(BaseForecast):
         :type past_returns: pd.DataFrame
         :param kwargs: Other unused arguments to :meth:`values_in_time`.
         :type kwargs: dict
+
+        :returns: Forecasted value for the period, either computed from scratch
+            or updated with last observation.
+        :rtype: pd.Series, pd.DataFrame, np.array
         """
         if (self._last_time is None) or (
             self._last_time != past_returns.index[-1]):
@@ -465,14 +482,14 @@ class VectorCount(SumForecaster): # pylint: disable=abstract-method
     """Intermediate class, count of non-NaN values of vectors."""
 
     def _batch_compute(self, df, emw_weights):
-        """Compute from scratch."""
+        """Compute for a batch at once."""
         if emw_weights is None:
             return df.count()
         ones = (~df.isnull()) * 1.
         return ones.multiply(emw_weights, axis=0).sum()
 
     def _single_compute(self, last_row):
-        """Update with last observation."""
+        """Update with one observation."""
         return ~(last_row.isnull())
 
     def values_in_time( # pylint: disable=arguments-differ
@@ -618,9 +635,9 @@ class HistoricalVariance(BaseForecast):
     :type kelly: bool
     """
     def __init__(self, half_life=np.inf, rolling=np.inf, kelly=True):
-        self.kelly = kelly
         self.half_life = half_life
         self.rolling = rolling
+        self.kelly = kelly
         self._denominator = CountPastReturns(
             half_life=half_life, rolling=rolling)
         self._numerator = SumPastReturnsSquared(
@@ -687,16 +704,63 @@ class HistoricalMeanError(HistoricalVariance):
         return np.sqrt(variance / self._denominator.current_value)
 
 class HistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
-    """Test."""
+    """Historical standard deviation of non-cash returns.
+
+    .. versionadded:: 1.2.0
+
+        Added the ``half_life`` and ``rolling`` parameters.
+
+    When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
+
+    .. code-block::
+
+        past_returns.iloc[:,:-1].std(ddof=0)
+
+    if you set ``kelly=False`` and
+
+    .. code-block::
+
+        np.sqrt((past_returns**2).iloc[:,:-1].mean())
+
+    otherwise (we use the same logic to handle ``np.nan`` values).
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    :param kelly: Same as in :class:`cvxportfolio.forecast.HistoricalVariance`.
+        Default True.
+    :type kelly: bool
+    """
 
     def values_in_time(self, **kwargs):
-        """Current value."""
+        """Obtain current value either by update or from scratch.
+
+        :param kwargs: All arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Standard deviations of past returns (excluding cash).
+        :rtype: pd.Series
+        """
         return np.sqrt(super().values_in_time(**kwargs))
 
-    def simulate(self, **kwargs):
+    def simulate( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Obtain current value for use in simulation (transaction cost).
+
+        :param kwargs: All arguments to :meth:`simulate`.
+        :type kwargs: dict
+
+        :returns: Standard deviations of past returns (excluding cash).
+        :rtype: pd.Series
+        """
         # TODO could take last return as well
+
         # with new design of forecasters we need to launch recursive loop
-        # here...
         return self.values_in_time_recursive(
             t=kwargs['t'],
             current_weights=kwargs['current_weights'],
@@ -740,13 +804,15 @@ class HistoricalMeanVolume(BaseForecast):
         """
         return self._numerator.current_value / self._denominator.current_value
 
-class MatrixCount(VectorCount): # inheritance is for the min counts check
-    """Joint count, e.g., for the denominator of covariances."""
-
-    # TODO: checks that too few counts
+class MatrixCount(VectorCount): # pylint: disable=abstract-method
+    """Intermediate class: joint count for the denominator of covariances.
+    
+    We inherit from :class:`VectorCount` which implements a check for
+    too few observations.
+    """
 
     def _batch_compute(self, df, emw_weights):
-        """Exponential moving window (optional) denominator."""
+        """Compute for a batch at once."""
         ones = (~df.isnull()) * 1.
         if emw_weights is None:
             return ones.T @ ones
@@ -754,7 +820,7 @@ class MatrixCount(VectorCount): # inheritance is for the min counts check
         return tmp.T @ ones
 
     def _single_compute(self, last_row):
-        """Update with last observation."""
+        """Update with one observation."""
         nonnull = ~(last_row.isnull())
         return np.outer(nonnull, nonnull)
 
@@ -762,11 +828,11 @@ class MatrixCount(VectorCount): # inheritance is for the min counts check
 class CovarianceDenominator(MatrixCount, OnPastReturns):
     """Compute denominator of (Kelly) covariance of past returns."""
 
-class MatrixSum(SumForecaster):
-    """Joint sum, e.g., for the numerator of covariances."""
+class MatrixSum(SumForecaster): # pylint: disable=abstract-method
+    """Intermediate class: joint sum for the denominator of covariances."""
 
     def _batch_compute(self, df, emw_weights):
-        """Exponential moving window (optional) numerator."""
+        """Compute for a batch at once."""
         filled = df.fillna(0.)
         if emw_weights is None:
             return filled.T @ filled
@@ -774,18 +840,15 @@ class MatrixSum(SumForecaster):
         return tmp.T @ filled
 
     def _single_compute(self, last_row):
-        """Update with last observation.
-
-        Emw (if any) is applied upstream.
-        """
+        """Update with one observation."""
         filled = last_row.fillna(0.)
         return np.outer(filled, filled)
 
 class CovarianceNumerator(MatrixSum, OnPastReturns):
     """Compute numerator of (Kelly) covariance of past returns."""
 
-class JointMean(SumForecaster):
-    """Corrector that we need for non-Kelly covariance."""
+class JointMean(SumForecaster): # pylint: disable=abstract-method
+    """Intermediate class: corrector for non-Kelly covariance."""
 
     def _batch_compute(self, df, emw_weights):
         r"""Compute precursor of :math:`\Sigma_{i,j} =
@@ -803,22 +866,54 @@ class JointMean(SumForecaster):
 class JointMeanReturns(JointMean, OnPastReturns):
     """Compute corrector for non-Kelly covariance."""
 
+class HistoricalCovariance(BaseForecast):
+    r"""Historical covariance matrix.
 
-class HistoricalCovariance(HistoricalVariance): # inheritance maybe not needed
-    """Test."""
+    .. versionadded:: 1.2.0
 
-    def __init__(self, kelly=True, **kwargs):
+        Added the ``half_life`` and ``rolling`` parameters.
+
+    :param half_life: Half-life of exponential smoothing, expressed as
+        Pandas Timedelta. If in back-test, that is with respect to each point
+        in time. Default ``np.inf``, meaning no exponential smoothing.
+    :type half_life: pandas.Timedelta or np.inf
+    :param rolling: Rolling window used: observations older than this Pandas
+        Timedelta are skipped over. If in back-test, that is with respect to
+        each point in time. Default ``np.inf``, meaning that all past is used.
+    :type rolling: pandas.Timedelta or np.inf
+    :param kelly: Same as in :class:`cvxportfolio.forecast.HistoricalVariance`.
+        Default False.
+    :type kelly: bool
+    """
+
+    def __init__(self, half_life=np.inf, rolling=np.inf, kelly=True):
+        self.half_life = half_life
+        self.rolling = rolling
         self.kelly = kelly
-        self._denominator = CovarianceDenominator(**kwargs)
-        self._numerator = CovarianceNumerator(**kwargs)
+        self._denominator = CovarianceDenominator(
+            half_life=half_life, rolling=rolling)
+        self._numerator = CovarianceNumerator(
+            half_life=half_life, rolling=rolling)
         if not self.kelly:
-            self._correction = JointMeanReturns(**kwargs)
+            self._correction = JointMeanReturns(
+                half_life=half_life, rolling=rolling)
 
-    def values_in_time(self, **kwargs):
-        """Current value."""
-        result = self._numerator.current_value / self._denominator.current_value
+    def values_in_time( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Current historical covariance matrix.
+
+        :param kwargs: Unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :returns: Historical covariance.
+        :rtype: pd.DataFrame
+        """
+        result = (
+            self._numerator.current_value / self._denominator.current_value)
         if not self.kelly:
-            tmp = self._correction.current_value / self._denominator.current_value
+            tmp = (
+                self._correction.current_value
+                    / self._denominator.current_value)
             result -= tmp.T * tmp
         return result
 
@@ -1350,65 +1445,65 @@ class RegressionMeanReturn(BaseForecast):
 #         return past_returns.iloc[:, :-1]**2
 
 
-class OldHistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
-    """Historical standard deviation of non-cash returns.
+# class OldHistoricalStandardDeviation(HistoricalVariance, SimulatorEstimator):
+#     """Historical standard deviation of non-cash returns.
 
-    .. versionadded:: 1.2.0
+#     .. versionadded:: 1.2.0
 
-        Added the ``half_life`` and ``rolling`` parameters.
+#         Added the ``half_life`` and ``rolling`` parameters.
 
-    When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
+#     When both ``half_life`` and ``rolling`` are infinity, this is equivalent to
 
-    .. code-block::
+#     .. code-block::
 
-        past_returns.iloc[:,:-1].std(ddof=0)
+#         past_returns.iloc[:,:-1].std(ddof=0)
 
-    if you set ``kelly=False`` and
+#     if you set ``kelly=False`` and
 
-    .. code-block::
+#     .. code-block::
 
-        np.sqrt((past_returns**2).iloc[:,:-1].mean())
+#         np.sqrt((past_returns**2).iloc[:,:-1].mean())
 
-    otherwise (we use the same logic to handle ``np.nan`` values).
+#     otherwise (we use the same logic to handle ``np.nan`` values).
 
-    :param half_life: Half-life of exponential smoothing, expressed as
-        Pandas Timedelta. If in back-test, that is with respect to each point
-        in time. Default ``np.inf``, meaning no exponential smoothing.
-    :type half_life: pandas.Timedelta or np.inf
-    :param rolling: Rolling window used: observations older than this Pandas
-        Timedelta are skipped over. If in back-test, that is with respect to
-        each point in time. Default ``np.inf``, meaning that all past is used.
-    :type rolling: pandas.Timedelta or np.inf
-    :param kelly: Same as in :class:`cvxportfolio.forecast.HistoricalVariance`.
-        Default True.
-    :type kelly: bool
-    """
+#     :param half_life: Half-life of exponential smoothing, expressed as
+#         Pandas Timedelta. If in back-test, that is with respect to each point
+#         in time. Default ``np.inf``, meaning no exponential smoothing.
+#     :type half_life: pandas.Timedelta or np.inf
+#     :param rolling: Rolling window used: observations older than this Pandas
+#         Timedelta are skipped over. If in back-test, that is with respect to
+#         each point in time. Default ``np.inf``, meaning that all past is used.
+#     :type rolling: pandas.Timedelta or np.inf
+#     :param kelly: Same as in :class:`cvxportfolio.forecast.HistoricalVariance`.
+#         Default True.
+#     :type kelly: bool
+#     """
 
-    def values_in_time(self, **kwargs):
-        """Obtain current value either by update or from scratch.
+#     def values_in_time(self, **kwargs):
+#         """Obtain current value either by update or from scratch.
 
-        :param kwargs: All arguments to :meth:`values_in_time`.
-        :type kwargs: dict
+#         :param kwargs: All arguments to :meth:`values_in_time`.
+#         :type kwargs: dict
 
-        :returns: Standard deviations of past returns (excluding cash).
-        :rtype: numpy.array
-        """
-        variances = \
-            super().values_in_time(**kwargs)
-        return np.sqrt(variances)
+#         :returns: Standard deviations of past returns (excluding cash).
+#         :rtype: numpy.array
+#         """
+#         variances = \
+#             super().values_in_time(**kwargs)
+#         return np.sqrt(variances)
 
-    def simulate(self, **kwargs):
-        # TODO could take last return as well
-        return self.values_in_time(
-            t=kwargs['t'],
-            # These are not necessary with current design of
-            # DataEstimator
-            current_weights=kwargs['current_weights'],
-            current_portfolio_value=kwargs['current_portfolio_value'],
-            past_returns=kwargs['past_returns'],
-            past_volumes=kwargs['past_volumes'],
-            current_prices=kwargs['current_prices']
-        )
+#     def simulate(self, **kwargs):
+#         # TODO could take last return as well
+#         return self.values_in_time(
+#             t=kwargs['t'],
+#             # These are not necessary with current design of
+#             # DataEstimator
+#             current_weights=kwargs['current_weights'],
+#             current_portfolio_value=kwargs['current_portfolio_value'],
+#             past_returns=kwargs['past_returns'],
+#             past_volumes=kwargs['past_volumes'],
+#             current_prices=kwargs['current_prices']
+#         )
 
 # class OldHistoricalMeanError(HistoricalVariance):
 #     r"""Historical standard deviations of the mean of non-cash returns.
