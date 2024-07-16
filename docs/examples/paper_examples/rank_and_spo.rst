@@ -30,4 +30,4 @@ using Cvxportfolio's stable API.
 
 .. literalinclude:: ../../../examples/paper_examples/rank_and_spo.py
    :language: python
-   :lines: 16-
+   :lines: 35-

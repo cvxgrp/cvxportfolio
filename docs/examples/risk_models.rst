@@ -24,4 +24,4 @@ This example script is
 
 .. literalinclude:: ../../examples/risk_models.py
    :language: python
-   :lines: 16-
+   :lines: 35-

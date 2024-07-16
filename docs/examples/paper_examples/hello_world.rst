@@ -30,4 +30,4 @@ using Cvxportfolio's stable API.
 
 .. literalinclude:: ../../../examples/paper_examples/hello_world.py
    :language: python
-   :lines: 16-
+   :lines: 35-

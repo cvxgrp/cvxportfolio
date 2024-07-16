@@ -30,4 +30,4 @@ using Cvxportfolio's stable API.
 
 .. literalinclude:: ../../../examples/paper_examples/solution_time.py
    :language: python
-   :lines: 16-
+   :lines: 35-
