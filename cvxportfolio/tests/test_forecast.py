@@ -29,7 +29,8 @@ from cvxportfolio.forecast import (ForecastError, HistoricalCovariance,
                                    HistoricalMeanError, HistoricalMeanReturn,
                                    HistoricalMeanVolume,
                                    HistoricalStandardDeviation,
-                                   HistoricalVariance, RegressionMeanReturn)
+                                   HistoricalVariance, RegressionMeanReturn,
+                                   RegressionXtYReturns, UserProvidedRegressor)
 from cvxportfolio.tests import CvxportfolioTest
 from cvxportfolio.utils import set_pd_read_only
 
@@ -39,6 +40,20 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
 
     In most cases we test against the relevant pandas function as reference.
     """
+
+    @classmethod
+    def setUpClass(cls):
+        """Add a few things used in tests here."""
+        super().setUpClass()
+        cls.aligned_regressor = pd.Series(
+            np.random.randn(len(cls.market_data.returns)), cls.returns.index)
+        cls.aligned_regressor.name = 'regressor_aligned'
+
+        # this one has index 1h before each trading period, and starts later
+        cls.unaligned_regressor = pd.Series(
+            np.random.randn(len(cls.market_data.returns)-100),
+            cls.returns.index[100:] - pd.Timedelta('3600s'))
+        cls.unaligned_regressor.name = 'regressor_unaligned'
 
     def test_estimate(self):
         """Test estimate method of a forecaster."""
@@ -83,6 +98,36 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
                 np.allclose(result, past_returns.iloc[:, :-1].var(ddof=0)))
         self.assertEqual(len(cache), 1)
         self.assertEqual(len(list(cache.values())[0]), 5)
+
+    def test_regression_xty_returns(self):
+        """Test one of the components of returns regression."""
+        md = copy.deepcopy(self.market_data)
+        xty = RegressionXtYReturns(
+            regressor=UserProvidedRegressor(self.aligned_regressor))
+        t_fore = md.returns.index[-3]
+
+        # check that estimate is correct
+        my_estimate = xty.estimate(md, t=t_fore)
+        pd_estimate = md.returns.iloc[:, :-1].multiply(
+            self.aligned_regressor, axis=0).loc[md.returns.index < t_fore].mean()
+        self.assertTrue(np.allclose(my_estimate, pd_estimate))
+
+        # iteratively
+        xty.initialize_estimator_recursive(
+            universe=md.returns.columns, trading_calendar=md.returns.index)
+
+        for tidx in [-30, -29, -25, -24, -23]:
+            t = md.returns.index[tidx]
+            past_returns = md.returns.loc[md.returns.index < t]
+
+            my_result  = \
+                xty.values_in_time_recursive(past_returns=past_returns, t=t)
+            pd_result = md.returns.iloc[:, :-1].multiply(
+                self.aligned_regressor, axis=0).loc[md.returns.index < t].mean()
+            # breakpoint()
+            self.assertTrue(np.allclose(my_result, pd_result))
+
+        xty.finalize_estimator_recursive()
 
     def test_regression_mean_return(self): # pylint: disable=too-many-locals
         """Test historical mean return with regression."""

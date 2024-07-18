@@ -917,38 +917,9 @@ class HistoricalCovariance(BaseForecast):
             result -= tmp.T * tmp
         return result
 
-
-class RegressionXtY(HistoricalMeanReturn):
-    """Class for the XtY matrix of returns regression forecaster."""
-
-    def __init__(self, regressor, **kwargs):
-        assert isinstance(regressor, UserProvidedRegressor)
-        super().__init__(**kwargs)
-        self.regressor = regressor
-
-    def _work_with(self, past_returns, **kwargs):
-        """Base DataFrame we work with."""
-        return past_returns.iloc[:, :-1]
-
-    # pylint: disable=arguments-differ
-    def _dataframe_selector(self, **kwargs):
-        """Return dataframe to compute the historical means of."""
-        regr_on_df = self.regressor._get_all_history(
-            self._work_with(**kwargs).index)
-        return self._work_with(
-            **kwargs).multiply(regr_on_df, axis=0).dropna(how='all')
-
-    def _get_last_row(self, **kwargs):
-        """Return last row of the dataframe we work with.
-
-        This method receives the **kwargs passed to :meth:`values_in_time`.
-
-        You may redefine it if obtaining the full dataframe is expensive,
-        during online update (in most cases) only this method is required.
-        """
-        return self._work_with(
-            **kwargs).iloc[-1] * self.regressor.current_value
-
+###
+# Linear regression
+###
 
 class UserProvidedRegressor(DataEstimator):
     """User provided regressor series."""
@@ -961,7 +932,7 @@ class UserProvidedRegressor(DataEstimator):
         super().__init__(data, use_last_available_time=True)
         self._min_obs = min_obs
 
-    def _get_all_history(self, pandas_obj_idx):
+    def get_all_history(self, pandas_obj_idx):
         """Get history of this regressor indexed on pandas obj."""
         result = self.data.reindex(
             pandas_obj_idx, method='ffill').dropna()
@@ -972,6 +943,13 @@ class UserProvidedRegressor(DataEstimator):
                 ' changing regressor in time is not (currently) supported.')
         return result
 
+    def get_one_time(self, timestamp):
+        """Get value of regressor at specific timestamp."""
+        # breakpoint()
+        # TODO this is not correct I'm afraid
+        # return float(self.current_value)
+        return self.data[self.data.index <= timestamp].iloc[-1]
+
     @property
     def name(self):
         """Name of the regressor.
@@ -980,6 +958,102 @@ class UserProvidedRegressor(DataEstimator):
         :rtype: str
         """
         return self.data.name
+
+# probably can restate this as another intermediate class, not inheriting
+# from OnPastReturns, and define specialized ones for other raw dataframes
+
+class OnWeightedPastReturns(OnPastReturns): # pylint: disable=abstract-method
+    """Intermediate class, operate on past returns weighted by regressor."""
+
+    # could put the __init__ we use in derived classes here, but then
+    # would have to be careful to use correct inheritance order for MRO
+
+    # this needs to be populated by __init__ of derived class
+    regressor = None
+
+    def _dataframe_selector( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """Past returns, skipping cash, weighted by regressor.
+
+        This method receives the full arguments to :meth:`values_in_time`.
+        """
+        raw_past_df = super()._dataframe_selector(**kwargs)
+        regressor_history = self.regressor.get_all_history(
+            raw_past_df.index)
+        # with the dropna we remove (old) observations for which regressor had
+        # no data
+        return raw_past_df.multiply(
+            regressor_history, axis=0).dropna(how='all')
+
+    # TODO: the below breaks on test for some reason, figure out why
+    # def _get_last_row(self, **kwargs):
+    #     """Return last row of the dataframe we work with.
+
+    #     This method receives the **kwargs passed to :meth:`values_in_time`.
+
+    #     You may redefine it if obtaining the full dataframe is expensive,
+    #     during online update (in most cases) only this method is required.
+    #     """
+    #     raw_last_row = super()._get_last_row(**kwargs)
+    #     regressor_on_last_row = self.regressor.get_one_time(
+    #         raw_last_row.name) # check that this is robust enough?
+    #     breakpoint()
+    #     return raw_last_row * regressor_on_last_row
+
+class CountWeightedPastReturns(VectorCount, OnWeightedPastReturns):
+    """Count non-nan past returns, excluding cash, weighted by regressor."""
+
+    def __init__(self, regressor, **kwargs):
+        self.regressor = regressor
+        super().__init__(**kwargs) # this goes to SumForecaster
+
+class SumWeightedPastReturns(VectorSum, OnWeightedPastReturns):
+    """Sum non-nan past returns, excluding cash, weighted by regressor."""
+
+    def __init__(self, regressor, **kwargs):
+        self.regressor = regressor
+        super().__init__(**kwargs) # this goes to SumForecaster
+
+# We can reproduce this design pattern for other base forecasters
+
+class RegressionXtYReturns(HistoricalMeanReturn):
+    """Class for the XtY matrix of returns regression forecaster."""
+
+    def __init__(self, regressor, **kwargs):
+        assert isinstance(regressor, UserProvidedRegressor)
+
+        # call super().__init__ first, then overwrite num and denom
+        super().__init__(**kwargs)
+
+        # regression part
+        self.regressor = regressor
+        self._numerator = SumWeightedPastReturns(regressor=regressor, **kwargs)
+        self._denominator = CountWeightedPastReturns(
+            regressor=regressor, **kwargs)
+
+    # def _work_with(self, past_returns, **kwargs):
+    #     """Base DataFrame we work with."""
+    #     return past_returns.iloc[:, :-1]
+
+    # # pylint: disable=arguments-differ
+    # def _dataframe_selector(self, **kwargs):
+    #     """Return dataframe to compute the historical means of."""
+    #     regr_on_df = self.regressor._get_all_history(
+    #         self._work_with(**kwargs).index)
+    #     return self._work_with(
+    #         **kwargs).multiply(regr_on_df, axis=0).dropna(how='all')
+
+    # def _get_last_row(self, **kwargs):
+    #     """Return last row of the dataframe we work with.
+
+    #     This method receives the **kwargs passed to :meth:`values_in_time`.
+
+    #     You may redefine it if obtaining the full dataframe is expensive,
+    #     during online update (in most cases) only this method is required.
+    #     """
+    #     return self._work_with(
+    #         **kwargs).iloc[-1] * self.regressor.current_value
+
 
 class RegressionMeanReturn(BaseForecast):
     """Test class."""
@@ -1159,6 +1233,9 @@ class RegressorsXtXMatrix(HistoricalCovariance):
         # raise Exception
         return result1
 
+###
+# More covariance classes
+###
 
 def project_on_psd_cone_and_factorize(covariance):
     """Factorize matrix and remove negative eigenvalues.
