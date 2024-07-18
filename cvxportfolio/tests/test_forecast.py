@@ -49,8 +49,10 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
             t=self.market_data.trading_calendar()[20])
 
         forecaster = cvx.forecast.HistoricalCovariance(kelly=False)
-
-        full_cov, t_fore = forecaster.estimate(market_data=self.market_data)
+        t_fore = self.market_data.trading_calendar()[-1]
+        full_cov = forecaster.estimate(
+            market_data=self.market_data,
+            t=t_fore)
 
         pdcov = self.market_data.returns.loc[
             self.market_data.returns.index < t_fore].iloc[:, :-1].cov(ddof=0)
@@ -458,9 +460,11 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
         returns.iloc[:20, 3:10] = np.nan
         returns.iloc[10:15, 10:20] = np.nan
 
+        forecaster.values_in_time_recursive(
+            t=pd.Timestamp('2022-01-01'), past_returns=returns)
+
         # pylint: disable=protected-access
-        count_matrix = forecaster._compute_denominator(
-            returns.iloc[:, :-1], None)
+        count_matrix = forecaster._denominator.current_value
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
                 (7, 24), (1, 15), (13, 22)]:
@@ -483,7 +487,7 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
             t=pd.Timestamp('2022-01-01'), past_returns=returns)
 
         # pylint: disable=protected-access
-        sum_matrix = forecaster._numerator
+        sum_matrix = forecaster._numerator.current_value
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
                 (7, 24), (1, 15), (13, 22)]:
