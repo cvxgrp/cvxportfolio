@@ -45,13 +45,6 @@ REPO = "https://github.com/cvxgrp/cvxportfolio/"
 # in July 2024
 html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
 
-# From same email also this is suggested, but we don't want the ReadTheDocs
-# extension to continue being there; if you uncomment be careful because the
-# dictionary is defined below.
-# Tell Jinja2 templates the build is running on Read the Docs
-# if os.environ.get("READTHEDOCS", "") == "True":
-#     html_context["READTHEDOCS"] = True
-
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
@@ -136,6 +129,12 @@ html_context = {
     "github_version": "main", # don't know if can point to tag of the page?
     "doc_path": "docs",
 }
+
+# From July 2024 email, see
+# https://docs.readthedocs.io/en/stable/addons.html#enabling-read-the-docs-addons
+# Tell Jinja2 templates the build is running on Read the Docs
+if os.environ.get("READTHEDOCS", "") == "True":
+    html_context["READTHEDOCS"] = True
 
 # however this seems confusing to me
 # html_show_sourcelink = False
