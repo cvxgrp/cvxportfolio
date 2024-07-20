@@ -41,6 +41,17 @@ REPO = "https://github.com/cvxgrp/cvxportfolio/"
 
 # -- General configuration ---------------------------------------------------
 
+# Set canonical URL from the Read the Docs Domain; from ReadTheDocs email
+# in July 2024
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
+
+# From same email also this is suggested, but we don't want the ReadTheDocs
+# extension to continue being there; if you uncomment be careful because the
+# dictionary is defined below.
+# Tell Jinja2 templates the build is running on Read the Docs
+# if os.environ.get("READTHEDOCS", "") == "True":
+#     html_context["READTHEDOCS"] = True
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
