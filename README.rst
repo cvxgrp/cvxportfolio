@@ -36,8 +36,8 @@ The documentation of the library is at
 
    Since end of 2023 we're running daily `example strategies
    <https://github.com/cvxgrp/cvxportfolio/tree/master/examples/strategies>`_
-   using the `development (main) branch
-   <https://github.com/cvxgrp/cvxportfolio/tree/main/>`_.; each day we commit
+   using the `development (master) branch
+   <https://github.com/cvxgrp/cvxportfolio/tree/master/>`_.; each day we commit
    target weights and initial holdings to the repository. All the code that
    runs them, including the `cron script
    <https://github.com/cvxgrp/cvxportfolio/blob/master/strategies_runner.sh>`_,
@@ -68,8 +68,8 @@ Advanced: install development version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can also install the development version. It is tested daily by the
-example strategies. We host it in the `main branch
-<https://github.com/cvxgrp/cvxportfolio/tree/main/>`_. It is named after
+example strategies. We host it in the `master branch
+<https://github.com/cvxgrp/cvxportfolio/tree/master/>`_. It is named after
 the current stable version; each time we make a release we update to the new
 version and merge to the master branch, which is shown on the homepage of
 the repository. If this sounds complicated, avoid installing the development
@@ -77,7 +77,7 @@ version.
 
 .. code:: bash
 
-   pip install --upgrade --force-reinstall git+https://github.com/cvxgrp/cvxportfolio@main
+   pip install --upgrade --force-reinstall git+https://github.com/cvxgrp/cvxportfolio@master
 
 .. Test
 
@@ -215,10 +215,10 @@ and then clone your fork)
    git clone https://github.com/cvxgrp/cvxportfolio.git
    cd cvxportfolio
 
-We develop in the ``main`` branch. So you should `check out
-<https://git-scm.com/docs/git-checkout>`_ that one. The default branch shown on
-the homepage of the repository is the ``master`` branch. It hosts the last
-release.
+.. We develop in the ``main`` branch. So you should `check out
+.. <https://git-scm.com/docs/git-checkout>`_ that one. The default branch shown on
+.. the homepage of the repository is the ``master`` branch. It hosts the last
+.. release.
 
 Then, you should have a look at our
 `Makefile <https://www.gnu.org/software/make/manual/make.html#Introduction>`_

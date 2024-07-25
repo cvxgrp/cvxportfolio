@@ -20,7 +20,7 @@
 #
 # 
 # We run this in a cron job, from the root of repository in the development
-# environment (main branch):
+# environment (master branch):
 # - at 8:30 London time with arguments ftse100_daily
 # - at 10:00 New York time with arguments dow30_daily ndx100_daily sp500_daily
 #

@@ -806,7 +806,7 @@ class HistoricalMeanVolume(BaseForecast):
         """
         return self._numerator.current_value / self._denominator.current_value
 
-class MatrixCount(VectorCount): # pylint: disable=abstract-method
+class JointCount(VectorCount): # pylint: disable=abstract-method
     """Intermediate class: joint count for the denominator of covariances.
     
     We inherit from :class:`VectorCount` which implements a check for
@@ -827,11 +827,11 @@ class MatrixCount(VectorCount): # pylint: disable=abstract-method
         return np.outer(nonnull, nonnull)
 
 
-class CovarianceDenominator(MatrixCount, OnPastReturns):
+class JointCountPastReturns(JointCount, OnPastReturns):
     """Compute denominator of (Kelly) covariance of past returns."""
 
-class MatrixSum(SumForecaster): # pylint: disable=abstract-method
-    """Intermediate class: joint sum for the denominator of covariances."""
+class JointSum(SumForecaster): # pylint: disable=abstract-method
+    """Intermediate class: joint sum for the numerator of covariances."""
 
     def _batch_compute(self, df, emw_weights):
         """Compute for a batch at once."""
@@ -846,7 +846,7 @@ class MatrixSum(SumForecaster): # pylint: disable=abstract-method
         filled = last_row.fillna(0.)
         return np.outer(filled, filled)
 
-class CovarianceNumerator(MatrixSum, OnPastReturns):
+class JointSumPastReturns(JointSum, OnPastReturns):
     """Compute numerator of (Kelly) covariance of past returns."""
 
 class JointMean(SumForecaster): # pylint: disable=abstract-method
@@ -892,9 +892,9 @@ class HistoricalCovariance(BaseForecast):
         self.half_life = half_life
         self.rolling = rolling
         self.kelly = kelly
-        self._denominator = CovarianceDenominator(
+        self._denominator = JointCountPastReturns(
             half_life=half_life, rolling=rolling)
-        self._numerator = CovarianceNumerator(
+        self._numerator = JointSumPastReturns(
             half_life=half_life, rolling=rolling)
         if not self.kelly:
             self._correction = JointMeanReturns(

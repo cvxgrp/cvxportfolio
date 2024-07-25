@@ -126,7 +126,7 @@ html_context = {
     "github_url": "https://github.com",
     "github_user": "cvxgrp",
     "github_repo": "cvxportfolio",
-    "github_version": "main", # don't know if can point to tag of the page?
+    "github_version": "master", # don't know if can point to tag of the page?
     "doc_path": "docs",
 }
 
