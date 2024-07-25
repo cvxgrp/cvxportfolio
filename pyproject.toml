@@ -72,12 +72,12 @@ omit = ["*/site-packages/*", "*/dist-packages/*"]
 
 [tool.diff_cover]
 # this will be superflous once we push coverage to 100
-compare_branch = "origin/main"
+compare_branch = "origin/master"
 fail_under = 99
 
 [tool.diff_quality]
 # this will be superflous once we push pylint score to 10
-compare_branch = "origin/main"
+compare_branch = "origin/master"
 fail_under = 99
 
 [tool.autopep8]

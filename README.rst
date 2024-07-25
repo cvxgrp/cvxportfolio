@@ -70,9 +70,9 @@ Advanced: install development version
 You can also install the development version. It is tested daily by the
 example strategies. We host it in the `master branch
 <https://github.com/cvxgrp/cvxportfolio/tree/master/>`_. It is named after
-the current stable version; each time we make a release we update to the new
-version and merge to the master branch, which is shown on the homepage of
-the repository. If this sounds complicated, avoid installing the development
+the current stable version; each time we make a new release we `tag it with git
+<https://github.com/cvxgrp/cvxportfolio/tags>`_.
+If this sounds complicated, avoid installing the development
 version.
 
 .. code:: bash

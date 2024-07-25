@@ -1018,6 +1018,22 @@ class SumWeightedPastReturns(VectorSum, OnWeightedPastReturns):
 
 # We can reproduce this design pattern for other base forecasters
 
+
+class OnPastRegressors(SumForecaster):
+    """Select history of regressors."""
+
+    def __init__(self, regressors, **kwargs):
+        self.regressors = regressors
+        super().__init__(**kwargs)
+
+    def _dataframe_selector( # pylint: disable=arguments-differ
+            self, **kwargs):
+        """History of past regressors, on index of given asset."""
+
+class XtXMatrix(SumForecaster):
+    ...
+
+
 class RegressionXtYReturns(HistoricalMeanReturn):
     """Class for the XtY matrix of returns regression forecaster."""
 
