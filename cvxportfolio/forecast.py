@@ -509,10 +509,9 @@ class VectorCount(SumForecaster): # pylint: disable=abstract-method
         :rtype: pd.Series or np.array
         """
         result = super().values_in_time(t=t, **kwargs)
-        with warnings.catch_warnings(): # op below warns on old pandas
-            warnings.filterwarnings( # pragma: no cover
-                "ignore", category=FutureWarning)
-            mindenom = np.min(result, axis=None)
+
+        mindenom = np.min(result.values, axis=None)
+
         if mindenom == 0:
             raise ForecastError(
                 f'{self.__class__.__name__} can not compute the forecast at'
