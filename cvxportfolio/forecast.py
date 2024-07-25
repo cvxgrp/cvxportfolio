@@ -509,7 +509,7 @@ class VectorCount(SumForecaster): # pylint: disable=abstract-method
         """
         result = super().values_in_time(t=t, **kwargs)
 
-        mindenom = np.min(result)
+        mindenom = np.min(result, axis=None)
         if mindenom == 0:
             raise ForecastError(
                 f'{self.__class__.__name__} can not compute the forecast at'
