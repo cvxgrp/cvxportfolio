@@ -1073,7 +1073,7 @@ class RegressionXtYReturns(HistoricalMeanReturn):
     #         **kwargs).iloc[-1] * self.regressor.current_value
 
 
-class RegressionMeanReturn(BaseForecast):
+class RegressionMeanReturn(BaseForecast): # pragma: no cover
     """Test class."""
 
     def __init__(self, regressors, **kwargs):
@@ -1199,7 +1199,7 @@ class RegressionMeanReturn(BaseForecast):
     #     return df.multiply(regr_on_df, axis=0).dropna(how='all')
 
 
-class RegressorsXtXMatrix(HistoricalCovariance):
+class RegressorsXtXMatrix(HistoricalCovariance): # pragma: no cover
     """XtX matrix used for linear regression.
 
     The user doesn't interact with this class directly, it is managed by the
