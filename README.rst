@@ -189,18 +189,11 @@ devoted to portfolio optimization (indeed, Cvxportfolio was born out of those).
 Contributions
 -------------
 
-We welcome contributors and you don't need to sign a CLA. If you don't have
-a Github account you may also send a 
-`git patch via email <https://git-scm.com/docs/git-send-email>`_ to the 
-`project maintainer <https://github.com/enzbus>`_.
+We welcome contributions and you don't need to sign a CLA.
 
 Bug fixes, improvements in the documentations and examples,
 new constraints, new cost objects, ..., are good contributions and can be done
 even if you're not familiar with the low-level details on the library.
-For more advanced contributions we recommend reading the
-`TODOs and roadmap
-<https://github.com/cvxgrp/cvxportfolio/blob/master/TODOs_ROADMAP.rst>`_
-file.
 
 Development
 -----------
@@ -291,9 +284,6 @@ The history of our releases (source distributions and wheels) is visible on our
 Releases are also tagged in our git repository and include a short summary
 of changes in 
 `their commit messages <https://github.com/cvxgrp/cvxportfolio/tags>`_.
-
-We maintain a `document listing the planned changes and target releases
-<https://github.com/cvxgrp/cvxportfolio/blob/master/TODOs_ROADMAP.rst>`_. 
 
 
 .. Citing
