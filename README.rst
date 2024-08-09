@@ -1,13 +1,31 @@
+.. Copyright (C) 2023-2024 Enzo Busseti
+.. Copyright (C) 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+
+.. This file is part of Cvxportfolio.
+
+.. Cvxportfolio is free software: you can redistribute it and/or modify it under
+.. the terms of the GNU General Public License as published by the Free Software
+.. Foundation, either version 3 of the License, or (at your option) any later
+.. version.
+
+.. Cvxportfolio is distributed in the hope that it will be useful, but WITHOUT
+.. ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+.. FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+.. details.
+
+.. You should have received a copy of the GNU General Public License along with
+.. Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
 `Cvxportfolio <https://www.cvxportfolio.com>`_
 ==============================================
 
 |CVXportfolio on PyPI| |linting: pylint| |Coverage Status|
-|Documentation Status| |Apache 2.0 License| |Anaconda-Server Badge|
+|Documentation Status| |GPLv3| |Anaconda-Server Badge|
 
 
-Cvxportfolio is an object-oriented library for portfolio optimization
-and back-testing. It implements models described in the `accompanying paper
-<https://cvxportfolio.readthedocs.io/en/master/_static/cvx_portfolio.pdf>`_.
+`Cvxportfolio <https://cvxportfolio.readthedocs.io>`_ is an object-oriented
+library for portfolio optimization and back-testing. It implements models
+described in the `accompanying paper
+<https://cvxportfolio.readthedocs.io/en/stable/_static/cvx_portfolio.pdf>`_.
 
 The documentation of the library is at
 `www.cvxportfolio.com <https://www.cvxportfolio.com>`_.
@@ -18,22 +36,26 @@ The documentation of the library is at
 
    Since end of 2023 we're running daily `example strategies
    <https://github.com/cvxgrp/cvxportfolio/tree/master/examples/strategies>`_
-   using the development version (master branch); each day we commit target
-   weights and initial holdings to the repository. All the code that runs them,
-   including the cron script, is in the repository.
+   using the `development (master) branch
+   <https://github.com/cvxgrp/cvxportfolio/tree/master/>`_.; each day we commit
+   target weights and initial holdings to the repository. All the code that
+   runs them, including the `cron script
+   <https://github.com/cvxgrp/cvxportfolio/blob/master/strategies_runner.sh>`_,
+   is in the repository.
 
 Installation
 ------------
 
-Cvxportolio is written in Python and can be easily installed in any Python
-environment by simple:
+Cvxportolio is written in `Python <https://docs.python.org/>`_ and can be
+installed in any `Python environment
+<https://docs.python.org/3/library/venv.html>`_ by simple:
 
 .. code:: bash
 
    pip install -U cvxportfolio
 
 You can see how this works on our `Installation and Hello
-World <https://youtu.be/1ThOKEu371M>`_ youtube video.
+World <https://youtu.be/1ThOKEu371M>`_ Youtube video.
 Anaconda installs 
 `are also supported <https://anaconda.org/conda-forge/cvxportfolio>`_.
 
@@ -42,6 +64,20 @@ interfacing with numerical solvers and `Pandas <https://pandas.pydata.org/>`_
 for interfacing with databases. We don't require any specific version of our
 dependencies and test against all recent ones (up to a few years ago).
 
+Advanced: install development version
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can also install the development version. It is tested daily by the
+example strategies. We host it in the `master branch
+<https://github.com/cvxgrp/cvxportfolio/tree/master/>`_. It is named after
+the current stable version; each time we make a new release we `tag it with git
+<https://github.com/cvxgrp/cvxportfolio/tags>`_.
+If this sounds complicated, avoid installing the development
+version.
+
+.. code:: bash
+
+   pip install --upgrade --force-reinstall git+https://github.com/cvxgrp/cvxportfolio@master
 
 .. Test
 
@@ -113,13 +149,6 @@ their output and comments.
 <https://github.com/cvxgrp/cvxportfolio/blob/master/examples>`_ 
 are available in the code repository. 
 
-`The original examples from the paper 
-<https://github.com/cvxgrp/cvxportfolio/tree/0.0.X/examples>`_ 
-are visible in a dedicated branch,
-and are being translated to run with the stable versions (``1.0.0`` and above) of the
-library. The translations are visible at `this documentation page
-<https://cvxportfolio.readthedocs.io/en/stable/examples/paper_examples.html>`_.
-
 We show in the example on `user-provided
 forecasters <https://cvxportfolio.readthedocs.io/en/stable/examples/user_provided_forecasters.html>`_
 how the user can define custom classes to forecast the expected returns
@@ -140,7 +169,7 @@ the best strategy to apply to any given selection of assets.
 Similar projects
 ----------------
 
-There are many open-source projects for portfolio optimization and back-testing.
+There are many software projects for portfolio optimization and back-testing.
 Some notable ones in the Python ecosystem are `Zipline <https://github.com/quantopian/zipline>`_,
 which implements a call-back model for back-testing very similar to the one
 we provide, `Riskfolio-Lib <https://riskfolio-lib.readthedocs.io/en/latest/examples.html>`_
@@ -160,18 +189,11 @@ devoted to portfolio optimization (indeed, Cvxportfolio was born out of those).
 Contributions
 -------------
 
-We welcome contributors and you don't need to sign a CLA. If you don't have
-a Github account you may also send a 
-`git patch via email <https://git-scm.com/docs/git-send-email>`_ to the 
-`project maintainer <https://github.com/enzbus>`_.
+We welcome contributions and you don't need to sign a CLA.
 
 Bug fixes, improvements in the documentations and examples,
 new constraints, new cost objects, ..., are good contributions and can be done
 even if you're not familiar with the low-level details on the library.
-For more advanced contributions we recommend reading the
-`TODOs and roadmap
-<https://github.com/cvxgrp/cvxportfolio/blob/master/TODOs_ROADMAP.rst>`_
-file.
 
 Development
 -----------
@@ -185,6 +207,11 @@ and then clone your fork)
 
    git clone https://github.com/cvxgrp/cvxportfolio.git
    cd cvxportfolio
+
+.. We develop in the ``main`` branch. So you should `check out
+.. <https://git-scm.com/docs/git-checkout>`_ that one. The default branch shown on
+.. the homepage of the repository is the ``master`` branch. It hosts the last
+.. release.
 
 Then, you should have a look at our
 `Makefile <https://www.gnu.org/software/make/manual/make.html#Introduction>`_
@@ -258,9 +285,6 @@ Releases are also tagged in our git repository and include a short summary
 of changes in 
 `their commit messages <https://github.com/cvxgrp/cvxportfolio/tags>`_.
 
-We maintain a `document listing the planned changes and target releases
-<https://github.com/cvxgrp/cvxportfolio/blob/master/TODOs_ROADMAP.rst>`_. 
-
 
 .. Citing
 
@@ -308,11 +332,12 @@ The latter is also the first chapter of this PhD thesis:
     }
 
 
-Licensing
----------
+Legal
+-----
 
-Cvxportfolio is licensed under the `Apache 2.0 <https://www.apache.org/licenses/LICENSE-2.0>`_ permissive
-open source license.
+Cvxportfolio is `free software <https://www.gnu.org/philosophy/free-sw.html>`_.
+It is released under the terms of the `General Public License, version 3
+<https://www.gnu.org/licenses/gpl-3.0.html>`_.
 
 .. |CVXportfolio on PyPI| image:: https://img.shields.io/pypi/v/cvxportfolio.svg
    :target: https://pypi.org/project/cvxportfolio/
@@ -322,7 +347,7 @@ open source license.
    :target: https://coveralls.io/github/cvxgrp/cvxportfolio?branch=master
 .. |Documentation Status| image:: https://readthedocs.org/projects/cvxportfolio/badge/?version=stable
    :target: https://cvxportfolio.readthedocs.io/en/stable/?badge=stable
-.. |Apache 2.0 License| image:: https://img.shields.io/badge/License-Apache%202.0-green.svg
-   :target: https://github.com/cvxgrp/cvxportfolio/blob/master/LICENSE
+.. |GPLv3| image:: https://img.shields.io/badge/License-GPLv3-blue.svg
+   :target: https://www.gnu.org/licenses/gpl-3.0
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/cvxportfolio/badges/version.svg
    :target: https://anaconda.org/conda-forge/cvxportfolio

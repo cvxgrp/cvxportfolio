@@ -1,16 +1,19 @@
-# Copyright 2023 Enzo Busseti
+# Copyright (C) 2023-2024 Enzo Busseti
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# This file is part of Cvxportfolio.
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+# Cvxportfolio is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Cvxportfolio is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
 """This module implements Estimator base classes.
 
 Policies, costs, and constraints inherit from this.
@@ -81,6 +84,7 @@ class Estimator:
             subestimator.initialize_estimator_recursive(**kwargs)
         if hasattr(self, "initialize_estimator"):
             self.initialize_estimator(**kwargs)
+        self._current_value = None
 
     def finalize_estimator(self, **kwargs):
         """Finalize estimator instance (currently unused).
@@ -96,7 +100,6 @@ class Estimator:
         :param kwargs: Reserved for future expansion.
         :type kwargs: dict
         """
-
         # we don't raise NotImplementedError because this is called
         # on classes that don't re-define it
 
@@ -115,6 +118,7 @@ class Estimator:
             subestimator.finalize_estimator_recursive(**kwargs)
         if hasattr(self, "finalize_estimator"):
             self.finalize_estimator(**kwargs)
+        self._current_value = None
 
     _current_value = None
 
@@ -195,7 +199,7 @@ class Estimator:
             # pylint: disable=assignment-from-no-return
             self._current_value = self.values_in_time(**kwargs)
             return self.current_value
-        return None # pragma: no cover
+        return self.current_value # pragma: no cover
 
     def collect_hyperparameters(self):
         """Collect (recursively) all hyperparameters defined in a policy.
@@ -234,8 +238,7 @@ class Estimator:
         for name, attr in self.__dict__.items():
             if attr is None:
                 continue
-            if hasattr(attr, "values_in_time_recursive") or\
-                    hasattr(attr, "values_in_time") or (name[0] != '_'):
+            if name[0] != '_':
                 core += name + '=' + attr.__repr__() + ', '
         core = core[:-2]  # remove trailing comma and space if present
         rhs = ')'
@@ -572,9 +575,10 @@ class DataEstimator(SimulatorEstimator):
     def _internal_values_in_time(self, t, **kwargs):
         """Internal method called by :meth:`values_in_time`."""
 
-        # here we trust the result (change?)
+        # here we trust the result, assuming it's internal class
         if hasattr(self.data, "values_in_time_recursive"):
-            return self.data.current_value
+            return self.data.current_value.values if hasattr(
+                self.data.current_value, 'values') else self.data.current_value
 
         # here (probably user-provided) we check
         if hasattr(self.data, "values_in_time"):

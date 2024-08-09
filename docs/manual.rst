@@ -1,3 +1,20 @@
+.. Copyright (C) 2023-2024 Enzo Busseti
+
+.. This file is part of Cvxportfolio.
+
+.. Cvxportfolio is free software: you can redistribute it and/or modify it under
+.. the terms of the GNU General Public License as published by the Free Software
+.. Foundation, either version 3 of the License, or (at your option) any later
+.. version.
+
+.. Cvxportfolio is distributed in the hope that it will be useful, but WITHOUT
+.. ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+.. FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+.. details.
+
+.. You should have received a copy of the GNU General Public License along with
+.. Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
+
 Manual
 ======
 
@@ -485,15 +502,14 @@ CVXPY was born not very long before Cvxportfolio, and is now a very successful
 library with lots of users and contributors, in both the applied and
 theoretical optimization communities.
 
-In the days before such high-level
-libraries were available, users typically had to code their application programs
-against the APIs offered directly by the solvers, resulting in complex, difficult
-to debug, and un-maintainable codes. Today, the maintainers of the numerical
-solvers (both open-source and commercial) are themselves involved in developing
-and maintaining the interfaces from CVXPY to their solvers, ensuring best
-compatibility. Cvxportfolio users need not be expert or even familiar with
-CVXPY, since Cvxportfolio offers an even higher level interface, automating
-the definition and management of optimization objects like variables and
+In the days before such high-level libraries were available, users typically
+had to code their application programs against the APIs offered directly by the
+solvers, resulting in complex, difficult to debug, and un-maintainable codes.
+Today, the maintainers of the numerical solvers are themselves involved in
+developing and maintaining the interfaces from CVXPY to their solvers, ensuring
+best compatibility. Cvxportfolio users need not be expert or even familiar with
+CVXPY, since Cvxportfolio offers an even higher level interface, automating the
+definition and management of optimization objects like variables and
 constraints.
 
 One area however in which awareness of the underlying CVXPY process might be
