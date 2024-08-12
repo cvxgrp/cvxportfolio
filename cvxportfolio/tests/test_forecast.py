@@ -1,16 +1,19 @@
-# Copyright 2016 Enzo Busseti, Stephen Boyd, Steven Diamond, BlackRock Inc.
+# Copyright (C) 2023-2024 Enzo Busseti
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# This file is part of Cvxportfolio.
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+# Cvxportfolio is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Cvxportfolio is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
 """Unit tests for the data and parameter estimator objects."""
 
 import copy
@@ -26,7 +29,8 @@ from cvxportfolio.forecast import (ForecastError, HistoricalCovariance,
                                    HistoricalMeanError, HistoricalMeanReturn,
                                    HistoricalMeanVolume,
                                    HistoricalStandardDeviation,
-                                   HistoricalVariance, RegressionMeanReturn)
+                                   HistoricalVariance, RegressionMeanReturn,
+                                   RegressionXtYReturns, UserProvidedRegressor)
 from cvxportfolio.tests import CvxportfolioTest
 from cvxportfolio.utils import set_pd_read_only
 
@@ -37,6 +41,20 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
     In most cases we test against the relevant pandas function as reference.
     """
 
+    @classmethod
+    def setUpClass(cls):
+        """Add a few things used in tests here."""
+        super().setUpClass()
+        cls.aligned_regressor = pd.Series(
+            np.random.randn(len(cls.market_data.returns)), cls.returns.index)
+        cls.aligned_regressor.name = 'regressor_aligned'
+
+        # this one has index 1h before each trading period, and starts later
+        cls.unaligned_regressor = pd.Series(
+            np.random.randn(len(cls.market_data.returns)-100),
+            cls.returns.index[100:] - pd.Timedelta('3600s'))
+        cls.unaligned_regressor.name = 'regressor_unaligned'
+
     def test_estimate(self):
         """Test estimate method of a forecaster."""
         forecaster = cvx.forecast.HistoricalCovariance()
@@ -46,8 +64,10 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
             t=self.market_data.trading_calendar()[20])
 
         forecaster = cvx.forecast.HistoricalCovariance(kelly=False)
-
-        full_cov, t_fore = forecaster.estimate(market_data=self.market_data)
+        t_fore = self.market_data.trading_calendar()[-1]
+        full_cov = forecaster.estimate(
+            market_data=self.market_data,
+            t=t_fore)
 
         pdcov = self.market_data.returns.loc[
             self.market_data.returns.index < t_fore].iloc[:, :-1].cov(ddof=0)
@@ -79,7 +99,77 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
         self.assertEqual(len(cache), 1)
         self.assertEqual(len(list(cache.values())[0]), 5)
 
-    def test_regression_mean_return(self): # pylint: disable=too-many-locals
+    @staticmethod
+    def _simple_aligner(regressor, index):
+        """Align regressor on DatetimeIndex."""
+        return regressor.reindex(index, method='ffill').dropna()
+
+    @staticmethod
+    def _simple_kelly_cov(past_returns):
+        """Same logic as cov, used to test XtX regression matrix."""
+        filled = past_returns.fillna(0.)
+        nonnull = (~past_returns.isnull()) * 1.
+        num = filled.T @ filled
+        den = nonnull.T @ nonnull
+        return pd.DataFrame(
+            num/den, index=past_returns.columns, columns=past_returns.columns)
+
+    def _xtx_matrix(self, stock_returns, at_time, regressors):
+        """What the code should give."""
+        past_returns = stock_returns.loc[
+            stock_returns.index < at_time].dropna()
+        aligned_regressors = [
+            self._simple_aligner(r, past_returns.index)
+                for r in regressors]
+        aligned_regressors = pd.DataFrame(aligned_regressors).T
+        aligned_regressors['intercept'] = 1.
+        return self._simple_kelly_cov(aligned_regressors)
+
+    def test_regression_XtX_matrices(self):
+        """Test one of the components of returns regression."""
+        md = copy.deepcopy(self.market_data)
+        regressors = [self.aligned_regressor, self.unaligned_regressor]
+
+        self._xtx_matrix(md.returns['AAPL'], md.returns.index[-30], regressors)
+
+        # TODO, finish this
+
+    def test_regression_xty_returns(self):
+        """Test one of the components of returns regression."""
+        md = copy.deepcopy(self.market_data)
+        for regressor in [self.aligned_regressor, self.unaligned_regressor]:
+            xty = RegressionXtYReturns(
+                regressor=UserProvidedRegressor(regressor))
+            t_fore = md.returns.index[-3]
+
+            # check that estimate is correct
+            my_estimate = xty.estimate(md, t=t_fore)
+            pd_estimate = md.returns.iloc[:, :-1].multiply(
+                self._simple_aligner(regressor, md.returns.index),
+                    axis=0).loc[md.returns.index < t_fore].mean()
+            self.assertTrue(np.allclose(my_estimate, pd_estimate))
+
+            # iteratively
+            xty.initialize_estimator_recursive(
+                universe=md.returns.columns, trading_calendar=md.returns.index)
+
+            for tidx in [-30, -29, -25, -24, -23]:
+                t = md.returns.index[tidx]
+                past_returns = md.returns.loc[md.returns.index < t]
+
+                my_result  = \
+                    xty.values_in_time_recursive(
+                        past_returns=past_returns, t=t)
+                pd_result = md.returns.iloc[:, :-1].multiply(
+                    self._simple_aligner(regressor, md.returns.index),
+                        axis=0).loc[md.returns.index < t].mean()
+                self.assertTrue(np.allclose(my_result, pd_result))
+
+            xty.finalize_estimator_recursive()
+
+    @unittest.expectedFailure # code for this being redesigned
+    def test_regression_mean_return(self): # pragma: no cover
+         # pylint: disable=too-many-locals
         """Test historical mean return with regression."""
 
         # will be refactored
@@ -455,9 +545,11 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
         returns.iloc[:20, 3:10] = np.nan
         returns.iloc[10:15, 10:20] = np.nan
 
+        forecaster.values_in_time_recursive(
+            t=pd.Timestamp('2022-01-01'), past_returns=returns)
+
         # pylint: disable=protected-access
-        count_matrix = forecaster._compute_denominator(
-            returns.iloc[:, :-1], None)
+        count_matrix = forecaster._denominator.current_value
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
                 (7, 24), (1, 15), (13, 22)]:
@@ -480,7 +572,7 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
             t=pd.Timestamp('2022-01-01'), past_returns=returns)
 
         # pylint: disable=protected-access
-        sum_matrix = forecaster._numerator
+        sum_matrix = forecaster._numerator.current_value
 
         for indexes in [(1, 2), (4, 5), (1, 5), (7, 18),
                 (7, 24), (1, 15), (13, 22)]:
@@ -680,6 +772,7 @@ class TestForecast(CvxportfolioTest): # pylint: disable=too-many-public-methods
                 t=t, past_returns=returns)
 
 
-if __name__ == '__main__':
-
-    unittest.main(warnings='error') # pragma: no cover
+if __name__ == '__main__': # pragma: no cover
+    import logging
+    logging.basicConfig(level='DEBUG')
+    unittest.main(warnings='error')

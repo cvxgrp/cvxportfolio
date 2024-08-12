@@ -1,4 +1,23 @@
-"""
+# Copyright (C) 2024 The Cvxportfolio Contributors
+#
+# This file is part of Cvxportfolio.
+#
+# Cvxportfolio is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# Cvxportfolio is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
+"""This is a user-contributed example, and it may not be tested.
+
+*Work in progress.*
+
 This example demonstrates how to use cvxportfolio to backtest a portfolio that adjusts its leverage based on a forecast indicator.
 
 The policy implemented in this example uses a forecast indicator to determine the target leverage. If the indicator suggests
@@ -16,9 +35,9 @@ import cvxportfolio as cvx
 from cvxportfolio.estimator import DataEstimator
 from cvxportfolio.utils import set_pd_read_only
 
+
 class ForecastIndicator(object):
-    """
-    A simple forecast indicator that predicts future market stress based on historical volatility.
+    """A simple forecast indicator that predicts future market stress based on historical volatility.
 
     The indicator provides a forecast value between 0 and 1, where a higher value indicates a higher predicted market stress.
     """
@@ -26,13 +45,10 @@ class ForecastIndicator(object):
         self.lookback_period = lookback_period
 
     def calculate_indicator(self, returns):
-        """
-        Calculate the forecast indicator based on the volatility of the returns over the lookback period.
-        """
+        """Calculate the forecast indicator based on the volatility of the returns over the lookback period."""
         volatility = returns[-self.lookback_period:].std()
         indicator = np.clip(volatility / 0.05, 0, 1)  # Normalize and clip the indicator value
         return indicator
-
 
 
 class StressModel(object):
@@ -130,9 +146,7 @@ class ForeignCurrencyMarketData(cvx.DownloadedMarketData):
 
 
 class LeverageBasedOnIndicator(cvx.policies.Policy):
-    """
-    A policy that adjusts the leverage of the portfolio based on a forecast indicator.
-    """
+    """A policy that adjusts the leverage of the portfolio based on a forecast indicator."""
     def __init__(self, target_weights, forecast_indicator, max_leverage=3.0, min_leverage=1.0):
         self.target_weights = DataEstimator(target_weights, data_includes_cash=True)
         self.forecast_indicator = forecast_indicator

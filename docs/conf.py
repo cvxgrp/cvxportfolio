@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'Cvxportfolio'
-copyright = '2024, The Cvxportfolio Authors'
+copyright = '2016-2024, The Cvxportfolio Authors'
 author = 'The Cvxportfolio Authors'
 
 # The full version, including alpha/beta/rc tags
@@ -40,6 +40,10 @@ language = 'en'
 REPO = "https://github.com/cvxgrp/cvxportfolio/"
 
 # -- General configuration ---------------------------------------------------
+
+# Set canonical URL from the Read the Docs Domain; from ReadTheDocs email
+# in July 2024
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -125,6 +129,12 @@ html_context = {
     "github_version": "master", # don't know if can point to tag of the page?
     "doc_path": "docs",
 }
+
+# From July 2024 email, see
+# https://docs.readthedocs.io/en/stable/addons.html#enabling-read-the-docs-addons
+# Tell Jinja2 templates the build is running on Read the Docs
+if os.environ.get("READTHEDOCS", "") == "True":
+    html_context["READTHEDOCS"] = True
 
 # however this seems confusing to me
 # html_show_sourcelink = False
