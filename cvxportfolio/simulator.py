@@ -55,6 +55,7 @@ from multiprocess import Lock, Pool  # pylint: disable=no-name-in-module
 from .cache import _load_cache, _mp_init, _store_cache
 from .costs import StocksHoldingCost, StocksTransactionCost
 from .data import BASE_LOCATION, DownloadedMarketData, UserProvidedMarketData
+from .policies import AllCash
 from .result import BacktestResult
 
 PPY = 252
@@ -397,7 +398,8 @@ class MarketSimulator:
                     current_volumes=current_volumes,
                     current_prices=current_prices)
 
-                if hasattr(used_policy, 'benchmark'):
+                if hasattr(used_policy, 'benchmark') and not \
+                        isinstance(used_policy.benchmark, AllCash):
                     w_bm = used_policy.benchmark.current_value
                     bm_ret = w_bm @ current_returns
                 else:
