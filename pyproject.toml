@@ -8,9 +8,9 @@ authors = [{name = "Enzo Busseti"}, {name = "Stephen Boyd"},
     {name = "Steven Diamond"}, {name = "BlackRock Inc."}]
 maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
 dependencies = ["pandas",
+    # July 2024, Numpy 2 causes issues with CVXPY's conic interface on Py 3.12
     "numpy; python_version<'3.12'",
-    # Numpy 2.0.0 broke something with CVXPY's conic interface on Py 3.12
-    "numpy!=2.0.0; python_version>='3.12'",
+    "numpy<2.0.0; python_version>='3.12'",
     "matplotlib", "requests", "cvxpy",
     "multiprocess", # robustifies usage w/ 3rd party modules
     "scs" # it's hardcoded as fallback solver if numerical errors
