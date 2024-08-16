@@ -163,10 +163,18 @@ class TestSimulator(CvxportfolioTest):
                 [[0.]], index=[pd.Timestamp.today()]))
 
         with self.assertRaises(SyntaxError):
-            MarketSimulator(returns=pd.DataFrame(
-                [[0.]], columns=['USDOLLAR'], index=[pd.Timestamp.today()]),
-                volumes=pd.DataFrame([[0.]]),
-                min_history=pd.Timedelta('0d'))
+            MarketSimulator(volumes=pd.DataFrame(
+                [[0.]], index=[pd.Timestamp.today()]))
+
+        with self.assertRaises(SyntaxError):
+            MarketSimulator(
+                returns=self.returns, min_history=pd.Timedelta('0d'),
+                cash_key='cash', max_fraction_liquidity=0.0)
+
+        with self.assertRaises(SyntaxError):
+            MarketSimulator(
+                returns=self.returns, min_history=pd.Timedelta('0d'),
+                cash_key='cash', max_fraction_liquidity=1.01)
 
         # not raises
         _ = MarketSimulator(
@@ -1048,7 +1056,29 @@ class TestSimulator(CvxportfolioTest):
 
         self.assertEqual( # every day there's this log line
             len(re.findall(
-                'the simulator canceled trades.*AAPL', result.logs)), 21)
+                'MarketSimulator canceled trades.*AAPL', result.logs)), 21)
+
+    def test_cap_trades(self):
+        """Test capping trades."""
+
+        vols = pd.DataFrame(self.volumes, copy=True)
+        vols['AAPL'] = 1e6 # very small
+        market_data = cvx.UserProvidedMarketData(
+            returns=pd.DataFrame(self.returns, copy=True), volumes=vols,
+            prices=pd.DataFrame(self.prices, copy=True), cash_key='cash',
+            min_history=pd.Timedelta('0d'))
+
+        sim = cvx.MarketSimulator(
+            market_data=market_data, base_location=self.datadir,
+            max_fraction_liquidity=0.05)
+
+        result = sim.backtest(
+            cvx.Uniform(), start_time='2014-12-01', end_time='2014-12-31',
+            initial_value=100e9) # huge, so we hit the cap on AAPL for sure
+
+        self.assertTrue(np.isclose(result.u.AAPL.mean(), 1e6 * 0.05))
+        self.assertTrue(
+            np.all(result.z_policy.AAPL.dropna() > result.z.AAPL.dropna()))
 
     def test_svd_covariance_forecaster(self):
         """Test SVD covariance forecaster in simulation."""

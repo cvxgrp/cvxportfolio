@@ -136,6 +136,15 @@ class MarketSimulator:
     :param round_trades: If market prices are available, round trades to
         integer number of shares.
     :type round_trades: bool
+
+    :param max_fraction_liquidity: Optionally cap trades (in absolute value) up
+        to a certain fraction of the realized volume in a given period for each
+        asset, for example `0.05`, meaning 5%. Requires volumes to be provided
+        by the :class:`cvxportfolio.data.MarketData` server (otherwise it's
+        inactive). If used, this is applied before simulated costs are
+        computed. Default `None`, which disables this filter.
+    :type max_fraction_liquidity: float or None
+
     :param backtest_result_cls: Back-test result class (not instance) returned
         by the simulator. Use this if you wish to use a custom subclass of the
         default, :class:`cvxportfolio.result.BacktestResult`.
@@ -145,6 +154,7 @@ class MarketSimulator:
     # pylint: disable=too-many-arguments
     def __init__(self, universe=(), returns=None, volumes=None,
                  prices=None, market_data=None, costs=(), round_trades=False,
+                 max_fraction_liquidity=None,
                  datasource='YahooFinance',
                  cash_key="USDOLLAR",
                  base_location=BASE_LOCATION,
@@ -182,6 +192,16 @@ class MarketSimulator:
                     datasource=datasource)
 
         self.round_trades = round_trades
+
+        if max_fraction_liquidity is not None:
+            if (max_fraction_liquidity <= 0.) or (
+                    max_fraction_liquidity > 1.):
+                raise SyntaxError(
+                    "max_fraction_liquidity should be a positive number"
+                    + " lesser or equal than 1.0.")
+
+        self.max_fraction_liquidity = max_fraction_liquidity
+
         self.costs = [el() if isinstance(el, type) else el for el in costs]
         self.backtest_result_cls = backtest_result_cls
         # self.lock = Lock()
@@ -262,10 +282,26 @@ class MarketSimulator:
             non_tradable_stocks = current_volumes[current_volumes <= 0].index
             if len(non_tradable_stocks):
                 logger.info(
-                    "At time %s the simulator canceled trades on assets %s"
+                    "At time %s %s canceled trades on assets %s"
                     + " because their market volumes for the period are zero.",
-                    t, non_tradable_stocks)
+                    t, self.__class__.__name__, non_tradable_stocks)
             u[non_tradable_stocks] = 0.
+
+            if self.max_fraction_liquidity is not None:
+                capped_stocks = (
+                    np.abs(u.iloc[:-1])
+                    > current_volumes * self.max_fraction_liquidity)
+                capped_stocks = u.index[:-1][capped_stocks]
+                if len(capped_stocks):
+                    logger.info(
+                        "At time %s %s capped trades on assets %s"
+                        + " because their trades exceedes %s of the available"
+                        + " liquidity.", t,  self.__class__.__name__,
+                        capped_stocks, self.max_fraction_liquidity)
+                u[capped_stocks] = (
+                    np.sign(u[capped_stocks])
+                    * current_volumes[capped_stocks]
+                    * self.max_fraction_liquidity)
 
         # round trades
         if self.round_trades:
@@ -740,8 +776,10 @@ class MarketSimulator:
 
 
 class StockMarketSimulator(MarketSimulator):
-    """This class implements a simulator of the stock market. It simplifies the
-    interface of :class:`MarketSimulator` and has (realistic) default costs.
+    """This class simplifies :class:`MarketSimulator` for the stock market.
+
+    It has simple and realistic (although conservative) default costs and other
+    parameters.
 
     :param universe: List of Yahoo Finance stock names.
     :type universe: list
@@ -771,6 +809,10 @@ class StockMarketSimulator(MarketSimulator):
         True.
     :type round_trades: bool
 
+    :param max_fraction_liquidity: Cut trades to a maximum fraction of
+        available market liquidity. Default 5%.
+    :type max_fraction_liquidity: float or None
+
     :param kwargs: You can add any other argument to pass to
         :class:`MarketSimulator`'s initializer.
     :type kwargs: dict
@@ -779,10 +821,12 @@ class StockMarketSimulator(MarketSimulator):
     def __init__(self, universe=(),
                  costs=(StocksTransactionCost, StocksHoldingCost),
                  round_trades=True,
+                 max_fraction_liquidity=0.05,
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
                  trading_frequency=None, **kwargs):
 
         super().__init__(universe=universe,
                          costs=costs, round_trades=round_trades,
+                         max_fraction_liquidity=max_fraction_liquidity,
                          cash_key=cash_key, base_location=base_location,
                          trading_frequency=trading_frequency, **kwargs)

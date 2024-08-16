@@ -63,9 +63,9 @@ def _load_cache(signature, base_location):
     except FileNotFoundError:
         logger.info('Cache not found!')
         return {}
-    except EOFError: # pragma: no cover
+    except (EOFError, ModuleNotFoundError): # pragma: no cover
         logger.warning(
-            'Cache file %s is corrupt! Discarding it.',
+            'Cache file %s is corrupt or un-readable! Discarding it.',
                 name) # pragma: no cover
         return {} # pragma: no cover
     finally:

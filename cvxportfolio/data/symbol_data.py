@@ -1232,9 +1232,9 @@ def _loader_pickle(symbol, storage_location):
     """Load data in pickle format."""
     try:
         return pd.read_pickle(storage_location / f"{symbol}.pickle")
-    except (EOFError, UnpicklingError) as e:
+    except (EOFError, UnpicklingError, ModuleNotFoundError) as e:
         logger.warning(
-            'Data file %s is corrupt! Discarding it.',
+            'Data file %s is corrupt or un-readable! Discarding it.',
                 str(storage_location / f"{symbol}.pickle")) # pragma: no cover
         raise FileNotFoundError from e # pragma: no cover
 
