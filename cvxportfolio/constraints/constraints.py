@@ -543,6 +543,18 @@ class MinWeights(InequalityConstraint):
         # pylint: disable=invalid-unary-operand-type
         return -self.limit.parameter
 
+class MaxHoldings(MaxWeights):
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
+        self.limit.parameter.value /= current_portfolio_value
+
+class MinHoldings(MinWeights):
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
+        self.limit.parameter.value /= current_portfolio_value
+
 class MaxBenchmarkDeviation(MaxWeights):
     r"""A max limit on post-trade weights minus the benchmark weights.
 
