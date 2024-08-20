@@ -48,6 +48,10 @@ Constraints
 
 .. autoclass:: MinWeights
 
+.. autoclass:: MaxHoldings
+
+.. autoclass:: MinHoldings
+
 .. autoclass:: MaxBenchmarkDeviation
 
 .. autoclass:: MinBenchmarkDeviation

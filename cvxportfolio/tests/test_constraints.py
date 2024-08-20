@@ -161,6 +161,26 @@ class TestConstraints(CvxportfolioTest):
             **VALUES_IN_TIME_DUMMY_KWARGS)
         self.assertFalse(cons.value())
 
+    def test_max_min_holdings(self):
+        """Test long-only constraint."""
+        model = cvx.MinHoldings(-100)
+        cons = self._build_constraint(model)
+        self.w_plus.value = np.zeros(self.N)
+        self.assertTrue(cons.value())
+        self.w_plus.value[0] = -.1
+        self.assertTrue(cons.value())
+        self.w_plus.value[0] = -.11
+        self.assertFalse(cons.value())
+
+        model = cvx.MaxHoldings(100)
+        cons = self._build_constraint(model)
+        self.w_plus.value = np.zeros(self.N)
+        self.assertTrue(cons.value())
+        self.w_plus.value[0] = .1
+        self.assertTrue(cons.value())
+        self.w_plus.value[0] = .11
+        self.assertFalse(cons.value())
+
     def test_max_weights(self):
         """Test max weights constraint."""
         model = cvx.MaxWeights(2)

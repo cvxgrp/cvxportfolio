@@ -52,6 +52,8 @@ __all__ = [
     "ParticipationRateLimit",
     "MaxWeights",
     "MinWeights",
+    "MaxHoldings",
+    "MinHoldings",
     "MaxBenchmarkDeviation",
     "MinBenchmarkDeviation",
     "NoTrade",
@@ -544,15 +546,87 @@ class MinWeights(InequalityConstraint):
         return -self.limit.parameter
 
 class MaxHoldings(MaxWeights):
+    r"""A max limit on post-trade holdings (excluding cash).
+
+    In our notation, this is
+
+    .. math::
+
+        {(h_t + u_t)}_{1:n} \leq h^\text{max}
+
+    where the limit :math:`h^\text{max}` is either a scalar or a vector, see
+    below. The difference with the :class:`MaxWeights` constraint is that this
+    uses the current portfolio value, which varies at each point in a
+    back-test. You can use this to model positions limit that depend on the
+    absolute size in units of value (*e.g.*, US dollars).
+
+    :param limit: A series or number giving the holdings limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
 
     def values_in_time( # pylint: disable=arguments-differ
             self, current_portfolio_value, **kwargs):
+        """Update CVXPY parameter using the portfolio value.
+
+        :param current_portfolio_value: Current value of the portfolio.
+        :type current_portfolio_value: float
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         self.limit.parameter.value /= current_portfolio_value
 
 class MinHoldings(MinWeights):
+    r"""A min limit on post-trade holdings (excluding cash).
+
+    In our notation, this is
+
+    .. math::
+
+        {(h_t + u_t)}_{1:n} \geq h^\text{min}
+
+    where the limit :math:`h^\text{min}` is either a scalar or a vector, see
+    below. The difference with the :class:`MinWeights` constraint is that this
+    uses the current portfolio value, which varies at each point in a
+    back-test. You can use this to model positions limit that depend on the
+    absolute size in units of value (*e.g.*, US dollars).
+
+    :param limit: A series or number giving the holdings limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
 
     def values_in_time( # pylint: disable=arguments-differ
             self, current_portfolio_value, **kwargs):
+        """Update CVXPY parameter using the portfolio value.
+
+        :param current_portfolio_value: Current value of the portfolio.
+        :type current_portfolio_value: float
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
         self.limit.parameter.value /= current_portfolio_value
 
 class MaxBenchmarkDeviation(MaxWeights):
