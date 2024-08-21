@@ -1044,25 +1044,26 @@ class UserProvidedRegressor(DataEstimator):
 # probably can restate this as another intermediate class, not inheriting
 # from OnPastReturns, and define specialized ones for other raw dataframes
 
-class OnPastReturns:
-    pass # TMP
 
-class OnWeightedPastReturns(OnPastReturns): # pylint: disable=abstract-method
+class WeightedPastReturns(PastReturns): # pylint: disable=abstract-method
     """Intermediate class, operate on past returns weighted by regressor."""
 
     # could put the __init__ we use in derived classes here, but then
     # would have to be careful to use correct inheritance order for MRO
 
     # this needs to be populated by __init__ of derived class
-    regressor = None
+    # regressor = None
 
-    def _dataframe_selector( # pylint: disable=arguments-differ
+    def __init__(self, regressor):
+        self.regressor = regressor
+
+    def past_history( # pylint: disable=arguments-differ
             self, **kwargs):
         """Past returns, skipping cash, weighted by regressor.
 
         This method receives the full arguments to :meth:`values_in_time`.
         """
-        raw_past_df = super()._dataframe_selector(**kwargs)
+        raw_past_df = super().past_history(**kwargs)
         regressor_history = self.regressor.get_all_history(
             raw_past_df.index)
         # with the dropna we remove (old) observations for which regressor had
@@ -1085,19 +1086,19 @@ class OnWeightedPastReturns(OnPastReturns): # pylint: disable=abstract-method
     #     breakpoint()
     #     return raw_last_row * regressor_on_last_row
 
-class CountWeightedPastReturns(VectorCount, OnWeightedPastReturns):
-    """Count non-nan past returns, excluding cash, weighted by regressor."""
+# class CountWeightedPastReturns(VectorCount, OnWeightedPastReturns):
+#     """Count non-nan past returns, excluding cash, weighted by regressor."""
 
-    def __init__(self, regressor, **kwargs):
-        self.regressor = regressor
-        super().__init__(**kwargs) # this goes to SumForecaster
+#     def __init__(self, regressor, **kwargs):
+#         self.regressor = regressor
+#         super().__init__(**kwargs) # this goes to SumForecaster
 
-class SumWeightedPastReturns(VectorSum, OnWeightedPastReturns):
-    """Sum non-nan past returns, excluding cash, weighted by regressor."""
+# class SumWeightedPastReturns(VectorSum, OnWeightedPastReturns):
+#     """Sum non-nan past returns, excluding cash, weighted by regressor."""
 
-    def __init__(self, regressor, **kwargs):
-        self.regressor = regressor
-        super().__init__(**kwargs) # this goes to SumForecaster
+#     def __init__(self, regressor, **kwargs):
+#         self.regressor = regressor
+#         super().__init__(**kwargs) # this goes to SumForecaster
 
 # We can reproduce this design pattern for other base forecasters
 
@@ -1127,10 +1128,13 @@ class RegressionXtYReturns(HistoricalMeanReturn):
         super().__init__(**kwargs)
 
         # regression part
-        self.regressor = regressor
-        self._numerator = SumWeightedPastReturns(regressor=regressor, **kwargs)
-        self._denominator = CountWeightedPastReturns(
-            regressor=regressor, **kwargs)
+        self._regressor = regressor
+        self._dataframe_selector = WeightedPastReturns(
+            regressor=self._regressor)
+        self._numerator = VectorSum(
+            dataframe_selector=self._dataframe_selector, **kwargs)
+        self._denominator = VectorCount(
+            dataframe_selector=self._dataframe_selector, **kwargs)
 
     # def _work_with(self, past_returns, **kwargs):
     #     """Base DataFrame we work with."""
