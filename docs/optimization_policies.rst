@@ -21,7 +21,7 @@ Optimization-based policies
 ---------------------------
 
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:
 
 .. autoclass:: SinglePeriodOptimization
 

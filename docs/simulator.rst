@@ -22,7 +22,7 @@ Simulator
 .. automodule:: cvxportfolio.simulator
 
 .. py:module:: cvxportfolio
-     :noindex:
+     :no-index:
 
 .. autoclass:: MarketSimulator
 

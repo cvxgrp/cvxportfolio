@@ -20,7 +20,7 @@ Back-test result
 ================
 
 .. py:module:: cvxportfolio
-     :noindex:
+     :no-index:
 
 .. automodule:: cvxportfolio.result
 

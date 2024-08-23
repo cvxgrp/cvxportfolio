@@ -143,7 +143,7 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
         """Self <= other, return CostInequalityConstraint."""
         # TODO: if series, we should check that it is dt indexed
         # (DataEstimator should?)
-        if isinstance(other, (Number, pd.Series)):
+        if isinstance(other, (Number, pd.Series, Estimator)):
             return CostInequalityConstraint(self, other)
         return NotImplemented
 

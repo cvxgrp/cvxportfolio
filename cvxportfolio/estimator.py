@@ -464,8 +464,17 @@ class DataEstimator(SimulatorEstimator):
         if self._compile_parameter:
             # to make sure it doesn't try to update the parameter
             self.parameter = None
+            # TODO: this is a bit of a hack; to obtain the shape of the CVXPY
+            # parameter we simulate running values_in_time at the ~first step
+            # in the loop; if we get a better idea it would be good to change
+            # this
             value = self.values_in_time_recursive(
-                t=trading_calendar[0])
+                t=trading_calendar[0],
+                past_returns=pd.DataFrame(
+                    # we need to use a generic dt index otherwise issues
+                    # arise in corner cases
+                    0., index=pd.DatetimeIndex(['2000-01-01', '2000-02-01']),
+                    columns=universe))
             self.parameter = cp.Parameter(
                 value.shape if hasattr(value, "shape") else (),
                 PSD=self._positive_semi_definite, nonneg=self._non_negative)

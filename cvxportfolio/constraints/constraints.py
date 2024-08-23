@@ -767,6 +767,8 @@ class MaxHoldings(MaxWeights):
     back-test. You can use this to model positions limit that depend on the
     absolute size in units of value (*e.g.*, US dollars).
 
+    .. versionadded:: 1.4.0
+
     :param limit: A series or number giving the holdings limit. See the
         :ref:`passing-data` manual page for details on how to provide this
         data. For example, you pass a float if you want a constant limit
@@ -808,6 +810,8 @@ class MinHoldings(MinWeights):
     uses the current portfolio value, which varies at each point in a
     back-test. You can use this to model positions limit that depend on the
     absolute size in units of value (*e.g.*, US dollars).
+
+    .. versionadded:: 1.4.0
 
     :param limit: A series or number giving the holdings limit. See the
         :ref:`passing-data` manual page for details on how to provide this

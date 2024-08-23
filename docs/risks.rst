@@ -24,7 +24,7 @@ Risk models
 .. automodule:: cvxportfolio.risks
 
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:
 
 .. autoclass:: DiagonalCovariance
 
@@ -40,8 +40,13 @@ Risk models
 
 
 Forecast error models
-=====================
+---------------------
 
 .. autoclass:: ReturnsForecastError
 
 .. autoclass:: RiskForecastError
+
+Other
+-----
+
+.. autoclass:: AnnualizedVolatility

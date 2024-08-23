@@ -20,7 +20,7 @@ Constraints
 ===========
 	
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:
     
 .. automodule:: cvxportfolio.constraints
 
@@ -138,8 +138,13 @@ For a minimal example see the following risk-constrained policy.
     # limit the covariance 
     risk_limit = cvx.FullCovariance() <= target_volatility**2
 
+    # or, since Cvxportfolio 1.4.0
+    risk_limit_annualized = cvx.FullCovariance() <= cvx.AnnualizedVolatility(
+        0.05) # means 5% annualized
+
     cvx.MarketSimulator(universe).backtest(
-        cvx.SinglePeriodOptimization(cvx.ReturnsForecast(), [risk_limit])).plot()
+        cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast(), [risk_limit])).plot()
 
 Keep in mind that the resulting inequality constraint must be convex.
 You can't, for example, require that a risk term is larger or equal than

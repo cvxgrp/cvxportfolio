@@ -21,7 +21,7 @@ Data Interfaces
 .. automodule:: cvxportfolio.data
 
 .. py:module:: cvxportfolio
-     :noindex:
+     :no-index:
 
 Single-symbol data download and storage
 ---------------------------------------
@@ -49,7 +49,7 @@ Base classes (for using other data sources)
 -------------------------------------------
 
 .. py:module:: cvxportfolio.data
-     :noindex:
+     :no-index:
 
 .. autoclass:: SymbolData
 

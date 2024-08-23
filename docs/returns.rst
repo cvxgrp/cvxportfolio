@@ -24,7 +24,7 @@ Return models
 .. automodule:: cvxportfolio.returns
 
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:
 
 .. autoclass:: ReturnsForecast
 

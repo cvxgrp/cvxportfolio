@@ -22,6 +22,7 @@ TODO: Many tests that are in ``test_simulator.py`` could be moved here.
 import unittest
 
 import numpy as np
+import pandas as pd
 
 import cvxportfolio as cvx
 from cvxportfolio.tests import CvxportfolioTest
@@ -74,11 +75,51 @@ class TestIntegration(CvxportfolioTest):
         result = sim.backtest(pol, start_time=start, end_time=end)
 
         realized_fractions = np.abs(result.u / md.volumes.loc[result.u.index])
-        print(realized_fractions)
+        # print(realized_fractions)
         m, s = np.nanmean(realized_fractions), np.nanstd(realized_fractions)
-        print(m, s)
+        # print(m, s)
 
         self.assertLess( np.abs(m-limit), s)
+
+    def test_annualized_vol(self):
+        """Test annualized volatility object."""
+        md, start, end = self._difficult_market_data()
+        sim = cvx.MarketSimulator(market_data=md, base_location=self.datadir)
+        pol = cvx.SinglePeriodOpt(
+            cvx.ReturnsForecast(),
+            [
+                cvx.FullCovariance() <= cvx.AnnualizedVolatility(0.05),
+                cvx.LeverageLimit(1)]
+        )
+        result = sim.backtest(pol, start_time=start, end_time=end)
+
+        pol1 = cvx.SinglePeriodOpt(
+            cvx.ReturnsForecast(),
+            [
+                cvx.FullCovariance() <= 0.05**2 / 252,
+                cvx.LeverageLimit(1)]
+        )
+        result1 = sim.backtest(pol1, start_time=start, end_time=end)
+        # print(result)
+        # print(result1)
+
+        self.assertLess(np.max(np.abs(result.v / result1.v - 1)), 0.001)
+
+        pol_online = cvx.SinglePeriodOpt(
+            cvx.ReturnsForecast(self.returns.mean().iloc[:-1]),
+            [
+                cvx.FullCovariance(self.returns.iloc[:, :-1].cov()
+                    ) <= cvx.AnnualizedVolatility(0.05),
+                cvx.LeverageLimit(1)],
+            include_cash_return=False,
+        )
+
+        with self.assertRaisesRegex(
+                cvx.errors.DataError, 'AnnualizedVolatility'):
+            pol_online.execute(
+                h=pd.Series(1., self.returns.columns),
+                market_data=None, t=pd.Timestamp.utcnow())
+
 
 if __name__ == '__main__': # pragma: no cover
     unittest.main(warnings='error')

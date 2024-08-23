@@ -19,7 +19,7 @@ Manual
 ======
 
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:
 
 Here we explain some concepts that apply throughout the library and are useful
 to know. The code blocks in this document assume the following imports
