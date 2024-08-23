@@ -52,6 +52,14 @@ Constraints
 
 .. autoclass:: MinHoldings
 
+.. autoclass:: MaxTradeWeights
+
+.. autoclass:: MinTradeWeights
+
+.. autoclass:: MaxTrades
+
+.. autoclass:: MinTrades
+
 .. autoclass:: MaxBenchmarkDeviation
 
 .. autoclass:: MinBenchmarkDeviation

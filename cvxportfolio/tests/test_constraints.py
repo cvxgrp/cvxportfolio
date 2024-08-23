@@ -162,7 +162,7 @@ class TestConstraints(CvxportfolioTest):
         self.assertFalse(cons.value())
 
     def test_max_min_holdings(self):
-        """Test long-only constraint."""
+        """Test max/min holdings constraint."""
         model = cvx.MinHoldings(-100)
         cons = self._build_constraint(model)
         self.w_plus.value = np.zeros(self.N)
@@ -179,6 +179,46 @@ class TestConstraints(CvxportfolioTest):
         self.w_plus.value[0] = .1
         self.assertTrue(cons.value())
         self.w_plus.value[0] = .11
+        self.assertFalse(cons.value())
+
+    def test_max_min_trades(self):
+        """Test max/min trades constraints."""
+        model = cvx.MinTrades(-100)
+        cons = self._build_constraint(model)
+        self.z.value = np.zeros(self.N)
+        self.assertTrue(cons.value())
+        self.z.value[0] = -.1
+        self.assertTrue(cons.value())
+        self.z.value[0] = -.11
+        self.assertFalse(cons.value())
+
+        model = cvx.MaxTrades(100)
+        cons = self._build_constraint(model)
+        self.z.value = np.zeros(self.N)
+        self.assertTrue(cons.value())
+        self.z.value[0] = .1
+        self.assertTrue(cons.value())
+        self.z.value[0] = .11
+        self.assertFalse(cons.value())
+
+    def test_max_min_trade_weights(self):
+        """Test max/min trades weights constraints."""
+        model = cvx.MinTradeWeights(-.1)
+        cons = self._build_constraint(model)
+        self.z.value = np.zeros(self.N)
+        self.assertTrue(cons.value())
+        self.z.value[0] = -.1
+        self.assertTrue(cons.value())
+        self.z.value[0] = -.11
+        self.assertFalse(cons.value())
+
+        model = cvx.MaxTradeWeights(.1)
+        cons = self._build_constraint(model)
+        self.z.value = np.zeros(self.N)
+        self.assertTrue(cons.value())
+        self.z.value[0] = .1
+        self.assertTrue(cons.value())
+        self.z.value[0] = .11
         self.assertFalse(cons.value())
 
     def test_max_weights(self):

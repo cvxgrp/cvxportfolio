@@ -22,7 +22,6 @@ TODO: Many tests that are in ``test_simulator.py`` could be moved here.
 import unittest
 
 import numpy as np
-import pandas as pd
 
 import cvxportfolio as cvx
 from cvxportfolio.tests import CvxportfolioTest
@@ -45,6 +44,23 @@ class TestIntegration(CvxportfolioTest):
             np.all(result.h_plus.iloc[:, :-1].fillna(0.) - 1 < 1000))
         self.assertTrue(
             np.all(result.h_plus.iloc[:, :-1].fillna(0.) + 1 > -1000))
+        # print(result.h_plus)
+
+    def test_trades_limit(self):
+        """Test Max/MinTrades."""
+
+        md, start, end = self._difficult_market_data()
+        sim = cvx.MarketSimulator(market_data=md, base_location=self.datadir)
+        pol = cvx.SinglePeriodOpt(
+            cvx.ReturnsForecast() - 5 * cvx.FullCovariance(),
+            [cvx.MinTrades(-1234), cvx.MaxTrades(9876)]
+        )
+        result = sim.backtest(pol, start_time=start, end_time=end)
+        self.assertTrue(
+            np.all(result.u.iloc[:, :-1].fillna(0.) - 1 < 9876))
+        self.assertTrue(
+            np.all(result.u.iloc[:, :-1].fillna(0.) + 1 > -1234))
+        # print(result.u)
 
 if __name__ == '__main__': # pragma: no cover
     unittest.main(warnings='error')
