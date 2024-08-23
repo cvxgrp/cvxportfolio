@@ -204,8 +204,8 @@ class ParticipationRateLimit(InequalityConstraint):
     :param volume_hat: Per-stock and per-day market volume estimates, or
         constant in time. Usual convention, see the :ref:`passing-data`
         manual page on how this user-provided data is handled. By default we
-        use the historical average, over the past solar year, or the realized
-        volumes passed by the market data server.
+        use the historical average, over the past solar year, of the realized
+        volumes handled by the market data server.
     :type volume_hat: cvx.estimator.Estimator, float, pd.Series,
         or pd.DataFrame
     :param volumes: *Deprecated.* Alias of ``volume_hat``.
