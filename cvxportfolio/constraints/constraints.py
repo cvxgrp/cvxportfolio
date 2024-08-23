@@ -34,11 +34,14 @@
 ### limitations under the License.
 """This module defines user-facing constraints."""
 
+import warnings
+
 import cvxpy as cp
 import numpy as np
+import pandas as pd
 
 from ..estimator import DataEstimator, Estimator
-from ..forecast import HistoricalFactorizedCovariance
+from ..forecast import HistoricalFactorizedCovariance, HistoricalMeanVolume
 from ..policies import MarketBenchmark
 from .base_constraints import (Constraint, EqualityConstraint,
                                InequalityConstraint)
@@ -192,18 +195,43 @@ class TurnoverLimit(InequalityConstraint):
 
 
 class ParticipationRateLimit(InequalityConstraint):
-    """A limit on maximum trades size as a fraction of market volumes.
+    """A limit on maximum trades size as a fraction of expected market volumes.
 
-    :param volumes: per-stock and per-day market volume estimates, or
-        constant in time
+    .. versionadded:: 1.4.0
+
+        This constraint interface has been cleaned and improved.
+
+    :param volume_hat: Per-stock and per-day market volume estimates, or
+        constant in time. Usual convention, see the :ref:`passing-data`
+        manual page on how this user-provided data is handled. By default we
+        use the historical average, over the past solar year, or the realized
+        volumes passed by the market data server.
+    :type volume_hat: cvx.estimator.Estimator, float, pd.Series,
+        or pd.DataFrame
+    :param volumes: *Deprecated.* Alias of ``volume_hat``.
     :type volumes: pd.Series or pd.DataFrame
-    :param max_fraction_of_volumes: max fraction of market volumes that
-        we're allowed to trade
+    :param max_fraction_of_volumes: Maximum fraction of expected market volumes
+        that we're allowed to trade, again either constant, a single number
+        that changes in time (time-indexed Pandas Series), a constant number in
+        time per each asset, or varying both in time and across assets. By
+        default constant 5% across time and assets.
     :type max_fraction_of_volumes: float, pd.Series, pd.DataFrame
     """
 
-    def __init__(self, volumes, max_fraction_of_volumes=0.05):
-        self.volumes = DataEstimator(volumes)
+    def __init__(
+            self,
+            volume_hat=HistoricalMeanVolume(rolling=pd.Timedelta('365.24d')),
+            volumes=None, max_fraction_of_volumes=0.05):
+
+        self.volume_hat = DataEstimator(volume_hat)
+        if volumes is not None:
+            warnings.warn(
+                "Passing a value to the volumes argument of"
+                + " ParticipationRateLimit is deprecated, use the volume_hat"
+                + " argument instead, which has the same effect and by default"
+                + " is the recent historical average of realized volumes.",
+                DeprecationWarning)
+            self.volume_hat = DataEstimator(volumes)
         self.max_participation_rate = DataEstimator(
             max_fraction_of_volumes)
         self._portfolio_value = None
@@ -232,7 +260,7 @@ class ParticipationRateLimit(InequalityConstraint):
         """
         self._portfolio_value.value = current_portfolio_value
         self._parameter.value = (
-            self.volumes.current_value
+            self.volume_hat.current_value
                 * self.max_participation_rate.current_value)
 
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
@@ -478,6 +506,8 @@ class MaxTradeWeights(InequalityConstraint):
     where the limit :math:`z^\text{max}` is either a scalar or a vector, see
     below.
 
+    .. versionadded:: 1.4.0
+
     :param limit: A series or number giving the trade weights limit. See the
         :ref:`passing-data` manual page for details on how to provide this
         data. For example, you pass a float if you want a constant limit
@@ -518,6 +548,8 @@ class MinTradeWeights(InequalityConstraint):
 
     where the limit :math:`z^\text{min}` is either a scalar or a vector, see
     below.
+
+    .. versionadded:: 1.4.0
 
     :param limit: A series or number giving the trade weights limit. See the
         :ref:`passing-data` manual page for details on how to provide this
@@ -564,6 +596,8 @@ class MaxTrades(MaxTradeWeights):
     back-test. You can use this to model trade limits that depend on their
     size in units of value.
 
+    .. versionadded:: 1.4.0
+
     :param limit: A series or number giving the trades limit. See the
         :ref:`passing-data` manual page for details on how to provide this
         data. For example, you pass a float if you want a constant limit
@@ -606,6 +640,8 @@ class MinTrades(MinTradeWeights):
     using the current portfolio value, which varies at each point in a
     back-test. You can use this to model trade limits that depend on their
     size in units of value.
+
+    .. versionadded:: 1.4.0
 
     :param limit: A series or number giving the holdings limit. See the
         :ref:`passing-data` manual page for details on how to provide this
