@@ -822,7 +822,7 @@ class TransactionCost(SimulatorCost):
         self.a = None if a is None else DataEstimator(a)
         self.b = None if b is None else DataEstimator(b)
         self.c = None if c is None else DataEstimator(
-            c, compile_parameter=True)
+            c, compile_parameter=True, parameter_shape='infer')
 
         if self.b is not None:
             if isinstance(volume_hat, type):

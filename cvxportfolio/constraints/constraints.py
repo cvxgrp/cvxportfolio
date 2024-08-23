@@ -182,7 +182,8 @@ class TurnoverLimit(InequalityConstraint):
     """
 
     def __init__(self, delta):
-        self.delta = DataEstimator(delta, compile_parameter=True)
+        self.delta = DataEstimator(
+            delta, compile_parameter=True, parameter_shape='scalar')
 
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
             self, z, **kwargs):
@@ -390,7 +391,8 @@ class LeverageLimit(InequalityConstraint):
     """
 
     def __init__(self, limit):
-        self.limit = DataEstimator(limit, compile_parameter=True)
+        self.limit = DataEstimator(
+            limit, compile_parameter=True, parameter_shape='scalar')
 
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
             self, w_plus, **kwargs):
