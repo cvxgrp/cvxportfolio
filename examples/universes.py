@@ -11,6 +11,9 @@
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
 # details.
+#
+# You should have received a copy of the GNU General Public License along with
+# Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
 """This module contains up-to-date universes of stock tickers.
 
 If you run it attempts to download updated lists from the relevant
@@ -20,7 +23,7 @@ and check that the results make sense.
 We could also save each universe in a ``json`` file.
 """
 
-# This was generated on 2024-08-23 11:09:33.432880+00:00
+# This was generated on 2024-08-23 11:11:26.936266+00:00
 
 SP500 = \
 ['A', 'AAL', 'AAPL', 'ABBV', 'ABNB', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI',
@@ -252,7 +255,7 @@ if __name__ == '__main__':
     with open(__loader__.path, 'w', encoding='utf-8') as f:
 
         # header
-        f.writelines(this_file_content[:13])
+        f.writelines(this_file_content[:16])
 
         # docstring
         f.write('"""' + __doc__ + '"""\n')
