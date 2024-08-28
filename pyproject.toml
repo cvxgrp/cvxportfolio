@@ -7,6 +7,22 @@ license = {text = "GPLv3"}
 authors = [{name = "Enzo Busseti"}, {name = "Stephen Boyd"},
     {name = "Steven Diamond"}, {name = "BlackRock Inc."}]
 maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
+
+# Note on dependencies (lack of) pinning. We are testing in Github CI against
+# various combinations of dependency versions, back to versions that were
+# current in ~2021. Most probably older ones work too, if they install.
+# If we aren't able to test some old dependency it's in most cases because we
+# aren't able to install them from wheel or source, since that code tends to
+# break more easily over time, especially across different platforms. Important
+# dependencies are only Pandas and Cvxpy, and we're not using any particularly
+# new feature nor any part of their APIs that is not very well documented. Of
+# course if you try very old versions, like before 1.0, things may break. We
+# recommend to users to either install Cvxportfolio in a fresh environment,
+# with recent versions of the dependencies, or, if they install in a
+# pre-existing environment, to run `python -m cvxportfolio.tests` to check that
+# their versions of dependencies work correctly. Please do report bugs coming
+# from some combination of dependency versions that break Cvxportfolio code.
+
 dependencies = ["pandas",
     # July 2024, Numpy 2 causes issues with CVXPY's conic interface on Py 3.12
     "numpy; python_version<'3.12'",
