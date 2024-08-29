@@ -34,11 +34,14 @@
 ### limitations under the License.
 """This module defines user-facing constraints."""
 
+import warnings
+
 import cvxpy as cp
 import numpy as np
+import pandas as pd
 
 from ..estimator import DataEstimator, Estimator
-from ..forecast import HistoricalFactorizedCovariance
+from ..forecast import HistoricalFactorizedCovariance, HistoricalMeanVolume
 from ..policies import MarketBenchmark
 from .base_constraints import (Constraint, EqualityConstraint,
                                InequalityConstraint)
@@ -52,6 +55,12 @@ __all__ = [
     "ParticipationRateLimit",
     "MaxWeights",
     "MinWeights",
+    "MaxHoldings",
+    "MinHoldings",
+    "MaxTradeWeights",
+    "MinTradeWeights",
+    "MaxTrades",
+    "MinTrades",
     "MaxBenchmarkDeviation",
     "MinBenchmarkDeviation",
     "NoTrade",
@@ -173,7 +182,8 @@ class TurnoverLimit(InequalityConstraint):
     """
 
     def __init__(self, delta):
-        self.delta = DataEstimator(delta, compile_parameter=True)
+        self.delta = DataEstimator(
+            delta, compile_parameter=True, parameter_shape='scalar')
 
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
             self, z, **kwargs):
@@ -186,18 +196,43 @@ class TurnoverLimit(InequalityConstraint):
 
 
 class ParticipationRateLimit(InequalityConstraint):
-    """A limit on maximum trades size as a fraction of market volumes.
+    """A limit on maximum trades size as a fraction of expected market volumes.
 
-    :param volumes: per-stock and per-day market volume estimates, or
-        constant in time
+    .. versionadded:: 1.4.0
+
+        This constraint interface has been cleaned and improved.
+
+    :param volume_hat: Per-stock and per-day market volume estimates, or
+        constant in time. Usual convention, see the :ref:`passing-data`
+        manual page on how this user-provided data is handled. By default we
+        use the historical average, over the past solar year, of the realized
+        volumes handled by the market data server.
+    :type volume_hat: cvx.estimator.Estimator, float, pd.Series,
+        or pd.DataFrame
+    :param volumes: *Deprecated.* Alias of ``volume_hat``.
     :type volumes: pd.Series or pd.DataFrame
-    :param max_fraction_of_volumes: max fraction of market volumes that
-        we're allowed to trade
+    :param max_fraction_of_volumes: Maximum fraction of expected market volumes
+        that we're allowed to trade, again either constant, a single number
+        that changes in time (time-indexed Pandas Series), a constant number in
+        time per each asset, or varying both in time and across assets. By
+        default constant 5% across time and assets.
     :type max_fraction_of_volumes: float, pd.Series, pd.DataFrame
     """
 
-    def __init__(self, volumes, max_fraction_of_volumes=0.05):
-        self.volumes = DataEstimator(volumes)
+    def __init__(
+            self,
+            volume_hat=HistoricalMeanVolume(rolling=pd.Timedelta('365.24d')),
+            volumes=None, max_fraction_of_volumes=0.05):
+
+        self.volume_hat = DataEstimator(volume_hat)
+        if volumes is not None:
+            warnings.warn(
+                "Passing a value to the volumes argument of"
+                + " ParticipationRateLimit is deprecated, use the volume_hat"
+                + " argument instead, which has the same effect and by default"
+                + " is the recent historical average of realized volumes.",
+                DeprecationWarning)
+            self.volume_hat = DataEstimator(volumes)
         self.max_participation_rate = DataEstimator(
             max_fraction_of_volumes)
         self._portfolio_value = None
@@ -226,7 +261,7 @@ class ParticipationRateLimit(InequalityConstraint):
         """
         self._portfolio_value.value = current_portfolio_value
         self._parameter.value = (
-            self.volumes.current_value
+            self.volume_hat.current_value
                 * self.max_participation_rate.current_value)
 
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
@@ -356,7 +391,8 @@ class LeverageLimit(InequalityConstraint):
     """
 
     def __init__(self, limit):
-        self.limit = DataEstimator(limit, compile_parameter=True)
+        self.limit = DataEstimator(
+            limit, compile_parameter=True, parameter_shape='scalar')
 
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
             self, w_plus, **kwargs):
@@ -460,6 +496,181 @@ class DollarNeutral(EqualityConstraint):
         """Compile right hand side of the constraint expression."""
         return 1
 
+class MaxTradeWeights(InequalityConstraint):
+    r"""A max limit on trade weights (excluding cash).
+
+    In our notation, this is
+
+    .. math::
+
+        {(z_t)}_{1:n} \leq z^\text{max}
+
+    where the limit :math:`z^\text{max}` is either a scalar or a vector, see
+    below.
+
+    .. versionadded:: 1.4.0
+
+    :param limit: A series or number giving the trade weights limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
+
+    def __init__(self, limit):
+        self.limit = DataEstimator(limit, compile_parameter=True)
+
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, z, **kwargs):
+        """Compile left hand side of the constraint expression."""
+        return z[:-1]
+
+    def _rhs(self):
+        """Compile right hand side of the constraint expression."""
+        return self.limit.parameter
+
+
+class MinTradeWeights(InequalityConstraint):
+    r"""A min limit on trade weights (excluding cash).
+
+    In our notation, this is
+
+    .. math::
+
+        {(z_t)}_{1:n} \geq z^\text{min}
+
+    where the limit :math:`z^\text{min}` is either a scalar or a vector, see
+    below.
+
+    .. versionadded:: 1.4.0
+
+    :param limit: A series or number giving the trade weights limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
+
+    def __init__(self, limit):
+        self.limit = DataEstimator(limit, compile_parameter=True)
+
+    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
+            self, z, **kwargs):
+        """Compile left hand side of the constraint expression."""
+        return -z[:-1]
+
+    def _rhs(self):
+        """Compile right hand side of the constraint expression."""
+        # pylint: disable=invalid-unary-operand-type
+        return -self.limit.parameter
+
+class MaxTrades(MaxTradeWeights):
+    r"""A max limit on the trade vector (excluding cash).
+
+    In our notation, this is
+
+    .. math::
+
+        {(u_t)}_{1:n} \leq u^\text{max}
+
+    where the limit :math:`u^\text{max}` is either a scalar or a vector, see
+    below. The difference with the :class:`MaxTradeWeights` constraint is that
+    this applies to the trades vector in units of value (*.e.g.*, US Dollars)
+    using the current portfolio value, which varies at each point in a
+    back-test. You can use this to model trade limits that depend on their
+    size in units of value.
+
+    .. versionadded:: 1.4.0
+
+    :param limit: A series or number giving the trades limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
+        """Update CVXPY parameter using the portfolio value.
+
+        :param current_portfolio_value: Current value of the portfolio.
+        :type current_portfolio_value: float
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
+        self.limit.parameter.value /= current_portfolio_value
+
+class MinTrades(MinTradeWeights):
+    r"""A min limit on the trade vector (excluding cash).
+
+    In our notation, this is
+
+    .. math::
+
+        {(u_t)}_{1:n} \geq u^\text{min}
+
+    where the limit :math:`u^\text{min}` is either a scalar or a vector, see
+    below. The difference with the :class:`MinTradeWeights` constraint is that
+    this applies to the trades vector in units of value (*.e.g.*, US Dollars)
+    using the current portfolio value, which varies at each point in a
+    back-test. You can use this to model trade limits that depend on their
+    size in units of value.
+
+    .. versionadded:: 1.4.0
+
+    :param limit: A series or number giving the holdings limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
+        """Update CVXPY parameter using the portfolio value.
+
+        :param current_portfolio_value: Current value of the portfolio.
+        :type current_portfolio_value: float
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
+        self.limit.parameter.value /= current_portfolio_value
 
 class MaxWeights(InequalityConstraint):
     r"""A max limit on post-trade weights (excluding cash).
@@ -542,6 +753,94 @@ class MinWeights(InequalityConstraint):
         """Compile right hand side of the constraint expression."""
         # pylint: disable=invalid-unary-operand-type
         return -self.limit.parameter
+
+class MaxHoldings(MaxWeights):
+    r"""A max limit on post-trade holdings (excluding cash).
+
+    In our notation, this is
+
+    .. math::
+
+        {(h_t + u_t)}_{1:n} \leq h^\text{max}
+
+    where the limit :math:`h^\text{max}` is either a scalar or a vector, see
+    below. The difference with the :class:`MaxWeights` constraint is that this
+    uses the current portfolio value, which varies at each point in a
+    back-test. You can use this to model positions limit that depend on the
+    absolute size in units of value (*e.g.*, US dollars).
+
+    .. versionadded:: 1.4.0
+
+    :param limit: A series or number giving the holdings limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
+        """Update CVXPY parameter using the portfolio value.
+
+        :param current_portfolio_value: Current value of the portfolio.
+        :type current_portfolio_value: float
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
+        self.limit.parameter.value /= current_portfolio_value
+
+class MinHoldings(MinWeights):
+    r"""A min limit on post-trade holdings (excluding cash).
+
+    In our notation, this is
+
+    .. math::
+
+        {(h_t + u_t)}_{1:n} \geq h^\text{min}
+
+    where the limit :math:`h^\text{min}` is either a scalar or a vector, see
+    below. The difference with the :class:`MinWeights` constraint is that this
+    uses the current portfolio value, which varies at each point in a
+    back-test. You can use this to model positions limit that depend on the
+    absolute size in units of value (*e.g.*, US dollars).
+
+    .. versionadded:: 1.4.0
+
+    :param limit: A series or number giving the holdings limit. See the
+        :ref:`passing-data` manual page for details on how to provide this
+        data. For example, you pass a float if you want a constant limit
+        for all assets at all times, a Pandas series indexed by time if you
+        want a limit constant for all assets but varying in time, a Pandas
+        series indexed by the assets' names if you have limits constant in time
+        but different for each asset, and a Pandas dataframe indexed by time
+        and with assets as columns if you have a different limit for each point
+        in time and each asset. If the value changes for each asset, you should
+        provide a value for each name that ever appear in a back-test; the
+        data will be sliced according to the current trading universe during a
+        back-test. It is fine to have missing values at certain times on assets
+        that are not traded then.
+    :type limit: float, pandas.Series, pandas.DataFrame
+    """
+
+    def values_in_time( # pylint: disable=arguments-differ
+            self, current_portfolio_value, **kwargs):
+        """Update CVXPY parameter using the portfolio value.
+
+        :param current_portfolio_value: Current value of the portfolio.
+        :type current_portfolio_value: float
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+        """
+        self.limit.parameter.value /= current_portfolio_value
 
 class MaxBenchmarkDeviation(MaxWeights):
     r"""A max limit on post-trade weights minus the benchmark weights.

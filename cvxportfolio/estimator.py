@@ -416,6 +416,16 @@ class DataEstimator(SimulatorEstimator):
     :param ignore_shape_check: If True, we don't do any slicing of the data
         according to the current trading universe. Default False.
     :type ignore_shape_check: bool
+    :param parameter_shape: If compiling a CVXPY parameter, say which shape it
+        has. Options are ``'scalar'``, ``'universe'`` meaning vector of length
+        equal to the universe, ``'universe_minus_cash'``, or ``'infer'``. The
+        latter is the default and the legacy behavior, it runs
+        :meth:`values_in_time` with **only** the ``t`` argument equal to the
+        first timestamp in the current loop and infers the shape from the
+        result. This is probably **not working** if the wrapped object is not
+        a simple Pandas object or a scalar, but rather another Estimator,
+        whose behavior depends on other arguments as well.
+    :type parameter_shape: str
 
     :raises cvxportfolio.NaNError: If ``nan`` are present in result.
     :raises cvxportfolio.MissingTimesError: If some times are missing.
@@ -427,7 +437,7 @@ class DataEstimator(SimulatorEstimator):
             self, data, use_last_available_time=False, allow_nans=False,
             compile_parameter=False, non_negative=False,
             positive_semi_definite=False, data_includes_cash=False,
-            ignore_shape_check=False):
+            ignore_shape_check=False, parameter_shape='infer'):
         self.data = make_numeric(data)
         self._use_last_available_time = use_last_available_time
         self._allow_nans = allow_nans
@@ -437,6 +447,7 @@ class DataEstimator(SimulatorEstimator):
         self._universe_maybe_noncash = None
         self._data_includes_cash = data_includes_cash
         self._ignore_shape_check = ignore_shape_check
+        self._parameter_shape = parameter_shape
         self.parameter = None
 
     def finalize_estimator(self, **kwargs):
@@ -464,11 +475,25 @@ class DataEstimator(SimulatorEstimator):
         if self._compile_parameter:
             # to make sure it doesn't try to update the parameter
             self.parameter = None
-            value = self.values_in_time_recursive(
-                t=trading_calendar[0])
-            self.parameter = cp.Parameter(
-                value.shape if hasattr(value, "shape") else (),
-                PSD=self._positive_semi_definite, nonneg=self._non_negative)
+
+            if self._parameter_shape == 'scalar':
+                self.parameter = cp.Parameter(nonneg=self._non_negative)
+            elif self._parameter_shape == 'universe': # pragma: no cover
+                self.parameter = cp.Parameter(
+                    len(universe), nonneg=self._non_negative)
+            elif (self._parameter_shape == 'universe_minus_cash'
+                    ): # pragma: no cover
+                self.parameter = cp.Parameter(
+                    len(universe)-1, nonneg=self._non_negative)
+            elif self._parameter_shape == 'infer':
+                value = self.values_in_time_recursive(
+                    t=trading_calendar[0])
+                self.parameter = cp.Parameter(
+                    value.shape if hasattr(value, "shape") else (),
+                    PSD=self._positive_semi_definite,
+                    nonneg=self._non_negative)
+            else: # pragma: no cover
+                raise SyntaxError('Option to parameter_shape not recognized')
 
     def value_checker(self, result):
         """Ensure that only scalars or arrays without np.nan are returned.

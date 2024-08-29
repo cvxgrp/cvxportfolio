@@ -21,7 +21,7 @@ Estimators
 .. automodule:: cvxportfolio.estimator
 
 .. py:module:: cvxportfolio.estimator
-     :noindex:
+     :no-index:
 
 .. autoclass:: Estimator
 

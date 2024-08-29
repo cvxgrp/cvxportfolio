@@ -22,7 +22,7 @@ Cost models
 -----------
 
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:
 
 .. automodule:: cvxportfolio.costs
 
@@ -30,7 +30,7 @@ Costs Documentation
 ~~~~~~~~~~~~~~~~~~~
 
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:
     
 .. autoclass:: HoldingCost
 

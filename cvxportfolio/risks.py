@@ -41,11 +41,12 @@ import cvxpy as cp
 import numpy as np
 
 from .costs import Cost
-from .errors import ConvexityError
-from .estimator import DataEstimator
+from .errors import ConvexityError, DataError
+from .estimator import DataEstimator, Estimator
 from .forecast import (HistoricalFactorizedCovariance,
                        HistoricalLowRankCovarianceSVD, HistoricalVariance,
                        project_on_psd_cone_and_factorize)
+from .utils import periods_per_year_from_datetime_index
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ __all__ = [
     "WorstCaseRisk",
     "FullSigma",
     "FactorModel",
+    "AnnualizedVolatility",
 ]
 
 
@@ -516,6 +518,59 @@ class WorstCaseRisk(Cost):
         assert cvxpy_expression.is_dcp(dpp=True)
         assert cvxpy_expression.is_convex()
         return cvxpy_expression
+
+# Utility object to manage risk constraints
+
+class AnnualizedVolatility(Estimator):
+    """Annualized volatility to be used in risk constraint.
+
+    This is a utility object to automatically compute the per-period square
+    risk used in a risk constraint from a target annualized volatility, like
+    10%. It uses the ``past_returns`` object to infer the average duration of
+    each trading interval. Note that this in general **will not match** the
+    realized volatility shown in the
+    :class:`cvxportfolio.result.BacktestResult`, since that is the realized
+    value, while this is used to constrain the allocation according to some
+    risk model.
+
+    :Example:
+
+    >>> risk_constr = cvx.FullCovariance() <= cvx.AnnualizedVolatility(0.1)
+
+    .. versionadded:: 1.4.0
+
+    :param annualized_vol: Annualized target volatility, like 0.1, meaning 10%.
+        You can also pass a time-indexed Pandas Series if your limit changes
+        in time during a back-test.
+    :type annualized_vol: float or pd.Series
+    """
+
+    def __init__(self, annualized_vol):
+        self.annualized_vol = DataEstimator(annualized_vol)
+
+    def values_in_time( # pylint: disable=arguments-differ
+        self, past_returns, **kwargs):
+        """Compute square risk per-period from annualized volatility.
+
+        :param past_returns: Past market returns.
+        :type past_returns: pd.DataFrame
+        :param kwargs: Other unused arguments to :meth:`values_in_time`.
+        :type kwargs: dict
+
+        :raises DataError: If this is used when running
+            :meth:`cvx.Policy.execute` with ``market_data=None``.
+
+        :returns: Per period risk.
+        :rtype: float
+        """
+
+        if past_returns is None:
+            raise DataError(
+                f'Object {self.__class__.__name__} can only be used if'
+                + ' the MarketData server is present.')
+
+        ppy = periods_per_year_from_datetime_index(past_returns.index)
+        return (self.annualized_vol.current_value ** 2 ) / ppy
 
 # Aliases
 

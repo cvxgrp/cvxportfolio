@@ -21,7 +21,7 @@ Forecasters
 .. automodule:: cvxportfolio.forecast
 
 .. py:module:: cvxportfolio.forecast
-     :noindex:
+     :no-index:
 
 Forecasters Documentation
 ~~~~~~~~~~~~~~~~~~~~~~~~~

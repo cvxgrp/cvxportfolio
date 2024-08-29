@@ -20,7 +20,7 @@ Simple policies
 ---------------
 
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:
 
 .. autoclass:: AdaptiveRebalance
 

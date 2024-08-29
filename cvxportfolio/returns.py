@@ -72,7 +72,7 @@ class CashReturn(Cost):
 
     def __init__(self, cash_returns=None):
         self.cash_returns = None if cash_returns is None else DataEstimator(
-            cash_returns, compile_parameter=True)
+            cash_returns, compile_parameter=True, parameter_shape='scalar')
         self._cash_return_parameter = None
 
     def initialize_estimator( # pylint: disable=arguments-differ

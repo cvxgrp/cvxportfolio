@@ -120,6 +120,7 @@ html_sidebars = { # disable left sidebar on certain pages
 
 html_theme_options = { # button to let users send PR to GH
     "use_edit_page_button": True,
+    "show_toc_level": 3,
 }
 
 html_context = {

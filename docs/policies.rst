@@ -23,7 +23,7 @@ Trading policies
 .. automodule:: cvxportfolio.policies
 
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:
 
 .. toctree::
 

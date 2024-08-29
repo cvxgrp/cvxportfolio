@@ -43,6 +43,7 @@ from .test_data import TestData, TestMarketData
 from .test_estimator import TestEstimator
 from .test_forecast import TestForecast
 from .test_hyperparameters import TestHyperparameters
+from .test_integration import TestIntegration
 from .test_policies import TestPolicies
 from .test_result import TestResult
 from .test_returns import TestReturns

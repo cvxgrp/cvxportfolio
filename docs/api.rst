@@ -31,4 +31,4 @@ API documentation
     internals
 
 .. py:module:: cvxportfolio
-    :noindex:
+    :no-index:

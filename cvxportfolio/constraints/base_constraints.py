@@ -145,7 +145,8 @@ class CostInequalityConstraint(InequalityConstraint):
 
     def __init__(self, cost, value):
         self.cost = cost
-        self.value = DataEstimator(value, compile_parameter=True)
+        self.value = DataEstimator(
+            value, compile_parameter=True, parameter_shape='scalar')
 
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
             self, **kwargs):
