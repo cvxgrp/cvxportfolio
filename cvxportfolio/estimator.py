@@ -347,13 +347,16 @@ class SimulatorEstimator(Estimator):
             something there.
         :rtype: numpy.array, pandas.Series, pandas.DataFrame, ...
         """
-        for _, subestimator in self.__dict__.items():
-            if hasattr(subestimator, "simulate_recursive"):
-                subestimator.simulate_recursive(**kwargs)
-        if hasattr(self, "simulate"):
-            self._current_value = self.simulate(**kwargs)
-            return self.current_value
-        return None # pragma: no cover
+        try:
+            for _, subestimator in self.__dict__.items():
+                if hasattr(subestimator, "simulate_recursive"):
+                    subestimator.simulate_recursive(**kwargs)
+            if hasattr(self, "simulate"):
+                self._current_value = self.simulate(**kwargs)
+                return self.current_value
+            return None # pragma: no cover
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self._exception_traceback_raiser(e)
 
 class CvxpyExpressionEstimator(Estimator):
     """Base class for estimators that are Cvxpy expressions."""
