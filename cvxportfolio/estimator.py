@@ -42,6 +42,10 @@ class Estimator:
     :meth:`values_in_time_recursive`.
     """
 
+    # we use this property for exception reporting to the user, skipping
+    # internal estimators on the recursive evaluation path
+    _is_internal = False
+
     # explicitely list subestimators, only needed for those not defined
     # at class attribute level
     __subestimators__ = ()
@@ -190,16 +194,22 @@ class Estimator:
             something there.
         :rtype: numpy.array, pandas.Series, pandas.DataFrame, ...
         """
-        for _, subestimator in self.__dict__.items():
-            if hasattr(subestimator, "values_in_time_recursive"):
+        try:
+            for _, subestimator in self.__dict__.items():
+                if hasattr(subestimator, "values_in_time_recursive"):
+                    subestimator.values_in_time_recursive(**kwargs)
+            for subestimator in self.__subestimators__:
                 subestimator.values_in_time_recursive(**kwargs)
-        for subestimator in self.__subestimators__:
-            subestimator.values_in_time_recursive(**kwargs)
-        if hasattr(self, "values_in_time"):
-            # pylint: disable=assignment-from-no-return
-            self._current_value = self.values_in_time(**kwargs)
-            return self.current_value
-        return self.current_value # pragma: no cover
+            if hasattr(self, "values_in_time"):
+                # pylint: disable=assignment-from-no-return
+                self._current_value = self.values_in_time(**kwargs)
+                return self.current_value
+            return self.current_value # pragma: no cover
+        except Exception as e:
+            if self._is_internal: # skip this object
+                raise e
+            raise e.__class__(
+                f'This error happened in {self}, look at traceback') from e
 
     def collect_hyperparameters(self):
         """Collect (recursively) all hyperparameters defined in a policy.

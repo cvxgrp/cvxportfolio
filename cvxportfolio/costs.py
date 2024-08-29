@@ -179,6 +179,9 @@ class SumCost(Cost):
     This should not be instatiated directly, use cost + cost.
     """
 
+    # skip this cost in exception reporting traceback
+    _is_internal = True
+
     def __init__(self, left, right):
         self.left = left
         assert isinstance(left, Cost)
@@ -229,6 +232,9 @@ class MulCost(Cost):
 
     This should not be instatiated directly, use scalar * cost.
     """
+
+    # skip this cost in exception reporting traceback
+    _is_internal = True
 
     def __init__(self, scalar, cost):
         self.scalar = scalar
