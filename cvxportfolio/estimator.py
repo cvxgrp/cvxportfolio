@@ -81,14 +81,17 @@ class Estimator:
         :param kwargs: Parameters sent down an estimator tree to inizialize it.
         :type kwargs: dict
         """
-        for _, subestimator in self.__dict__.items():
-            if hasattr(subestimator, "initialize_estimator_recursive"):
+        try:
+            for _, subestimator in self.__dict__.items():
+                if hasattr(subestimator, "initialize_estimator_recursive"):
+                    subestimator.initialize_estimator_recursive(**kwargs)
+            for subestimator in self.__subestimators__:
                 subestimator.initialize_estimator_recursive(**kwargs)
-        for subestimator in self.__subestimators__:
-            subestimator.initialize_estimator_recursive(**kwargs)
-        if hasattr(self, "initialize_estimator"):
-            self.initialize_estimator(**kwargs)
-        self._current_value = None
+            if hasattr(self, "initialize_estimator"):
+                self.initialize_estimator(**kwargs)
+            self._current_value = None
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self._exception_traceback_raiser(e)
 
     def finalize_estimator(self, **kwargs):
         """Finalize estimator instance (currently unused).
@@ -115,14 +118,18 @@ class Estimator:
         :param kwargs: Parameters sent down an estimator tree to finalize it.
         :type kwargs: dict
         """
-        for _, subestimator in self.__dict__.items():
-            if hasattr(subestimator, "finalize_estimator_recursive"):
+        try:
+            for _, subestimator in self.__dict__.items():
+                if hasattr(subestimator, "finalize_estimator_recursive"):
+                    subestimator.finalize_estimator_recursive(**kwargs)
+            for subestimator in self.__subestimators__:
                 subestimator.finalize_estimator_recursive(**kwargs)
-        for subestimator in self.__subestimators__:
-            subestimator.finalize_estimator_recursive(**kwargs)
-        if hasattr(self, "finalize_estimator"):
-            self.finalize_estimator(**kwargs)
-        self._current_value = None
+            if hasattr(self, "finalize_estimator"):
+                self.finalize_estimator(**kwargs)
+            self._current_value = None
+        # pylint: disable=broad-exception-caught
+        except Exception as e: # pragma: no cover
+            self._exception_traceback_raiser(e)
 
     _current_value = None
 
@@ -205,11 +212,8 @@ class Estimator:
                 self._current_value = self.values_in_time(**kwargs)
                 return self.current_value
             return self.current_value # pragma: no cover
-        except Exception as e:
-            if self._is_internal: # skip this object
-                raise e
-            raise e.__class__(
-                f'This error happened in {self}, look at traceback') from e
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self._exception_traceback_raiser(e)
 
     def collect_hyperparameters(self):
         """Collect (recursively) all hyperparameters defined in a policy.
@@ -253,6 +257,16 @@ class Estimator:
         core = core[:-2]  # remove trailing comma and space if present
         rhs = ')'
         return lhs + core + rhs
+
+    def _exception_traceback_raiser(self, e):
+        """Helper method to raise exception with traceback information."""
+        if self._is_internal: # skip this object
+            raise e # pragma: no cover
+        if hasattr(e, 'add_note'): # added in Python 3.11
+            e.add_note(f'This error happened in {self}.')
+            raise e
+        raise e.__class__( # pragma: no cover
+            f'This error happened in {self}, look at traceback above.') from e
 
 
 class SimulatorEstimator(Estimator):
