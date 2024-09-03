@@ -38,7 +38,10 @@
 
 import copy
 import datetime
-import multiprocessing
+try: # pragma: no cover
+    from multiprocessing import cpu_count
+except ImportError:
+    from multiprocess import cpu_count
 import re
 import time
 import unittest
@@ -663,7 +666,7 @@ class TestSimulator(CvxportfolioTest):
 
     def test_multiple_backtest2(self):
         """Test re-use of a worker process."""
-        cpus = multiprocessing.cpu_count()
+        cpus = cpu_count()
 
         start = '2014-03-01'
         end = '2014-04-25'
