@@ -28,7 +28,7 @@ dependencies = ["pandas",
     "numpy; python_version<'3.12'",
     "numpy<2.0.0; python_version>='3.12'",
     "matplotlib", "requests", "cvxpy",
-    "multiprocess", # robustifies usage w/ 3rd party modules
+    # "multiprocess", # robustifies usage w/ 3rd party modules, used if installed
     "scs" # it's hardcoded as fallback solver if numerical errors
     ]
 
