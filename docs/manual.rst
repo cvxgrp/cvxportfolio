@@ -489,7 +489,7 @@ in the ``test_data.py`` module, failing, but most of the test suite will run.
 Parallel back-testing
 ---------------------
 
-You can run multiple back-tests in parallel wit the :meth:`MarketSimulator.backtest_many`
+You can run multiple back-tests in parallel with the :meth:`MarketSimulator.backtest_many`
 method. It takes a list of policies and returns the corresponding list of
 :class:`cvxportfolio.result.BacktestResult`. Also
 :meth:`MarketSimulator.optimize_hyperparameters` uses the same approach,
@@ -509,8 +509,8 @@ to search over the space of hyper-parameters efficiently.
     and in that you call complex third party libraries, like machine-learning
     ones, parallel back-testing can be problematic. You should in those cases
     make sure to :ref:`initialize and finalize <execution-model>` all resources you use.
-    Cvxportfolio supports the ``multiprocess`` `parallel execution library
-    <https://multiprocess.readthedocs.io/en/latest/>`_, which may help in such
+    Alternatively, Cvxportfolio supports the ``multiprocess`` `parallel execution
+    library <https://multiprocess.readthedocs.io/en/latest/>`_, which may help in such
     cases. Simply install ``multiprocess`` in the Python environment to make
     Cvxportfolio use it.
 
