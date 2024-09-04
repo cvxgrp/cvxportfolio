@@ -38,13 +38,10 @@
 
 import copy
 import datetime
-try: # pragma: no cover
-    from multiprocessing import cpu_count
-except ImportError:
-    from multiprocess import cpu_count
 import re
 import time
 import unittest
+from os import cpu_count
 
 import numpy as np
 import pandas as pd

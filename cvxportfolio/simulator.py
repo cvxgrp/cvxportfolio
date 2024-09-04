@@ -50,8 +50,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
 try: # pragma: no cover
-    from multiprocess import Lock, Pool  # pylint: disable=no-name-in-module
+    from multiprocess import Lock, Pool
 except ImportError:
     from multiprocessing import Lock, Pool
 
