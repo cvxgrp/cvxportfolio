@@ -46,6 +46,7 @@ import logging
 import sys
 import time
 from itertools import starmap
+from os import cpu_count
 from pathlib import Path
 
 import numpy as np
@@ -770,7 +771,9 @@ class MarketSimulator:
         if (not parallel) or len(policies) == 1:
             result = list(starmap(self._worker, zip_args))
         else:
-            with Pool(initializer=_mp_init, initargs=(Lock(),)) as p:
+            with Pool(
+                    processes=min(len(policies), cpu_count()),
+                    initializer = _mp_init, initargs = (Lock(),)) as p:
                 result = p.starmap(self._worker, zip_args)
 
         return list(result)
