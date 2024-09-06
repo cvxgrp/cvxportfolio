@@ -23,7 +23,7 @@ and check that the results make sense.
 We could also save each universe in a ``json`` file.
 """
 
-# This was generated on 2024-08-23 11:11:26.936266+00:00
+# This was generated on 2024-09-06 14:40:20.778429+00:00
 
 SP500 = \
 ['A', 'AAL', 'AAPL', 'ABBV', 'ABNB', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI',
