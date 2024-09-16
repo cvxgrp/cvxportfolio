@@ -662,7 +662,9 @@ class HistoricalVariance(BaseForecast):
             self._numerator.current_value / self._denominator.current_value)
         if not self.kelly:
             result -= self._correction.current_value ** 2
-        return result
+
+        # when using rolling numerical errors may cause small negative values
+        return np.maximum(result, 0.)
 
 class HistoricalMeanError(HistoricalVariance):
     r"""Historical standard deviations of the mean of non-cash returns.
