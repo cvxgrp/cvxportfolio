@@ -261,7 +261,7 @@ class Estimator:
     def _exception_traceback_raiser(self, e):
         """Helper method to raise exception with traceback information."""
         if self._is_internal: # skip this object
-            raise e # pragma: no cover
+            raise e
         if hasattr(e, 'add_note'): # added in Python 3.11
             e.add_note(f'This error happened in {self}.')
             raise e
@@ -459,6 +459,9 @@ class DataEstimator(SimulatorEstimator):
     :raises cvxportfolio.MissingAssetsError: If some assets are missing.
     :raises cvxportfolio.DataError: If data is not in the right form.
     """
+
+    # skip this estimator in exception reporting
+    _is_internal = True
 
     def __init__(
             self, data, use_last_available_time=False, allow_nans=False,

@@ -31,6 +31,26 @@ from cvxportfolio.tests import CvxportfolioTest
 class TestIntegration(CvxportfolioTest):
     """Assorted integration tests."""
 
+    def test_exception_reporting(self):
+        """Test reporting exception information."""
+
+        md, start, end = self._difficult_market_data()
+        sim = cvx.MarketSimulator(market_data=md, base_location=self.datadir)
+        pol = cvx.SinglePeriodOpt(
+            cvx.ReturnsForecast() - 5 * cvx.FullCovariance(),
+            [cvx.LeverageLimit(np.nan)]
+        )
+
+        with self.assertRaises(cvx.errors.NaNError):
+            sim.backtest(pol, start_time=start, end_time=end)
+
+        pol = cvx.SinglePeriodOpt(
+            cvx.ReturnsForecast() - 5 * cvx.FullCovariance()
+            - 3 * cvx.HoldingCost(short_fees=np.nan))
+
+        with self.assertRaises(cvx.errors.NaNError):
+            sim.backtest(pol, start_time=start, end_time=end)
+
     def test_holdings_limit(self):
         """Test Max/MinHoldings."""
 

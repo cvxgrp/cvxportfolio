@@ -1001,6 +1001,12 @@ class TestSimulator(CvxportfolioTest):
         with self.assertRaises(ConvexityError):
             sim.backtest(policy)
 
+        policy = cvx.SinglePeriodOptimization(
+            cvx.ReturnsForecast() + 2 * cvx.FullCovariance())
+
+        with self.assertRaises(ConvexityError):
+            sim.backtest(policy)
+
     def test_hyperparameters_optimize(self):
         """Test hyperparameter optimization."""
 
