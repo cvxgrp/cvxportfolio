@@ -405,6 +405,7 @@ by providing a single objective and a single list of constraints, and specifying
 the ``planning_horizon`` argument to, for example, 2. This simply copies the terms
 for each step of planning horizon.
 
+.. _disk-access:
 
 Disk Access
 -----------
@@ -485,6 +486,34 @@ internet access. If you run the test suite (by ``python -m cvxportfolio.tests``)
 on a computer without internet access you should see a few tests, mostly
 in the ``test_data.py`` module, failing, but most of the test suite will run.
 
+Parallel back-testing
+---------------------
+
+You can run multiple back-tests in parallel with the :meth:`MarketSimulator.backtest_many`
+method. It takes a list of policies and returns the corresponding list of
+:class:`cvxportfolio.result.BacktestResult`. Also
+:meth:`MarketSimulator.optimize_hyperparameters` uses the same approach,
+to search over the space of hyper-parameters efficiently.
+
+.. note::
+
+    It is not recommended to run multiple Cvxportfolio programs at the same time,
+    unless you are careful to not :ref:`access on-disk storage <disk-access>`. If
+    you want to run many back-tests at the same time, you should run a single program
+    with :meth:`MarketSimulator.backtest_many`.
+
+.. note::
+
+    If your Cvxportfolio program uses custom objects, for example
+    :doc:`a forecaster <examples/user_provided_forecasters>`,
+    and in that you call complex third party libraries, like machine-learning
+    ones, parallel back-testing can be problematic. You should in those cases
+    make sure to :ref:`initialize and finalize <execution-model>` all resources you use.
+    Alternatively, Cvxportfolio supports the ``multiprocess`` `parallel execution
+    library <https://multiprocess.readthedocs.io/en/latest/>`_, which may help in such
+    cases. Simply install ``multiprocess`` in the Python environment to make
+    Cvxportfolio use it.
+
 
 CVXPY
 -----
@@ -555,6 +584,8 @@ accounting, manages market and derived data, enables multi-processing for
 parallel back-tests, ....
 In the next section we explain how Cvxportfolio policy objects work,
 which is useful to know when extending them.
+
+.. _execution-model:
 
 Policy execution model
 ----------------------

@@ -46,11 +46,16 @@ import logging
 import sys
 import time
 from itertools import starmap
+from os import cpu_count
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from multiprocess import Lock, Pool  # pylint: disable=no-name-in-module
+
+try: # pragma: no cover
+    from multiprocess import Lock, Pool
+except ImportError:
+    from multiprocessing import Lock, Pool
 
 from .cache import _load_cache, _mp_init, _store_cache
 from .costs import StocksHoldingCost, StocksTransactionCost
@@ -766,7 +771,9 @@ class MarketSimulator:
         if (not parallel) or len(policies) == 1:
             result = list(starmap(self._worker, zip_args))
         else:
-            with Pool(initializer=_mp_init, initargs=(Lock(),)) as p:
+            with Pool(
+                    processes=min(len(policies), cpu_count()),
+                    initializer = _mp_init, initargs = (Lock(),)) as p:
                 result = p.starmap(self._worker, zip_args)
 
         return list(result)

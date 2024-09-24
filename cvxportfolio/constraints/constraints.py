@@ -73,11 +73,29 @@ __all__ = [
     "MinWeightsAtTimes",
     "MaxWeightsAtTimes",
     "TurnoverLimit",
-    "MinCashBalance"
+    "MinCashBalance",
+    "FixedImbalance",
 ]
 
-class NoCash(EqualityConstraint):
-    """Require that the cash balance is zero at each period."""
+class FixedImbalance(EqualityConstraint):
+    """Fix the imbalance of the long and short legs of the portfolio.
+
+    The imbalance is the sum of the signed non-cash weights. Fixed zero
+    imbalance is the same as the :class:`DollarNeutral` constraint, while
+    imbalance equal to one is the same as the :class:`NoCash` constraint. Note
+    that the weights vector always sums to 1: the cash weight is equal to 1
+    minus the imbalance.
+
+    .. versionadded:: 1.4.0
+
+    :param imbalance: Either fixed or varying in time, if using a
+        datetime-indexed Pandas Series, imbalance of the portfolio weights.
+    :type imbalance: float, pd.Series
+    """
+
+    def __init__(self, imbalance):
+        self.imbalance = DataEstimator(
+            imbalance, compile_parameter=True, parameter_shape='scalar')
 
     def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
             self, w_plus, **kwargs):
@@ -86,7 +104,17 @@ class NoCash(EqualityConstraint):
 
     def _rhs(self):
         """Compile right hand side of the constraint expression."""
-        return 0
+        return 1 - self.imbalance.parameter
+
+
+class NoCash(FixedImbalance):
+    """Require that the cash balance is zero at each period.
+
+    This is the same as :class:`FixedImbalance` with argument 1.
+    """
+
+    def __init__(self):
+        super().__init__(1.)
 
 
 class MarketNeutral(EqualityConstraint):
@@ -474,7 +502,7 @@ class LongCash(MinCashBalance):
         super().__init__(0.)
 
 
-class DollarNeutral(EqualityConstraint):
+class DollarNeutral(FixedImbalance):
     r"""Long-short dollar neutral strategy.
 
     In our notation, this is
@@ -484,17 +512,12 @@ class DollarNeutral(EqualityConstraint):
         \mathbf{1}^T \max({(w_t + z_t)}_{1:n}, 0) =
             -\mathbf{1}^T \min({(w_t + z_t)}_{1:n}, 0)
 
-    which is simply :math:`{(w_t + z_t)}_{n+1} = 1`.
+    which is simply :math:`{(w_t + z_t)}_{n+1} = 1`. This is the same as
+    :class:`FixedImbalance` with argument 0.
     """
 
-    def _compile_constr_to_cvxpy( # pylint: disable=arguments-differ
-            self, w_plus, **kwargs):
-        """Compile left hand side of the constraint expression."""
-        return w_plus[-1]
-
-    def _rhs(self):
-        """Compile right hand side of the constraint expression."""
-        return 1
+    def __init__(self):
+        super().__init__(0.)
 
 class MaxTradeWeights(InequalityConstraint):
     r"""A max limit on trade weights (excluding cash).

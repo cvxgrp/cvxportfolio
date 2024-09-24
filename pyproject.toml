@@ -28,7 +28,7 @@ dependencies = ["pandas",
     "numpy; python_version<'3.12'",
     "numpy<2.0.0; python_version>='3.12'",
     "matplotlib", "requests", "cvxpy",
-    "multiprocess", # robustifies usage w/ 3rd party modules
+    # "multiprocess", # robustifies usage w/ 3rd party modules, used if installed
     "scs" # it's hardcoded as fallback solver if numerical errors
     ]
 
@@ -63,7 +63,10 @@ load-plugins =["pylint.extensions.docparams", "pylint.extensions.docstyle"]
 [tool.pylint.basic]
 # These variable names are defined in the paper.
 good-names = ["t", "u", "v", "w", "h", "z", "F", "d", "Sigma"]
-disable = ['fixme'] # We are using TODOs in code comments
+disable = [
+    'fixme', # We are using TODOs in code comments
+    'too-many-positional-arguments' # added in pylint 3.3, unclear use
+    ]
 
 [tool.pylint.variables]
 # These are sometimes ignored, we might instead use dataclasses for

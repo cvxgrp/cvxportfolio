@@ -494,6 +494,9 @@ class DataEstimator(SimulatorEstimator):
         :type trading_calendar: pandas.DatetimeIndex
         :param kwargs: Other unused arguments to :meth:`initialize_estimator`.
         :type kwargs: dict
+
+        :raises SyntaxError: If a wrong option was passed to
+            ``parameter_shape``.
         """
 
         self._universe_maybe_noncash = \

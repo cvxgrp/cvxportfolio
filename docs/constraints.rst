@@ -68,6 +68,9 @@ Constraints
 
 .. autoclass:: TurnoverLimit
 
+.. autoclass:: FixedImbalance
+
+.. autoclass:: NoCash
 
 .. _soft-constraints:
 
