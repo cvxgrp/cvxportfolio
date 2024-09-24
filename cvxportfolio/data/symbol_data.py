@@ -134,9 +134,9 @@ class SymbolData:
         loader = globals()['_loader_' + self._storage_backend]
         try:
             logger.info(
-                f"{self.__class__.__name__} is trying to load {self.symbol}"
-                + f" with {self._storage_backend} backend"
-                + f" from {self.storage_location}")
+                "%s is trying to load %s with %s backend from %s",
+                self.__class__.__name__, self.symbol, self._storage_backend,
+                self.storage_location)
             return loader(self.symbol, self.storage_location)
         except FileNotFoundError:
             return None
@@ -158,9 +158,8 @@ class SymbolData:
         # we could implement multiprocess safety here
         storer = globals()['_storer_' + self._storage_backend]
         logger.info(
-            f"{self.__class__.__name__} is storing {self.symbol}"
-            + f" with {self._storage_backend} backend"
-            + f" in {self.storage_location}")
+            "%s is storing %s with %s backend in %s", self.__class__.__name__,
+            self.symbol, self._storage_backend, self.storage_location)
         storer(self.symbol, data, self.storage_location)
 
     def _print_difference(self, current, new):
@@ -189,8 +188,7 @@ class SymbolData:
         """
         current = self._load_raw()
         logger.info(
-            f"Downloading {self.symbol}"
-            + f" from {self.__class__.__name__}")
+            "Downloading %s from %s", self.symbol, self.__class__.__name__)
         updated = self._download(
             self.symbol, current, grace_period=grace_period)
 
@@ -208,8 +206,9 @@ class SymbolData:
                         # via logreturns and numerical errors can sift through
                         np.isclose(updated.loc[current.index[:-1]],
                             current.iloc[:-1], equal_nan=True)):
-                    logger.warning(f"{self.__class__.__name__} update"
-                        + f" of {self.symbol} is not append-only!")
+                    logger.warning(
+                        "%s update of %s is not append-only!",
+                        self.__class__.__name__, self.symbol)
                     self._print_difference(current, updated)
                 if hasattr(current, 'columns'):
                     # the first column is open price
