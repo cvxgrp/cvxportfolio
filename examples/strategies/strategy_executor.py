@@ -246,7 +246,7 @@ class _Runner:
         :type content: dict
         """
         logger.info('Storing json file %s', filename)
-        content = {str(k): dict(content[k]) for k in content}
+        content = {str(k): dict(content[k].fillna(0.)) for k in content}
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(content, f, sort_keys=True, indent=4)
 
