@@ -142,6 +142,12 @@ class MarketSimulator:
         integer number of shares.
     :type round_trades: bool
 
+    :param reject_trades_below: Minimum absolute size, in units of cash
+        (e.g., USDOLLAR) of a trade. Trades (buys or sell) requested by the
+        policy which are smaller than this threshold are ignored. Default None,
+        equivalent to 0.
+    :type reject_trades_below: float
+
     :param max_fraction_liquidity: Optionally cap trades (in absolute value) up
         to a certain fraction of the realized volume in a given period for each
         asset, for example `0.05`, meaning 5%. Requires volumes to be provided
@@ -159,6 +165,7 @@ class MarketSimulator:
     # pylint: disable=too-many-arguments
     def __init__(self, universe=(), returns=None, volumes=None,
                  prices=None, market_data=None, costs=(), round_trades=False,
+                 reject_trades_below=None,
                  max_fraction_liquidity=None,
                  datasource='YahooFinance',
                  cash_key="USDOLLAR",
@@ -209,6 +216,7 @@ class MarketSimulator:
 
         self.costs = [el() if isinstance(el, type) else el for el in costs]
         self.backtest_result_cls = backtest_result_cls
+        self.reject_trades_below = reject_trades_below
         # self.lock = Lock()
         # self.kwargs = kwargs
 
@@ -311,6 +319,16 @@ class MarketSimulator:
         # round trades
         if self.round_trades:
             u = self._round_trade_vector(u, current_prices)
+
+        # small trades rejection
+        if self.reject_trades_below is not None:
+            rejects = np.abs(u) < self.reject_trades_below
+            if rejects.sum() > 0:
+                logger.info(
+                    'Rejecting trades on identifiers %s because they are below'
+                    ' the threshold %s.', u.index[rejects],
+                    self.reject_trades_below)
+                u[rejects] = 0.
 
         # recompute cash
         u.iloc[-1] = -sum(u.iloc[:-1])
@@ -820,6 +838,12 @@ class StockMarketSimulator(MarketSimulator):
         available market liquidity. Default 5%.
     :type max_fraction_liquidity: float or None
 
+    :param reject_trades_below: Minimum absolute size, in units of cash
+        (e.g., USDOLLAR) of a trade. Trades (buys or sell) requested by the
+        policy which are smaller than this threshold are ignored. Default None,
+        equivalent to 0.
+    :type reject_trades_below: float
+
     :param kwargs: You can add any other argument to pass to
         :class:`MarketSimulator`'s initializer.
     :type kwargs: dict
@@ -829,11 +853,13 @@ class StockMarketSimulator(MarketSimulator):
                  costs=(StocksTransactionCost, StocksHoldingCost),
                  round_trades=True,
                  max_fraction_liquidity=0.05,
+                 reject_trades_below=None,
                  cash_key="USDOLLAR", base_location=BASE_LOCATION,
                  trading_frequency=None, **kwargs):
 
         super().__init__(universe=universe,
                          costs=costs, round_trades=round_trades,
                          max_fraction_liquidity=max_fraction_liquidity,
+                         reject_trades_below=reject_trades_below,
                          cash_key=cash_key, base_location=base_location,
                          trading_frequency=trading_frequency, **kwargs)

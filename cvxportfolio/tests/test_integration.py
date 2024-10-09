@@ -51,6 +51,33 @@ class TestIntegration(CvxportfolioTest):
         with self.assertRaises(cvx.errors.NaNError):
             sim.backtest(pol, start_time=start, end_time=end)
 
+    def test_small_trades_rejection(self):
+        """Test Simulator's rejection of small trades."""
+
+        md, start, end = self._difficult_market_data()
+
+        results = []
+        for thres in [0., 1e2, 1e3, 1e4]:
+            sim = cvx.MarketSimulator(
+                market_data=md, base_location=self.datadir,
+                reject_trades_below=thres)
+            pol = cvx.SinglePeriodOpt(
+                cvx.ReturnsForecast() - 5 * cvx.FullCovariance(),
+                [cvx.LeverageLimit(1), cvx.MaxWeights(0.05),
+                cvx.MinWeights(-0.05)]
+            )
+            result = sim.backtest(pol, start_time=start, end_time=end)
+            results.append(result)
+            # print(result.u)
+            nonzero_trades = result.u[np.abs(result.u) > 0.]
+            self.assertGreaterEqual(np.abs(nonzero_trades).min().min(), thres)
+
+        # check that each threshold cuts more trades
+        sparsity = [(el.u.fillna(0.) == 0.).sum().sum() for el in results]
+        # print(sparsity)
+        self.assertEqual(sorted(sparsity), sparsity)
+        self.assertEqual(len(set(sparsity)), len(sparsity))
+
     def test_holdings_limit(self):
         """Test Max/MinHoldings."""
 
