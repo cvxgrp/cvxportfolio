@@ -70,11 +70,16 @@ jobs:
   test:
 
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
 
     strategy:
       matrix: # https://github.com/actions/runner-images
         os: [ubuntu-latest, windows-latest, macos-latest, macos-13] # last 2 are aarch64 and amd64
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        experimental: [false]
+        include:
+          - python-version: '3.13'
+            experimental: true
         exclude:
           - os: macos-latest # aarch64
             python-version: '3.8'
@@ -114,6 +119,10 @@ jobs:
       - name: If running on python 3.11 install some old dependencies
         if: ${{ matrix.python-version == '3.11'}}
         run: python -m pip install numpy==1.26.1 scipy==1.11.3 matplotlib==3.7.2 cvxpy==1.4.1 pandas==2.1.2 osqp==0.6.3 ecos==2.0.12 scs==3.2.3
+
+      - name: If running on python 3.12 install some old dependencies
+        if: ${{ matrix.python-version == '3.12'}}
+        run: python -m pip install numpy==2.1.2 scipy==1.14.1 matplotlib==3.9.2 cvxpy==1.5.3 pandas==2.2.3 osqp==0.6.7.post3 ecos==2.0.14 scs==3.2.7
 
       - name: Install package
         run: |
