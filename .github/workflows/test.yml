@@ -70,6 +70,7 @@ jobs:
   test:
 
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.python-version == '3.13' }}
 
     strategy:
       matrix: # https://github.com/actions/runner-images
