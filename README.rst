@@ -15,14 +15,15 @@
 
 .. You should have received a copy of the GNU General Public License along with
 .. Cvxportfolio. If not, see <https://www.gnu.org/licenses/>.
-`Cvxportfolio <https://www.cvxportfolio.com>`_
-==============================================
+
+`Cvxportfolio <https://www.cvxportfolio.com>`__
+===============================================
 
 |CVXportfolio on PyPI| |linting: pylint| |Coverage Status|
 |Documentation Status| |GPLv3| |Anaconda-Server Badge|
 
 
-`Cvxportfolio <https://cvxportfolio.readthedocs.io>`_ is an object-oriented
+`Cvxportfolio <https://cvxportfolio.readthedocs.io>`__ is an object-oriented
 library for portfolio optimization and back-testing. It implements models
 described in the `accompanying paper
 <https://cvxportfolio.readthedocs.io/en/stable/_static/cvx_portfolio.pdf>`_.
@@ -59,7 +60,7 @@ World <https://youtu.be/1ThOKEu371M>`_ Youtube video.
 Anaconda installs 
 `are also supported <https://anaconda.org/conda-forge/cvxportfolio>`_.
 
-Cvxportfolio's main dependencies are `Cvxpy <https://www.cvxpy.org>`_ for
+Cvxportfolio's main dependencies are `CVXPY <https://www.cvxpy.org>`__ for
 interfacing with numerical solvers and `Pandas <https://pandas.pydata.org/>`_
 for interfacing with databases. We don't require any specific version of our
 dependencies and test against all recent ones (up to a few years ago).
@@ -90,8 +91,8 @@ After installing you can run our unit test suite in you local environment by
 
    python -m cvxportfolio.tests
 
-We test against recent python versions (3.8, 3.9, 3.10, 3.11, 3.12) and recent versions
-of the main dependencies (from pandas 1.4, cvxpy 1.1, ..., up to the current
+We test against recent Python versions (3.8, 3.9, 3.10, 3.11, 3.12) and recent versions
+of the main dependencies (from Pandas 1.4, CVXPY 1.1, ..., up to the current
 versions) on all major operating systems. You can see the `automated testing code 
 <https://github.com/cvxgrp/cvxportfolio/blob/master/.github/workflows/test.yml>`_.
 
@@ -179,7 +180,7 @@ well-suited for high frequency applications, `PyPortfolioOpt <https://pyportfoli
 a simple yet powerful library for portfolio optimization that uses well-known models,
 `YFinance <https://github.com/ranaroussi/yfinance>`_, which is not a portfolio
 optimization library (it only provides a data interface to Yahoo Finance), but
-used to be one of our dependencies, and also `CVXPY <https://www.cvxpy.org>`_ by
+used to be one of our dependencies, and also `CVXPY <https://www.cvxpy.org>`__ by
 itself, which is used by some of the above and has an extensive 
 `set of examples <https://www.cvxpy.org/examples/index.html#finance>`_
 devoted to portfolio optimization (indeed, Cvxportfolio was born out of those).

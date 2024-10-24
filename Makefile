@@ -68,6 +68,7 @@ fix:  ## auto-fix code
 	$(BINDIR)/docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 
 release: update lint test  ## update version, publish to pypi
+	$(BINDIR)/rstcheck README.rst
 	$(BINDIR)/python bumpversion.py
 	git push --no-verify
 	$(BINDIR)/python -m build
