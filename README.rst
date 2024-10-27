@@ -35,6 +35,13 @@ The documentation of the library is at
 
 *News:*
 
+   Python 3.13 is partially supported. `One dependency is missing compiled wheels
+   <https://github.com/bodono/scs-python/pull/117>`_: Pip installation via source distribution
+   (local compilation) should work on Mac out of the box and on Linux if you
+   have BLAS/LAPACK development libraries installed. Conda installation may work
+   on Windows too. Also, Numpy 2 is currently causing some issues with CVXPY on
+   Python 3.13, so we're temporarily restricting Numpy to < 2 on Python >= 3.13.
+
    Since end of 2023 we're running daily `example strategies
    <https://github.com/cvxgrp/cvxportfolio/tree/master/examples/strategies>`_
    using the `development (master) branch

@@ -70,7 +70,7 @@ jobs:
   test:
 
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.python-version == '3.13' }}
+    # continue-on-error: ${{ matrix.python-version == '3.13' }}
 
     strategy:
       matrix: # https://github.com/actions/runner-images
@@ -81,6 +81,8 @@ jobs:
             python-version: '3.8'
           - os: macos-latest # aarch64
             python-version: '3.9'
+          - os: windows-latest # SCS missing windows wheels for 3.13, https://github.com/bodono/scs-python/pull/117
+            python-version: '3.13'
 
     steps:
 
