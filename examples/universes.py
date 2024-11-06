@@ -23,7 +23,7 @@ and check that the results make sense.
 We could also save each universe in a ``json`` file.
 """
 
-# This was generated on 2024-10-09 10:09:47.131121+00:00
+# This was generated on 2024-11-06 16:48:36.119364+00:00
 
 SP500 = \
 ['A', 'AAPL', 'ABBV', 'ABNB', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI', 'ADM',
@@ -95,8 +95,8 @@ DOW30 = \
 
 FTSE100 = \
 ['AAF.L', 'AAL.L', 'ABF.L', 'ADM.L', 'AHT.L', 'ANTO.L', 'AUTO.L', 'AV.L',
- 'AZN.L', 'BA.L', 'BARC.L', 'BATS.L', 'BDEV.L', 'BEZ.L', 'BKG.L', 'BLND.L',
- 'BME.L', 'BNZL.L', 'BP.L', 'BT-A.L', 'CCH.L', 'CNA.L', 'CPG.L', 'CRDA.L',
+ 'AZN.L', 'BA.L', 'BARC.L', 'BATS.L', 'BEZ.L', 'BKG.L', 'BLND.L', 'BME.L',
+ 'BNZL.L', 'BP.L', 'BT-A.L', 'BTRW.L', 'CCH.L', 'CNA.L', 'CPG.L', 'CRDA.L',
  'CTEC.L', 'DCC.L', 'DGE.L', 'DPLM.L', 'EDV.L', 'ENT.L', 'EXPN.L', 'EZJ.L',
  'FCIT.L', 'FRAS.L', 'FRES.L', 'GLEN.L', 'GSK.L', 'HIK.L', 'HL.L', 'HLMA.L',
  'HLN.L', 'HSBA.L', 'HSX.L', 'HWDN.L', 'IAG.L', 'ICG.L', 'IHG.L', 'III.L',
