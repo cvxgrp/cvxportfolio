@@ -25,7 +25,7 @@ jobs:
         with:
             # we're not yet using 3.12 because there are some issues
             # with pylint there (November 2023)
-            python-version: '3.11' 
+            python-version: '3.11'
 
       - name: Pylint
         run: |
@@ -44,7 +44,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-            python-version: '3.12' 
+            python-version: '3.13'
 
       - name: Package
         run: |
@@ -58,7 +58,7 @@ jobs:
       - name: Delete the repo
         run: |
               rm -rf *
-      
+
       - name: Run tests shipped with the package
         run: |
               python -m cvxportfolio.tests
