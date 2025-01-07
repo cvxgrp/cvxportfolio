@@ -26,8 +26,7 @@ maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
 dependencies = ["pandas",
     # October 2024, Numpy 2 causes issues with CVXPY on Python 3.13
     "numpy; python_version<'3.13'",
-    "numpy<2.0.0; python_version>='3.13'",
-    "matplotlib", "requests", "cvxpy",
+    "numpy", "matplotlib", "requests", "cvxpy",
     # "multiprocess", # robustifies usage w/ 3rd party modules, used if installed
     "scs" # it's hardcoded as fallback solver if numerical errors
     ]
