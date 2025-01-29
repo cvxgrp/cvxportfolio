@@ -5,7 +5,7 @@ import pandas as pd
 import cvxportfolio as cvx
 
 strats = ['dow30_daily', 'ndx100_daily', 'sp500_daily', 'ftse100_daily']
-etfs = ['DIA', 'QQQ', 'SPY', 'VUKE.L']
+etfs = ['DIA', 'QQQ', 'SPY', 'ISF.L']
 
 for i, strat in enumerate(strats):
     print('\nSTRATEGY', strat)
