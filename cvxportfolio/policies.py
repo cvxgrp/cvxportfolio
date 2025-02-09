@@ -962,13 +962,21 @@ class MultiPeriodOptimization(Policy):
                     ' at time %s;'
                     ' re-trying by using %s with basic options.',
                    self.cvxpy_kwargs, t,  self.fallback_solver)
-                # we could refactor code to handle solve errors also here
                 try:
-                    self._problem.solve(
-                        ignore_dpp=True, solver=self.fallback_solver)
-                # old cvxpy had no ignore_dpp
-                except TypeError: # pragma: no cover
-                    self._problem.solve(solver=self.fallback_solver)
+                    try:
+                        self._problem.solve(
+                            ignore_dpp=True, solver=self.fallback_solver)
+                    # old cvxpy had no ignore_dpp
+                    except TypeError: # pragma: no cover
+                        self._problem.solve(solver=self.fallback_solver)
+                # give up
+                except cp.SolverError: # pragma: no cover
+                    raise NumericalSolverError(
+                      f"Numerical solver for policy {self.__class__.__name__}"
+                      + f" at time {t} failed. Fallback solver"
+                      + f" {self.fallback_solver} didn't succeed either."
+                      + " Try changing solver, relaxing some constraints,"
+                      + " adding regularizers, or removing costs.") from exc
 
         if self._problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise ProgramUnbounded(
