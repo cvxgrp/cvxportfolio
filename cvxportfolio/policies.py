@@ -1037,7 +1037,7 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
         super().__init__(
             [objective], [constraints],
             include_cash_return=include_cash_return,
-            fallback_solver=fallback_solver
+            fallback_solver=fallback_solver,
             benchmark=benchmark, **kwargs)
 
     def __repr__(self):
