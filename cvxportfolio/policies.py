@@ -964,17 +964,11 @@ class MultiPeriodOptimization(Policy):
                    self.cvxpy_kwargs, t,  self.fallback_solver)
                 # we could refactor code to handle solve errors also here
                 try:
-                    self._problem.solve(ignore_dpp=True, solver=self.fallback_solver)
+                    self._problem.solve(
+                        ignore_dpp=True, solver=self.fallback_solver)
                 # old cvxpy had no ignore_dpp
                 except TypeError: # pragma: no cover
-                    self._problem.solve(solver=self.fallback_solver) # pragma: no cover
-                # if self._problem.status in ['optimal', 'optimal_inaccurate']:
-                #     logger.warning('Fallback solution with SCS worked!')
-                # else: # pragma: no cover
-                #     raise NumericalSolverError( # pragma: no cover
-                #       f"Numerical solver for policy {self.__class__.__name__}"
-                #       + f" at time {t} failed; try changing it, relaxing some"
-                #       + " constraints, or removing costs.") from exc
+                    self._problem.solve(solver=self.fallback_solver)
 
         if self._problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise ProgramUnbounded(
