@@ -715,18 +715,18 @@ class MultiPeriodOptimization(Policy):
         ``CashReturn`` term in the objective, with default parameters.
         Default is ``True``.
     :type include_cash_return: bool
-    :param benchmark: Benchmark weights to use in the risk model and
-        other terms that need it. You can use any policy here. Suggested ones
-        ones are ``AllCash``, the default, ``Uniform``
-        (uniform allocation on non-cash assets),
-        and ``MarketBenchmark``, which approximates the market-weighted
-        portfolio.
     :param fallback_solver: Fallback CVXPY solver (string or class) to use
         if primary solver fails (*i.e.*, throws CVXPY ``SolverError``
         exception). Pass ``None`` to disable fallback logic. The solver (if
         any) will be used with default arguments. Default ``'SCS'``, a
         first-order solver that is very stable.
     :type fallback_solver: str or cvxpy.Solver or None
+    :param benchmark: Benchmark weights to use in the risk model and
+        other terms that need it. You can use any policy here. Suggested ones
+        ones are ``AllCash``, the default, ``Uniform``
+        (uniform allocation on non-cash assets),
+        and ``MarketBenchmark``, which approximates the market-weighted
+        portfolio.
     :type benchmark: :class:`Policy` class or instance
     :param kwargs: Any extra argument will be passed to cvxpy.Problem.solve,
         so you can choose a solver and pass parameters to it.
@@ -1015,18 +1015,18 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
         ``CashReturn`` term in the objective, with default parameters.
         Default is ``True``.
     :type include_cash_return: bool
-    :param benchmark: Benchmark weights to use in the risk model and
-        other terms that need it. You can use any policy here. Suggested ones
-        ones are ``AllCash``, the default, ``Uniform``
-        (uniform allocation on non-cash assets),
-        and ``MarketBenchmark``, which approximates the market-weighted
-        portfolio.
     :param fallback_solver: Fallback CVXPY solver (string or class) to use
         if primary solver fails (*i.e.*, throws CVXPY ``SolverError``
         exception). Pass ``None`` to disable fallback logic. The solver (if
         any) will be used with default arguments. Default ``'SCS'``, a
         first-order solver that is very stable.
     :type fallback_solver: str or cvxpy.Solver or None
+    :param benchmark: Benchmark weights to use in the risk model and
+        other terms that need it. You can use any policy here. Suggested ones
+        ones are ``AllCash``, the default, ``Uniform``
+        (uniform allocation on non-cash assets),
+        and ``MarketBenchmark``, which approximates the market-weighted
+        portfolio.
     :type benchmark: :class:`Policy` class or instance
     :param kwargs: Any extra argument will be passed to cvxpy.Problem.solve,
         so you can choose a solver and pass parameters to it.
