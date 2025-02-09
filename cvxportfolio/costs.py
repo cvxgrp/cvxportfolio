@@ -440,7 +440,7 @@ class SimulatorCost( # pylint: disable=abstract-method
         :rtype: float
         """
 
-        self.values_in_time(
+        self.values_in_time_recursive(
             t=t, past_volumes=past_volumes, past_returns=past_returns,
             current_prices=current_prices, current_weights=current_weights,
             current_portfolio_value=current_portfolio_value)
