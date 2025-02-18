@@ -715,6 +715,12 @@ class MultiPeriodOptimization(Policy):
         ``CashReturn`` term in the objective, with default parameters.
         Default is ``True``.
     :type include_cash_return: bool
+    :param fallback_solver: Fallback CVXPY solver (string or class) to use
+        if primary solver fails (*i.e.*, throws CVXPY ``SolverError``
+        exception). Pass ``None`` to disable fallback logic. The solver (if
+        any) will be used with default arguments. Default ``'SCS'``, a
+        first-order solver that is very stable.
+    :type fallback_solver: str or cvxpy.Solver or None
     :param benchmark: Benchmark weights to use in the risk model and
         other terms that need it. You can use any policy here. Suggested ones
         ones are ``AllCash``, the default, ``Uniform``
@@ -734,7 +740,7 @@ class MultiPeriodOptimization(Policy):
     def __init__(
         self, objective, constraints=(), include_cash_return=True,
         planning_horizon=None, terminal_constraint=None,
-        benchmark=AllCash, **kwargs):
+        fallback_solver='SCS', benchmark=AllCash, **kwargs):
         if hasattr(objective, '__iter__'):
             if not (hasattr(constraints, '__iter__') and len(constraints
                     ) and (hasattr(constraints[0], '__iter__') and len(
@@ -770,6 +776,7 @@ class MultiPeriodOptimization(Policy):
                 ) else benchmark
 
         self.cvxpy_kwargs = kwargs
+        self.fallback_solver = fallback_solver
 
         self._set_internal_vars_to_none()
 
@@ -947,25 +954,29 @@ class MultiPeriodOptimization(Policy):
             try:
                 self._problem.solve(**self.cvxpy_kwargs)
             except cp.SolverError as exc:
-                # try to solve with SCS; it's the most robust
+                if self.fallback_solver is None: # pragma: no cover
+                    raise exc
+                # try to solve with fallback solver
                 logger.error(
                     'CVXPY with settings %s reported numerical solver failure'
                     ' at time %s;'
-                    ' re-trying by using SCS with basic options.',
-                    self.cvxpy_kwargs, t)
-                # we could refactor code to handle solve errors also here
+                    ' re-trying by using %s with basic options.',
+                   self.cvxpy_kwargs, t,  self.fallback_solver)
                 try:
-                    self._problem.solve(ignore_dpp=True, solver='SCS')
-                # old cvxpy had no ignore_dpp
-                except TypeError: # pragma: no cover
-                    self._problem.solve(solver='SCS') # pragma: no cover
-                if self._problem.status in ['optimal', 'optimal_inaccurate']:
-                    logger.warning('Fallback solution with SCS worked!')
-                else: # pragma: no cover
-                    raise NumericalSolverError( # pragma: no cover
+                    try:
+                        self._problem.solve(
+                            ignore_dpp=True, solver=self.fallback_solver)
+                    # old cvxpy had no ignore_dpp
+                    except TypeError: # pragma: no cover
+                        self._problem.solve(solver=self.fallback_solver)
+                # give up
+                except cp.SolverError: # pragma: no cover
+                    raise NumericalSolverError(
                       f"Numerical solver for policy {self.__class__.__name__}"
-                      + f" at time {t} failed; try changing it, relaxing some"
-                      + " constraints, or removing costs.") from exc
+                      + f" at time {t} failed. Fallback solver"
+                      + f" {self.fallback_solver} didn't succeed either."
+                      + " Try changing solver, relaxing some constraints,"
+                      + " adding regularizers, or removing costs.") from exc
 
         if self._problem.status in ["unbounded", "unbounded_inaccurate"]:
             raise ProgramUnbounded(
@@ -1004,6 +1015,12 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
         ``CashReturn`` term in the objective, with default parameters.
         Default is ``True``.
     :type include_cash_return: bool
+    :param fallback_solver: Fallback CVXPY solver (string or class) to use
+        if primary solver fails (*i.e.*, throws CVXPY ``SolverError``
+        exception). Pass ``None`` to disable fallback logic. The solver (if
+        any) will be used with default arguments. Default ``'SCS'``, a
+        first-order solver that is very stable.
+    :type fallback_solver: str or cvxpy.Solver or None
     :param benchmark: Benchmark weights to use in the risk model and
         other terms that need it. You can use any policy here. Suggested ones
         ones are ``AllCash``, the default, ``Uniform``
@@ -1017,10 +1034,12 @@ class SinglePeriodOptimization(MultiPeriodOptimization):
     """
 
     def __init__(self, objective, constraints=(),
-                include_cash_return=True, benchmark=AllCash, **kwargs):
+                include_cash_return=True, fallback_solver='SCS',
+                 benchmark=AllCash, **kwargs):
         super().__init__(
             [objective], [constraints],
             include_cash_return=include_cash_return,
+            fallback_solver=fallback_solver,
             benchmark=benchmark, **kwargs)
 
     def __repr__(self):
