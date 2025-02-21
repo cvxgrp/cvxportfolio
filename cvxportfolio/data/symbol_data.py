@@ -19,7 +19,9 @@
 # pylint: disable=too-many-lines
 
 import datetime
+import json
 import logging
+import random
 import sqlite3
 import warnings
 from io import StringIO
@@ -37,6 +39,11 @@ from ..utils import set_pd_read_only
 logger = logging.getLogger(__name__)
 
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
+
+
+with open(
+        Path(__file__).parent/'user_agents.json', 'r', encoding="utf-8") as f:
+    _USER_AGENTS = json.load(f)
 
 __all__ = [
     '_loader_csv', '_loader_pickle', '_loader_sqlite',
@@ -936,11 +943,12 @@ class YahooFinance(OLHCV):
         base_url = 'https://query2.finance.yahoo.com'
 
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)'
-            ' AppleWebKit/537.36 (KHTML, like Gecko)'
-            ' Chrome/39.0.2171.95 Safari/537.36'}
+            # json downloaded from https://www.useragents.me
+            # it also has estimated percentages, could use it
+            # to random choice with weight; this should reduce
+            # risk of 429
+            'User-Agent': random.choice(_USER_AGENTS)['ua']}
 
-        # print(HEADERS)
         start = int(pd.Timestamp(start).timestamp())
         end = int(pd.Timestamp(end).timestamp())
 
@@ -958,6 +966,10 @@ class YahooFinance(OLHCV):
                 + " Are you connected to the Internet?") from exc
 
         # print(res)
+
+        if res.status_code == 429: # pragma: no cover
+            raise DataError(
+                'Too many requests! Retry after a while.')
 
         if res.status_code == 404:
             raise DataError(
