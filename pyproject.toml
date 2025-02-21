@@ -50,6 +50,8 @@ packages = ["cvxportfolio", "cvxportfolio.data", "cvxportfolio.constraints",
 
 [tool.setuptools.package-data]
 "cvxportfolio.tests" = ["*.csv"]
+"cvxportfolio.data" = ["user_agents.json"]
+
 
 [tool.pylint.main]
 fail-under = 9.75
