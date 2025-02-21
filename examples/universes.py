@@ -23,7 +23,7 @@ and check that the results make sense.
 We could also save each universe in a ``json`` file.
 """
 
-# This was generated on 2025-01-03 14:29:58.645443+00:00
+# This was generated on 2025-02-21 20:18:10.934112+00:00
 
 SP500 = \
 ['A', 'AAPL', 'ABBV', 'ABNB', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI', 'ADM',
@@ -102,9 +102,9 @@ FTSE100 = \
  'HLN.L', 'HSBA.L', 'HSX.L', 'HWDN.L', 'IAG.L', 'ICG.L', 'IHG.L', 'III.L',
  'IMB.L', 'IMI.L', 'INF.L', 'ITRK.L', 'JD.L', 'KGF.L', 'LAND.L', 'LGEN.L',
  'LLOY.L', 'LMP.L', 'LSEG.L', 'MKS.L', 'MNDI.L', 'MNG.L', 'MRO.L', 'NG.L',
- 'NWG.L', 'NXT.L', 'PHNX.L', 'PRU.L', 'PSH.L', 'PSN.L', 'PSON.L', 'REL.L',
- 'RIO.L', 'RKT.L', 'RMV.L', 'RR.L', 'RTO.L', 'SBRY.L', 'SDR.L', 'SGE.L',
- 'SGRO.L', 'SHEL.L', 'SMDS.L', 'SMIN.L', 'SMT.L', 'SN.L', 'SPX.L', 'SSE.L',
+ 'NWG.L', 'NXT.L', 'PCT.L', 'PHNX.L', 'PRU.L', 'PSH.L', 'PSN.L', 'PSON.L',
+ 'REL.L', 'RIO.L', 'RKT.L', 'RMV.L', 'RR.L', 'RTO.L', 'SBRY.L', 'SDR.L',
+ 'SGE.L', 'SGRO.L', 'SHEL.L', 'SMIN.L', 'SMT.L', 'SN.L', 'SPX.L', 'SSE.L',
  'STAN.L', 'STJ.L', 'SVT.L', 'TSCO.L', 'TW.L', 'ULVR.L', 'UTG.L', 'UU.L',
  'VOD.L', 'WEIR.L', 'WPP.L', 'WTB.L']
 
