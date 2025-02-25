@@ -34,6 +34,7 @@
 ### limitations under the License.
 """Run all tests with ``python -m cvxportfolio.tests``."""
 
+import sys
 import unittest
 
 # pylint: disable=[unused-import]
@@ -51,6 +52,10 @@ from .test_risks import TestRisks
 from .test_simulator import TestSimulator
 from .test_utils import TestUtils
 
-if __name__ == '__main__':
-
-    unittest.main(warnings='error')
+if __name__ == '__main__': # pragma: no cover
+    if sys.version_info.minor > 9:
+        unittest.main(warnings='error')
+    else:
+        # DeprecationWarning's may be thrown
+        # when running with old versions
+        unittest.main()
