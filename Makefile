@@ -2,7 +2,7 @@
 # Ideally this logic would be in pyproject.toml but it appears
 # easier to do it this way for now.
 
-PYTHON        = python #3.12
+PYTHON        = python
 PROJECT       = cvxportfolio
 TESTS         = $(PROJECT)/tests
 BUILDDIR      = build
@@ -23,7 +23,8 @@ ifeq ($(OS), Windows_NT)
 else
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Linux)
-		VENV_OPTS += --system-site-packages
+		# temporary; Debian upgrading to 3.13 Python packages; something breaks w/ solvers; retry
+		# VENV_OPTS += --system-site-packages
 	endif
 endif
 
