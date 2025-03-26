@@ -26,7 +26,8 @@ maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
 dependencies = [
     "pandas", "numpy", "matplotlib", "requests", "cvxpy",
     # "multiprocess", # robustifies usage w/ 3rd party modules, used if installed
-    "scs" # it's hardcoded as fallback solver if numerical errors
+    "scs", # it's hardcoded as fallback solver if numerical errors
+    "osqp<1.0" # temporary; not a direct dependency; makes one test job fail from warnings until CVXPY upstream fix 
     ]
 
 [project.optional-dependencies]
