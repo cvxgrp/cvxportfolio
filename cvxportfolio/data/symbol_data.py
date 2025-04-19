@@ -971,15 +971,23 @@ class YahooFinance(OLHCV):
             raise DataError(
                 'Too many requests! Retry after a while.')
 
+        def _get_json_error(res):
+            try:
+                json_error = str(res.json())
+            except requests.exceptions.JSONDecodeError: # pragma: no cover
+                json_error = "JSON response couldn't be parsed"
+            return str(json_error)
+
         if res.status_code == 404:
+
             raise DataError(
                 f'Data for symbol {ticker} is not available.'
-                + 'Json: ' + str(res.json()))
+                + 'Json: ' + _get_json_error(res))
 
         if res.status_code != 200:
             raise DataError(
                 f'Yahoo finance download of {ticker} failed. Json: ' +
-                str(res.json())) # pragma: no cover
+                _get_json_error(res)) # pragma: no cover
 
         data = res.json()['chart']['result'][0]
 
