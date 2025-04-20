@@ -77,7 +77,8 @@ class TextTestRunnerAllowDownloadError(unittest.runner.TextTestRunner):
     """Test runner customized to ignore cvx.errors.DownloadError."""
     resultclass = TextTestResultAllowDownloadError
 
-class mainAllowDownloadError(unittest.main): # pylint: disable=invalid-name
+class mainOptionallyAllowDownloadError(  # pylint: disable=invalid-name
+        unittest.main):
     """Add switch to main's argparse to allow cvx.errors.DownloadError."""
 
     def _getParentArgParser(self):
@@ -99,6 +100,6 @@ if __name__ == '__main__': # pragma: no cover
     if sys.version_info.minor > 9:
         # DeprecationWarning's may be thrown
         # when running with old versions
-        mainAllowDownloadError(warnings='error')
+        mainOptionallyAllowDownloadError(warnings='error')
     else:
-        mainAllowDownloadError()
+        mainOptionallyAllowDownloadError()
