@@ -67,6 +67,11 @@ class TextTestResultAllowDownloadError(unittest.runner.TextTestResult):
         """Called when an error has occurred, ignore DownloadError."""
         if err[0] is not DownloadError:
             super().addError(test, err)
+        else:
+            print('\n' + '#'*79)
+            print(f'TEST {test} threw cvx.errors.DownloadError, ignoring!')
+            print(f'Exception details: {err}')
+            print('#'*79)
 
 class TextTestRunnerAllowDownloadError(unittest.runner.TextTestRunner):
     """Test runner customized to ignore cvx.errors.DownloadError."""
