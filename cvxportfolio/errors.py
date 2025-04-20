@@ -27,6 +27,10 @@ class DataError(ValueError):
     """Base class for exception related to data."""
 
 
+class DownloadError(DataError):
+    """Error downloading data from the internet."""
+
+
 class UserDataError(DataError, SyntaxError):
     """Exception for errors in data provided by the user."""
 

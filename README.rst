@@ -96,6 +96,14 @@ of the main dependencies (from Pandas 1.4, CVXPY 1.1, ..., up to the current
 versions) on all major operating systems. You can see the `automated testing code 
 <https://github.com/cvxgrp/cvxportfolio/blob/master/.github/workflows/test.yml>`_.
 
+If you use Cvxportfolio in an environment without internet access you can run
+the test suite ignoring the ``cvx.errors.DownloadError`` thrown by the few unit
+tests that use the internet:
+
+.. code:: bash
+
+   python -m cvxportfolio.tests --ignore-download-errors
+
 
 .. Simple Example
 

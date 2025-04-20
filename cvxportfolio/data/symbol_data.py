@@ -33,7 +33,7 @@ import pandas as pd
 import requests
 import requests.exceptions
 
-from ..errors import DataError
+from ..errors import DownloadError
 from ..utils import set_pd_read_only
 
 logger = logging.getLogger(__name__)
@@ -961,31 +961,30 @@ class YahooFinance(OLHCV):
                 headers=headers,
                 timeout=10) # seconds
         except requests.ConnectionError as exc:
-            raise DataError(
+            raise DownloadError(
                 f"Download of {ticker} from YahooFinance failed."
                 + " Are you connected to the Internet?") from exc
 
         # print(res)
 
         if res.status_code == 429: # pragma: no cover
-            raise DataError(
+            raise DownloadError(
                 'Too many requests! Retry after a while.')
 
         def _get_json_error(res):
             try:
-                json_error = str(res.json())
+                json_error = res.json()
             except requests.exceptions.JSONDecodeError: # pragma: no cover
                 json_error = "JSON response couldn't be parsed"
             return str(json_error)
 
         if res.status_code == 404:
-
-            raise DataError(
+            raise DownloadError(
                 f'Data for symbol {ticker} is not available.'
                 + 'Json: ' + _get_json_error(res))
 
         if res.status_code != 200:
-            raise DataError(
+            raise DownloadError(
                 f'Yahoo finance download of {ticker} failed. Json: ' +
                 _get_json_error(res)) # pragma: no cover
 
@@ -1000,7 +999,7 @@ class YahooFinance(OLHCV):
             df_result['adjclose'] = data[
                 'indicators']['adjclose'][0]['adjclose']
         except KeyError as exc: # pragma: no cover
-            raise DataError(f'Yahoo finance download of {ticker} failed.'
+            raise DownloadError(f'Yahoo finance download of {ticker} failed.'
                 + ' Json: ' + str(res.json())) from exc # pragma: no cover
 
         # last timestamp could be not timed to market open
@@ -1112,7 +1111,7 @@ class Fred(SymbolData):
             _downloaded = requests.get(self.URL + f'?id={symbol}', timeout=10)
 
             if _downloaded.status_code != 200: # pragma: no cover
-                raise DataError(
+                raise DownloadError(
                     f'Fred download of {symbol} failed. Response: ' +
                     str(_downloaded.reason))
 
@@ -1120,7 +1119,7 @@ class Fred(SymbolData):
             return pd.to_numeric(pd.read_csv(
                 _csv, index_col=0, parse_dates=[0])[symbol], errors='coerce')
         except requests.ConnectionError as exc:
-            raise DataError(f"Download of {symbol}"
+            raise DownloadError(f"Download of {symbol}"
                 + f" from {self.__class__.__name__} failed."
                 + " Are you connected to the Internet?") from exc
 

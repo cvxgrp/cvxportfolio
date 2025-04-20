@@ -61,7 +61,7 @@ jobs:
 
       - name: Run tests shipped with the package
         run: |
-              python -m cvxportfolio.tests
+              python -m cvxportfolio.tests --ignore-download-errors
 
       - name: Check that data folder wasn't accidentally created
         run: |
@@ -126,7 +126,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-              coverage run -m cvxportfolio.tests
+              coverage run -m cvxportfolio.tests --ignore-download-errors
               coverage lcov
 
       - name: Send coverage to Coveralls

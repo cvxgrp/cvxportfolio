@@ -32,12 +32,18 @@
 ### WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ### See the License for the specific language governing permissions and
 ### limitations under the License.
-"""Run all tests with ``python -m cvxportfolio.tests``."""
+"""Run all tests with ``python -m cvxportfolio.tests``.
+
+We add custom logic to Python's default test runner in order to ignore
+``cvx.errors.DownloadError`` with a command line switch.
+"""
+
+# pylint: disable=unused-import, too-few-public-methods
 
 import sys
 import unittest
 
-# pylint: disable=[unused-import]
+from ..errors import DownloadError
 from .test_constraints import TestConstraints
 from .test_costs import TestCosts
 from .test_data import TestData, TestMarketData
@@ -52,10 +58,42 @@ from .test_risks import TestRisks
 from .test_simulator import TestSimulator
 from .test_utils import TestUtils
 
+
+class TextTestResultAllowDownloadError(unittest.runner.TextTestResult):
+    """Test result customized to ignore cvx.errors.DownloadError."""
+
+    def addError( # pylint: disable=missing-param-doc,missing-type-doc
+            self, test, err):
+        """Called when an error has occurred, ignore DownloadError."""
+        if err[0] is not DownloadError:
+            super().addError(test, err)
+
+class TextTestRunnerAllowDownloadError(unittest.runner.TextTestRunner):
+    """Test runner customized to ignore cvx.errors.DownloadError."""
+    resultclass = TextTestResultAllowDownloadError
+
+class mainAllowDownloadError(unittest.main): # pylint: disable=invalid-name
+    """Add switch to main's argparse to allow cvx.errors.DownloadError."""
+
+    def _getParentArgParser(self):
+        """Add switch to parser."""
+        parser = super()._getParentArgParser()
+        parser.add_argument(
+            '--ignore-download-errors', action='store_true',
+            help='Ignore cvx.errors.DownloadError thrown by tests.')
+        return parser
+
+    def parseArgs( # pylint: disable=missing-param-doc,missing-type-doc
+            self, argv):
+        """Parse command line arguments including our custom switch."""
+        super().parseArgs(argv)
+        if self._main_parser.parse_args().ignore_download_errors:
+            self.testRunner = TextTestRunnerAllowDownloadError
+
 if __name__ == '__main__': # pragma: no cover
     if sys.version_info.minor > 9:
-        unittest.main(warnings='error')
-    else:
         # DeprecationWarning's may be thrown
         # when running with old versions
-        unittest.main()
+        mainAllowDownloadError(warnings='error')
+    else:
+        mainAllowDownloadError()
