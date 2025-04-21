@@ -964,6 +964,9 @@ class YahooFinance(OLHCV):
             raise DownloadError(
                 f"Download of {ticker} from YahooFinance failed."
                 + " Are you connected to the Internet?") from exc
+        except requests.exceptions.ReadTimeout as exc: # pragma: no cover
+            raise DownloadError(
+                f"Download of {ticker} from YahooFinance timed out.") from exc
 
         # print(res)
 
@@ -1122,6 +1125,9 @@ class Fred(SymbolData):
             raise DownloadError(f"Download of {symbol}"
                 + f" from {self.__class__.__name__} failed."
                 + " Are you connected to the Internet?") from exc
+        except requests.exceptions.ReadTimeout as exc: # pragma: no cover
+            raise DownloadError(f"Download of {symbol}"
+                + f" from {self.__class__.__name__} timed out.") from exc
 
     def _download(
         self, symbol="DFF", current=None, grace_period='5d', **kwargs):
