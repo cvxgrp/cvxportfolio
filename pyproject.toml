@@ -3,7 +3,7 @@ name = "cvxportfolio"
 dynamic = ["version"]
 description = "Portfolio optimization and back-testing."
 readme = "README.rst"
-license = {text = "GPLv3"}
+license = "GPL-3.0-or-later"
 authors = [{name = "Enzo Busseti"}, {name = "Stephen Boyd"},
     {name = "Steven Diamond"}, {name = "BlackRock Inc."}]
 maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
