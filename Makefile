@@ -27,7 +27,7 @@ else
 	endif
 endif
 
-.PHONY: env clean update test lint docs opendocs coverage fix release version
+.PHONY: env clean update test lint docs opendocs coverage fix release
 
 env:  ## create environment
 	$(PYTHON) -m venv $(VENV_OPTS) $(ENVDIR)
@@ -68,6 +68,7 @@ fix:  ## auto-fix code
 	$(BINDIR)/docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 
 release: update lint test  ## tag new release; publish directly to pypi
+	[ -z "$$(git status --porcelain)" ]
 	$(BINDIR)/python -m rstcheck README.rst
 	@echo "SetupTools SCM suggested new version is $$(env/bin/python -m setuptools_scm --strip-dev)"
 	@read -p "enter the version tag you want: " version_tag; \
