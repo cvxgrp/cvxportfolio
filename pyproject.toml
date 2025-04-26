@@ -115,7 +115,3 @@ select = ["W291","W292","W293","W391","E231","E225","E303"]
 wrap-summaries = 0
 wrap-descriptions = 0
 tab-width = 4
-
-[tool.cibuildwheel]
-# Skip CPython 3.6, CPython 3.7, PyPy
-skip = ["cp36-*", "cp37-*", "pp*"]
