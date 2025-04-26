@@ -27,7 +27,6 @@ dependencies = [
     "pandas", "numpy", "matplotlib", "requests", "cvxpy",
     # "multiprocess", # robustifies usage w/ 3rd party modules, used if installed
     "scs", # it's hardcoded as fallback solver if numerical errors
-    "osqp<1.0" # temporary; not a direct dependency; makes one test job fail from warnings until CVXPY upstream fix 
     ]
 
 [project.optional-dependencies]
@@ -35,8 +34,7 @@ docs = ["sphinx", "pydata_sphinx_theme", "sphinx-github-style"]
 dev = ["build", "twine", "diff_cover", "pylint", "isort",
     "autopep8", "docformatter", "beautifulsoup4", "rstcheck"]
 examples = ['beautifulsoup4', 'lxml', 'clarabel', 'ecos']
-test = ['osqp<1.0', # temporary; DeprecationWarnings being fixed in CVXPY
-  'ecos', 'coverage[toml]']
+test = ['ecos', 'coverage[toml]']
 
 [project.urls]
 Homepage = "https://www.cvxportfolio.com"
