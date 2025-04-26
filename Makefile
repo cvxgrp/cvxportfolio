@@ -8,7 +8,7 @@ TESTS         = $(PROJECT)/tests
 BUILDDIR      = build
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
-EXTRA_SCRIPTS = bumpversion.py
+EXTRA_SCRIPTS =
 EXAMPLES      = examples
 VENV_OPTS     =
 
@@ -27,7 +27,7 @@ else
 	endif
 endif
 
-.PHONY: env clean update test lint docs opendocs coverage fix release
+.PHONY: env clean update test lint docs opendocs coverage fix release version
 
 env:  ## create environment
 	$(PYTHON) -m venv $(VENV_OPTS) $(ENVDIR)
@@ -67,10 +67,14 @@ fix:  ## auto-fix code
 	# this is the best found for the purpose
 	$(BINDIR)/docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 
-release: update lint test  ## update version, publish to pypi
+release: update lint test  ## tag new release; publish directly to pypi
 	$(BINDIR)/python -m rstcheck README.rst
-	$(BINDIR)/python bumpversion.py
-	git push --no-verify
+	@echo "SetupTools SCM suggested new version is $$(env/bin/python -m setuptools_scm --strip-dev)"
+	@read -p "enter the version tag you want: " version_tag; \
+	echo "You entered: $$version_tag"; \
+	git tag -a $$version_tag -em "version $$version_tag"; \
+	git push; \
+	git push --no-verify origin $$version_tag
 	$(BINDIR)/python -m build
 	$(BINDIR)/python -m twine check dist/*
 	$(BINDIR)/python -m twine upload --skip-existing dist/*
