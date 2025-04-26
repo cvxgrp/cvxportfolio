@@ -23,8 +23,7 @@ ifeq ($(OS), Windows_NT)
 else
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Linux)
-		# temporary; Debian upgrading to 3.13 Python packages; something breaks w/ solvers; retry
-		# VENV_OPTS += --system-site-packages
+		VENV_OPTS += --system-site-packages
 	endif
 endif
 

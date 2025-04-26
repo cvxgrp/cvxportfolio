@@ -1209,6 +1209,8 @@ def _loader_sqlite(symbol, storage_location):
         return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
     except pd.errors.DatabaseError:
         return None
+    finally:
+        _close_sqlite(connection)
 
 def _storer_sqlite(symbol, data, storage_location):
     """Store data in sqlite format.
