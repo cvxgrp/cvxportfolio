@@ -68,13 +68,9 @@ dependencies and test against all recent ones (up to a few years ago).
 Advanced: install development version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can also install the development version. It is tested daily by the
-example strategies. We host it in the `master branch
-<https://github.com/cvxgrp/cvxportfolio/tree/master/>`_. It is named after
-the current stable version; each time we make a new release we `tag it with git
-<https://github.com/cvxgrp/cvxportfolio/tags>`_.
-If this sounds complicated, avoid installing the development
-version.
+You can also install the development version, o pre-release. It is tested daily
+by the example strategies. We host it in the `master branch of the repository
+<https://github.com/cvxgrp/cvxportfolio/tree/master/>`_.
 
 .. code:: bash
 
