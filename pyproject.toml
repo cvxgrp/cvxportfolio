@@ -36,7 +36,7 @@ dependencies = [
     ]
 
 [project.optional-dependencies]
-docs = ["sphinx", "pydata_sphinx_theme", "sphinx-github-style"]
+docs = ["sphinx", "pydata_sphinx_theme", "sphinx-github-style", "setuptools-scm"]
 dev = ["build", "twine", "diff_cover", "pylint", "isort", "setuptools-scm",
     "autopep8", "docformatter", "beautifulsoup4", "rstcheck"]
 examples = ['beautifulsoup4', 'lxml', 'clarabel', 'ecos']
