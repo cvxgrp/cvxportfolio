@@ -38,7 +38,8 @@ This module only republishes the api of a selection of cvxportfolio
 modules. The __all__ attribute of each is used.
 """
 
-__version__ = "1.4.1"
+from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
+from importlib.metadata import version as _version
 
 from .constraints import *
 from .costs import *
@@ -49,3 +50,14 @@ from .result import *
 from .returns import *
 from .risks import *
 from .simulator import *
+
+try:
+    __version__ = _version("package-name")
+except _PackageNotFoundError: # pragma: no cover
+    # editable install
+    try:
+        from setuptools_scm import get_version as _get_version
+        __version__ = _get_version()
+    # shouldn't happen
+    except ImportError:
+        __version__ = "0.0.0"

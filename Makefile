@@ -8,7 +8,7 @@ TESTS         = $(PROJECT)/tests
 BUILDDIR      = build
 ENVDIR        = env
 BINDIR        = $(ENVDIR)/bin
-EXTRA_SCRIPTS = bumpversion.py
+EXTRA_SCRIPTS =
 EXAMPLES      = examples
 VENV_OPTS     =
 
@@ -23,12 +23,11 @@ ifeq ($(OS), Windows_NT)
 else
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Linux)
-		# temporary; Debian upgrading to 3.13 Python packages; something breaks w/ solvers; retry
-		# VENV_OPTS += --system-site-packages
+		VENV_OPTS += --system-site-packages
 	endif
 endif
 
-.PHONY: env clean update test lint docs opendocs coverage fix release
+.PHONY: env clean update test lint docs opendocs coverage fix release publish
 
 env:  ## create environment
 	$(PYTHON) -m venv $(VENV_OPTS) $(ENVDIR)
@@ -68,10 +67,17 @@ fix:  ## auto-fix code
 	# this is the best found for the purpose
 	$(BINDIR)/docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 
-release: update lint test  ## update version, publish to pypi
+release: update lint test  ## tag new release; trigger publishing on repo
+	@git diff --quiet && git diff --cached --quiet || { echo "Error: Git working directory is not clean."; exit 1; }
 	$(BINDIR)/python -m rstcheck README.rst
-	$(BINDIR)/python bumpversion.py
-	git push --no-verify
+	@echo "SetupTools SCM suggested new version is $$(env/bin/python -m setuptools_scm --strip-dev)"
+	@read -p "enter the version tag you want: " version_tag; \
+	echo "You entered: $$version_tag"; \
+	git tag -a $$version_tag -em "version $$version_tag"; \
+	git push; \
+	git push --no-verify origin $$version_tag
+
+publish: ## publish to PyPI from local using token
 	$(BINDIR)/python -m build
 	$(BINDIR)/python -m twine check dist/*
 	$(BINDIR)/python -m twine upload --skip-existing dist/*

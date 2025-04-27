@@ -1,9 +1,12 @@
 [project]
 name = "cvxportfolio"
-version = "1.4.1"
+dynamic = ["version"]
 description = "Portfolio optimization and back-testing."
 readme = "README.rst"
 license = {text = "GPLv3"}
+# soon required syntax will be:
+# license = "GPL-3.0-or-later"
+# seems it breaks py3.8 build as of early 2025
 authors = [{name = "Enzo Busseti"}, {name = "Stephen Boyd"},
     {name = "Steven Diamond"}, {name = "BlackRock Inc."}]
 maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
@@ -27,33 +30,36 @@ dependencies = [
     "pandas", "numpy", "matplotlib", "requests", "cvxpy",
     # "multiprocess", # robustifies usage w/ 3rd party modules, used if installed
     "scs", # it's hardcoded as fallback solver if numerical errors
-    "osqp<1.0" # temporary; not a direct dependency; makes one test job fail from warnings until CVXPY upstream fix 
+    # following is sub-dependency; need to pin it b/c w/ recent release
+    # problematic intf changes, confusing warnings, not resolved by caller yet
+    "osqp<1.0.0"
     ]
 
 [project.optional-dependencies]
-docs = ["sphinx", "pydata_sphinx_theme", "sphinx-github-style"]
-dev = ["build", "twine", "diff_cover", "pylint", "isort",
+docs = ["sphinx", "pydata_sphinx_theme", "sphinx-github-style", "setuptools-scm"]
+dev = ["build", "twine", "diff_cover", "pylint", "isort", "setuptools-scm",
     "autopep8", "docformatter", "beautifulsoup4", "rstcheck"]
 examples = ['beautifulsoup4', 'lxml', 'clarabel', 'ecos']
-test = ['osqp<1.0', # temporary; DeprecationWarnings being fixed in CVXPY
-  'ecos', 'coverage[toml]']
+test = ['ecos', 'coverage[toml]']
 
 [project.urls]
 Homepage = "https://www.cvxportfolio.com"
 Repository = "https://github.com/cvxgrp/cvxportfolio"
 
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["cvxportfolio", "cvxportfolio.data", "cvxportfolio.constraints",
     "cvxportfolio.tests"]
 
+[tool.setuptools_scm]
+# should be OK to leave this empty
+
 [tool.setuptools.package-data]
 "cvxportfolio.tests" = ["*.csv"]
 "cvxportfolio.data" = ["user_agents.json"]
-
 
 [tool.pylint.main]
 fail-under = 9.75
