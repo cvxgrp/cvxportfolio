@@ -27,7 +27,7 @@ else
 	endif
 endif
 
-.PHONY: env clean update test lint docs opendocs coverage fix release
+.PHONY: env clean update test lint docs opendocs coverage fix release publish
 
 env:  ## create environment
 	$(PYTHON) -m venv $(VENV_OPTS) $(ENVDIR)
@@ -67,7 +67,7 @@ fix:  ## auto-fix code
 	# this is the best found for the purpose
 	$(BINDIR)/docformatter -r --in-place $(PROJECT) $(EXAMPLES) $(EXTRA_SCRIPTS)
 
-release: update lint test  ## tag new release; publish directly to pypi
+release: update lint test  ## tag new release; trigger publishing on repo
 	@git diff --quiet && git diff --cached --quiet || { echo "Error: Git working directory is not clean."; exit 1; }
 	$(BINDIR)/python -m rstcheck README.rst
 	@echo "SetupTools SCM suggested new version is $$(env/bin/python -m setuptools_scm --strip-dev)"
@@ -76,6 +76,8 @@ release: update lint test  ## tag new release; publish directly to pypi
 	git tag -a $$version_tag -em "version $$version_tag"; \
 	git push; \
 	git push --no-verify origin $$version_tag
+
+publish: ## publish to PyPI from local using token
 	$(BINDIR)/python -m build
 	$(BINDIR)/python -m twine check dist/*
 	$(BINDIR)/python -m twine upload --skip-existing dist/*
