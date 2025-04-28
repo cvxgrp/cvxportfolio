@@ -52,7 +52,7 @@ from .risks import *
 from .simulator import *
 
 try:
-    __version__ = _version("package-name")
+    __version__ = _version("cvxportfolio")
 except _PackageNotFoundError: # pragma: no cover
     # editable install
     try:
