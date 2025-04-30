@@ -74,7 +74,7 @@ def policy(gamma_hold, gamma_trade):
 
 if __name__ == '__main__':
 
-    RESEARCH = True
+    RESEARCH = False
 
     if not RESEARCH:
         from .strategy_executor import main
