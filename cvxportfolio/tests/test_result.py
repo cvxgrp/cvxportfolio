@@ -189,6 +189,9 @@ class TestResult(CvxportfolioTest):
 
         Also need to skip first line if market data is doing masking of the
         df's, might have to change if we change logging logic there.
+
+        Sadly this can cause issues; fixed already twice; consider re-design
+        if breaks again.
         """
         # print(log1)
         # print(log2)
@@ -198,8 +201,15 @@ class TestResult(CvxportfolioTest):
             log1 = log1[1:] # pragma: no cover
         if 'Masking internal' in log2[0]:
             log2 = log2[1:]
-        if [el[50 if strip_pid else 25:] for el in log1] == [
-                el[50 if strip_pid else 25:] for el in log2]:
+
+        def _split_after_process(s):
+            if 'process' in s:
+                return s.split("process:")[1].split("|", 1)[1].strip()
+            return s
+
+        if ([_split_after_process(el) if strip_pid else el[25:] for el in log1]
+            == [_split_after_process(el) if strip_pid else el[25:]
+                for el in log2]):
             return True
 
         print('Equal log test failed!')
