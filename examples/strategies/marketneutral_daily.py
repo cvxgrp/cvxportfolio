@@ -71,7 +71,6 @@ def policy(gamma_hold, gamma_trade):
     ), {'gamma_hold': gamma_hold_hp, 'gamma_trade': gamma_trade_hp}
 
 
-
 if __name__ == '__main__':
 
     RESEARCH = False
@@ -84,8 +83,9 @@ if __name__ == '__main__':
                 cvx.StocksHoldingCost(short_fees=ANNUAL_SHORT_FEE)))
 
     else:
-        import matplotlib.pyplot as plt
         import logging
+
+        import matplotlib.pyplot as plt
         logging.basicConfig(level='INFO')
         RESEARCH_START = '2012-01-01'
         RESEARCH_END = '2020-01-01'

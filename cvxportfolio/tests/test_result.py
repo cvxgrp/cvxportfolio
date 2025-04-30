@@ -198,9 +198,16 @@ class TestResult(CvxportfolioTest):
             log1 = log1[1:] # pragma: no cover
         if 'Masking internal' in log2[0]:
             log2 = log2[1:]
-        return [
-            el[50 if strip_pid else 25:] for el in log1] == [
-                el[50 if strip_pid else 25:] for el in log2]
+        if [el[50 if strip_pid else 25:] for el in log1] == [
+                el[50 if strip_pid else 25:] for el in log2]:
+            return True
+
+        print('Equal log test failed!')
+        print('LOG1')
+        print(log1)
+        print('LOG2')
+        print(log2)
+        return False
 
     def test_logs(self):
         """Test correct recording of logs by BacktestResult."""
