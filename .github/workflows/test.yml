@@ -69,6 +69,43 @@ jobs:
         run: |
               if [ -d ~/cvxportfolio_data ]; then exit 1; fi
 
+  coveralls:
+    # only step in which we don't ignore download error; only here
+    # we run tests through coverage, because if we did ignore download errors
+    # coverage could drop to as low as 90% since some lines after exception is
+    # thrown could not be executed; however we continue on error; nothing is
+    # uploaded to coveralls unless tests, including all data download, complete
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+            python-version: '3.13'
+
+      - name: Install
+        run: |
+              python -m pip install -e .[test]
+
+      - name: Run tests with coverage, including possible download errors
+        continue-on-error: true
+        run: |
+              coverage run -m cvxportfolio.tests
+              coverage lcov
+
+      - name: Send coverage to Coveralls
+        if: ${{ github.event_name == 'push'}}
+        continue-on-error: true
+        uses: coverallsapp/github-action@v2
+        with:
+          path-to-lcov: coverage.lcov
+
   test:
 
     runs-on: ${{ matrix.os }}
@@ -128,17 +165,9 @@ jobs:
         run: |
               python -m pip install .[test]
 
-      - name: Run tests with coverage
+      - name: Run tests
         run: |
-              coverage run -m cvxportfolio.tests --ignore-download-errors
-              coverage lcov
-
-      - name: Send coverage to Coveralls
-        if: ${{ github.event_name == 'push'}}
-        continue-on-error: true
-        uses: coverallsapp/github-action@v2
-        with:
-          path-to-lcov: coverage.lcov
+              python -m cvxportfolio.tests --ignore-download-errors
 
   package:
 
