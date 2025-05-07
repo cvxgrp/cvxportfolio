@@ -467,8 +467,8 @@ The same objects in the :doc:`data interfaces <data>` submodule discussed in the
 interfaces, are the only two objects that access the Internet in the
 Cvxportfolio library code.
 They make standard HTTPS GET calls through
-the `requests <https://requests.readthedocs.io/>`_ module, which is
-one of our dependencies.
+a HTTP client, `curl-cffi <https://curl-cffi.readthedocs.io/>`_ module,
+which is one of our dependencies.
 
 There are other internet calls in the examples, for example the
 :doc:`script that downloads stock indexes components <examples/universes>`,

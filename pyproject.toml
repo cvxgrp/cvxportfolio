@@ -27,7 +27,7 @@ maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
 # from some combination of dependency versions that break Cvxportfolio code.
 
 dependencies = [
-    "pandas", "numpy", "matplotlib", "requests", "cvxpy",
+    "pandas", "numpy", "matplotlib", "curl_cffi", "cvxpy",
     # "multiprocess", # robustifies usage w/ 3rd party modules, used if installed
     "scs", # it's hardcoded as fallback solver if numerical errors
     # following is sub-dependency; need to pin it b/c w/ recent release

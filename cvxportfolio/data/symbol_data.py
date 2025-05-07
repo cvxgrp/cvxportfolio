@@ -30,8 +30,8 @@ from pickle import UnpicklingError
 
 import numpy as np
 import pandas as pd
-import requests
-import requests.exceptions
+from curl_cffi import get
+from curl_cffi.requests import RequestsError
 
 from ..errors import DownloadError
 from ..utils import set_pd_read_only
@@ -39,11 +39,6 @@ from ..utils import set_pd_read_only
 logger = logging.getLogger(__name__)
 
 BASE_LOCATION = Path.home() / "cvxportfolio_data"
-
-
-with open(
-        Path(__file__).parent/'user_agents.json', 'r', encoding="utf-8") as f:
-    _USER_AGENTS = json.load(f)
 
 __all__ = [
     '_loader_csv', '_loader_pickle', '_loader_sqlite',
@@ -942,33 +937,21 @@ class YahooFinance(OLHCV):
 
         base_url = 'https://query2.finance.yahoo.com'
 
-        headers = {
-            # json downloaded from https://www.useragents.me
-            # it also has estimated percentages, could use it
-            # to random choice with weight; this should reduce
-            # risk of 429
-            'User-Agent': random.choice(_USER_AGENTS)['ua']}
-
         start = int(pd.Timestamp(start).timestamp())
         end = int(pd.Timestamp(end).timestamp())
 
         try:
-            res = requests.get(
+            res = get(
                 url=f"{base_url}/v8/finance/chart/{ticker}",
                 params={'interval': '1d',
                     "period1": start,
                     "period2": end},
-                headers=headers,
+                impersonate='chrome',
                 timeout=10) # seconds
-        except requests.ConnectionError as exc:
+        except RequestsError as exc: # pragma: no cover
             raise DownloadError(
                 f"Download of {ticker} from YahooFinance failed."
                 + " Are you connected to the Internet?") from exc
-        except requests.exceptions.ReadTimeout as exc: # pragma: no cover
-            raise DownloadError(
-                f"Download of {ticker} from YahooFinance timed out.") from exc
-
-        # print(res)
 
         if res.status_code == 429: # pragma: no cover
             raise DownloadError(
@@ -977,7 +960,7 @@ class YahooFinance(OLHCV):
         def _get_json_error(res):
             try:
                 json_error = res.json()
-            except requests.exceptions.JSONDecodeError: # pragma: no cover
+            except RequestsError: # pragma: no cover
                 json_error = "JSON response couldn't be parsed"
             return str(json_error)
 
@@ -1111,7 +1094,8 @@ class Fred(SymbolData):
 
     def _internal_download(self, symbol):
         try:
-            _downloaded = requests.get(self.URL + f'?id={symbol}', timeout=10)
+            _downloaded = get(
+                self.URL + f'?id={symbol}', impersonate='chrome', timeout=10)
 
             if _downloaded.status_code != 200: # pragma: no cover
                 raise DownloadError(
@@ -1121,13 +1105,10 @@ class Fred(SymbolData):
             _csv = StringIO(_downloaded.text)
             return pd.to_numeric(pd.read_csv(
                 _csv, index_col=0, parse_dates=[0])[symbol], errors='coerce')
-        except requests.ConnectionError as exc:
+        except RequestsError as exc: # pragma: no cover
             raise DownloadError(f"Download of {symbol}"
                 + f" from {self.__class__.__name__} failed."
                 + " Are you connected to the Internet?") from exc
-        except requests.exceptions.ReadTimeout as exc: # pragma: no cover
-            raise DownloadError(f"Download of {symbol}"
-                + f" from {self.__class__.__name__} timed out.") from exc
 
     def _download(
         self, symbol="DFF", current=None, grace_period='5d', **kwargs):

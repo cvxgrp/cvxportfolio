@@ -407,6 +407,10 @@ class TestData(CvxportfolioTest):
         with self.assertLogs(level='WARNING') as _:
             storer.update(pd.Timedelta('0d'))
 
+    # since moved to CURL-cffi we don't connect via Python sockets any more,
+    # connection is presumably done directly in libc, keeping this code
+    # around in case we switch back
+    @unittest.expectedFailure
     def test_no_internet(self):
         """Test errors thrown when not connected to the internet."""
 

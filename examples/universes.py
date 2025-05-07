@@ -150,7 +150,7 @@ if __name__ == '__main__':
 
     import bs4 as bs
     import pandas as pd
-    import requests
+    from curl_cffi import get
 
     universes = {
         'sp500': {
@@ -202,7 +202,7 @@ if __name__ == '__main__':
         :returns: Sorted strings of the column.
         :rtype: list
         """
-        resp = requests.get(page, timeout=10)
+        resp = get(page, impersonate='chrome', timeout=10)
         soup = bs.BeautifulSoup(resp.text, 'lxml')
         table = (
             soup.find_all('table') if ignore_class_bsoup_filtering
@@ -223,7 +223,7 @@ if __name__ == '__main__':
         :rtype: list
         """
         url = 'https://indexes.nikkei.co.jp/en/nkave/index/component'
-        resp = requests.get(url, timeout=10)
+        resp = get(url, impersonate='chrome', timeout=10)
         soup = bs.BeautifulSoup(resp.text, 'lxml')
         components = []
         for table in soup.find_all('table'):
