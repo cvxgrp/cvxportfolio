@@ -410,6 +410,7 @@ class TestData(CvxportfolioTest):
     # since moved to CURL-cffi we don't connect via Python sockets any more,
     # connection is presumably done directly in libc, keeping this code
     # around in case we switch back
+    @unittest.skipIf(sys.version_info < (3, 9))
     @unittest.expectedFailure
     def test_no_internet(self):
         """Test errors thrown when not connected to the internet."""

@@ -19,9 +19,7 @@
 # pylint: disable=too-many-lines
 
 import datetime
-import json
 import logging
-import random
 import sqlite3
 import warnings
 from io import StringIO
@@ -30,8 +28,16 @@ from pickle import UnpicklingError
 
 import numpy as np
 import pandas as pd
-from curl_cffi import get
-from curl_cffi.requests import RequestsError
+
+try:
+    from curl_cffi import get
+    from curl_cffi.requests import RequestsError
+    _CURL_CFFI = True
+except ImportError: # pragma: no cover
+    # on py < 3.9 we fall back to requests
+    from requests import RequestException as RequestsError
+    from requests import get
+    _CURL_CFFI = False
 
 from ..errors import DownloadError
 from ..utils import set_pd_read_only
@@ -941,13 +947,15 @@ class YahooFinance(OLHCV):
         end = int(pd.Timestamp(end).timestamp())
 
         try:
-            res = get(
-                url=f"{base_url}/v8/finance/chart/{ticker}",
-                params={'interval': '1d',
+            _kwargs = {
+                'url': f"{base_url}/v8/finance/chart/{ticker}",
+                'params': {'interval': '1d',
                     "period1": start,
                     "period2": end},
-                impersonate='chrome',
-                timeout=10) # seconds
+                'timeout': 10} # seconds
+            if _CURL_CFFI:
+                _kwargs['impersonate'] = 'chrome'
+            res = get(**_kwargs)
         except RequestsError as exc: # pragma: no cover
             raise DownloadError(
                 f"Download of {ticker} from YahooFinance failed."
@@ -1094,8 +1102,13 @@ class Fred(SymbolData):
 
     def _internal_download(self, symbol):
         try:
-            _downloaded = get(
-                self.URL + f'?id={symbol}', impersonate='chrome', timeout=10)
+            _kwargs = {
+                'url': self.URL + f'?id={symbol}',
+                'timeout': 10,
+            }
+            if _CURL_CFFI:
+                _kwargs['impersonate'] = 'chrome'
+            _downloaded = get(**_kwargs)
 
             if _downloaded.status_code != 200: # pragma: no cover
                 raise DownloadError(
@@ -1111,7 +1124,7 @@ class Fred(SymbolData):
                 + " Are you connected to the Internet?") from exc
 
     def _download(
-        self, symbol="DFF", current=None, grace_period='5d', **kwargs):
+        self, symbol = "DFF", current = None, grace_period = '5d', **kwargs):
         """Download or update pandas Series from Fred.
 
         If already downloaded don't change data stored locally and only
@@ -1167,15 +1180,15 @@ def _loader_sqlite(symbol, storage_location):
         connection = _open_sqlite(storage_location)
         dtypes = pd.read_sql_query(
             f"SELECT * FROM {symbol}___dtypes",
-            connection, index_col="index",
-            dtype={"index": "str", "0": "str"})
+            connection, index_col = "index",
+            dtype = {"index": "str", "0": "str"})
 
         parse_dates = 'index'
         my_dtypes = dict(dtypes["0"])
 
         tmp = pd.read_sql_query(
             f"SELECT * FROM {symbol}", connection,
-            index_col="index", parse_dates=parse_dates, dtype=my_dtypes)
+            index_col = "index", parse_dates = parse_dates, dtype = my_dtypes)
 
         _close_sqlite(connection)
         multiindex = []
@@ -1258,11 +1271,11 @@ def _loader_csv(symbol, storage_location):
 
     index_dtypes = pd.read_csv(
         storage_location / f"{symbol}___index_dtypes.csv",
-        index_col=0)["0"]
+        index_col = 0)["0"]
 
     dtypes = pd.read_csv(
-        storage_location / f"{symbol}___dtypes.csv", index_col=0,
-        dtype={"index": "str", "0": "str"})
+        storage_location / f"{symbol}___dtypes.csv", index_col = 0,
+        dtype = {"index": "str", "0": "str"})
     dtypes = dict(dtypes["0"])
     new_dtypes = {}
     parse_dates = []
@@ -1276,8 +1289,8 @@ def _loader_csv(symbol, storage_location):
             new_dtypes[el] = dtypes[el]
 
     tmp = pd.read_csv(storage_location / f"{symbol}.csv",
-        index_col=list(range(len(index_dtypes))),
-        parse_dates=parse_dates, dtype=new_dtypes)
+        index_col = list(range(len(index_dtypes))),
+        parse_dates = parse_dates, dtype = new_dtypes)
 
     return tmp.iloc[:, 0] if tmp.shape[1] == 1 else tmp
 
