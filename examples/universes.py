@@ -161,7 +161,7 @@ if __name__ == '__main__':
         },
         'ndx100': {
             'page': "https://en.wikipedia.org/wiki/Nasdaq-100",
-            'table_number': -1,
+            'table_number': -2,
             'column_number': 1,
         },
         'dow30': {
@@ -270,7 +270,7 @@ if __name__ == '__main__':
 
         # universes lists
         for key, value in universes.items():
-
+            print('getting', key)
             tickers = adapt_for_yahoo_finance(
                 globals()[value['getter']]() if 'getter' in value
                 else get_column_wikipedia_page(**value), **value)
