@@ -116,7 +116,7 @@ jobs:
     strategy:
       matrix: # https://github.com/actions/runner-images
         os: [ubuntu-latest, windows-latest, macos-latest, macos-13] # last 2 are aarch64 and amd64
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13.3'] # pinning 3.13 minor version b/c 3.13.4 gives issues on Win when compiling dependency package
         exclude:
           - os: macos-latest # aarch64
             python-version: '3.8'
