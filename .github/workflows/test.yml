@@ -114,6 +114,7 @@ jobs:
     # continue-on-error: ${{ matrix.python-version == '3.13' }}
 
     strategy:
+      fail-fast: false
       matrix: # https://github.com/actions/runner-images
         os: [ubuntu-latest, windows-latest, macos-latest, macos-13] # last 2 are aarch64 and amd64
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13.3'] # bug in 3.13.4 affecting Windows: github.com/python/cpython/issues/135151
