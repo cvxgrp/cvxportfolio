@@ -102,14 +102,6 @@ if __name__ == '__main__': # pragma: no cover
     # We only test turning warnings to exceptions
     # on current Python versions
     if sys.version_info.minor > 9:
-
-        # We turn all warnings surfaced to the user into
-        # errors (if any warning, test fails)
-        warnings.simplefilter('error')
-
-        # Apart from this, currently thrown by OSQP 1.0,
-        # which is ignored by default (doesn't show to user)
-        warnings.simplefilter(
-            'ignore', category=PendingDeprecationWarning)
-
-    mainOptionallyAllowDownloadError()
+        mainOptionallyAllowDownloadError(warnings='error')
+    else:
+        mainOptionallyAllowDownloadError()
