@@ -97,8 +97,6 @@ class mainOptionallyAllowDownloadError(  # pylint: disable=invalid-name
             self.testRunner = TextTestRunnerAllowDownloadError
 
 if __name__ == '__main__': # pragma: no cover
-    import warnings
-
     # We only test turning warnings to exceptions
     # on current Python versions
     if sys.version_info.minor > 9:

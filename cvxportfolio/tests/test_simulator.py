@@ -230,8 +230,6 @@ class TestSimulator(CvxportfolioTest):
 
     def test_transaction_cost_syntax(self):
         """Test syntax checks of (Stocks)TransactionCost."""
-        import warnings
-        warnings.warn('test')
 
         t = self.returns.index[-20]
 
