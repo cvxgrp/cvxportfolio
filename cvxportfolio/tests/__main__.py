@@ -100,6 +100,9 @@ if __name__ == '__main__': # pragma: no cover
     if sys.version_info.minor > 9:
         # DeprecationWarning's may be thrown
         # when running with old versions
-        mainOptionallyAllowDownloadError(warnings='error')
+        mainOptionallyAllowDownloadError(
+            # Latter is kind of warning that is by default
+            # ignored by Python (not shown to user)
+            warnings='error,ignore::PendingDeprecationWarning')
     else:
         mainOptionallyAllowDownloadError()
