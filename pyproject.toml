@@ -32,9 +32,6 @@ dependencies = [
     "requests; python_version<'3.9'",
     # "multiprocess", # robustifies usage w/ 3rd party modules, used if installed
     "scs", # it's hardcoded as fallback solver if numerical errors
-    # following is sub-dependency; need to pin it b/c w/ recent release
-    # problematic intf changes, confusing warnings, not resolved by caller yet
-    "osqp<1.0.0"
     ]
 
 [project.optional-dependencies]
