@@ -97,12 +97,15 @@ class mainOptionallyAllowDownloadError(  # pylint: disable=invalid-name
             self.testRunner = TextTestRunnerAllowDownloadError
 
 if __name__ == '__main__': # pragma: no cover
+    import warnings
+    # We only test filtering warnings to exceptions
+    # on current Python versions
     if sys.version_info.minor > 9:
-        # DeprecationWarning's may be thrown
-        # when running with old versions
+        # This warning is currently thrown by OSQP 1.0,
+        # is ignored by default (doesn't show to user)
+        warnings.filterwarnings(
+            'ignore', category=PendingDeprecationWarning)
         mainOptionallyAllowDownloadError(
-            # Latter is kind of warning that is by default
-            # ignored by Python (not shown to user)
-            warnings='error,ignore::PendingDeprecationWarning')
+            warnings='error')
     else:
         mainOptionallyAllowDownloadError()
