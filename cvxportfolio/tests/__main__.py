@@ -105,11 +105,11 @@ if __name__ == '__main__': # pragma: no cover
 
         # We turn all warnings surfaced to the user into
         # errors (if any warning, test fails)
-        warnings.filterwarnings('error')
+        warnings.filterwarnings('error', category=Warning)
 
         # Apart from this, currently thrown by OSQP 1.0,
         # which is ignored by default (doesn't show to user)
-        warnings.filterwarnings(
-            'ignore', category=PendingDeprecationWarning)
+        # warnings.filterwarnings(
+        #     'ignore', category=PendingDeprecationWarning)
 
     mainOptionallyAllowDownloadError()
