@@ -50,7 +50,8 @@ from .result import *
 from .returns import *
 from .risks import *
 from .simulator import *
-
+import warnings
+warnings.warn('test')
 try:
     __version__ = _version("cvxportfolio")
 except _PackageNotFoundError: # pragma: no cover
