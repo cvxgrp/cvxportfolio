@@ -948,6 +948,11 @@ class MultiPeriodOptimization(Policy):
             warnings.filterwarnings(
                 "ignore", category=UserWarning,
                 message='Solution may be inaccurate')
+            # this one is thrown by OSQP 1.0
+            warnings.filterwarnings(
+                "ignore", category=PendingDeprecationWarning,
+                message='The default value of raise_error ' +
+                'will change to True in the future.')
             # cvxpy 1.4 and 1.5 FutureWarnings about ECOS deprecation
             if cp.__version__[:3] in ['1.4', '1.5']:
                 warnings.filterwarnings("ignore", category=FutureWarning)
