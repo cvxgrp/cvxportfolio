@@ -162,7 +162,7 @@ if __name__ == '__main__':
         'ndx100': {
             'page': "https://en.wikipedia.org/wiki/Nasdaq-100",
             'table_number': -2,
-            'column_number': 1,
+            'column_number': 0,
         },
         'dow30': {
          'page': "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average",
