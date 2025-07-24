@@ -27,7 +27,8 @@ maintainers = [{name = "Enzo Busseti", email = "enzo.busseti@gmail.com"}]
 # from some combination of dependency versions that break Cvxportfolio code.
 
 dependencies = [
-    "pandas", "numpy", "matplotlib", "cvxpy",
+    "pandas", "numpy", "matplotlib",
+    "cvxpy<1.7", # temporary to make CI tests pass; https://github.com/bodono/scs-python/pull/140
     "curl_cffi; python_version>='3.9'",
     "requests; python_version<'3.9'",
     # "multiprocess", # robustifies usage w/ 3rd party modules, used if installed
