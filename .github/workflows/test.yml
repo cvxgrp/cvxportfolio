@@ -124,6 +124,12 @@ jobs:
           - os: macos-latest # aarch64
             python-version: '3.9'
 
+    env:
+      # some old source distributions of OSQP installed below (for old
+      # version testing) have syntax mistakes in their CMakeLists.txt so we
+      # patch it here
+      CMAKE_POLICY_VERSION_MINIMUM: 3.5
+
     steps:
 
       - uses: actions/checkout@v4
