@@ -305,7 +305,7 @@ class MarketDataInMemory(MarketData):
 
         data = Fred(
             RATES[cash_key], base_location=self.base_location,
-            grace_period=grace_period)
+            grace_period='7d')
 
         cash_returns_per_period = resample_returns(
             data.data/100, periods=self.periods_per_year)
