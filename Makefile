@@ -27,18 +27,11 @@ else
 	endif
 endif
 
-.PHONY: env clean update test lint docs opendocs coverage fix release publish
+.PHONY: env test lint docs opendocs coverage fix release publish
 
 env:  ## create environment
 	$(PYTHON) -m venv $(VENV_OPTS) $(ENVDIR)
 	$(BINDIR)/python -m pip install --editable .[docs,dev,examples,test]
-
-clean:  ## clean environment
-	-rm -rf $(BUILDDIR)/*
-	-rm -rf $(PROJECT).egg*
-	-rm -rf $(ENVDIR)/*
-
-update: clean env  ## update environment
 
 test:  ## run tests w/ cov report
 	$(BINDIR)/python -m coverage run -m $(PROJECT).tests
