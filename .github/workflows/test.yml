@@ -116,7 +116,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: # https://github.com/actions/runner-images
-        os: [ubuntu-latest, windows-latest, macos-latest, macos-13] # last 2 are aarch64 and amd64
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '>=3.13.0 <=3.13.13 || >=3.13.5 <3.14.0'] # bug in 3.13.4 affecting Windows: github.com/python/cpython/issues/135151
         exclude:
           - os: macos-latest # aarch64
