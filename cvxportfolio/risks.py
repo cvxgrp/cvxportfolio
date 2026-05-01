@@ -149,6 +149,24 @@ class FullCovariance(Cost):
         assert cvxpy_expression.is_convex()
         return cvxpy_expression
 
+    def _soc_expression( # pylint: disable=arguments-differ
+            self, w_plus_minus_w_bm, **kwargs):
+        """Return the pre-squared vector for SOC compilation.
+
+        Returns :math:`\\Sigma^{1/2} (w^+_t - w^\\text{b}_t)` so that
+        :class:`CostInequalityConstraint` can form the native SOC constraint
+        ``cp.norm2(v) <= t`` instead of the scalar ``cp.sum_squares(v) <= t``.
+
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Other unused arguments.
+        :type kwargs: dict
+
+        :returns: CVXPY vector expression whose 2-norm squared equals the risk.
+        :rtype: cvxpy.Expression
+        """
+        return self._sigma_sqrt.T @ w_plus_minus_w_bm[:-1]
+
 
 class RiskForecastError(Cost):
     """Risk forecast error.
@@ -289,6 +307,24 @@ class DiagonalCovariance(Cost):
         assert cvxpy_expression.is_dcp(dpp=True)
         assert cvxpy_expression.is_convex()
         return cvxpy_expression
+
+    def _soc_expression( # pylint: disable=arguments-differ
+            self, w_plus_minus_w_bm, **kwargs):
+        """Return the pre-squared vector for SOC compilation.
+
+        Returns :math:`\\mathbf{diag}(\\sigma)(w^+_t - w^\\text{b}_t)` so
+        that :class:`CostInequalityConstraint` can form the native SOC
+        constraint ``cp.norm2(v) <= t``.
+
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Other unused arguments.
+        :type kwargs: dict
+
+        :returns: CVXPY vector expression whose 2-norm squared equals the risk.
+        :rtype: cvxpy.Expression
+        """
+        return cp.multiply(w_plus_minus_w_bm[:-1], self._sigmas_parameter)
 
 
 class FactorModelCovariance(Cost):
@@ -469,6 +505,30 @@ class FactorModelCovariance(Cost):
         assert cvxpy_expression.is_dcp(dpp=True)
         assert cvxpy_expression.is_convex()
         return cvxpy_expression
+
+    def _soc_expression( # pylint: disable=arguments-differ
+            self, w_plus_minus_w_bm, **kwargs):
+        """Return the pre-squared vector for SOC compilation.
+
+        Returns :math:`[F(w^+_t - w^\\text{b}_t);\\, D^{1/2}(w^+_t -
+        w^\\text{b}_t)]` (concatenated via ``cp.hstack``) so that
+        :class:`CostInequalityConstraint` can form the native SOC constraint
+        ``cp.norm2(v) <= t``.  The identity
+        :math:`\\|[a;b]\\|_2^2 = \\|a\\|_2^2 + \\|b\\|_2^2` ensures
+        equivalence with the sum-of-squares form.
+
+        :param w_plus_minus_w_bm: Post-trade weights minus benchmark weights.
+        :type w_plus_minus_w_bm: cvxpy.Variable
+        :param kwargs: Other unused arguments.
+        :type kwargs: dict
+
+        :returns: CVXPY vector expression whose 2-norm squared equals the risk.
+        :rtype: cvxpy.Expression
+        """
+        return cp.hstack([
+            self._factor_exposures_parameter @ w_plus_minus_w_bm[:-1],
+            cp.multiply(self._idyosync_sqrt_parameter, w_plus_minus_w_bm[:-1])
+        ])
 
 
 class WorstCaseRisk(Cost):

@@ -161,6 +161,33 @@ class Cost(CvxpyExpressionEstimator): # pylint: disable=abstract-method
         """Self >= other, return CostInequalityConstraint."""
         return (-self).__le__(-other)
 
+    def _soc_expression(self, **kwargs):
+        """Return vector ``v`` such that this cost equals ``cp.sum_squares(v)``.
+
+        When overridden in a subclass, :class:`CostInequalityConstraint` will
+        compile the inequality as a true Second-Order Cone (SOC) constraint
+        ``cp.norm2(v) <= t`` instead of the scalar form
+        ``cp.sum_squares(v) <= t**2``.  The SOC form is natively handled by
+        interior-point and first-order solvers and is numerically better
+        conditioned.
+
+        The default implementation returns ``None``, which causes
+        :class:`CostInequalityConstraint` to fall back to the scalar
+        ``sum_squares`` path.  Subclasses that naturally decompose as
+        :math:`\\|v\\|_2^2` should override this to return the CVXPY vector
+        expression ``v``.
+
+        :param kwargs: All keyword arguments forwarded from
+            :meth:`compile_to_cvxpy` (includes ``w_plus``,
+            ``w_plus_minus_w_bm``, ``z``, …).
+        :type kwargs: dict
+
+        :returns: CVXPY vector expression ``v``, or ``None`` to use the
+            scalar fallback path.
+        :rtype: cvxpy.Expression or None
+        """
+        return None
+
     def copy_keeping_multipliers(self):
         """This method is used when creating MPO policies.
 
