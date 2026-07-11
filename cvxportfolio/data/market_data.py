@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ..errors import DataError
+from ..errors import DataError, UserDataError
 from ..utils import (hash_, make_numeric, periods_per_year_from_datetime_index,
                      resample_returns, set_pd_read_only)
 from . import symbol_data
@@ -472,6 +472,104 @@ class MarketDataInMemory(MarketData):
             raise SyntaxError(
                 'Prices should have same columns as returns, minus cash_key.')
 
+        # Index sanity checks (see issue #175). These catch, at
+        # initialization time, index problems that would otherwise cause
+        # either silent look-ahead bias (non-monotonic index) or an
+        # obscure ``KeyError`` deep inside the back-test loop (missing
+        # timestamps), instead of a clear, actionable error.
+        self._check_index(self.returns.index, 'returns')
+
+        if self.volumes is not None:
+            self._check_index(self.volumes.index, 'volumes')
+            self._check_index_covers(
+                self.returns.index, self.volumes.index, 'returns', 'volumes')
+
+        if self.prices is not None:
+            self._check_index(self.prices.index, 'prices')
+            self._check_index_covers(
+                self.returns.index, self.prices.index, 'returns', 'prices')
+
+    @staticmethod
+    def _check_index(index, name):
+        """Check that a timeseries dataframe's index is well-formed.
+
+        We require the index to be sorted in increasing order and free of
+        duplicated timestamps.
+
+        A non-monotonic index silently breaks the walk-forward logic used
+        at back-test time: internally we select "past data" relative to
+        time :math:`t` by slicing a dataframe up to :math:`t`'s integer
+        position (``.iloc[:tidx]``); if the index is not sorted this
+        slice does not correspond to actual past data, and future data
+        could silently leak into the back-test.
+
+        A duplicated timestamp makes lookups by that timestamp
+        (``pandas.Index.get_loc``) ambiguous (it returns a slice or a
+        boolean mask instead of a single integer position), which then
+        breaks the same slicing logic in a different, equally silent, way.
+
+        :param index: Index to check.
+        :type index: pandas.Index
+        :param name: Name of the dataframe the index belongs to, used
+            only to compose the error message (*e.g.*, ``'returns'``).
+        :type name: str
+
+        :raises cvxportfolio.errors.UserDataError: The index is not
+            monotonic increasing, or has duplicated timestamps.
+        """
+        if not index.is_monotonic_increasing:
+            raise UserDataError(
+                f"The index of the provided `{name}` dataframe is not"
+                " sorted in increasing order. Sort it before passing it"
+                f" in, e.g., with `{name} = {name}.sort_index()`.")
+        if index.has_duplicates:
+            dupes = index[index.duplicated()].unique()
+            raise UserDataError(
+                f"The index of the provided `{name}` dataframe has"
+                f" {len(dupes)} duplicated timestamp(s), for example"
+                f" {dupes[0]}. Each timestamp must appear at most once;"
+                f" de-duplicate `{name}` before passing it in, e.g., with"
+                f" `{name} = {name}[~{name}.index.duplicated()]`.")
+
+    @staticmethod
+    def _check_index_covers(
+            required_index, provided_index, required_name, provided_name):
+        """Check that ``provided_index`` contains all of ``required_index``.
+
+        At serve time we look up the current timestamp independently in
+        each dataframe's own index (via ``pandas.Index.get_loc``). If a
+        timestamp that is present in ``returns`` is missing from
+        ``volumes`` or ``prices``, that lookup fails with an obscure
+        ``KeyError`` raised deep inside the simulation loop, rather than
+        with a clear error at initialization time.
+
+        :param required_index: Index whose timestamps must all be present
+            in ``provided_index`` (typically ``returns.index``).
+        :type required_index: pandas.Index
+        :param provided_index: Index to check against.
+        :type provided_index: pandas.Index
+        :param required_name: Name of the dataframe ``required_index``
+            belongs to, used only for the error message.
+        :type required_name: str
+        :param provided_name: Name of the dataframe ``provided_index``
+            belongs to, used only for the error message.
+        :type provided_name: str
+
+        :raises cvxportfolio.errors.UserDataError: ``provided_index`` is
+            missing one or more timestamps present in ``required_index``.
+        """
+        missing = required_index.difference(provided_index)
+        if len(missing) > 0:
+            raise UserDataError(
+                f"The index of the provided `{provided_name}` dataframe"
+                f" is missing {len(missing)} timestamp(s) that are"
+                f" present in `{required_name}`, for example"
+                f" {missing[0]}. The index of `{provided_name}` must"
+                f" contain (at least) every timestamp present in the"
+                f" index of `{required_name}`, otherwise a raw KeyError"
+                " would be raised while serving data during a"
+                " back-test.")
+
     @property
     def periods_per_year(self):
         """Average trading periods per year inferred from the data.
@@ -500,6 +598,47 @@ class UserProvidedMarketData(MarketDataInMemory):
 
         The new parameter ``universe_selection_in_time`` used to optionally
         exclude assets from the trading universe at different points in time.
+
+    .. note::
+
+        The (datetime) index of ``returns``, ``volumes``, and ``prices`` is
+        validated at initialization time:
+
+        - each of their indexes must be sorted in increasing order and free
+          of duplicated timestamps (a non-monotonic index would silently
+          break the walk-forward slicing logic used at back-test time,
+          potentially leaking future data into the back-test; a duplicated
+          timestamp makes lookups ambiguous);
+        - the index of ``volumes`` and of ``prices`` (whenever provided)
+          must each contain (at least) every timestamp present in the index
+          of ``returns``, otherwise data is served incorrectly (or a raw
+          ``KeyError`` is raised) while back-testing.
+
+        For example, the following raises
+        :class:`cvxportfolio.errors.UserDataError` because the timestamps
+        are not sorted::
+
+            import pandas as pd
+            import cvxportfolio as cvx
+
+            bad_returns = pd.DataFrame(
+                {'AAPL': [0.01, -0.02, 0.005]},
+                index=pd.to_datetime(
+                    ['2024-01-03', '2024-01-02', '2024-01-04']))
+            cvx.UserProvidedMarketData(
+                returns=bad_returns, cash_key='cash',
+                min_history=pd.Timedelta('0d'))
+            # raises UserDataError: "The index of the provided `returns`
+            # dataframe is not sorted in increasing order. [...]"
+
+        The fix is simply to sort your dataframes by their index (and drop
+        duplicated timestamps, if any) before passing them in::
+
+            good_returns = bad_returns.sort_index()
+            good_returns = good_returns[~good_returns.index.duplicated()]
+            cvx.UserProvidedMarketData(
+                returns=good_returns, cash_key='cash',
+                min_history=pd.Timedelta('0d')) # no error
 
     :param returns: Historical open-to-open returns. The return
         at time :math:`t` is :math:`r_t = p_{t+1}/p_t -1` where
