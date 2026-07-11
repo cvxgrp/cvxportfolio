@@ -29,7 +29,7 @@ from cvxportfolio.data import (DownloadedMarketData, Fred,
                                UserProvidedMarketData, YahooFinance,
                                _loader_csv, _loader_pickle, _loader_sqlite,
                                _storer_csv, _storer_pickle, _storer_sqlite)
-from cvxportfolio.errors import DataError
+from cvxportfolio.errors import DataError, UserDataError
 from cvxportfolio.tests import CvxportfolioTest
 
 
@@ -1191,6 +1191,89 @@ class TestMarketData(CvxportfolioTest):
                 min_history=pd.Timedelta('60d'),
                 # has also cash
                 universe_selection_in_time=pd.DataFrame(self.returns))
+
+    def test_user_provided_market_data_bad_index(self):
+        """Test UserProvidedMarketData input validation of dataframe index.
+
+        See github.com/cvxgrp/cvxportfolio issue #175: before this test
+        (and the corresponding fix) none of these cases were caught, and
+        would either silently corrupt back-test results (non-monotonic
+        index causing look-ahead, ambiguous lookups from a duplicated
+        index) or fail later with an obscure raw ``KeyError`` deep inside
+        the back-test loop (misaligned ``volumes``/``prices`` index),
+        instead of a clear error raised at initialization time.
+        """
+        returns = pd.DataFrame(
+            {'A': [0.01, -0.02, 0.03, 0.0], 'USDOLLAR': [0., 0., 0., 0.]},
+            index=pd.to_datetime(
+                ['2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05']))
+        volumes = pd.DataFrame(
+            {'A': [100., 200., 300., 400.]}, index=returns.index)
+        prices = pd.DataFrame(
+            {'A': [10., 11., 12., 13.]}, index=returns.index)
+
+        # sanity check: the well-formed inputs above don't raise
+        _ = UserProvidedMarketData(
+            returns=returns, volumes=volumes, prices=prices,
+            cash_key='USDOLLAR', min_history=pd.Timedelta('0d'))
+
+        # 1) non-monotonic (unsorted) returns index
+        shuffled_returns = returns.iloc[[0, 2, 1, 3]]
+        with self.assertRaises(UserDataError):
+            UserProvidedMarketData(
+                returns=shuffled_returns, volumes=volumes, prices=prices,
+                cash_key='USDOLLAR', min_history=pd.Timedelta('0d'))
+
+        # non-monotonic volumes index (returns is fine)
+        shuffled_volumes = volumes.iloc[[0, 2, 1, 3]]
+        with self.assertRaises(UserDataError):
+            UserProvidedMarketData(
+                returns=returns, volumes=shuffled_volumes, prices=prices,
+                cash_key='USDOLLAR', min_history=pd.Timedelta('0d'))
+
+        # 2) duplicated timestamp in the returns index
+        dup_index = pd.to_datetime(
+            ['2024-01-02', '2024-01-02', '2024-01-04', '2024-01-05'])
+        dup_returns = pd.DataFrame(returns.values, index=dup_index,
+                                    columns=returns.columns)
+        with self.assertRaises(UserDataError):
+            UserProvidedMarketData(
+                returns=dup_returns, volumes=volumes, prices=prices,
+                cash_key='USDOLLAR', min_history=pd.Timedelta('0d'))
+
+        # duplicated timestamp in the prices index (returns is fine)
+        dup_prices = pd.DataFrame(prices.values, index=dup_index,
+                                   columns=prices.columns)
+        with self.assertRaises(UserDataError):
+            UserProvidedMarketData(
+                returns=returns, volumes=volumes, prices=dup_prices,
+                cash_key='USDOLLAR', min_history=pd.Timedelta('0d'))
+
+        # 3) volumes index missing a timestamp present in returns
+        misaligned_volumes = volumes.drop(volumes.index[2])
+        with self.assertRaises(UserDataError):
+            UserProvidedMarketData(
+                returns=returns, volumes=misaligned_volumes, prices=prices,
+                cash_key='USDOLLAR', min_history=pd.Timedelta('0d'))
+
+        # prices index missing a timestamp present in returns
+        misaligned_prices = prices.drop(prices.index[0])
+        with self.assertRaises(UserDataError):
+            UserProvidedMarketData(
+                returns=returns, volumes=volumes, prices=misaligned_prices,
+                cash_key='USDOLLAR', min_history=pd.Timedelta('0d'))
+
+        # volumes/prices with a *superset* of the returns' timestamps is
+        # fine (this mirrors the existing test data, whose volumes.csv
+        # has one extra day of history before returns.csv starts)
+        extra_ts = pd.DatetimeIndex(
+            ['2024-01-01']).append(volumes.index)
+        superset_volumes = pd.DataFrame(
+            [[50.]] + volumes.values.tolist(), index=extra_ts,
+            columns=volumes.columns)
+        _ = UserProvidedMarketData(
+            returns=returns, volumes=superset_volumes, prices=prices,
+            cash_key='USDOLLAR', min_history=pd.Timedelta('0d'))
 
     def test_market_data_full(self):
         """Test serve method of DownloadedMarketData."""

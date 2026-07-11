@@ -181,7 +181,9 @@ class TestSimulator(CvxportfolioTest):
             returns=pd.DataFrame([[0., 0.]], columns=['A', 'USDOLLAR'],
               index=[pd.Timestamp('2020-01-01'), pd.Timestamp('2021-01-01')]),
             volumes=pd.DataFrame(
-            [[0.]], columns=['A']), round_trades=False,
+            [[0.], [0.]], columns=['A'],
+            index=[pd.Timestamp('2020-01-01'), pd.Timestamp('2021-01-01')]),
+            round_trades=False,
             min_history = pd.Timedelta('0d'))
 
         with self.assertRaises(SyntaxError):
