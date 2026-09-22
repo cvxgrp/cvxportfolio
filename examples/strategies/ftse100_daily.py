@@ -30,12 +30,25 @@ You run it from the root of the repository in the development environment by:
 import cvxportfolio as cvx
 
 from ..universes import FTSE100
+from cvxportfolio.data import YahooFinance
 
 HYPERPAR_OPTIMIZE_START = '2016-01-01'
 
 OBJECTIVE = 'sharpe_ratio'
 
 INITIAL_VALUES = {'gamma_risk': 10., 'gamma_trade': 1.}
+
+
+class FTSEYahooFinance(YahooFinance):
+    """
+    Custom YahooFinance downloader for the FTSE100 strategy.
+    Applies aggressive data cleaning to handle erratic LSE data
+    (like III.L or SMT.L) as discussed in Issue #142.
+    """
+    # We lower the thresholds to drop erratic tickers naturally via min_history
+    MAX_CONTIGUOUS_MISSING_ADJCLOSES = 5  # Default is 20
+    THRESHOLD_BAD_ADJCLOSE = 10         # Default is 50
+    THRESHOLD_FALSE_LOG10RETS = 0.2     # Default is 0.5
 
 
 def policy(gamma_risk, gamma_trade):
@@ -63,22 +76,25 @@ def policy(gamma_risk, gamma_trade):
         solver='CLARABEL'
     ), {'gamma_risk': gamma_risk_hp, 'gamma_trade': gamma_trade_hp}
 
+
 if __name__ == '__main__':
 
     RESEARCH = False
 
     if not RESEARCH:
         from .strategy_executor import main
+        # We inject our custom FTSEYahooFinance class here
         main(policy=policy, hyperparameter_opt_start=HYPERPAR_OPTIMIZE_START,
             objective=OBJECTIVE, universe=FTSE100, cash_key='GBPOUND',
-            initial_values=INITIAL_VALUES)
+            initial_values=INITIAL_VALUES, datasource=FTSEYahooFinance)
 
     else:
         import matplotlib.pyplot as plt
 
         INDEX_ETF = 'VUKE.L'
+        # And we inject it in the local simulators as well
         research_sim = cvx.StockMarketSimulator(
-            universe=FTSE100, cash_key='GBPOUND')
+            universe=FTSE100, cash_key='GBPOUND', datasource=FTSEYahooFinance)
 
         research_policy, _ = policy(**INITIAL_VALUES)
 
@@ -93,7 +109,7 @@ if __name__ == '__main__':
         print(result_market)
 
         result_etf = cvx.StockMarketSimulator(
-            universe=[INDEX_ETF], cash_key='GBPOUND').backtest(cvx.Uniform(),
+            universe=[INDEX_ETF], cash_key='GBPOUND', datasource=FTSEYahooFinance).backtest(cvx.Uniform(),
                 start_time=HYPERPAR_OPTIMIZE_START)
         print('etf')
         print(result_etf)
