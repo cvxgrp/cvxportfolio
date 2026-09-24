@@ -1280,10 +1280,12 @@ def _loader_csv(symbol, storage_location):
     new_dtypes = {}
     parse_dates = []
     for i, level in enumerate(index_dtypes):
-        if "datetime64[ns" in level: # includes all timezones
+        # includes all timezones and time resolutions (ns, us, ms, s, ...)
+        if "datetime64[" in level:
             parse_dates.append(i)
     for i, el in enumerate(dtypes):
-        if "datetime64[ns" in dtypes[el]:  # includes all timezones
+        # includes all timezones and time resolutions (ns, us, ms, s, ...)
+        if "datetime64[" in dtypes[el]:
             parse_dates += [i + len(index_dtypes)]
         else:
             new_dtypes[el] = dtypes[el]
