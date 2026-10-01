@@ -75,6 +75,9 @@ __all__ = [
     "TurnoverLimit",
     "MinCashBalance",
     "FixedImbalance",
+    "TargetImbalance",
+    "MaxImbalance",
+    "MinImbalance",
 ]
 
 class FixedImbalance(EqualityConstraint):
@@ -518,6 +521,82 @@ class DollarNeutral(FixedImbalance):
 
     def __init__(self):
         super().__init__(0.)
+
+
+class TargetImbalance(FixedImbalance):
+    """Fix the imbalance of the long and short legs.
+
+    This is the same constraint as :class:`FixedImbalance`. The imbalance is
+    the sum of the signed non-cash weights, so the cash weight is ``1`` minus
+    the imbalance. :class:`DollarNeutral` is imbalance ``0`` and :class:`NoCash`
+    is imbalance ``1``.
+
+    :param imbalance: Either fixed or varying in time, if using a
+        datetime-indexed Pandas Series, imbalance of the portfolio weights.
+    :type imbalance: float, pd.Series
+    """
+
+    def __init__(self, imbalance):
+        super().__init__(imbalance)
+
+
+class MaxImbalance(InequalityConstraint):
+    r"""Upper bound on the imbalance of the long and short legs.
+
+    The imbalance is the sum of the signed non-cash weights. This requires
+
+    .. math::
+
+        \sum_{i=1}^n (w_t + z_t)_i \leq c
+
+    which is the same as :math:`(w_t + z_t)_{n+1} \geq 1 - c`.
+
+    :param imbalance: Maximum imbalance, fixed or varying in time.
+    :type imbalance: float, pd.Series
+    """
+
+    def __init__(self, imbalance):
+        self.imbalance = DataEstimator(
+            imbalance, compile_parameter=True, parameter_shape='scalar')
+
+    def _compile_constr_to_cvxpy(  # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
+        """Compile left hand side of the constraint expression."""
+        return -w_plus[-1]
+
+    def _rhs(self):
+        """Compile right hand side of the constraint expression."""
+        return self.imbalance.parameter - 1
+
+
+class MinImbalance(InequalityConstraint):
+    r"""Lower bound on the imbalance of the long and short legs.
+
+    The imbalance is the sum of the signed non-cash weights. This requires
+
+    .. math::
+
+        \sum_{i=1}^n (w_t + z_t)_i \geq c
+
+    which is the same as :math:`(w_t + z_t)_{n+1} \leq 1 - c`.
+
+    :param imbalance: Minimum imbalance, fixed or varying in time.
+    :type imbalance: float, pd.Series
+    """
+
+    def __init__(self, imbalance):
+        self.imbalance = DataEstimator(
+            imbalance, compile_parameter=True, parameter_shape='scalar')
+
+    def _compile_constr_to_cvxpy(  # pylint: disable=arguments-differ
+            self, w_plus, **kwargs):
+        """Compile left hand side of the constraint expression."""
+        return w_plus[-1]
+
+    def _rhs(self):
+        """Compile right hand side of the constraint expression."""
+        return 1 - self.imbalance.parameter
+
 
 class MaxTradeWeights(InequalityConstraint):
     r"""A max limit on trade weights (excluding cash).
