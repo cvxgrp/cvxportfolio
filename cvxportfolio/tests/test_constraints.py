@@ -126,6 +126,47 @@ class TestConstraints(CvxportfolioTest):
         self.w_plus.value = tmpvalue
         self.assertFalse(cons.value())
 
+
+    def test_target_imbalance(self):
+        """Target imbalance is the cash residual of the signed weights."""
+        model = cvx.TargetImbalance(0.25)
+        cons = self._build_constraint(model)
+        value = np.zeros(self.N)
+        value[-1] = 0.75
+        self.w_plus.value = value
+        self.assertTrue(cons.value())
+        value[-1] = 0.5
+        self.w_plus.value = value
+        self.assertFalse(cons.value())
+
+    def test_max_imbalance(self):
+        """Imbalance at most 0.4 means cash weight at least 0.6."""
+        model = cvx.MaxImbalance(0.4)
+        cons = self._build_constraint(model)
+        value = np.zeros(self.N)
+        value[0] = 0.4
+        value[-1] = 0.6
+        self.w_plus.value = value
+        self.assertTrue(cons.value())
+        value[0] = 0.5
+        value[-1] = 0.5
+        self.w_plus.value = value
+        self.assertFalse(cons.value())
+
+    def test_min_imbalance(self):
+        """Imbalance at least 0.2 means cash weight at most 0.8."""
+        model = cvx.MinImbalance(0.2)
+        cons = self._build_constraint(model)
+        value = np.zeros(self.N)
+        value[0] = 0.3
+        value[-1] = 0.7
+        self.w_plus.value = value
+        self.assertTrue(cons.value())
+        value[0] = 0.1
+        value[-1] = 0.9
+        self.w_plus.value = value
+        self.assertFalse(cons.value())
+
     def test_leverage_limit(self):
         """Test leverage limit constraint."""
         model = cvx.LeverageLimit(2)

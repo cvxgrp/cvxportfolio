@@ -70,6 +70,12 @@ Constraints
 
 .. autoclass:: FixedImbalance
 
+.. autoclass:: TargetImbalance
+
+.. autoclass:: MaxImbalance
+
+.. autoclass:: MinImbalance
+
 .. autoclass:: NoCash
 
 .. _soft-constraints:
